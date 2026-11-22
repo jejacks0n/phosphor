@@ -97,14 +97,14 @@ test('empty, it says what plugins are; a manifest picked is asked about, then li
   const store = await mount();
   await expect.element(page.getByRole('link', { name: 'How plugins work' })).toBeVisible();
   await pick(midnight);
-  expect(heading()).toBe('Install Midnight 1.0.0?');
+  expect(heading()).toBe('Install Midnight 1.1.0?');
   expect(dialogText()).toContain('by Phosphor');
   expect(dialogText()).toContain('Adds 1 theme. Runs no code.');
   expect(dialogText()).not.toContain('runs code in Phosphor');
   await page.getByRole('button', { name: /^Install/ }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   const row = document.querySelector('dialog li');
-  for (const words of ['Midnight', '1.0.0', 'by Phosphor', '1 theme', 'A deep blue theme for late nights.']) expect(row.textContent).toContain(words);
+  for (const words of ['Midnight', '1.1.0', 'by Phosphor', '1 theme', 'A deep blue theme for late nights.']) expect(row.textContent).toContain(words);
   const link = row.querySelector('a');
   expect(link.href).toBe('https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight');
   expect(link.textContent).toBe('github.com/jejacks0n/phosphor/tree/main/plugins/midnight');
@@ -183,11 +183,11 @@ test('Remove asks first, then forgets it', async () => {
 test('installing a plugin again asks to replace it', async () => {
   const store = await mount();
   await installed();
-  await pick(changed((m) => { m.version = '1.1.0'; }));
-  expect(heading()).toBe('Replace Midnight 1.0.0 with 1.1.0?');
+  await pick(changed((m) => { m.version = '1.2.0'; }));
+  expect(heading()).toBe('Replace Midnight 1.1.0 with 1.2.0?');
   await page.getByRole('button', { name: /^Replace/ }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
-  expect(store.plugins[0].manifest.version).toBe('1.1.0');
+  expect(store.plugins[0].manifest.version).toBe('1.2.0');
 });
 
 test('a browser that will not keep plugins says so and offers no install', async () => {
@@ -269,9 +269,9 @@ test('a manifest dropped anywhere on the dialog is asked about, and a drop on th
   await mount();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
-  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.1.0?'));
   expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
-  expect(heading()).toBe('Install Midnight 1.0.0?');
+  expect(heading()).toBe('Install Midnight 1.1.0?');
 });
 
 test('a browser that will not keep plugins asks nothing about a dropped file, and one that fails to keep it says so', async () => {
@@ -319,7 +319,7 @@ test('the question for a plugin with a script warns that it runs code; a theme-o
   await page.getByRole('button', { name: 'Install from a folder…' }).click();
   expect(chooser).toHaveBeenCalled(); // the hidden input's chooser
   await pickFolder(scripted());
-  expect(heading()).toBe('Install Midnight 1.0.0?');
+  expect(heading()).toBe('Install Midnight 1.1.0?');
   expect(dialogText()).toContain('Adds 1 theme and a script.');
   expect(dialogText()).toContain(WARNING);
   expect(dialogText()).not.toContain('Runs no code');
@@ -328,16 +328,16 @@ test('the question for a plugin with a script warns that it runs code; a theme-o
   expect(store.solvers[solverRef('phosphor.midnight', 'edges')]).toMatchObject({ name: 'Edges' });
   expect(document.querySelector('dialog li').textContent).toContain('Runs code');
 
-  await pickFolder(scripted((m) => { m.version = '1.1.0'; delete m.themes; }));
+  await pickFolder(scripted((m) => { m.version = '1.2.0'; delete m.themes; }));
   expect(dialogText()).toContain('Adds a script.');
   expect(dialogText()).toContain(WARNING);
   await page.getByRole('button', { name: 'Cancel' }).click();
 
   // a script that won't load is refused in its own words, and nothing is kept
-  await pickFolder(scripted((m) => { m.version = '1.2.0'; }), 'export default {');
+  await pickFolder(scripted((m) => { m.version = '1.3.0'; }), 'export default {');
   await page.getByRole('button', { name: /^Replace/ }).click();
   await vi.waitFor(() => expect(document.querySelector('dialog [role=alert]')?.textContent).toMatch(/^The plugin's script couldn't be loaded: ./));
-  expect(store.plugins[0].manifest.version).toBe('1.0.0');
+  expect(store.plugins[0].manifest.version).toBe('1.1.0');
 });
 
 test('the file button takes a .zip as well as a manifest, and the folder button uses the browser\'s folder picker where it has one', async () => {
@@ -353,7 +353,7 @@ test('the file button takes a .zip as well as a manifest, and the folder button 
   window.showDirectoryPicker = async () => folder;
   onTestFinished(() => { delete window.showDirectoryPicker; });
   await page.getByRole('button', { name: 'Install from a folder…' }).click();
-  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.1.0?'));
   await page.getByRole('button', { name: /^Install/ }).click();
   await expect.element(page.getByRole('button', { name: 'Reload Midnight' })).toBeVisible(); // the folder's kept
   expect(store.plugins[0].handle.kind).toBe('directory');
@@ -375,7 +375,7 @@ const folderDrop = (children) => {
 test('a dropped folder is asked about; a dropped zip too', async () => {
   await mount();
   expect(folderDrop([entry('phosphor-plugin.json', scripted()), entry('edges.js', SCRIPT)])).toBe(true);
-  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.1.0?'));
   expect(dialogText()).toContain(WARNING);
   await page.getByRole('button', { name: 'Cancel' }).click();
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
@@ -384,7 +384,7 @@ test('a dropped folder is asked about; a dropped zip too', async () => {
   const data = new DataTransfer();
   data.items.add(new File([zip], 'midnight-main.zip', { type: 'application/zip' }));
   document.querySelector('dialog h3').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
-  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.0.0?'));
+  await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.1.0?'));
   expect(dialogText()).toContain('Adds 1 theme and a script.');
 });
 
@@ -476,7 +476,7 @@ const withListed = async (store) => {
 
 test('an Installed row says Official or From the marketplace, Update when the list has a higher version of the same listing, and No longer listed', async () => {
   served['/plugins.json'] = listWith((plugins) => {
-    plugins.find(({ manifest }) => manifest.id === 'phosphor.midnight').manifest.version = '1.1.0';
+    plugins.find(({ manifest }) => manifest.id === 'phosphor.midnight').manifest.version = '1.2.0';
     return plugins.filter(({ manifest }) => manifest.id !== 'kim.rain');
   });
   const store = await mount(withListed);
@@ -486,27 +486,27 @@ test('an Installed row says Official or From the marketplace, Update when the li
   expect(row('Rain').textContent).toContain('From the marketplace');
   expect(row('Dusk').textContent).not.toContain('From the marketplace');
   await expect.element(page.getByRole('button', { name: 'Update Midnight' })).toBeVisible();
-  expect([...row('Midnight').querySelectorAll('.badge')].map((badge) => badge.textContent)).toEqual(['Official', 'Update to 1.1.0']);
+  expect([...row('Midnight').querySelectorAll('.badge')].map((badge) => badge.textContent)).toEqual(['Official', 'Update to 1.2.0']);
   expect(row('Rain').querySelector('button.update')).toBe(null);
   expect(row('Rain').textContent).not.toContain('Update to');
   expect(row('Rain').textContent).toContain('No longer listed');
   expect(row('Midnight').textContent).not.toContain('No longer listed');
   expect(row('Dusk').textContent).not.toContain('No longer listed');
 
-  // the list's 1.1.0, served at its commit with its hash
-  const newer = changed((m) => { m.version = '1.1.0'; }), hash = await sha256(newer);
+  // the list's 1.2.0, served at its commit with its hash
+  const newer = changed((m) => { m.version = '1.2.0'; }), hash = await sha256(newer);
   served[`${RAW}/jejacks0n/phosphor/${COMMIT}/plugins/midnight/phosphor-plugin.json`] = newer;
   served['/plugins.json'] = listWith((plugins) => {
     const entry = plugins.find(({ manifest }) => manifest.id === 'phosphor.midnight');
-    entry.manifest.version = '1.1.0';
+    entry.manifest.version = '1.2.0';
     entry.manifestHash = hash;
   });
   await store.loadMarket({ again: true });
   await page.getByRole('button', { name: 'Update Midnight' }).click();
-  await vi.waitFor(() => expect(heading()).toBe('Replace Midnight 1.0.0 with 1.1.0?'));
+  await vi.waitFor(() => expect(heading()).toBe('Replace Midnight 1.1.0 with 1.2.0?'));
   expect(dialogText()).toContain('Official');
   await page.getByRole('button', { name: /^Replace/ }).click();
-  await vi.waitFor(() => expect(store.plugins.find(({ id }) => id === 'phosphor.midnight').manifest.version).toBe('1.1.0'));
+  await vi.waitFor(() => expect(store.plugins.find(({ id }) => id === 'phosphor.midnight').manifest.version).toBe('1.2.0'));
   await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
   expect(selected()).toMatch(/^Installed/);
   expect(page.getByRole('button', { name: 'Update Midnight' }).query()).toBe(null);

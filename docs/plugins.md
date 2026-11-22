@@ -22,7 +22,7 @@ it came from ("From a folder", "From the marketplace"). An Official badge marks 
 - **Install from a folder…** asks for a folder.
 - You can also drop a folder, a `.zip` or a manifest on the dialog.
 
-- **Replacing**: installing a plugin you already have asks "Replace Midnight 1.0.0 with 1.1.0?". The new version keeps
+- **Replacing**: installing a plugin you already have asks "Replace Midnight 1.1.0 with 1.2.0?". The new version keeps
   the old one's On or Off.
 - **On and Off**: each plugin has a switch. A plugin that's off keeps its place in the list, but nothing of it is
   offered: its themes, solvers, brushes, shapes and filters.
@@ -70,7 +70,7 @@ installed."
 
 ## Installing a plugin
 
-Before anything is installed it asks, for example "Install Midnight 1.0.0?", by whom, and what it adds. A plugin with
+Before anything is installed it asks, for example "Install Midnight 1.1.0?", by whom, and what it adds. A plugin with
 only themes says "Adds 1 theme. Runs no code." A plugin with a script says "Adds 1 theme and a script." (or "Adds a
 script.") and, under it, "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from." Nothing
 of the plugin runs before you press Install: Phosphor reads the manifest and the script's text to ask, and nothing more.
@@ -139,7 +139,7 @@ this visit." There you can switch the plugin off or remove it; then load Phospho
 ## Writing a plugin
 
 A plugin is a file named `phosphor-plugin.json`. This one is Midnight, a deep blue theme (one of the official plugins in Phosphor's
-`plugins/` folder, `plugins/midnight/phosphor-plugin.json`). Your own plugin's id is yours, `author.name`, like `jane.rain`;
+`plugins/` folder, `plugins/midnight/phosphor-plugin.json`), shortened: the real file sets every color slot. Your own plugin's id is yours, `author.name`, like `jane.rain`;
 ids starting `phosphor.` are kept for the official plugins:
 
 ```json
@@ -147,7 +147,7 @@ ids starting `phosphor.` are kept for the official plugins:
   "phosphor": 1,
   "id": "phosphor.midnight",
   "name": "Midnight",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "author": "Phosphor",
   "description": "A deep blue theme for late nights.",
   "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight",
@@ -188,11 +188,25 @@ Each theme:
 | `base` | `dark` or `light`: Phosphor's own theme under it, which gives every color it doesn't set, and the theme Phosphor goes to when this one isn't there. | `dark` or `light`. |
 | `colors` | The colors it sets. | Each key is one of the color slots below; each value a hex color: `#rgb`, `#rrggbb` or `#rrggbbaa`. |
 
-The color slots: `background`, `background-highlight`, `accent`, `accent-hot`, `accent-hover`, `accent-faint`,
-`danger`, `danger-hover`, `warning`, `success`, `surface-dark`, `surface-0`, `surface-1`, `surface-2`, `surface-3`,
-`surface-4`, `surface-light`, `border`, `border-dark`, `border-subtle`, `border-light`, `text`, `text-dim`,
-`text-muted`, `text-faint` and `text-inverted`. `surface-0` is the page behind everything; the art's own colors aren't
-a theme's.
+The color slots, and what each colors (a theme that sets them all changes the whole interface, as Midnight does; the
+art's own colors aren't a theme's):
+
+| Slot | What it colors |
+|---|---|
+| `background`, `background-highlight` | The area around the art, and the glow over its top left corner. |
+| `accent` | Headings, the tab shown, a hovered button's border, the close button's ring, focus, links. |
+| `accent-hot`, `accent-hover` | A primary button (Install, Export) and its border; the chosen tool or option; the close button on hover. |
+| `accent-faint` | The drop box under a file being dragged in. |
+| `danger`, `danger-hover` | Remove and other danger buttons, and the words that say something failed. |
+| `warning`, `success` | Notes that warn, and ones that say something worked. |
+| `surface-0` … `surface-4` | The page behind everything (`surface-0`), then panels, buttons, fields and menus, each a step up. |
+| `surface-dark`, `surface-light` | The checkerboard behind see-through art; a primary button on hover. |
+| `border`, `border-subtle`, `border-light` | Borders, from a button's to a list's lines to the dialogs' edges. (`border-dark` is a slot nothing uses yet.) |
+| `text`, `text-dim`, `text-muted`, `text-faint` | Words, from the brightest to hints and placeholders. |
+| `text-inverted` | Words on a primary button. |
+
+White and black, the glow behind a chosen button (worked out from `accent`), shadows and backdrops, the guides, the
+warning toast and the Magic Wand's fill aren't slots yet.
 
 A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
 doesn't know are left out, except that a manifest from a format newer than Phosphor's is refused. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
