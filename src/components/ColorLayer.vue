@@ -14,7 +14,8 @@ import ColorPalettesPage from '@/components/ColorPalettesPage.vue';
 // (ColorPalettesPage), the drawing's colors and the palette library, the big size. It's mounted while workspace.colorBox
 // is set, and however it goes, it clears it, as the character palette layer clears its own: so it closes with the drawing
 // and on a switch away from the art, and an opener that switches first (Palettes from SAUCE) opens a new one after. The
-// two layers show one at a time: this one opening closes the character palette layer, and that one opening closes this.
+// two layers show one at a time, mounted side by side in the toolbar and over the start screen alike: this one opening
+// closes the character palette layer (onMounted), and that one opening closes this (the watch on paletteLayerOpen).
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
 const panel = useTemplateRef('panel');
@@ -65,15 +66,18 @@ const onKeyDown = (event) => {
 };
 
 // Growing to Palettes, the new left comes at once, so the right edge never passes the toolbar's 10px line as the width
-// moves. Shrinking back, the left waits until the width is done, a toolbar's resize meanwhile too: moved at once, it
-// would put the frame, still as wide as Palettes for the move's 0.25s (coming back from the dialog too), past that
-// line. Then it hops under the pair.
+// moves. Shrinking back from the floating big size, the left waits until the width is done, a toolbar's resize meanwhile
+// too: moved at once, it would put the frame, still as wide as Palettes for the move's 0.25s, past that line. Then it
+// hops under the pair. Back from the dialog (or the whole window) the box fades in instead (FloatingPanel), so its
+// width is done at once and it appears small, under the pair, before the fade shows any of it.
 watch(onPalettes, async (wide) => {
   keepKeys();
   shrinking = null;
   if (!wide) {
+    const fromDialog = panel.value?.stage !== 'float'; // read before the render: still Palettes' form
     await nextTick();
     shrinking = panel.value?.root.getAnimations().find((move) => move.transitionProperty === 'width') ?? null;
+    if (fromDialog) shrinking?.finish();
     await shrinking?.finished.catch(() => {}); // cut short by Palettes again, or the layer closed
     shrinking = null;
   }
