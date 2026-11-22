@@ -1,6 +1,7 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
+import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import ExportModal from '@/components/ExportModal.vue';
@@ -11,19 +12,21 @@ afterEach(() => vi.restoreAllMocks());
 // default second.
 const PATIENT = { interval: 5, timeout: 10_000 };
 
-function mountModal() {
+// With the test's pinia, a late action of the test before (which makes its own pinia the active one) can't hand the
+// modal that test's stores.
+function mountModal(pinia = getActivePinia()) {
   const closed = vi.fn();
-  const app = createApp(ExportModal, { onClose: closed }).use(i18n);
+  const app = createApp(ExportModal, { onClose: closed }).use(i18n).use(pinia);
   app.mount(document.createElement('div'));
   return { closed, unmount: () => app.unmount() };
 }
 
 async function drawing() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
   project.typeAt(1, 0, 'A', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 
 test('opens with ANS selected by default on a still drawing', async () => {
@@ -511,11 +514,11 @@ test('names the layers showing a stand-in', async () => {
 
 // XBin holds 16 colors: it's offered with CGA, and not with VGA, full color or a list past 16.
 test('offers XBin only for 16 colors or fewer', async () => {
-  const { project } = await drawing();
+  const { project, pinia } = await drawing();
   const state = async (settings) => {
     Object.assign(project, settings);
     await settle(project);
-    const { unmount } = mountModal();
+    const { unmount } = mountModal(pinia);
     try {
       const modal = document.querySelector('.modal-dialog');
       [...modal.querySelectorAll('.format-btn')].find((b) => b.textContent.includes('XBin')).click();

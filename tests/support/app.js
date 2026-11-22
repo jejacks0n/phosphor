@@ -38,7 +38,7 @@ export async function createTestApp() {
   project.seed = 'phosphor-tests'; // the default is a random slug: random characters would differ every run
   stopWatching = followParams(project);
   stopPick = followLayerPick({ workspace, project, drawing });
-  return { project, workspace };
+  return { project, workspace, pinia }; // pinia: for an app a test mounts, which then can't take a late test's stores
 }
 
 const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
