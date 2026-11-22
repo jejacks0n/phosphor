@@ -24,6 +24,7 @@ import FontFilters from '@/components/FontFilters.vue';
 import CloseButton from '@/components/CloseButton.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import { loadLibrary, libraryEntryOf, libraryFile, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -454,7 +455,7 @@ const exportPalettes = () => {
             :aria-label="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
             :title="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
             @click="toggleFilters"
-        >{{ filtersShown ? '«' : '»' }}</button>
+        ><ArrowIcon shape="double" :turn="filtersShown ? 180 : 0"/></button>
         <input v-model="filter" type="search" :placeholder="t('palette.fonts.filterPlaceholder')" :aria-label="t('palette.fonts.filterAria')">
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
@@ -618,7 +619,7 @@ const exportPalettes = () => {
       </div>
       <div class="actions">
         <template v-if="libEntry.linked">
-          <a class="ghost button" :href="libEntry.linked.url" target="_blank" rel="noopener">{{ t('palette.fonts.getIt') }}</a>
+          <a class="ghost button" :href="libEntry.linked.url" target="_blank" rel="noopener">{{ t('palette.fonts.getIt') }}<ArrowIcon shape="out" :size="12"/><span class="visually-hidden">{{ t('common.newTab') }}</span></a>
           <button class="ghost" :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         </template>
         <template v-else>
@@ -722,15 +723,15 @@ div.filters-head {
   height: 55px;
 }
 
-/* « / » beside the search, as the side panel's toggle */
+/* The double arrow beside the search, as the side panel's toggle */
 div.top button.filters-toggle {
+  display: flex;
   flex: none;
   padding: 4px;
   border: none;
   background: none;
   box-shadow: none;
   color: var(--text-muted);
-  font-size: 14px;
 }
 
 div.top button.filters-toggle:hover {
@@ -1043,6 +1044,9 @@ div.sample-text {
 }
 
 a.ghost.button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 4px 8px;
   border-radius: 4px;
   color: var(--text-dim);

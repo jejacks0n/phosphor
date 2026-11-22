@@ -39,6 +39,7 @@ const panel = () => host.querySelector('.side-panel');
 const words = (b) => [...b.childNodes].filter((n) => n.nodeType !== Node.COMMENT_NODE && !n.classList?.contains('beta')).map((n) => n.textContent).join('').trim().replace(/\s+/g, ' ');
 const tabs = () => [...host.querySelectorAll('.side-panel [role=tab]')].filter((b) => b.getAttribute('aria-label') !== 'History').map((b) => [words(b), b.getAttribute('aria-selected')]);   // the dev-only History tab (tests run in dev) is history-tab.test.js's
 const arrow = () => host.querySelector('button.panel');   // » in the panel's tabs while open, « in the nav while folded
+const turned = () => getComputedStyle(arrow().querySelector('svg.arrow-icon')).rotate;   // » drawn as a double arrow pointing right, « turned half around
 const grip = () => host.querySelector('[role=separator]');
 const press = async (key) => {
   grip().dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true }));
@@ -58,7 +59,7 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   const { workspace } = await mount();
   expect(workspace.sidePanelFolded).toBe(false);   // open to begin with
   expect(panel().getBoundingClientRect().width).toBe(SIDE_PANEL.width);
-  expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['»', 'Collapse panel', 'true']);
+  expect([turned(), arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['0deg', 'Collapse panel', 'true']);
   expect(arrow().parentElement.matches('.side-panel div.tabs')).toBe(true);   // at the right end of the panel's tabs
   const mid = (el) => (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2;
   expect(arrow().getBoundingClientRect().top - arrow().parentElement.getBoundingClientRect().top).toBeCloseTo(6.5, 1);   // where the « will be
@@ -76,7 +77,7 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   expect(mid(host.querySelector('label.animate')) - mid(arrow())).toBeCloseTo(1, 0);   // as high as the » was: 2px above the row's middle, where Animate is 1px above it
   await nextTick();
   expect(document.activeElement).toBe(arrow());   // focus went with it
-  expect([arrow().textContent, arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['«', 'Expand panel', 'false']);
+  expect([turned(), arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['180deg', 'Expand panel', 'false']);
   expect(localStorage.getItem('phosphor.sidePanelFolded')).toBe('true');
   arrow().click();
   await nextTick();

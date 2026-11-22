@@ -11,6 +11,7 @@ import { toast } from '@/composables/useToast';
 import { formatNumber } from '@/i18n/format';
 import { useTabIndicator } from '@/composables/useTabIndicator';
 import { toggleSidePanel, useSidePanelShown } from '@/components/SidePanel.vue';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 const props = defineProps({
   modelValue: { type: String, required: true },
@@ -138,7 +139,7 @@ watch(tabs, () => nextTick(updateIndicator), { deep: true });
     <!-- The side panel's fold: while it's open the » is in the panel's own tabs; folded (on a narrow screen, shut), this « sits where that » was, with a count of what was said. -->
     <template v-if="!sidePanelShown">
       <span v-if="workspace.sidePanelUnread" class="unread">{{ workspace.sidePanelUnread }}</span>
-      <button class="panel link" :aria-label="t('sidePanel.openAria')" aria-expanded="false" @click="toggleSidePanel(workspace)">«</button>
+      <button class="panel link" :aria-label="t('sidePanel.openAria')" aria-expanded="false" @click="toggleSidePanel(workspace)"><ArrowIcon shape="double" :turn="180"/></button>
     </template>
   </nav>
 </template>
@@ -283,9 +284,9 @@ div.indicator {
 }
 
 button.panel {
+  display: flex;
   margin: -4px 0 0 -6px;   /* 2px above the row's middle, where the side panel's » is (measured) */
   padding: 4px;
-  font-size: 14px;
 }
 
 label.animate {
@@ -369,7 +370,6 @@ label.animate:has(:focus-visible) {
     min-width: 40px;
     height: 36px;
     margin: -4px -10px -4px 0;
-    font-size: 20px;
   }
 }
 

@@ -33,6 +33,7 @@ import ChatPanel from '@/components/social/ChatPanel.vue';
 import LobbyPage from '@/components/social/LobbyPage.vue';
 import DesktopStartPage from '@/components/social/DesktopStartPage.vue';
 import LayersList from '@/components/LayersList.vue';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // Development only: a HISTORY tab logging every step taken (dev/actionLog.js, installed in main.js). The panel loads lazily, so built apps leave it out.
 const DEV = import.meta.env.DEV;
@@ -174,7 +175,7 @@ function key(e) {
           </svg>
         </button>
         <!-- The fold, at the row's right end: folded, EditTabs shows « at this same spot. -->
-        <button class="panel link" :aria-label="t('sidePanel.foldAria')" aria-expanded="true" @click="toggleSidePanel(workspace)">»</button>
+        <button class="panel link" :aria-label="t('sidePanel.foldAria')" aria-expanded="true" @click="toggleSidePanel(workspace)"><ArrowIcon shape="double"/></button>
       </div>
       <aside v-show="tab === 'layers'" class="layers" :aria-label="t('sidePanel.layers')">
         <LayersList/>
@@ -241,7 +242,6 @@ div.side-panel.overlay div.tabs button.panel {   /* as EditTabs' « on a narrow 
   min-width: 40px;
   height: 36px;
   margin: 0 -6px 0 0;
-  font-size: 20px;
 }
 div.scrim {
   position: fixed;
@@ -304,10 +304,10 @@ div.tabs button.tone:hover {
   color: var(--text);
 }
 div.tabs button.panel {   /* as EditTabs' « folded, so it keeps its place */
+  display: flex;
   align-self: flex-start;
   margin: 6.5px 5px 0 4px;   /* where EditTabs' « is (measured) */
   padding: 4px;
-  font-size: 14px;
 }
 div.tabs button[role='tab'] {
   position: relative;

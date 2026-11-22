@@ -8,6 +8,7 @@ import { clampAnsiZoom } from '@/lib/zoom';
 import { fontFor } from '@/social/wire';
 import { nameColor, nameInk } from '@/social/names';
 import UserName from './UserName.vue';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 
 // A room's art, drawn in the host's font as the ANSI view's canvas draws it (AnsiEditor's render,
 // without the DOM view): a CellCanvas over the window of cells in view, inside a sizer the whole
@@ -74,8 +75,8 @@ const colors = computed(() => (props.host ? { '--host': nameColor(props.host), '
 
 // The tag once the box is out of view: at the edge of the view nearest the box (6 px in), as an offset
 // from the box's corner, with an arrow toward it. null while any of the box is in view (CSS holds it).
-const away = ref(null);   // { left, top, arrow }
-const ARROWS = { '↑←': '↖', '↑→': '↗', '↓←': '↙', '↓→': '↘' };
+const away = ref(null);   // { left, top, arrow: degrees clockwise from pointing right }
+const TURNS = { up: 270, down: 90, left: 180, right: 0, upleft: 225, upright: 315, downleft: 135, downright: 45 };
 const clamp = (n, low, high) => Math.max(low, Math.min(n, high));
 const placeTag = () => {
   const v = view.value, m = metrics.value, el = scrollRef.value, tag = tagRef.value;
@@ -83,10 +84,10 @@ const placeTag = () => {
   const x = v.col * m.cellWidth, y = v.row * m.lineHeight, right = x + v.cols * m.cellWidth, bottom = y + v.rows * m.lineHeight;
   const seen = viewIn(sizerRef.value, el);   // from the art's corner: art smaller than the view starts past the view's
   const [x0, y0, x1, y1] = [seen.x, seen.y, seen.x + seen.width, seen.y + seen.height];
-  const up = bottom <= y0 ? '↑' : y >= y1 ? '↓' : '', across = right <= x0 ? '←' : x >= x1 ? '→' : '';
-  const arrow = ARROWS[up + across] ?? (up || across);
-  if (arrow !== (away.value?.arrow ?? '')) queueRender();   // the arrow changes the tag's width: placed again once it's drawn
-  away.value = arrow ? {
+  const up = bottom <= y0 ? 'up' : y >= y1 ? 'down' : '', across = right <= x0 ? 'left' : x >= x1 ? 'right' : '';
+  const arrow = up || across ? TURNS[up + across] : null;
+  if (arrow !== (away.value?.arrow ?? null)) queueRender();   // the arrow changes the tag's width: placed again once it's drawn
+  away.value = arrow !== null ? {
     left: clamp(x, x0 + 6, x1 - tag.offsetWidth - 6) - x,
     top: clamp(y, y0 + 6, y1 - tag.offsetHeight - 6) - y,
     arrow,
@@ -260,7 +261,7 @@ onBeforeUnmount(() => {
             @keydown.stop
             @click="emit('track')"
         >
-          <span v-if="away" aria-hidden="true">{{ away.arrow }}</span>
+          <ArrowIcon v-if="away" shape="arrow" :turn="away.arrow" :size="14"/>
           <UserName class="name" :name="host" />
           <span v-if="tracking" class="state">{{ t('social.watch.trackingState') }}</span>
           <span v-else class="track">{{ t('social.watch.trackBtn') }}</span>

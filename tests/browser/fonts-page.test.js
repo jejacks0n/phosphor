@@ -1033,12 +1033,12 @@ test('» beside the search opens the column, « folds it again, remembered next 
   const search = host.querySelector('.top input');
   expect(toggle().compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // just before the search
   expect(host.querySelector('aside.filters-side')).toBeNull(); // folded until » is pressed
-  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['»', 'false']);
+  expect([getComputedStyle(toggle().querySelector('svg.arrow-icon')).rotate, toggle().getAttribute('aria-expanded')]).toEqual(['0deg', 'false']);
   const button0 = toggle();
   toggle().focus();
   await press(toggle());
   expect(host.querySelector('aside.filters-side')).toBeTruthy();
-  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['«', 'true']);
+  expect([getComputedStyle(toggle().querySelector('svg.arrow-icon')).rotate, toggle().getAttribute('aria-expanded')]).toEqual(['180deg', 'true']);
   expect(host.querySelector('button.filters-open')).toBeNull();
   expect(host.querySelector('.filters-head button.fold')).toBeNull();
   expect(toggle()).toBe(button0); // the same button, so the focus stays on it
@@ -1071,14 +1071,14 @@ test('the column starts folded at every size; opened, the floating layer narrows
   onTestFinished(() => page.viewport(414, 896));
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  const starts = () => [!!host.querySelector('aside.filters-side'), toggle().textContent.trim(), toggle().getAttribute('aria-expanded')];
-  expect(starts()).toEqual([false, '»', 'false']); // the dialog
+  const starts = () => [!!host.querySelector('aside.filters-side'), getComputedStyle(toggle().querySelector('svg.arrow-icon')).rotate, toggle().getAttribute('aria-expanded')];
+  expect(starts()).toEqual([false, '0deg', 'false']); // the dialog
   await page.viewport(1400, 900);
   await vi.waitFor(() => expect(Math.round(host.querySelector('.list-side').getBoundingClientRect().width)).toBe(220));
-  expect(starts()).toEqual([false, '»', 'false']); // the floating layer
+  expect(starts()).toEqual([false, '0deg', 'false']); // the floating layer
   await press(host.querySelector('.pages button.maximize'));
   await vi.waitFor(() => expect(Math.round(host.querySelector('.list-side').getBoundingClientRect().width)).toBe(320));
-  expect(starts()).toEqual([false, '»', 'false']); // full screen
+  expect(starts()).toEqual([false, '0deg', 'false']); // full screen
   await press(host.querySelector('.pages button.maximize'));
   await openFilters();
   const widths = () => [host.querySelector('aside.filters-side'), host.querySelector('.list-side')].map((el) => Math.round(el.getBoundingClientRect().width));
@@ -1130,7 +1130,7 @@ test('on a phone, » opens a sheet; Show N fonts or Escape closes it, and Escape
   await waitFor(() => libraryNames().length);
   expect(host.querySelector('aside.filters-side')).toBeNull();
   const open = toggle;
-  expect(open().textContent.trim()).toBe('»');
+  expect(getComputedStyle(open().querySelector('svg.arrow-icon')).rotate).toBe('0deg');
   await press(open());
   const sheet = host.querySelector('.filters-sheet');
   expect(sheet.getAttribute('role')).toBe('dialog');
@@ -1566,7 +1566,7 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   await chooseLibrary('FROGBLOCK');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library · not included');
   expect(actions()).toEqual(['+ Load']);
-  expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it ↗');
+  expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it(opens in a new tab)');
   expect(host.querySelector('.edit-side a.button').href).toBe('https://polyducks.itch.io/frogblock');
   expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
   expect([...host.querySelectorAll('.edit-side .origin a')].map((a) => a.href)).toEqual(['https://example.test/frog-license']);

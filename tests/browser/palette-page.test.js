@@ -125,18 +125,18 @@ test('the editor shows the tie and changes it', async () => {
   let id;
   const { palettes } = await mount({ setup: (p) => { id = named(p, 'Frogs'); } });
   await edit('Frogs');
-  expect(tieButton().textContent.trim()).toBe('For A ▾');
+  expect(tieButton().textContent.trim()).toBe('For A');
   await press(tieButton());
   expect(button('Tie to A')).toBeUndefined(); // already tied to it
   await press(button('Use with any font'));
   expect(palettes.general.map((p) => p.id)).toContain(id);
-  expect(tieButton().textContent.trim()).toBe('Any font ▾');
+  expect(tieButton().textContent.trim()).toBe('Any font');
   await press(tieButton());
   button('Tie to A').focus(); // the menu, and its focused item, go away once chosen
   await press(button('Tie to A'));
   expect(palettes.tied.map((p) => p.id)).toEqual([id]);
   await expect.poll(() => host.contains(document.activeElement)).toBe(true); // the layer keeps the keys
-  expect(tieButton().textContent.trim()).toBe('For A ▾');
+  expect(tieButton().textContent.trim()).toBe('For A');
   await press(row('Shades & blocks'));
   expect(tieButton()).toBeNull(); // built-ins show no tie
 });
@@ -176,13 +176,13 @@ test('with a TrueType or built-in font in use, the tie menu ties a palette to it
   const { palettes } = await mount({ font: false, setup: (p) => named(p, 'Frogs') });
   expect(headers()).toEqual(['Built-in', 'Yours']); // no group for the font until a palette is tied to it
   await edit('Frogs');
-  expect(tieButton().textContent.trim()).toBe('Any font ▾');
+  expect(tieButton().textContent.trim()).toBe('Any font');
   expect(tieButton().disabled).toBe(false);
   await press(tieButton());
   await press(button('Tie to JetBrains Mono'));
   expect(palettes.tied.map((p) => p.name)).toEqual(['Frogs']);
   expect(headers()).toEqual(['For JetBrains Mono', 'Built-in', 'Yours']);
-  expect(tieButton().textContent.trim()).toBe('For JetBrains Mono ▾');
+  expect(tieButton().textContent.trim()).toBe('For JetBrains Mono');
   await press(button('＋ New', group('For JetBrains Mono')));
   expect(palettes.tied).toHaveLength(2); // + New there ties the new one too
   expect(button('CP437')).toBeTruthy(); // the sources stay a TrueType font's
@@ -255,7 +255,7 @@ test('palettes for fonts not loaded are reachable', async () => {
   expect(row('Frogs · TEST')).toBeUndefined();
   await press(group('For fonts not loaded (1)').querySelector('.label'));
   await edit('Frogs · TEST');
-  expect(tieButton().textContent.trim()).toBe('For TEST ▾');
+  expect(tieButton().textContent.trim()).toBe('For TEST');
   await press(tieButton());
   expect(button('Tie to A')).toBeTruthy();
   await press(button('Use with any font'));

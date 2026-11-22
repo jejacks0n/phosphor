@@ -256,7 +256,7 @@ test('art narrow and tall centers across and scrolls down from its first line; s
   expect(scroll.scrollTop).toBe(0);   // the first line can be seen
   state.tracking = false;
   scroll.scrollTop = 400;
-  await expect.poll(() => tag().textContent).toContain('↑');
+  await expect.poll(() => getComputedStyle(tag().querySelector('svg.arrow-icon')).rotate).toBe('270deg');   // drawn, pointing up
   await frames();
   const [view, placed] = [scroll.getBoundingClientRect(), tag().getBoundingClientRect()];
   expect(placed.left).toBeGreaterThanOrEqual(view.left);   // inside the view, measured from where the art starts
@@ -332,10 +332,10 @@ test('scrolled away from the box, the tag stays in sight at the edge nearest it,
   expect(t.top).toBeGreaterThanOrEqual(s.top);
   expect(t.right).toBeLessThanOrEqual(s.left + scroll.clientWidth);
   expect(t.bottom).toBeLessThanOrEqual(s.top + scroll.clientHeight);
-  expect(tag().textContent).toContain('\u2198');   // down and to the right
+  expect(getComputedStyle(tag().querySelector('svg.arrow-icon')).rotate).toBe('45deg');   // down and to the right
   state.hostView = { col: 0, row: 40, cols: 10, rows: 4 };
   await frames();
-  expect(tag().textContent).toContain('\u2193');   // straight down
+  expect(getComputedStyle(tag().querySelector('svg.arrow-icon')).rotate).toBe('90deg');   // straight down
 });
 
 test('the tag is part of the box: it moves with it in the same frame, and holds to the corner in view when the box is bigger than the view', async () => {
@@ -353,7 +353,7 @@ test('the tag is part of the box: it moves with it in the same frame, and holds 
   const s = scroll.getBoundingClientRect();
   t = tag().getBoundingClientRect();
   expect([t.left, t.top]).toEqual([s.left, s.top]);
-  expect(tag().textContent).not.toMatch(/[\u2190-\u2199]/);   // no arrow: the box is right here
+  expect(tag().querySelector('svg.arrow-icon')).toBeNull();   // no arrow: the box is right here
 });
 
 test('boxed false draws no host\'s box or tag, and still scrolls to the view while tracking', async () => {

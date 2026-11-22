@@ -2,6 +2,7 @@
 import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
+import ArrowIcon from '@/components/ArrowIcon.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -96,7 +97,7 @@ function cancel() {
         <ul class="replacements" :aria-label="t('save.replacementsAria')" tabindex="0">
           <li v-for="r in replacements" :key="r.char">
             <span class="char">{{ r.char }}</span>
-            <span class="arrow" :aria-label="t('save.becomesAria')">→</span>
+            <span class="arrow" role="img" :aria-label="t('save.becomesAria')"><ArrowIcon shape="arrow" :size="14"/></span>
             <span class="char">{{ r.as }}</span>
             <span class="count">{{ t('save.cellCount', { count: r.count }, r.count) }}</span>
           </li>
