@@ -177,8 +177,8 @@ see what that does to the same photo, and save a project and reopen it.
 ### 13. Export with a Custom list of 16
 - Does: sets the Color palette to Custom color list and pastes 16 Lospec style hex codes into Palette colors' hex field,
   then Enter (or Imports them as a `.hex` file); exports XBin, reopens it.
-- Expects: the 16 replace the whole list, as 16 swatches; it reopens as a Custom list of the same 16 colors, in the same
-  order, with the same cells and font.
+- Expects: the 16 replace the whole list, as 16 swatches, and a toast says so with Put back; it reopens as a Custom
+  list of the same 16 colors, in the same order, with the same cells and font.
 - Probes: `extremes`: a list of one color (Remove down to it), and of 16 with a repeated color.
 - Rated: no (drawing)
 

@@ -42,6 +42,22 @@ test('Import takes a .hex file and Put back restores the list; Export downloads 
   expect(await readFile(await download.path(), 'utf8')).toBe('ff0000\n00ff00\n0000ff\n');
 });
 
+test('the swatches are one Tab stop, and the arrows walk them, with the art in the page beside them', async ({ page }) => {
+  await openApp(page);
+  await customList(page);
+  await page.getByRole('textbox', { name: 'Palette colors' }).focus();
+  for (let i = 0; i < 3; i++) await page.keyboard.press('Shift+Tab'); // past the chip and + to the picked swatch
+  await expect(swatches(page).nth(0)).toBeFocused();
+  await page.keyboard.press('ArrowRight');
+  await expect(swatches(page).nth(1)).toBeFocused();
+  await expect(swatches(page).nth(1)).toHaveAttribute('aria-pressed', 'true');
+  await page.keyboard.press('End');
+  await expect(swatches(page).nth(2)).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(swatches(page).nth(1)).not.toBeFocused(); // the others aren't stops
+  expect(await store(page, 'project', (p) => p.palette)).toBe(LIST);
+});
+
 test.describe('on a phone', () => {
   test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   test('on a phone the editor fits the drawer, its swatches aren\'t draggable, and ◂ ▸ reorder', async ({ page }) => {
