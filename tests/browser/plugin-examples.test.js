@@ -60,21 +60,40 @@ for (let y = 4; y < 16; y++) for (let x = 0; x < 20; x++) RED_BLUE.push({ x, y, 
 const paintAt = (project, x, y) => project.paintLayer.pixelAt(x, y);
 const layerPaint = (project) => RED_BLUE.map(({ x, y }) => paintAt(project, x, y));
 
-test('Smear: a drag across a red|blue edge moves red into blue, and blue into red, the way it goes', async () => {
+test('Smear: a drag across a red|blue edge carries red on into the blue, less the further it goes, and blue into red the other way', async () => {
   const { project, stroke } = await smearing();
   project.putEditPixels(RED_BLUE);
   project.commitEdit();
-  // Rightward along row 10, the dab's middle: the first blue pixel takes Strength's 60% of the red a step back of it,
-  // the red beside it has red a step back (unchanged), and the next blue pixel has blue a step back (unchanged).
+  // Rightward along row 10, the dab's middle: red rides with the brush past the edge, each pixel on keeping less of it
+  // (Strength's 60% of what the one behind has); the red behind the edge has red a step back, and stays as it is.
   stroke([at(4, 10), at(8, 10), at(12, 10), at(16, 10)]);
-  expect(paintAt(project, 10, 10)).toMatchObject({ r: 153, g: 0, b: 102, a: 1 });
+  const reds = [10, 11, 12, 13].map((x) => paintAt(project, x, 10).r);
+  expect(reds[0]).toBeGreaterThan(140);
+  for (let i = 1; i < reds.length; i++) expect(reds[i]).toBeLessThan(reds[i - 1]);
+  expect(reds[2]).toBeGreaterThan(20); // three pixels in, still plainly there: more than the one pixel a stroke's start gives
+  for (const x of [10, 11, 12, 13]) expect(paintAt(project, x, 10)).toMatchObject({ g: 0, a: 1 });
   expect(paintAt(project, 9, 10)).toEqual(RED);
-  expect(paintAt(project, 11, 10)).toEqual(BLUE);
+  expect(paintAt(project, 3, 10)).toEqual(RED);
   project.undo();
-  stroke([at(16, 10), at(12, 10), at(8, 10), at(4, 10)]); // leftward: the last red pixel takes blue
-  expect(paintAt(project, 9, 10)).toMatchObject({ r: 102, g: 0, b: 153, a: 1 });
   expect(paintAt(project, 10, 10)).toEqual(BLUE);
-  expect(paintAt(project, 8, 10)).toEqual(RED);
+  stroke([at(16, 10), at(12, 10), at(8, 10), at(4, 10)]); // leftward: blue into the red
+  const blues = [9, 8, 7, 6].map((x) => paintAt(project, x, 10).b);
+  expect(blues[0]).toBeGreaterThan(140);
+  for (let i = 1; i < blues.length; i++) expect(blues[i]).toBeLessThan(blues[i - 1]);
+  expect(paintAt(project, 10, 10)).toEqual(BLUE);
+});
+
+test('Smear: Strength 100 carries the color the whole way, and one long move smears as far as many short ones', async () => {
+  const { project, workspace, ref, stroke } = await smearing();
+  project.putEditPixels(RED_BLUE);
+  project.commitEdit();
+  workspace.pluginTools[`brush:${ref}`] = { strength: 100 };
+  stroke([at(4, 10), at(16, 10)]);
+  for (let x = 10; x <= 16; x++) expect(paintAt(project, x, 10), `x ${x}`).toEqual(RED);
+  const long = layerPaint(project);
+  project.undo();
+  stroke([at(4, 10), at(7, 10), at(10, 10), at(13, 10), at(16, 10)]);
+  expect(layerPaint(project)).toEqual(long);
 });
 
 test('Smear: a press alone changes nothing', async () => {
@@ -86,7 +105,7 @@ test('Smear: a press alone changes nothing', async () => {
   expect(layerPaint(project)).toEqual(before);
 });
 
-test('Smear: Reads This layer on a clear layer changes nothing; What shows smears the picture under it', async () => {
+test('Smear: Reads This layer on a clear layer changes nothing; What shows smears the picture under it onto the layer', async () => {
   const { project, workspace, ref, stroke } = await smearing();
   const layer = project.editId;
   workspace.pickLayer('base');
@@ -98,26 +117,46 @@ test('Smear: Reads This layer on a clear layer changes nothing; What shows smear
   expect(layerPaint(project).every((pixel) => pixel === null)).toBe(true);
   workspace.pluginTools[`brush:${ref}`] = { reads: 0 };
   stroke([at(4, 10), at(16, 10)]);
-  // The picture's red laid at 60% over the clear layer, where it differs from what shows; nowhere else.
+  // The picture's red laid over the clear layer where it goes into the blue, thinner the further in; none where what
+  // shows a step back is the same.
   expect(paintAt(project, 10, 10)).toMatchObject({ r: 255, g: 0, b: 0 });
-  expect(paintAt(project, 10, 10).a).toBeCloseTo(0.6, 2);
+  expect(paintAt(project, 10, 10).a).toBeGreaterThan(0.55);
+  expect(paintAt(project, 12, 10).a).toBeLessThan(paintAt(project, 11, 10).a);
+  expect(paintAt(project, 12, 10).a).toBeGreaterThan(0.05);
   expect(paintAt(project, 9, 10)).toBe(null);
-  expect(paintAt(project, 11, 10)).toBe(null);
+  expect(project.rawColorAt(11, 10)).not.toBe('#0000ff');
 });
 
-test('Smear: Reads This layer carries the layer\'s paint out into where it\'s clear, as What shows does', async () => {
+test('Smear: Reads This layer carries the layer\'s paint out into where it\'s clear, and leaves the paint it came from', async () => {
   const { project, workspace, ref, stroke } = await smearing();
   project.putEditPixels(RED_BLUE.filter(({ x }) => x < 10)); // red, and the layer clear right of it
   project.commitEdit();
+  workspace.pluginTools[`brush:${ref}`] = { reads: 1 };
+  stroke([at(4, 10), at(8, 10), at(12, 10), at(16, 10)]);
+  const alphas = [10, 11, 12, 13].map((x) => paintAt(project, x, 10)?.a ?? 0);
+  expect(alphas[0]).toBeGreaterThan(0.55);
+  for (let i = 1; i < alphas.length; i++) expect(alphas[i]).toBeLessThan(alphas[i - 1]);
+  expect(alphas[2]).toBeGreaterThan(0.05);
+  for (const x of [10, 11, 12]) expect(paintAt(project, x, 10)).toMatchObject({ r: 255, g: 0, b: 0 });
+  expect(paintAt(project, 9, 10)).toEqual(RED);
+  // The other way, clear comes into the paint: a brush only lays paint, so the red stays as it is.
+  project.undo();
+  const before = layerPaint(project);
+  stroke([at(16, 10), at(12, 10), at(8, 10), at(4, 10)]);
+  expect(layerPaint(project)).toEqual(before);
+});
+
+test('Smear: thin paint carried into a clear spot is never more solid than the paint it came from', async () => {
+  const { project, workspace, ref, stroke } = await smearing();
+  project.putEditPixels(RED_BLUE.filter(({ x }) => x < 10).map((pixel) => ({ ...pixel, a: 0.5 })));
+  project.commitEdit();
   for (const reads of [1, 0]) {
-    workspace.pluginTools[`brush:${ref}`] = { reads };
-    stroke([at(4, 10), at(8, 10), at(12, 10), at(16, 10)]);
-    // The first clear pixel takes Strength's 60% of the red a step back of it; the next has clear a step back (as the
-    // stroke began), so it's left alone; the red beside the edge has red a step back.
-    expect(paintAt(project, 10, 10), `reads ${reads}`).toMatchObject({ r: 255, g: 0, b: 0 });
-    expect(paintAt(project, 10, 10).a).toBeCloseTo(0.6, 2);
-    expect(paintAt(project, 9, 10)).toEqual(RED);
-    if (reads === 1) expect(paintAt(project, 11, 10)).toBe(null);
+    workspace.pluginTools[`brush:${ref}`] = { reads, strength: 100 };
+    stroke([at(4, 10), at(16, 10)]);
+    for (let x = 10; x <= 16; x++) {
+      expect(paintAt(project, x, 10), `reads ${reads}, x ${x}`).toMatchObject({ r: 255, g: 0, b: 0 });
+      expect(paintAt(project, x, 10).a).toBeCloseTo(0.5, 2);
+    }
     project.undo();
   }
 });

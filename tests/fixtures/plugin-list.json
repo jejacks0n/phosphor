@@ -86,7 +86,7 @@
         "phosphor": 1,
         "id": "phosphor.smear",
         "name": "Smear",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "author": "Phosphor",
         "description": "A brush that smudges the colors under it along the way it moves, as a finger in wet paint.",
         "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/smear",
@@ -95,8 +95,8 @@
         "preview": "██▓▓▒▒░░    \n████▓▓▓▒▒░░ \n██▓▓▒▒░░    ",
         "themes": []
       },
-      "manifestHash": "50df3c1ea2f9dddd7c2449c6da1206abc137234639e3cf1256201cd87208e437",
-      "scriptHash": "e7d8b9c5a3d1930830b64e6409caeacbcbf369650ce68b3fa7e097a27f1bfe19"
+      "manifestHash": "9bb9771004b8b98361fbbc3b543d270966ed4ed46cd125a79194861c89ae4c2b",
+      "scriptHash": "ecdf1e2136e0a0f89cd61b9215bec09b5422e04b90884afb50a083da18d9a91d"
     },
     {
       "official": true,
