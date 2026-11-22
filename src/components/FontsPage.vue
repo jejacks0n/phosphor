@@ -192,7 +192,9 @@ const styleOf = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.kind === 'bit
 // The width a bitmap font is drawn at: the drawing's own cellWidth; a stored font's remembered answer, else its own width.
 const own = computed(() => (font.value ? narrowWidthOf(font.value) : null));
 const widthNow = computed(() => (isDrawn.value ? drawn.value.cellWidth : stored.value.find((f) => f.id === chosen.value?.id)?.width ?? own.value ?? 8));
-const widths = computed(() => [...(own.value ? [own.value] : []), 8, ...(isDrawn.value ? [9] : [])]); // 9 only on the drawing: it's never remembered per font
+// 9 only on the drawing (it's never remembered per font), and a font that isn't the drawing's shows the switch only when narrow
+const widths = computed(() => (isDrawn.value || own.value ? [...(own.value ? [own.value] : []), 8, ...(isDrawn.value ? [9] : [])] : []));
+const widthOff = computed(() => isDrawn.value && project._sharing?.role === 'artist'); // the host's width is the room's
 const setWidth = (w) => run(() => (isDrawn.value ? project.setDrawingFontWidth(w) : storePart(chosen.value.id, 'width', w)));
 const meta = computed(() => [
   bitmap.value ? `${widthNow.value}×${chosen.value.height}` : size(chosen.value),
@@ -454,16 +456,16 @@ const exportPalettes = () => {
             {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
           </button>
         </div>
-        <div class="width-row">
+        <div v-if="widths.length" class="width-row">
           <span class="width-label">{{ t('palette.fonts.width') }}</span>
           <div class="width-switch" role="group" :aria-label="t('palette.fonts.width')">
             <button
                 v-for="w in widths"
                 :key="w"
                 :aria-pressed="widthNow === w"
-                :disabled="inRoom"
-                :title="inRoom ? t('palette.fonts.blocksInRoom') : undefined"
-                :data-off-reason="inRoom ? '' : undefined"
+                :disabled="widthOff"
+                :title="widthOff ? t('palette.fonts.widthInRoom') : undefined"
+                :data-off-reason="widthOff ? '' : undefined"
                 @click="setWidth(w)"
             >{{ w }}</button>
           </div>

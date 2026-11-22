@@ -901,6 +901,7 @@
       },
       "blocksSetMeta": "blocks set by you",
       "width": "Width",
+      "widthInRoom": "Only the room’s host can change the width.",
       "findBlocks": "Find blocks again",
       "findBlocksTitle": "Forget the slots you set and find the blocks from the font's pixels again",
       "blocksInRoom": "A font’s blocks, lines and sets can’t change in a room.",

@@ -1293,13 +1293,28 @@ test('the meta reads the width: 7×7', async () => {
   expect(host.querySelector('.edit-side .meta').textContent).toMatch(/^7×7 · /);
 });
 
-test('in someone else\'s room the switch is off with a reason', async () => {
+test('in a room a host can press the switch and an artist can\'t, with a reason', async () => {
   const { project } = await mount({ font: { ...slim(), width: 7 } });
   project._hosting = true;
+  project._sharing = { role: 'host' };
+  await nextTick();
+  expect(widthButtons().every((b) => !b.disabled)).toBe(true);
+  project._sharing = { role: 'artist' };
   await nextTick();
   for (const b of widthButtons()) {
     expect(b.disabled).toBe(true);
-    expect(b.title).toBe('A font’s blocks, lines and sets can’t change in a room.');
+    expect(b.title).toBe('Only the room\u2019s host can change the width.');
     expect(b.hasAttribute('data-off-reason')).toBe(true);
   }
+  project._sharing = null;
+});
+
+test('a stored 8-wide font has no switch', async () => {
+  const { workspace } = await mount();
+  await addBitmapFont(rawFile(8, 'Wide.F08', 0xff));
+  workspace.userFonts = await loadFonts();
+  await vi.waitFor(() => expect(row('Wide')).toBeTruthy());
+  await press(row('Wide'));
+  await waitFor(() => host.querySelector('.sections'));
+  expect(widthButtons()).toEqual([]);
 });
