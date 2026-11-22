@@ -129,7 +129,7 @@ const outlineOf = async (values = {}) => {
   return readOutlines(def.outline(scriptOptions(def, optionValues(def, values))));
 };
 
-test('Superformula: the default outline is one closed outline of 120 corners, all in 0-1, touching each side', async () => {
+test('Superformula: the default outline is one closed outline of 120 corners, all in 0-1, its farthest corner on the box\'s circle', async () => {
   const outlines = await outlineOf();
   expect(outlines).toHaveLength(1);
   const [{ closed, points }] = outlines;
@@ -139,40 +139,32 @@ test('Superformula: the default outline is one closed outline of 120 corners, al
     expect(p.slice(2)).toEqual([0, 0, 0, 0]); // corners, no handles
     for (const v of p.slice(0, 2)) expect(v >= 0 && v <= 1).toBe(true);
   }
-  for (const axis of [0, 1]) {
-    expect(Math.min(...points.map((p) => p[axis]))).toBeCloseTo(0, 9);
-    expect(Math.max(...points.map((p) => p[axis]))).toBeCloseTo(1, 9);
+  expect(Math.max(...points.map(([x, y]) => Math.hypot(x - 0.5, y - 0.5)))).toBeCloseTo(0.5, 9);
+});
+
+// Corner i is at the angle 2π i / 120 from the formula's origin, so with the origin at the box's middle and one scale
+// for both axes, every corner is that way from (0.5, 0.5), whatever the values: the star stays put as they change.
+test('Superformula: its center is the box\'s middle and its proportions its own, whatever the values', async () => {
+  for (const values of [{}, { points: 1 }, { points: 3 }, { points: 5, pinch: 1, round: 4 }, { points: 7, pinch: 0.1, round: 0.1 }, { points: 20, round: 3 }]) {
+    const [{ points }] = await outlineOf(values);
+    let worst = 0;
+    points.forEach(([x, y], i) => {
+      const phi = (2 * Math.PI * i) / points.length, r = Math.hypot(x - 0.5, y - 0.5);
+      worst = Math.max(worst, Math.abs(x - 0.5 - r * Math.cos(phi)), Math.abs(y - 0.5 + r * Math.sin(phi)));
+    });
+    expect(worst, JSON.stringify(values)).toBeLessThan(1e-9);
   }
 });
 
-// Normalized into 0-1 by its own bounds, each axis on its own, the curve is r(φ) through one affine map. So if r(φ) =
-// r(φ + 2π/3), then about the corners' center (the origin's image: the corners are symmetric about it) one 2 x 2 matrix
-// takes each corner to the one a third of a turn on (40 of 120), and it's a turn of 120° seen through that map: trace
-// 2 cos 120° = -1, det 1. The matrix is worked out from two corners (M [q0 q10] = [q40 q50]); worst is how far the
-// rest are from it.
-function thirdTurn(points) {
-  const n = points.length, cx = points.reduce((s, p) => s + p[0], 0) / n, cy = points.reduce((s, p) => s + p[1], 0) / n;
-  const q = points.map((p) => [p[0] - cx, p[1] - cy]);
-  const [a, b] = [q[0], q[10]], [c, d] = [q[40], q[50]];
-  const det = a[0] * b[1] - b[0] * a[1];
-  const M = [
-    [(c[0] * b[1] - d[0] * a[1]) / det, (d[0] * a[0] - c[0] * b[0]) / det],
-    [(c[1] * b[1] - d[1] * a[1]) / det, (d[1] * a[0] - c[1] * b[0]) / det],
-  ];
-  let worst = 0;
-  for (let i = 0; i < n; i++) {
-    const [x, y] = q[i], [tx, ty] = q[(i + 40) % n];
-    worst = Math.max(worst, Math.abs(M[0][0] * x + M[0][1] * y - tx), Math.abs(M[1][0] * x + M[1][1] * y - ty));
-  }
-  return { trace: M[0][0] + M[1][1], det: M[0][0] * M[1][1] - M[0][1] * M[1][0], worst };
-}
+// r(φ) = r(φ + 2π/3) with Points 3: each corner is as far from the middle as the one a third of a turn on (40 of 120).
+const thirdTurn = (points) => {
+  const r = points.map(([x, y]) => Math.hypot(x - 0.5, y - 0.5));
+  return Math.max(...r.map((v, i) => Math.abs(v - r[(i + 40) % r.length])));
+};
 
 test('Superformula: Points 3 is 3-fold symmetric, r(φ) = r(φ + 2π/3), and Points 4 isn\'t', async () => {
-  const three = thirdTurn((await outlineOf({ points: 3 }))[0].points);
-  expect(three.trace).toBeCloseTo(-1, 6);
-  expect(three.det).toBeCloseTo(1, 6);
-  expect(three.worst).toBeLessThan(1e-6);
-  expect(thirdTurn((await outlineOf({ points: 4 }))[0].points).worst).toBeGreaterThan(1e-3);
+  expect(thirdTurn((await outlineOf({ points: 3 }))[0].points)).toBeLessThan(1e-9);
+  expect(thirdTurn((await outlineOf({ points: 4 }))[0].points)).toBeGreaterThan(1e-3);
 });
 
 // ---- Aberration ----

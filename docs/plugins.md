@@ -553,8 +553,11 @@ export default {
 `outline(options)` is called once for each drag, at its first move, with the shape's values by id, and again whenever
 an option changes on a drawn shape that's selected (a slider's drag calls it at every step), so it should give the same
 outlines for the same values. The shape keeps its values and the box it was drawn in, so it's drawn again in that box
-until its points are edited by hand ([Shape](vector.md#shape-u)). It gives back the shape in a box of its own, 0 to 1 across and 0 to 1 down, which Phosphor stretches over the box you drag (so a shape
-that fills its box fills the drag, as the built-in shapes do). That's a list of 1 to 200 outlines, each
+until its points are edited by hand ([Shape](vector.md#shape-u)). It gives back the shape in a box of its own, 0 to 1
+across and 0 to 1 down, which Phosphor stretches over the box you drag (so a shape that fills its box fills the drag, as
+the built-in shapes do). A shape that should stay where it is as its values change is best placed about the box's
+middle, as Superformula is, not fitted to its own bounds, which move with the values. That's a list of 1 to 200
+outlines, each
 `{ closed, points }`: `closed` true or false (a boolean, not just truthy), with at least 2 points, and 500 points in
 all:
 
