@@ -673,7 +673,7 @@ const exportPalettes = () => {
 </template>
 
 <style scoped>
-/* The layer's list, row, head and grid styles are CharPaletteLayer's; these are the page's own. */
+/* The list, row, head, meta and grid styles every page shares are FloatingPanel's; these are the page's own. */
 div.sample {
   overflow: hidden;
   white-space: nowrap;
@@ -896,11 +896,6 @@ span.width-label {
 }
 
 span.count {
-  color: var(--text-muted);
-}
-
-span.meta {
-  font-size: 12px;
   color: var(--text-muted);
 }
 
