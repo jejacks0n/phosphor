@@ -57,8 +57,9 @@ const fold = (group) => emit('update:closed', props.closed.includes(group) ? pro
               class="chip"
               :class="{ picked: isPicked(x.key) }"
               :aria-pressed="isPicked(x.key)"
+              :title="x.label"
               @click="emit('toggle', x.key)"
-          >{{ x.label }} <span class="count">{{ count(x.key) }}</span></button>
+          ><span class="label">{{ x.label }}</span><span class="count">{{ count(x.key) }}</span></button>
           <button v-if="g.more" class="more" @click="expanded = true">{{ t('palette.fonts.moreTags', { n: g.more }) }}</button>
         </div>
       </template>
@@ -145,6 +146,19 @@ div.chips button {
   cursor: pointer;
 }
 
+div.chips button.chip { /* one line: a long name is cut short, its count kept */
+  display: inline-flex;
+  gap: 4px;
+  max-width: 100%;
+  min-width: 0;
+}
+
+span.label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
 div.chips button.picked {
   border-color: var(--accent);
 }
@@ -156,6 +170,7 @@ div.chips button.more {
 }
 
 span.count {
+  flex-shrink: 0;
   color: var(--text-muted);
 }
 </style>
