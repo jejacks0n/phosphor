@@ -30,7 +30,7 @@ The browser address bar updates to reflect your current workspace tab and, on SO
 - **Back from what you opened**: A file, a blank canvas or a drawing resumed from **Pick up where you left off**, opened from the start screen, is a step: Back past its first tab closes it and shows the start screen again, as **New project** does, asking first when it has unsaved changes. It stays under **Pick up where you left off**.
 - **Tabs**: The top tabs follow the layer picked in LAYERS: a drawing layer or the base shows **PIXEL** and **ANSI** (labeled **ASCII** in the ASCII styles), a vector layer shows **VECTOR**, and **SAUCE** is always there ([Layers](layers.md#the-layers-list)).
 - **Back to the start screen**: While you watch a room on the **ROOM** tab with nothing of your own open, any art tab takes you back to the start screen.
-- **Narrow windows**: The side panel (LAYERS and SOCIAL) comes in over the art from the right, opened by **«** at the right end of the tab bar.
+- **Narrow windows**: The side panel (LAYERS and SOCIAL) comes in over the art from the right, opened by the unfold button at the right end of the tab bar.
 - For details on room URLs, see [Social](social.md).
 
 ---

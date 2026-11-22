@@ -250,7 +250,7 @@ ROOM tab, open PIXEL to see whether his own art's PIXEL view is still his, and r
   where he came in; a message arriving while he's scrolled up keeps his place, and at the bottom the log follows it
   ([Chat](../../social.md#chat)).
 - Probes: `speed`: scroll up as fast as the wheel goes for two seconds with `qa.frames`; `interrupt`: fold the panel
-  with », have three messages arrive, and check the arrow counts them, then « opens it.
+  with its fold button, have three messages arrive, and check the arrow counts them, then the unfold button opens it.
 - Rated: yes, wants Page Up and Page Down in the log
 
 **Free time:** he'd paste a link into the chat to see whether it's a link, select and copy someone's message, drag the

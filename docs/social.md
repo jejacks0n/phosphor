@@ -9,7 +9,7 @@ and starting a room open in boxes over everything, each with a close button (**�
 screen 700 pixels wide or less each box fills the window.
 
 On a narrow screen (a phone, or a window under 769 pixels wide) the side panel comes in over the art from the right
-instead: **«** at the right end of the tab bar opens it ([The Side Panel](#the-side-panel)). Everything in Social works
+instead: the unfold button at the right end of the tab bar opens it ([The Side Panel](#the-side-panel)). Everything in Social works
 there too.
 
 ---
@@ -349,7 +349,7 @@ an unconfirmed member sees **Confirm your email to chat**.
 - **A tone**: Someone else's message plays a short, quiet tone unless you're in the chat (the cursor is in the message
   box, or you clicked in the messages) with the window in front. Messages that arrive together play one tone, and
   the earlier messages you see when you join play none. Messages from someone you blocked don't play it either. The
-  speaker in the side panel's tabs, left of **»** (**Sound for new messages**, on CHAT and LAYERS alike), turns it off
+  speaker in the side panel's tabs, left of the fold button (**Sound for new messages**, on CHAT and LAYERS alike), turns it off
   and on, and the browser keeps that setting. A browser plays nothing until you've clicked or typed on the page.
 - **Where it goes**: Chat goes from browser to browser through the host, like the art, never through Phosphor's server
   (which sees chat only in a report). The host's browser keeps the last 5,000 messages for as long as the room lasts,
@@ -360,7 +360,7 @@ an unconfirmed member sees **Confirm your email to chat**.
 The side panel stays open as you move between tabs, so you can work on your own piece and keep talking.
 
 - **Unread**: While **LAYERS** shows, the **CHAT** tab counts new messages (and an invitation to draw).
-- **Folding**: **»**, at the right end of the panel's tabs, folds the panel away (it takes no room then), and **«** in
+- **Folding**: The fold button, at the right end of the panel's tabs, folds the panel away (it takes no room then), and the unfold button in
   the same spot opens it again, counting what came while it was folded.
 - **Width**: Drag the panel's left edge to make it wider or narrower (or focus the edge and use the arrow keys, Home
   and End). A double-click puts it back.
@@ -368,9 +368,9 @@ The side panel stays open as you move between tabs, so you can work on your own 
   opens it on CHAT. A reload in a room shows it as it was: folded or open, on CHAT or LAYERS.
 - **Toasts**: What the chat panel says about the drawing also shows as a toast while the chat isn't showing.
 - **Narrow screens**: The panel comes in over the art from the right, leaving a strip of the art showing, and starts
-  shut. **«** at the right end of the tab bar opens it, with the count of what was said beside it, and **»**, Escape or
+  shut. The unfold button at the right end of the tab bar opens it, with the count of what was said beside it, and the fold button, Escape or
   a tap on the strip of art shuts it. Opening it closes the settings (☰), and opening those shuts it. Its edge doesn't
-  drag. Going into a room shuts it, so you see the art, and **«** counts what's said.
+  drag. Going into a room shuts it, so you see the art, and the unfold button counts what's said.
 
 ---
 
