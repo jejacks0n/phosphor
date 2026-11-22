@@ -225,6 +225,9 @@ dialog.modal-dialog.tall {
     max-width: none;
     max-height: none;
     margin: 0;
+    /* The page runs to the screen's edges (viewport-fit=cover): its first line clear of the status bar, its buttons of
+       the home indicator, and both of a notch at the side. */
+    padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px);
     border: none;
     border-radius: 0;
   }

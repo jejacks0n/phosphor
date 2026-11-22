@@ -30,8 +30,10 @@ div.tab-strip button[role='tab'] {
   transition: color 0.3s ease;
 }
 
-div.tab-strip button[role='tab']:not(.on):hover {
-  color: var(--accent);
+@media (hover: hover) { /* a tap on a touch screen leaves no hover look behind */
+  div.tab-strip button[role='tab']:not(.on):hover {
+    color: var(--accent);
+  }
 }
 
 div.tab-strip button[role='tab']:focus-visible {
