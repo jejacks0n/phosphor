@@ -3,8 +3,9 @@
 //
 // Each move takes the Brush's own dab between where it was and where it is, and every pixel of the dab takes some of
 // the color one step back along the motion: Strength's share of it, times the dab's falloff there. Reads says where the
-// colors come from: What shows (every layer up to this one, as you see them) or This layer (its own paint only, so a
-// pixel this layer has nothing at, or nothing one step back of, is left alone).
+// colors come from: What shows (every layer up to this one, as you see them) or This layer (its own paint only: a pixel
+// with nothing of this layer's one step back is left alone, and one where the layer is clear takes the paint smeared
+// into it).
 //
 // Phosphor reads every pixel as it was when the stroke began, and a later put to a pixel replaces an earlier one, so
 // a pixel keeps the strongest share the stroke gave it: the dab's soft edge passing over it later doesn't undo it.
@@ -30,7 +31,7 @@ function move(from, to, paint) {
     const share = (paint.options.strength / 100) * alpha;
     if (!(share > (strongest.get(key) ?? 0))) continue;
     const here = read(x, y), back = read(x + 0.5 - ux, y + 0.5 - uy); // the pixel whose middle is one step back
-    if (!here || !back || (here.r === back.r && here.g === back.g && here.b === back.b)) continue;
+    if (!back || (here && here.r === back.r && here.g === back.g && here.b === back.b)) continue;
     strongest.set(key, share);
     // The color a step back laid at that share over what this layer had: on the base, or over this layer's own paint,
     // that's the two colors mixed; over what shows through a clear spot, it's the same mix as you see it, and the layer

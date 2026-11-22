@@ -86,7 +86,7 @@
         "phosphor": 1,
         "id": "phosphor.smear",
         "name": "Smear",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "author": "Phosphor",
         "description": "A brush that smudges the colors under it along the way it moves, as a finger in wet paint.",
         "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/smear",
@@ -95,8 +95,8 @@
         "preview": "██▓▓▒▒░░    \n████▓▓▓▒▒░░ \n██▓▓▒▒░░    ",
         "themes": []
       },
-      "manifestHash": "41a42b5b9d1ff743f2e7607ea21a17fcd3b180615390df7b7af9909f9822f82d",
-      "scriptHash": "67a96e16d9319d2b840896cb868fd5fd0de1b71ff23920166f80a49925a05296"
+      "manifestHash": "50df3c1ea2f9dddd7c2449c6da1206abc137234639e3cf1256201cd87208e437",
+      "scriptHash": "e7d8b9c5a3d1930830b64e6409caeacbcbf369650ce68b3fa7e097a27f1bfe19"
     },
     {
       "official": true,
@@ -107,7 +107,7 @@
         "phosphor": 1,
         "id": "phosphor.superformula",
         "name": "Superformula",
-        "version": "1.0.0",
+        "version": "1.0.1",
         "author": "Phosphor",
         "description": "A shape drawn by Gielis's superformula: stars, flowers and soft polygons, with 1 to 20 points.",
         "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/superformula",
@@ -116,8 +116,8 @@
         "preview": "  ▄▄█▄▄  \n ▀▀███▀▀ \n  ▄▀ ▀▄  ",
         "themes": []
       },
-      "manifestHash": "92888aeca147730af1e0ae11ba136dc098ca66011f2716a40d4f23a7627a84ce",
-      "scriptHash": "164f4eae3369310096c487fad5af9380a6669a2dc837ccff9e1baeee5eef6edc"
+      "manifestHash": "04f546378fd33a4778dd34cade926bbb35b289b558c4d67454c8ea351e3837bb",
+      "scriptHash": "c9edbb96faccba98e494d58b5b0e9408712d235288c5f9f3b5e8a392f8cc2059"
     },
     {
       "official": true,

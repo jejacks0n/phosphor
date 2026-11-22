@@ -31,7 +31,7 @@ export default {
     icon: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 1.5L9.6 6.1 14.2 6 10.4 8.9 11.8 13.5 8 10.7 4.2 13.5 5.6 8.9 1.8 6 6.4 6.1z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>',
     options: [
       { id: 'points', kind: 'slider', name: 'Points', min: 1, max: 20, step: 1, default: 5 },
-      { id: 'pinch', kind: 'slider', name: 'Pinch', min: 0.1, max: 4, step: 0.1, default: 0.3 },
+      { id: 'pinch', kind: 'slider', name: 'Pinch', min: 0.1, max: 1, step: 0.1, default: 0.3 },
       { id: 'round', kind: 'slider', name: 'Round', min: 0.1, max: 4, step: 0.1, default: 1.7 },
     ],
     outline,
