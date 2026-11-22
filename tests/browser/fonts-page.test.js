@@ -1087,13 +1087,23 @@ test('the column starts folded at every size; opened, the floating layer narrows
     expect(filters).toBeLessThan(200);
     expect(list).toBeGreaterThanOrEqual(180);
     expect(list).toBeLessThan(220);
-    expect(host.querySelector('.page.fonts > .edit-side').getBoundingClientRect().width).toBeGreaterThanOrEqual(530); // 16 slots of 28px
   };
   await vi.waitFor(narrowed);
   await press(host.querySelector('.pages button.maximize'));
   await vi.waitFor(() => expect(widths()).toEqual([260, 320]));
   await press(host.querySelector('.pages button.maximize'));
   await vi.waitFor(narrowed);
+});
+
+test('in a narrow dialog with the Filters column open, the details narrow too and stay inside the layer, their scrollbars with them', async () => {
+  await page.viewport(850, 700);
+  onTestFinished(() => page.viewport(414, 896));
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  await openFilters();
+  await vi.waitFor(() => expect(host.querySelector('.page.fonts > .edit-side .grid.sheet')).toBeTruthy());
+  const right = (s) => host.querySelector(s).getBoundingClientRect().right;
+  expect(right('.page.fonts > .edit-side')).toBeLessThanOrEqual(right('.page.fonts'));
 });
 
 test('on a phone, » opens a sheet; Show N fonts or Escape closes it, and Escape leaves the layer open', async () => {

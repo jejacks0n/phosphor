@@ -620,10 +620,11 @@ div.palette-layer.editing :deep(div.list-side) {
   min-width: 0;
 }
 
-/* Beside the Fonts page's details, its list gives way first, down to 180px (its Filters column too: FontsPage). */
+/* Beside the Fonts page's details, its list gives way first (shrink weight 10 to their 1), down to 180px; its Filters
+   column does the same (FontsPage). */
 @media (min-width: 701px) {
   div.palette-layer.editing :deep(div.page.fonts > div.list-side) {
-    flex: 0 1 220px;
+    flex: 0 10 220px;
     min-width: 180px;
   }
 }
