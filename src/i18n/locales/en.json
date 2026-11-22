@@ -736,7 +736,8 @@
     "none": "None",
     "cantPaint": "{hex}: this color cannot be produced with current slider settings",
     "noneTitle": "None: keep existing color",
-    "recentTitle": "Recent: {hex}"
+    "recentTitle": "Recent: {hex}",
+    "editColors": "Edit colors ▸"
   },
   "palette": {
     "file": {

@@ -736,7 +736,8 @@
     "none": "Aucun",
     "cantPaint": "{hex} : cette couleur ne peut pas être produite avec les réglages actuels des curseurs",
     "noneTitle": "Aucun : conserver la couleur existante",
-    "recentTitle": "Récente : {hex}"
+    "recentTitle": "Récente : {hex}",
+    "editColors": "Modifier les couleurs ▸"
   },
   "palette": {
     "file": {

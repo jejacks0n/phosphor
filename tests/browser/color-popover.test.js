@@ -1,10 +1,12 @@
 // The color box with a palette: a swatch the sliders can't make shows its palette color, can't be picked, and says
 // why; the others paint their palette colors. It's a popover anchored under the color pair, which nothing clips.
-import { test, expect, vi } from 'vitest';
+import { test, expect, vi, onTestFinished } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import ColorPopover from '@/components/ColorPopover.vue';
 import ColorPair from '@/components/ColorPair.vue';
+import ControlPanel from '@/components/ControlPanel.vue';
 import { i18n } from '@/i18n';
 import { toastMessage } from '@/composables/useToast';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -222,5 +224,71 @@ test('with Hue moved, Recent keeps the palette color picked, and picking it agai
     expect(workspace.editFgColor).toBe(stored);
   } finally {
     close();
+  }
+});
+
+// The color box's way to the Custom color list's editor: it shuts the box and leaves the settings showing (on a narrow
+// window their drawer opens; on a wide one they're always there), with focus on the editor's picked swatch.
+test('with a Custom color list the color box links to its editor; not with another palette, nor when settings are locked', async () => {
+  const { project, workspace, pinia } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
+  workspace.editorTab = 'output';
+  project.quantize = 'palette';
+  project.palette = '#ffffff #000000 #ff0000';
+  const mount = (component, props) => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const app = createApp(component, props).use(pinia).use(i18n);
+    app.mount(host);
+    return { host, gone: () => { app.unmount(); host.remove(); } };
+  };
+  const panel = mount(ControlPanel);
+  let box = null;
+  const open = async () => {
+    const onClose = vi.fn();
+    box?.gone();
+    box = mount(ColorPopover, { slotName: 'fg', onClose });
+    await nextTick();
+    return onClose;
+  };
+  const link = () => box.host.querySelector('button.edit-colors');
+  const picked = () => panel.host.querySelector('.color-list button.swatch[aria-pressed=true]');
+  try {
+    await open();
+    expect(link()?.textContent.trim()).toBe('Edit colors ▸');
+    project.quantize = 'cga';
+    await nextTick();
+    expect(link()).toBe(null);
+    project.quantize = 'palette';
+    await nextTick();
+    expect(link()).not.toBe(null);
+    project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
+    await nextTick();
+    expect(link()).toBe(null);
+    project.stopSharing();
+    await nextTick();
+
+    panel.host.querySelectorAll('.color-list button.swatch')[2].click(); // not the first, so focus can't land there by chance
+    await nextTick();
+    let onClose = await open();
+    link().click();
+    expect(onClose).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(document.activeElement).toBe(picked()));
+    expect(picked().getAttribute('aria-label')).toContain('#ff0000');
+    expect(workspace.settingsOpen).toBe(true); // a narrow window's drawer, opened
+
+    workspace.settingsOpen = false;
+    await page.viewport(1200, 800);
+    onTestFinished(() => page.viewport(414, 896));
+    await vi.waitFor(() => expect(innerWidth).toBe(1200));
+    onClose = await open();
+    link().click();
+    expect(onClose).toHaveBeenCalledOnce();
+    await vi.waitFor(() => expect(document.activeElement).toBe(picked()));
+    expect(workspace.settingsOpen).toBe(false); // a wide window's settings show without the drawer
+  } finally {
+    project.stopSharing();
+    box?.gone();
+    panel.gone();
   }
 });
