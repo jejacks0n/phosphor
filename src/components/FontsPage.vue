@@ -392,7 +392,7 @@ const exportPalettes = () => {
             :title="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
             @click="toggleFilters"
         >{{ filtersShown ? '«' : '»' }}</button>
-        <input v-model="filter" :placeholder="t('palette.fonts.filterPlaceholder')" :aria-label="t('palette.fonts.filterAria')">
+        <input v-model="filter" type="search" :placeholder="t('palette.fonts.filterPlaceholder')" :aria-label="t('palette.fonts.filterAria')">
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
       </div>
@@ -615,11 +615,11 @@ button.group-head[aria-expanded='false'] svg.chevron {
   transform: rotate(-90deg);
 }
 
-/* The column's head and the search's row beside it, one height. */
+/* The column's head and the search's row beside it, one height: the row's 34px controls, its padding and border. */
 div.page.fonts div.top,
 div.filters-head {
   box-sizing: border-box;
-  height: 45px;
+  height: 55px;
 }
 
 /* « / » beside the search, as the side panel's toggle */

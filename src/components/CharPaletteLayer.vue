@@ -715,6 +715,13 @@ div.palette-layer.editing div.row div.glyphs {
   border-bottom: 1px solid var(--surface-3);
 }
 
+/* The field and its buttons one height, an input's (global.css's 34px), so they line up. */
+:deep(div.top input),
+:deep(div.top button) {
+  box-sizing: border-box;
+  height: 34px;
+}
+
 :deep(div.top input) {
   flex: 1;
   min-width: 0;
