@@ -255,7 +255,7 @@ test('Smear, Superformula and Aberration install from the Marketplace: Smear pai
   for (const name of ['Smear', 'Superformula', 'Aberration']) {
     await dialog(page).getByPlaceholder('Search plugins').fill(name.toLowerCase());
     await dialog(page).getByRole('button', { name: 'Install', exact: true }).click();
-    await expect(page.getByRole('heading', { name: `Install ${name} ${{ Smear: '1.0.3', Superformula: '1.0.2', Aberration: '1.0.0' }[name]}?` })).toBeVisible();
+    await expect(page.getByRole('heading', { name: `Install ${name} ${{ Smear: '1.0.3', Superformula: '1.0.3', Aberration: '1.0.0' }[name]}?` })).toBeVisible();
     await dialog(page).getByRole('button', { name: /^Install Adds a script/ }).click();
     await expect(dialog(page).getByRole('button', { name: 'Installed', exact: true })).toBeVisible();
   }

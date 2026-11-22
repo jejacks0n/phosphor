@@ -9,7 +9,7 @@
 // make the points sharp, larger ones blunt and bulging). With n2 = n3, r(φ) repeats every 2π / m, so the shape has m
 // points and closes for any m. The outline is 120 corners, one every 3°, about the middle of its box, 0 to 1 on each
 // axis, and scaled so its farthest corner is on the box's circle: it sits in the box you drag as the built-in Polygon
-// does, and stays where it is, in its own proportions, as its values change.
+// does, its first corner at the top, and stays where it is, in its own proportions, as its values change.
 
 const CORNERS = 120;
 
@@ -23,8 +23,8 @@ function outline({ points: m, pinch: n1, round: n2 }) {
   return [{
     closed: true,
     points: radii.map((r, i) => {
-      const phi = (2 * Math.PI * i) / CORNERS;
-      return [0.5 + (r / reach) * Math.cos(phi), 0.5 - (r / reach) * Math.sin(phi)]; // y down, as the canvas has it: the first point on the right
+      const turn = -Math.PI / 2 + (2 * Math.PI * i) / CORNERS; // from the top, clockwise (y is down, as the canvas has it)
+      return [0.5 + (r / reach) * Math.cos(turn), 0.5 + (r / reach) * Math.sin(turn)];
     }),
   }];
 }
