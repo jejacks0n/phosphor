@@ -850,7 +850,6 @@
       "licenseUnknown": "Know it? Tell us",
       "getIt": "Get it ↗",
       "addToYours": "Add to Yours",
-      "bitmapMeta": "Bitmap 8×{height}",
       "notIncluded": "not included",
       "tagReady": "Ready to paint",
       "tagGroups": {"machine": "Machine", "shape": "Shape", "chars": "Characters", "collection": "Collection", "other": "Other"},

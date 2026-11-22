@@ -1,6 +1,6 @@
 // Builds the font library's index from the mirrored files. Runs under plain Node: imports only modules that load there.
 import { CP437 } from '../src/lib/Cp437.js';
-import { findBlocks, fontId, glyphRows, SAMPLE_CHARS } from '../src/lib/BitmapGlyphs.js';
+import { findBlocks, fontId, glyphRows, ownWidthOf, SAMPLE_CHARS } from '../src/lib/BitmapGlyphs.js';
 import { LINKED_FONTS } from '../src/lib/linkedFonts.js';
 
 const SAMPLE_SLOTS = [...SAMPLE_CHARS].map((c) => CP437.indexOf(c));
@@ -102,7 +102,7 @@ export function buildIndex({ files, about = {}, collections = {}, sauceNames = {
     const sample = new Uint8Array(SAMPLE_SLOTS.length * height);
     SAMPLE_SLOTS.forEach((slot, i) => sample.set(glyphRows(font, slot), i * height));
     const entry = {
-      id: path, fontId: id, name: font.name, file: path, height, collection,
+      id: path, fontId: id, name: font.name, file: path, height, width: ownWidthOf(font), collection,
       machine: machineOf(path), chars: charsOf(path),
       ready: findBlocks(font).every((s) => s !== null),
       about: about[path], sample: Buffer.from(sample).toString('base64'),

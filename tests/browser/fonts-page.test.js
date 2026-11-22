@@ -841,6 +841,20 @@ test('lines and sets are read-only in a room', async () => {
   expect([...host.querySelectorAll('.sets button, .sets input')].every((el) => el.disabled)).toBe(true);
 });
 
+test('the library lists CM-7X7 as 7×7, and its Shape tag reads 7×7', async () => {
+  const index = FIXTURE();
+  index.fonts.push(libFont('CM-7X7', { height: 7, width: 7 }));
+  await mount({ library: index });
+  await waitFor(() => libraryNames().length);
+  const row = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('CM-7X7'));
+  expect(row.querySelector('.name em').textContent).toBe('7×7 · IBM PC');
+  expect(row.querySelector('canvas.glyph-sample').width).toBe(168);
+  await openTags();
+  expect(chip('7×7')).toBeTruthy();
+  await press(row);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('7×7 · Library');
+});
+
 test('the Library group lists the library under Built-in, each row sampled', async () => {
   const index = FIXTURE();
   delete index.fonts[2].machine; // Alpha's folder names no machine
@@ -1052,7 +1066,7 @@ test('Use this font fetches the font, keeps it in Yours and makes it the drawing
   const { project, workspace } = await mount({ library: index });
   await chooseLibrary('Zeta');
   expect(title()).toBe('Zeta');
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('Bitmap 8×8 · Library');
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library');
   expect(actions()).toEqual(['Use this font', 'Add to Yours']);
   await press(button('Use this font'));
   await waitFor(() => project.drawingFont && fontId(project.drawingFont) === entry.fontId);
@@ -1230,7 +1244,7 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   globalThis.__linkedId = frogId;
   const { project } = await mount({ library: index });
   await chooseLibrary('FROGBLOCK');
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('Bitmap 8×8 · Library · not included');
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library · not included');
   expect(actions()).toEqual(['+ Load']);
   expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it ↗');
   expect(host.querySelector('.edit-side a.button').href).toBe('https://polyducks.itch.io/frogblock');

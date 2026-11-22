@@ -276,7 +276,7 @@ change one cell on the way.
 
 ### 28. Use a library font
 - Does: on the Fonts page, chooses a VileR font and a Mœbius font in the Library group; reads the tags, From and License lines; clicks a tag chip; presses Use this font on one and Add to Yours on the other; chooses the first again; chooses FROGBLOCK, follows Get it ↗, then uses + Load with the file.
-- Expects: details say "Bitmap 8×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it ↗, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name, and its credit shows under the settings panel's Font field while the drawing uses it.
+- Expects: details say "w×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it ↗, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name, and its credit shows under the settings panel's Font field while the drawing uses it.
 - Probes: `interrupt`: reload right after Use this font and check the font is in Yours once, then Use this font on another with the network off: it says Phosphor couldn't fetch it and to check the connection, and changes nothing.
 - Rated: no (library)
 - Also: uses Amiga Topaz 1+ from the library, opens the SAUCE tab, then presses undo; adds Amiga Topaz 2 to Yours, then uses it; exports an `.ans`, then opens a file whose SAUCE font name is Amiga Topaz 1+ (and one that says IBM VGA), and again with the network off.
@@ -304,6 +304,12 @@ change one cell on the way.
 - Does: with her 8-wide font in use, opens the SAUCE tab and presses 9px for Letter spacing, then looks at the Fonts page; presses 8px; switches to a 7-wide font drawn narrow and reads the SAUCE tab; presses 8px; exports an `.ans` at 9px, opens it again, and opens an `.ans` whose SAUCE says 8px while the drawing is at 9.
 - Expects: 9px on the SAUCE tab draws the cells 9 wide and the Fonts page's switch shows 9; with a narrow font neither 8px nor 9px is lit, and pressing 8px draws it 8 wide; a narrow drawing exports Letter spacing 8px; the `.ans` exported at 9 opens 9 wide, and one saying 8px opens at 8.
 - Probes: `undo-redo`: undo after pressing 9px and check the SAUCE tab and the switch agree.
+- Rated: no (fonts)
+
+### 33. The library at real widths
+- Does: on the Fonts page, searches the library for CM-7X7, reads its row and the sample beside it, chooses it and reads its details, then opens Tags ▾ and looks at the Shape group.
+- Expects: the row says 7×7 with its machine and its sample is drawn 7 pixels a glyph; the details say "7×7 · Library" and its Shape tag reads 7×7; Shape lists the shapes by height, then width (7×7 before 8×8, 8×14 before 8×16); picking 7×7 lists only the 7-wide fonts of that height.
+- Probes: `extremes`: pick 4×8 and then another Shape tag.
 - Rated: no (fonts)
 
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.

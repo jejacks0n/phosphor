@@ -6,6 +6,7 @@ export const LINKED_FONTS = Object.freeze([
     fontId: 'bitmap-58999145', // the id of the upstream file's bytes
     name: 'FROGBLOCK',
     height: 8,
+    width: 8, // its own width; 8 until we know otherwise
     upstream: 'moebius/custom/FROGBLOCK.F08',
     machine: 'Custom',
     chars: 'cp437',

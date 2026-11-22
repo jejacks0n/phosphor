@@ -75,20 +75,21 @@ const narrowed = computed(() => tags.value.length > 0 || !!filter.value.trim());
 watch(libraryFilter, () => { shownCount.value = PAGE; });
 const tagLabel = (key) => {
   const [group, value] = [key.split(':')[0], key.slice(key.indexOf(':') + 1)];
-  if (group === 'shape') return `8×${value}`;
+  if (group === 'shape') return value.replace('x', '×');
   if (group === 'chars') return t(`palette.fonts.charsets.${value}`, value);
   if (group === 'collection') return index.value.collections[value]?.name ?? value;
   if (key === 'ready') return t('palette.fonts.tagReady');
   return value;
 };
-// Every tag the library carries, by group: machines and character sets by name, shapes by height.
+const shapeOrder = (label) => { const [w, h] = label.split('×'); return h * 100 + +w; };
+// Every tag the library carries, by group: machines and character sets by name, shapes by height, then width.
 const tagList = computed(() => {
   const found = new Map();
   for (const e of [...index.value.fonts, ...index.value.linked]) for (const { key, group } of tagsOf(e)) found.set(key, group);
   return TAG_GROUPS.map((group) => ({
     group,
     tags: [...found].filter(([, g]) => g === group).map(([key]) => ({ key, label: tagLabel(key) }))
-      .sort((a, b) => (group === 'shape' ? parseInt(a.label.slice(2), 10) - parseInt(b.label.slice(2), 10) : a.label.localeCompare(b.label))),
+      .sort((a, b) => (group === 'shape' ? shapeOrder(a.label) - shapeOrder(b.label) : a.label.localeCompare(b.label))),
   })).filter((g) => g.tags.length);
 });
 const counts = computed(() => (pickerOpen.value && index.value ? tagCounts(index.value, libraryFilter.value) : new Map()));
@@ -130,7 +131,7 @@ const originLines = (e) => {
   lines.push({ label: t('palette.fonts.license'), ...license });
   return lines;
 };
-const libMeta = (e) => [t('palette.fonts.bitmapMeta', { height: e.height }), t('palette.fonts.library'), e.linked && t('palette.fonts.notIncluded')].filter(Boolean).join(' · ');
+const libMeta = (e) => [`${e.width ?? 8}×${e.height}`, t('palette.fonts.library'), e.linked && t('palette.fonts.notIncluded')].filter(Boolean).join(' · ');
 const fetching = ref(false);
 // Use this font / Add to Yours: the fetch, then the font is in Yours and the page shows it (chosen follows by font id).
 const fromLibrary = (action) => async () => {
@@ -141,7 +142,7 @@ const fromLibrary = (action) => async () => {
 const useFromLibrary = fromLibrary((e) => useLibraryFont(e));
 const keepFromLibrary = fromLibrary((e) => keepLibraryFont(e));
 const pickTag = (key) => { tags.value = [key]; filter.value = ''; };
-const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : [`8×${e.height}`, e.machine].filter(Boolean).join(' · '));
+const libraryMeta = (e) => (e.linked ? t('palette.fonts.notIncluded') : [`${e.width ?? 8}×${e.height}`, e.machine].filter(Boolean).join(' · '));
 const chosenId = ref(null);
 const hovered = ref(null); // the slot under the pointer
 const problem = ref('');
@@ -420,7 +421,7 @@ const exportPalettes = () => {
           >
             <div class="name"><span>{{ e.name }}</span><em>{{ libraryMeta(e) }}</em></div>
             <div v-if="e.linked" class="credit">{{ e.linked.credit }}</div>
-            <GlyphSample v-else :sample="e.sample" :height="e.height" />
+            <GlyphSample v-else :sample="e.sample" :height="e.height" :width="e.width" />
           </div>
           <button v-if="matches.length > shownCount" class="more" @click="shownCount += PAGE">{{ t('palette.fonts.showMore', { n: PAGE }) }}</button>
         </template>
@@ -537,7 +538,7 @@ const exportPalettes = () => {
           <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
         </template>
       </dl>
-      <GlyphSample v-if="!libEntry.linked" :sample="libEntry.sample" :height="libEntry.height" class="big" />
+      <GlyphSample v-if="!libEntry.linked" :sample="libEntry.sample" :height="libEntry.height" :width="libEntry.width" class="big" />
     </div>
   </div>
 </template>

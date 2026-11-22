@@ -30,21 +30,27 @@ describe('font library', () => {
   it('narrows by tags, and no match gives []', async () => {
     const { searchLibrary, tagsOf } = await mod();
     expect(names(searchLibrary(index, { tags: ['chars:cp437'] }))).toEqual(['Beta', 'Frog']);
-    expect(names(searchLibrary(index, { tags: ['chars:cp437', 'shape:8'] }))).toEqual(['Frog']);
+    expect(names(searchLibrary(index, { tags: ['chars:cp437', 'shape:8x8'] }))).toEqual(['Frog']);
     expect(names(searchLibrary(index, { tags: ['ready'] }))).toEqual(['Beta']);
-    expect(searchLibrary(index, { query: 'alpha', tags: ['shape:16'] })).toEqual([]);
+    expect(searchLibrary(index, { query: 'alpha', tags: ['shape:8x16'] })).toEqual([]);
     expect(tagsOf(index.linked[0], index).map((t) => t.key)).not.toContain('collection:undefined');
-    expect(tagsOf(index.fonts[0], index).map((t) => t.key)).toEqual(['machine:IBM PC', 'shape:16', 'chars:cp437', 'collection:viler', 'ready']);
+    expect(tagsOf(index.fonts[0], index).map((t) => t.key)).toEqual(['machine:IBM PC', 'shape:8x16', 'chars:cp437', 'collection:viler', 'ready']);
     const { machine, ...noMachine } = index.fonts[0]; // a font whose folder names no machine
     expect(machine).toBe('IBM PC');
-    expect(tagsOf(noMachine).map((t) => t.key)).toEqual(['shape:16', 'chars:cp437', 'collection:viler', 'ready']);
+    expect(tagsOf(noMachine).map((t) => t.key)).toEqual(['shape:8x16', 'chars:cp437', 'collection:viler', 'ready']);
+  });
+
+  it('shape tags are width × height, and an entry with no width is 8 wide', async () => {
+    const { tagsOf } = await mod();
+    expect(tagsOf({ width: 7, height: 7, chars: 'cp437' }).map((t) => t.key)).toContain('shape:7x7');
+    expect(tagsOf({ height: 8, chars: 'cp437' }).map((t) => t.key)).toContain('shape:8x8');
   });
 
   it('counts tags among the current matches', async () => {
     const { tagCounts } = await mod();
     const c = tagCounts(index, { query: 'o' });
-    expect(c.get('shape:8')).toBe(2);
-    expect(c.get('shape:16')).toBeUndefined();
+    expect(c.get('shape:8x8')).toBe(2);
+    expect(c.get('shape:8x16')).toBeUndefined();
     const p = tagCounts(index, { tags: ['chars:cp437'] });
     expect(p.get('chars:cp437')).toBe(2);
     expect(p.get('chars:petscii')).toBeUndefined();

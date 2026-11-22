@@ -52,3 +52,13 @@ test('redraws when the sample and height change on a mounted instance', async ()
   expect(alphaAt(w.canvas, 0, 0)).toBe(0);
   w.unmount();
 });
+
+test('draws width columns a glyph: width 7, height 8 is 168 × 16, and column 7 of glyph 0 is unlit', async () => {
+  // glyph 0 has columns 0 and 7 set; a 7-wide font has no column 7, so glyph 1 starts there; glyph 2 column 0 is lit
+  const w = await mount({ sample: sampleOf(8, [[0, 0, 7], [0, 0, 0], [2, 0, 7]]), height: 8, width: 7 });
+  expect([w.canvas.width, w.canvas.height]).toEqual([168, 16]);
+  expect(alphaAt(w.canvas, 0, 0)).toBe(255);
+  expect(alphaAt(w.canvas, 2 * 7, 0)).toBe(0);
+  expect(alphaAt(w.canvas, 2 * 14, 0)).toBe(255);
+  w.unmount();
+});

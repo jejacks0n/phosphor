@@ -35,6 +35,15 @@ describe('buildIndex', () => {
     expect(run([{ path: 'viler/PC-IBM/X.F16', bytes: make(14) }]).index.fonts[0].height).toBe(14);
   });
 
+  it('entries carry their own width: a 7-wide font says 7, a full one 8, linked ones 8', () => {
+    const { index } = run([
+      { path: 'viler/PC-IBM/N.F08', bytes: make(8, () => 0xfe) },
+      { path: 'viler/PC-IBM/W.F08', bytes: make(8, () => 0xff) },
+    ]);
+    expect(index.fonts.map((f) => [f.name, f.width])).toEqual([['N', 7], ['W', 8]]);
+    expect(index.linked[0].width).toBe(8);
+  });
+
   it('a file of no font size is left out', () => {
     const { index } = run([
       { path: 'viler/PC-IBM/A.F16', bytes: new Uint8Array(100) },
