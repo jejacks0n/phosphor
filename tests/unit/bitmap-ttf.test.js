@@ -91,6 +91,12 @@ it('at 9: column 9 repeats column 8 for C4 and a moved lower block\u2019s slot, 
   expect(glyfOf(at9, 0xdc).xMax).toBe(9 * 64);   // C0-DF always
 });
 
+it('at 9 in an IBM-like font: █ at 219 and the half blocks repeat column 8, the shades ░▒▓ leave column 9 blank', () => {
+  const at9 = ttfOf({ ...cp437Font, cellWidth: 9 });
+  for (const slot of [219, 220, 223, 222]) expect(glyfOf(at9, slot).xMax, `slot ${slot}`).toBe(9 * 64);
+  for (const slot of [177, 178]) expect(glyfOf(at9, slot).xMax, `shade ${slot}`).toBe(8 * 64);   // column 8 lit, column 9 blank
+});
+
 it('at 9: a slot of the font\u2019s own line style repeats too, and one outside every set does not', () => {
   const font = { ...ruled, bytes: ruled.bytes.slice(), cellWidth: 9, lines: { hide: [], styles: [{ id: 'x', name: 'X', slots: [10, null, null, null, null, null, null, null, null, null, null] }] } };
   font.bytes.set(Array(8).fill(1), 10 * 8);

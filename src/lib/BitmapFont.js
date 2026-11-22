@@ -129,10 +129,12 @@ export function inkOf(font, slot) {
 // maskOf over the width the font is drawn at, as Best match and By shape see a glyph (findBlocks measures at 8).
 export const drawnMaskOf = (font, slot, sw, sh) => maskOf(font, slot, sw, sh, ...drawnAs(font, slot));
 
-// The slots whose ninth column (at a drawn width of 9) repeats the eighth, as VGA's does: 0xC0-0xDF, the font's blocks and its own line styles'.
+// The slots whose ninth column (at a drawn width of 9) repeats the eighth, as VGA's does: 0xC0-0xDF, the font's solid and
+// half blocks (█▄▀▌▐) wherever they are, and its own line styles'. Never a shade's (░▒▓): VGA leaves those blank there.
+const SHADES = new Set(['░', '▒', '▓']);
 export const ninthSlots = memo((font) => {
   const slots = new Set(Array.from({ length: 32 }, (_, i) => 0xc0 + i));
-  blocksOf(font).forEach((s) => s !== null && slots.add(s));
+  blocksOf(font).forEach((s, i) => s !== null && !SHADES.has(BLOCKS[i].char) && slots.add(s));
   (font.lines?.styles ?? []).forEach((style) => style.slots.forEach((s) => s !== null && slots.add(s)));
   return slots;
 });

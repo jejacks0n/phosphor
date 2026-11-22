@@ -64,6 +64,7 @@ describe('raw fonts', () => {
     expect(maskOf(seven, 219, 4, 8).every((v) => v === 1)).toBe(false); // findBlocks measures at 8, whatever the width
     const nine = { ...cp437Font, cellWidth: 9 };
     expect(inkOf(nine, 219)).toEqual([1, 1]); // the ninth column repeated
+    for (const v of inkOf(nine, 177)) expect(v).toBeCloseTo(4 / 9, 12); // a shade's ninth column blank
     expect(drawnMaskOf(nine, 219, 4, 8).every((v) => v === 1)).toBe(true);
   });
   it('splits an odd height evenly', () => {
