@@ -254,3 +254,28 @@ test('choosing 8px while drawn narrow sets it not narrow', async () => {
   expect(project.sauceLetterSpacing).toBe('8');
   expect(project.drawingFont.cellWidth).toBe(8);
 });
+
+test('with a bitmap font, Not set is an undo step like 8px and 9px: 9px, then Not set, then undo walks the width and Letter spacing back together', async () => {
+  const { project } = await mount();
+  await project.setDrawingFont({ ...SLIM(), width: 8 });
+  await pick(2);
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['9', 9]);
+  await pick(0);
+  expect([project.sauceLetterSpacing, project.fontWidth, project.drawingFont.cellWidth]).toEqual(['none', '', 8]);
+  project.undo();
+  await nextTick();
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['9', 9]);
+  project.undo();
+  await nextTick();
+  expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['', 8]); // a new drawing's, unchosen
+});
+
+test('with a bitmap font drawn narrow, Not set leaves narrow in one undo step', async () => {
+  const { project } = await mount();
+  await project.setDrawingFont({ ...SLIM(), width: 7 });
+  await pick(0);
+  expect([project.sauceLetterSpacing, project.fontWidth, project.drawingFont.cellWidth]).toEqual(['none', '', 8]);
+  project.undo();
+  await nextTick();
+  expect([project.fontWidth, project.drawingFont.cellWidth]).toEqual(['7', 7]);
+});

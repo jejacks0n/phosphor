@@ -237,12 +237,14 @@ export const fontActions = {
   // The drawing's font drawn at width: its own width (4-7: narrow), 8, or 9 (Letter spacing 9px). One undo step that
   // never moves a drawn cell (fontStep), and the answer kept on this browser's copy of the font: its own width, or 8
   // for 8 and 9 (Letter spacing is the drawing's, and 8 or 9 sets it, so the export writes it, even at the width it's
-  // drawn at). Settings it already has are no step; a width it can't take, nothing.
-  setDrawingFontWidth(width) {
+  // drawn at). Settings it already has are no step; a width it can't take, nothing. notSet: 8 with Letter spacing Not
+  // set (the SAUCE tab's), the same step.
+  setDrawingFontWidth(width, { notSet = false } = {}) {
     const font = this.drawingFont, own = font && narrowWidthOf(font);
     if (!font || !(width === own || width === 8 || width === 9)) return;
     const unanswered = !!own && !useWorkspaceStore().userFonts?.find((f) => f.id === fontId(font))?.width; // keepCopy answers it below
-    const after = { ...fontKeysOf(this), ...(width === own ? { fontWidth: String(own) } : { fontWidth: '', sauceLetterSpacing: String(width) }) };
+    const spacing = notSet && width === 8 ? 'none' : String(width);
+    const after = { ...fontKeysOf(this), ...(width === own ? { fontWidth: String(own) } : { fontWidth: '', sauceLetterSpacing: spacing }) };
     if (!Object.keys(after).every((key) => after[key] === this[key])) {
       if (!this.image) this.$patch(after); // no drawing yet: the next one's, with nothing to undo
       else fontStep(this, font, after, unanswered); // the same height: never a Promise (keepsGrid has no working copy stretched)
