@@ -204,7 +204,7 @@ art's own colors aren't a theme's):
 | `border`, `border-subtle`, `border-light` | Borders, from a button's to a list's lines to the dialogs' edges. (`border-dark` is a slot nothing uses yet.) |
 | `text`, `text-dim`, `text-muted`, `text-faint` | Words, from the brightest to hints and placeholders. |
 | `text-inverted` | Words on a primary button. |
-| `white`, `black` | Words and icons on a chosen button or tab (`white`). Tooltips' ground, the rings around color swatches and the Brush's circle, and the ground behind a Marketplace preview and a room's picture (`black`). |
+| `white`, `black` | Words and icons on a chosen button or tab (`white`). Tooltips' ground and the rings around color swatches (`black`). |
 | `accent-glow` | The glow around a focused field and behind a chosen tab's words. Left out, it's worked out from `accent`. |
 | `shadow` | Every drop shadow: under buttons, menus, panels, dialogs and the toast. Each keeps its own strength, so give the color whole (`#rrggbb`). |
 | `guide` | The guides, their ticks on the rulers, and the label while one is dragged. |
@@ -215,8 +215,9 @@ The last eight slots (from `white` down) are newer than the rest. A copy of Phos
 refuses a theme that sets it, and leaves it out of its Marketplace, so a theme meant for older copies too leaves the
 newer slots out.
 
-Not slots: the backdrops behind dialogs, the thin dark rings that keep a guide or another person's cursor visible over
-any art, the logo and the fonts.
+Not slots: the backdrops behind dialogs, what's drawn over the art to show on any art (the Brush's circle, a selection's
+dashes, the dark rings around a guide and another person's cursor), the black behind a Marketplace preview and a room's
+picture, the logo and the fonts.
 
 A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
 doesn't know are left out, except that a manifest from a format newer than Phosphor's is refused. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as

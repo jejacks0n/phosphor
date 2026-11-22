@@ -362,8 +362,8 @@ and sideways.
   reads the question and taps Install; closes the dialog and picks Midnight in the select under the theme icons.
 - Expects: the question says "Install Midnight 1.2.0?", "by Phosphor" and "Adds 1 theme. Runs no code."; the row shows
   Midnight, 1.2.0, by Phosphor, 1 theme and its homepage; with Midnight picked the whole app turns deep blue (the panels,
-  borders and words, the glow behind the art, the buttons, with Install and Export a bright cyan, and a toast in amber
-  with navy words) and no theme icon is checked; the language and the icons keep their row, a half each, with the select on its own row under them, fitting the column's width ([Plugins](../../plugins.md)).
+  borders and words, the glow behind the art, the buttons, with Install and Export a bright cyan) and no theme icon is
+  checked; the language and the icons keep their row, a half each, with the select on its own row under them, fitting the column's width ([Plugins](../../plugins.md)).
 - Probes: `out-of-order`: first pick `images/photo.jpg` (it says "That file isn't a plugin's manifest."); `again`:
   install the same file twice (the second asks "Replace Midnight 1.2.0 with 1.2.0?").
 - Rated: no (touch only: no keyboard shows here)

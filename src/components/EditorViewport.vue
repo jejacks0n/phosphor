@@ -202,7 +202,7 @@ const shapeDragStyle = computed(() => {
     const a = center(drag.from), b = center(drag.to);
     return {
       left: `${a.x + dx}px`, top: `${a.y + dy}px`, width: `${Math.hypot(b.x - a.x, b.y - a.y)}px`, height: '0',
-      border: 'none', borderTop: '1px dashed var(--white)', transformOrigin: '0 0',
+      border: 'none', borderTop: '1px dashed #fff', transformOrigin: '0 0',
       transform: `rotate(${Math.atan2(b.y - a.y, b.x - a.x)}rad)`,
     };
   }
@@ -475,8 +475,8 @@ div.shape-drag {
   box-sizing: border-box;
   pointer-events: none;
   z-index: 100;
-  border: 1px dashed var(--white);
-  box-shadow: 0 0 0 1px var(--black);
+  border: 1px dashed #fff;
+  box-shadow: 0 0 0 1px #000;
 }
 
 div.over-art {
@@ -491,17 +491,17 @@ div.waiting {
   box-sizing: border-box;
   pointer-events: none;
   z-index: 200;   /* over the pause layer: it's what the layer is about */
-  outline: 1px dashed var(--white);
-  box-shadow: 0 0 0 1px var(--black);
+  outline: 1px dashed #fff;
+  box-shadow: 0 0 0 1px #000;
 }
 
 div.tool-preview {
   position: absolute;
   pointer-events: none;
-  border: 1px solid var(--white);
+  border: 1px solid #fff;
   border-radius: 50%;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 1px var(--black), inset 0 0 0 1px var(--black);
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px #000;
   z-index: 145;   /* the pointer's own: over the rulers (140) */
 }
 </style>

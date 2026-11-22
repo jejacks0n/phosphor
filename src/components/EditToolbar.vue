@@ -268,9 +268,11 @@ const overlaySetting = computed(() => ({ ...OVERLAY_SETTING.value, label: t('too
 
 // The Shape tool's row of kinds follows the selection: a shape selected that remembers what made it (a polygon, a
 // plugin's shape) chooses its kind, so its options are the ones showing. Only as the selection changes, so a kind
-// clicked in the row with that shape still selected stays chosen.
+// clicked in the row with that shape still selected stays chosen, and only with another tool: the Shape tool selects
+// what it draws, of the kind chosen already, and an undo there putting an older selection back mustn't change what the
+// next drag draws.
 watch(() => workspace.vectorSelected.join(' '), () => {
-  const kind = selectedKind(workspace);
+  const kind = workspace.activeTool !== 'vshape' && selectedKind(workspace);
   if (kind) workspace.vectorShapeKind = kind;
 });
 
