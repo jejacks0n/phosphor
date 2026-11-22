@@ -720,3 +720,35 @@ test('a press on a toast doesn\'t close the layer, a press elsewhere outside doe
   expect(workspace.colorBox).toBe(null);
   toast.remove();
 });
+
+// The import toast's Put back sits outside the editor's disabled controls, so the page's own guard is all that stops it.
+test('while the settings are locked the editor writes nothing: the import toast\'s Put back, and a pick open when the lock came is over', async () => {
+  await mount({ quantize: 'palette', palette: '#FFFFFF #000000' });
+  const input = editor().querySelector('input.hex-file'), files = new DataTransfer();
+  files.items.add(new File(['1a1c2c\n5d275d\n'], 'sweetie.hex'));
+  input.files = files.files;
+  input.dispatchEvent(new Event('change', { bubbles: true }));
+  await vi.waitFor(() => expect(project.palette).toBe('#1a1c2c #5d275d'));
+  const chip = editor().querySelector('input.chip');
+  chip.value = '#ff0000';
+  chip.dispatchEvent(new Event('input', { bubbles: true }));
+  expect(project._colorPick).toBe(true);
+  const before = project.palette;
+  project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
+  await nextTick();
+  expect(project._colorPick).toBe(false);
+  expect(toastAction.value?.label).toBe('Put back');
+  toastAction.value.run();
+  await nextTick();
+  expect(project.palette).toBe(before);
+  closeToast();
+});
+
+test('Up and Down on a button of This drawing\'s details keep the keyboard in the layer', async () => {
+  await mount({ quantize: 'vga' });
+  action('edit').focus();
+  await key('ArrowDown');
+  expect(title()).not.toBe('VGA (256 colors)'); // the next row was chosen, and the details changed
+  await nextTick();
+  expect(layer().contains(document.activeElement)).toBe(true);
+});

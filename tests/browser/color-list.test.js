@@ -20,8 +20,8 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// The editor on its own, its list held as the settings column holds it; `wrap` puts it inside something, and with `takes`
-// false the holder doesn't take what the editor writes (as the settings column while they're locked).
+// The editor on its own, its list held as the Palettes page holds it; `wrap` puts it inside something, and with `takes`
+// false the holder doesn't take what the editor writes (as the page while the settings are locked).
 async function mount(value, wrap = (node) => node, { takes = true, disabled = false } = {}) {
   const list = ref(value), emitted = [], picks = [];
   host = document.createElement('div');
@@ -176,7 +176,7 @@ test('a list typed replaces the whole list with a toast whose Put back brings it
   field().blur(); // a click elsewhere
   await nextTick();
   expect(list.value).toBe('#333333 #ffffff');
-  expect(toastMessage.value).toBe('Palette colors replaced with the 2 typed.');
+  expect(toastMessage.value).toBe('Custom color list replaced with the 2 typed.');
   expect(toastAction.value.label).toBe('Put back');
   toastAction.value.run();
   await nextTick();
@@ -194,7 +194,7 @@ test('a list typed replaces the whole list with a toast whose Put back brings it
   field().blur(); // after Enter, the field holds one color again: no second toast
   await nextTick();
   expect(swatches()).toHaveLength(256);
-  expect(toastMessage.value).toBe('Palette colors replaced with the first 256 of the 300 typed.');
+  expect(toastMessage.value).toBe('Custom color list replaced with the first 256 of the 300 typed.');
   toastAction.value.run();
   await nextTick();
   expect(list.value).toBe('#FFF, #a50;000');
@@ -204,7 +204,7 @@ test('the toast of a list typed goes with the editor', async () => {
   await mount('#FFF #000');
   await type('#111 #222 #333');
   await key(field(), 'Enter');
-  expect(toastMessage.value).toBe('Palette colors replaced with the 3 typed.');
+  expect(toastMessage.value).toBe('Custom color list replaced with the 3 typed.');
   gone();
   expect(toastMessage.value).toBe(null);
 });
@@ -412,12 +412,20 @@ test('with a mouse a swatch dragged onto another moves there and stays picked', 
   expect(pressed()).toBe(2);
 });
 
+test('disabled swatches aren\'t draggable even with a mouse', async () => {
+  await page.viewport(1200, 800);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1200));
+  await mount('#111111 #222222', undefined, { disabled: true });
+  expect(swatches()[0].getAttribute('draggable')).not.toBe('true');
+});
+
 test('Import replaces the list with a .hex file\'s colors and offers Put back; a file with no colors changes nothing', async () => {
   const { list, emitted } = await mount('#FFF #000');
   expect(host.querySelector('input.hex-file[type=file]').getAttribute('accept')).toBe('.hex,.txt,text/plain');
   await importFile('1a1c2c\r\n5d275d\r\n', 'sweetie.hex');
   expect(list.value).toBe('#1a1c2c #5d275d');
-  expect(toastMessage.value).toBe('Palette colors replaced with sweetie.hex\'s.');
+  expect(toastMessage.value).toBe('Custom color list replaced with sweetie.hex\'s.');
   expect(toastAction.value.label).toBe('Put back');
   toastAction.value.run();
   await nextTick();
@@ -432,7 +440,7 @@ test('Import replaces the list with a .hex file\'s colors and offers Put back; a
   closeToast();
   await importFile(Array.from({ length: 300 }, (_, i) => (i % 256).toString(16).padStart(6, '0')).join('\n'), 'big.hex');
   expect(swatches()).toHaveLength(256);
-  expect(toastMessage.value).toBe('Palette colors replaced with the first 256 of big.hex\'s 300.');
+  expect(toastMessage.value).toBe('Custom color list replaced with the first 256 of big.hex\'s 300.');
 });
 
 test('Import reads no file over 1 MB, and says so', async () => {

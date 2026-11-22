@@ -72,7 +72,7 @@ test.describe('on a phone', () => {
     await customList(page);
 
     const panel = page.locator('.color-layer');
-    await page.evaluate(() => Promise.all(document.getAnimations().map((a) => a.finished.catch(() => {})))); // the layer's opening is done, so nothing is measured mid-motion
+    await panel.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished.catch(() => {})))); // the layer's own opening is done, so nothing is measured mid-motion
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0); // nothing runs off to the side
     for (const swatch of await swatches(page).all()) expect(await swatch.getAttribute('draggable')).not.toBe('true');
     await expect(field(page)).toHaveValue('#ff0000');
@@ -84,7 +84,7 @@ test.describe('on a phone', () => {
     expect(earlier.y).toBeGreaterThanOrEqual(hexBox.y + hexBox.height);
     expect(await page.locator('.color-list #palette').evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
     for (const link of ['.color-list button.remove', '.color-list .actions button.import', '.color-list .actions button.export']) {
-      expect((await box(link)).height, link).toBeGreaterThanOrEqual(28);
+      expect((await box(link)).height, link).toBeGreaterThanOrEqual(link.includes('.actions') ? 32 : 28);
     }
     expect(await panel.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(0);
 
