@@ -25,7 +25,11 @@ export const useColorLibraryStore = defineStore('colorLibrary', {
   }),
 
   getters: {
-    kept: (state) => (Array.isArray(state.favorites) ? state.favorites : []).map(sound).filter(Boolean),
+    // One a slug, the first: a hand-edited store, or two tabs, can hold a slug twice.
+    kept: (state) => {
+      const seen = new Set();
+      return (Array.isArray(state.favorites) ? state.favorites : []).map(sound).filter(p => p && !seen.has(p.slug) && seen.add(p.slug));
+    },
     has() {
       return (slug) => this.kept.some(p => p.slug === slug);
     },
@@ -37,8 +41,10 @@ export const useColorLibraryStore = defineStore('colorLibrary', {
       else this.keep(palette);
     },
 
+    // Stored as `kept` would read it back; an unsound palette stores nothing.
     keep(palette) {
-      this.favorites = [palette, ...this.kept.filter(p => p.slug !== palette.slug)];
+      const p = sound(palette);
+      if (p) this.favorites = [p, ...this.kept.filter(k => k.slug !== p.slug)];
     },
   },
 });
