@@ -176,6 +176,8 @@ The settings on the left come in sections, each following a layer:
   using the Library ask nothing of anyone. The palette is kept under Favorites, which the dialog then shows with it
   first (one of more than 256 colors keeps its first 256, and says so). When Lospec has no palette by that name, can't
   be reached, or answers with something that isn't a palette, the line under the field says which and nothing is kept.
+  In the browser a name Lospec doesn't have and Lospec out of reach get the same message, since Lospec's answer for a
+  missing palette is one the page isn't allowed to read.
   Get changes nothing of the drawing, so it works while the settings are locked. Browse ▸ is off while the settings
   are, and a lock that comes while the dialog is open turns Use and Put back off. About's Licenses tab credits the
   palettes to Lospec's Palette List and their authors.

@@ -375,7 +375,7 @@
     "cut": "Les 256 premières de ses {n} couleurs ont été gardées.",
     "errors": {
       "notFound": "Lospec n'a pas de palette nommée {name}.",
-      "unreachable": "Impossible de joindre Lospec. Réessayez.",
+      "unreachable": "Impossible de prendre {name} sur Lospec. Vérifiez son nom ou son lien, ou réessayez.",
       "notPalette": "Ce n'est pas une palette que Phosphor sait lire.",
       "noName": "Tapez le nom d'une palette ou collez son lien lospec.com."
     }
