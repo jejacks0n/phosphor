@@ -90,6 +90,17 @@ export function licenseNotices(moduleIds, extra = []) {
   }).sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }
 
+// A build's modules, for licenseNotices: those whose code is in the bundle's chunks, and those of the app's own
+// dependencies it read (vue's entry only re-exports @vue/*, so no chunk holds it). Not every module the build read: Pinia
+// and vue-router import Vue's devtools behind a development check, so their code is shaken out of a build.
+export function shippedModuleIds(bundle, readIds, dependencies) {
+  const rendered = Object.values(bundle).flatMap((chunk) => (chunk.type === 'chunk' ? Object.entries(chunk.modules) : []))
+    .filter(([, { renderedLength }]) => renderedLength > 0).map(([id]) => id);
+  // The package after the last node_modules/: vue-i18n's own copy of the devtools sits under vue-i18n/node_modules/.
+  const direct = readIds.filter((id) => dependencies.includes(id.replaceAll('\\', '/').match(/.*\/node_modules\/((?:@[^/]+\/)?[^/]+)\//)?.[1]));
+  return [...rendered, ...direct];
+}
+
 // The development server's modules, for licenseNotices: what its prebundled dependencies were made from (their source
 // maps say) and what it served as it is.
 export function devModuleIds(depsDir, servedIds = []) {
@@ -177,9 +188,10 @@ export default defineConfig(({ mode }) => {
             res.end(JSON.stringify(licenseNotices(ids)));
           });
         },
-        generateBundle() {
-          // Every module the build read, so a package that only re-exports another's (vue) is credited too.
-          const notices = licenseNotices([...this.getModuleIds()], env.VITE_DESKTOP === '1' ? ['ws'] : []);
+        generateBundle(_, bundle) {
+          const { dependencies } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'));
+          const ids = shippedModuleIds(bundle, [...this.getModuleIds()], Object.keys(dependencies));
+          const notices = licenseNotices(ids, env.VITE_DESKTOP === '1' ? ['ws'] : []);
           this.emitFile({ type: 'asset', fileName: 'licenses.json', source: JSON.stringify(notices) });
         },
       },

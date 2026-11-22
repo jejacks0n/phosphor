@@ -5,7 +5,7 @@ import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { devModuleIds, licenseNotices } from '../../vite.config.js';
+import { devModuleIds, licenseNotices, shippedModuleIds } from '../../vite.config.js';
 
 const modules = fileURLToPath(new URL('../../node_modules/', import.meta.url));
 
@@ -40,4 +40,25 @@ it('the development server\'s modules are what its prebundled dependencies\' sou
   const ids = devModuleIds(deps, [`${modules}paper/dist/paper-core.js`, `${modules}.vite/deps/vue.js?v=1a2b`, `${modules}.vite/deps/chunk-X.js`]);
   expect(licenseNotices(ids).map(({ name }) => name)).toEqual(['@vue/shared', 'paper', 'vue']);
   expect(devModuleIds(join(deps, 'none'))).toEqual([]);
+});
+
+// Pinia and vue-router import Vue's devtools only behind a development check, so a build reads them but ships none of
+// their code; vue's own entry only re-exports @vue/*, so no chunk holds it, but the app depends on it by name.
+it('a build credits the modules whose code it ships, and the app\'s own dependencies it read, never what was shaken out', () => {
+  const chunk = { type: 'chunk', modules: {
+    [`${modules}@vue/runtime-dom/dist/runtime-dom.esm-bundler.js`]: { renderedLength: 31249 },
+    [`${modules}pinia/dist/pinia.mjs`]: { renderedLength: 13238 },
+    [`${modules}hookable/dist/index.mjs`]: { renderedLength: 0 },
+  } };
+  const read = [
+    `${modules}vue/dist/vue.runtime.esm-bundler.js`,
+    `${modules}@vue/devtools-api/dist/index.js`,
+    `${modules}vue-i18n/node_modules/@vue/devtools-api/lib/esm/index.js`, // vue-i18n's own copy, not vue-i18n
+    `${modules}birpc/dist/index.mjs`,
+    `${modules}@vue/runtime-dom/dist/runtime-dom.esm-bundler.js`,
+    `${modules}pinia/dist/pinia.mjs`,
+    `${modules}hookable/dist/index.mjs`,
+  ];
+  const ids = shippedModuleIds({ 'index.js': chunk, 'licenses.json': { type: 'asset' } }, read, ['vue', 'pinia', 'vue-i18n', 'ws']);
+  expect(licenseNotices(ids).map(({ name }) => name)).toEqual(['@vue/runtime-dom', 'pinia', 'vue']);
 });
