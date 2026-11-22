@@ -505,6 +505,10 @@ functions, so `this` is undefined. `paint` is made once a stroke, and is the sam
   none. With the base picked it's what `shown` gives: `{ r, g, b }`, with no `a`.
 - `paint.put(x, y, color, alpha)`: paints a grid pixel with `color` (`{ r, g, b }`, 0 to 255) at `alpha` (0 to 1) over
   what the picked layer had there when the stroke began.
+- `paint.set(x, y, color, alpha)`: makes the picked layer's paint at a grid pixel exactly `color` at `alpha`, whatever
+  was there; at 0 it clears the pixel, and needs no color. It's how a brush thins or removes paint, which a put can't.
+  On the base, where every pixel is opaque, it's a put. A copy of Phosphor from before it has no `set`, so a brush for
+  those too checks `typeof paint.set === 'function'`, as Smear does.
 - `paint.dab(from, to, size, hardness)`: the grid pixels a round brush of that size and hardness (0 to 1) covers moving
   from `from` to `to`, as `[{ x, y, alpha }]`, laid as the Brush lays them, so a brush needn't work out its own
   footprint. The size is held to the Brush's largest, 20, and a hardness that isn't given is 1. A pixel can come more
@@ -512,14 +516,19 @@ functions, so `this` is undefined. `paint` is made once a stroke, and is the sam
 
 What a stroke reads is the drawing as it was when the stroke began: `shown` and `own` never give back the stroke's own
 paint. They take a fractional position to the pixel it's in, and give a copy each time, so changing it changes nothing.
-A put needs whole numbers on the grid, inside the selection when there is one; any other is ignored, as is one whose
-color or alpha isn't a number. Colors are rounded and held to 0 to 255, and alpha to 0 to 1. A later put to a pixel in
-the same stroke replaces the earlier one: puts don't build up, so a brush that wants them to keeps its own running
-color, as Smear keeps the paint it has laid at each pixel, to drag a color further than one pixel. The puts of one call are laid together when it returns.
+A put or a set needs whole numbers on the grid, inside the selection when there is one; any other is ignored, as is one
+whose color or alpha isn't a number. Colors are rounded and held to 0 to 255, and alpha to 0 to 1. A later write to a
+pixel in the same stroke replaces the earlier one, whichever of the two it is: puts don't build up, so a brush that
+wants them to keeps its own account, as Smear keeps what each pixel it has changed is now, to drag a color further than
+one pixel. A write that leaves a pixel as it was changes nothing. The writes of one call are laid together when it
+returns.
 
-A brush lays paint, never characters. On a drawing layer it's the layer's paint; on the base, the base's own pixels,
-opaque (the color at its alpha over what shows there). In ANSI, the cells show it as the Brush's paint shows with
-**Draw with: Colors only** (rule R5 in [Cells and paint](model.md)).
+A brush reads and lays paint, never characters. On a drawing layer it's the layer's paint; on the base, the base's own
+pixels, opaque (the color at its alpha over what shows there). In ANSI, the cells show it as the Brush's paint shows with
+**Draw with: Colors only** (rule R5 in [Cells and paint](model.md)). A letter typed on the layer isn't paint: `own`
+reads the paint over it (`null` when there's none), a write lays paint over it, and the letter stays, tinted by that
+paint as the Brush's tints it. A blank cell of the layer's own in a color is paint: `own` reads its color, and a write
+makes paint of it.
 
 A brush that throws stops its stroke: what the stroke laid is taken back, a toast says "Smear failed: …" with its
 error's message, and the plugin's row in the Plugins dialog says so until you Reload the plugin or the page.

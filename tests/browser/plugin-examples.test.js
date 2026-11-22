@@ -132,7 +132,7 @@ test('Smear: Reads This layer on a clear layer changes nothing; All layers smear
   expect(project.rawColorAt(11, 10)).not.toBe('#0000ff');
 });
 
-test('Smear: Reads This layer carries the layer\'s paint out into where it\'s clear, and leaves the paint it came from', async () => {
+test('Smear: Reads This layer carries the layer\'s paint out into where it\'s clear, and clear into the paint the other way', async () => {
   const { project, workspace, ref, stroke } = await smearing();
   project.putEditPixels(RED_BLUE.filter(({ x }) => x < 10)); // red, and the layer clear right of it
   project.commitEdit();
@@ -144,11 +144,52 @@ test('Smear: Reads This layer carries the layer\'s paint out into where it\'s cl
   expect(alphas[2]).toBeGreaterThan(0.05);
   for (const x of [10, 11, 12]) expect(paintAt(project, x, 10)).toMatchObject({ r: 255, g: 0, b: 0 });
   expect(paintAt(project, 9, 10)).toEqual(RED);
-  // The other way, clear comes into the paint: a brush only lays paint, so the red stays as it is.
+  // The other way, clear rides into the red, which thins where it goes and keeps its color: a set, where a put only adds.
   project.undo();
-  const before = layerPaint(project);
   stroke([at(16, 10), at(12, 10), at(8, 10), at(4, 10)]);
-  expect(layerPaint(project)).toEqual(before);
+  const thinned = [9, 8, 7, 6].map((x) => paintAt(project, x, 10)?.a ?? 0);
+  expect(thinned[0]).toBeLessThan(0.45);
+  for (let i = 1; i < thinned.length; i++) expect(thinned[i]).toBeGreaterThan(thinned[i - 1]);
+  for (const x of [8, 7, 6]) expect(paintAt(project, x, 10)).toMatchObject({ r: 255, g: 0, b: 0 });
+  expect(paintAt(project, 10, 10)).toBe(null);
+});
+
+test('Smear: Reads This layer mixes two thin paints where they cross, and neither grows more solid', async () => {
+  const { project, workspace, ref, stroke } = await smearing();
+  project.putEditPixels(RED_BLUE.map((pixel) => ({ ...pixel, a: 0.5 }))); // red left of column 10, blue from it, each at half
+  project.commitEdit();
+  workspace.pluginTools[`brush:${ref}`] = { reads: 1 };
+  stroke([at(4, 10), at(8, 10), at(12, 10), at(16, 10)]);
+  for (let x = 4; x <= 16; x++) expect(paintAt(project, x, 10).a, `x ${x}`).toBeCloseTo(0.5, 2);
+  expect(paintAt(project, 10, 10).r).toBeGreaterThan(140); // red carried into the blue
+  expect(paintAt(project, 11, 10).r).toBeLessThan(paintAt(project, 10, 10).r);
+});
+
+// R5 (docs/model.md): a letter typed on the layer isn't paint. A smear across it lays paint over it, which tints it.
+test('Smear: red dragged across a typed letter leaves it a letter, tinted, with either Reads', async () => {
+  for (const reads of [0, 1]) {
+    const { project, workspace, ref, stroke } = await smearing();
+    workspace.editorTab = 'output';
+    project.putEditPixels([0, 1, 2, 3, 4].flatMap((x) => [4, 5].map((y) => ({ x, y, r: 255, g: 0, b: 0, a: 1 }))));
+    project.commitEdit();
+    project.typeAt(5, 2, 'A', { fg: '#ffffff', bg: '#0000ff' });
+    project.commitPending();
+    await settle(project);
+    workspace.pluginTools[`brush:${ref}`] = { size: 4, strength: 60, reads };
+    stroke([{ x: 1.5, y: 5 }, ...[2, 3, 4, 5, 6, 7, 8, 9].map((x) => ({ x: x + 0.5, y: 5 }))]);
+    await settle(project);
+    const cell = project.cells[2 * 20 + 5];
+    expect([reads, cell.char]).toEqual([reads, 'A']);
+    expect(project.editCellAt(5, 2)).toMatchObject({ char: 'A', fg: '#ffffff', bg: '#0000ff' });
+    // What's over the letter is see-through red paint, as the Brush would leave, so its two colors go toward red and
+    // stay apart: laid solid over the letter's own colors they came out one step of red from each other.
+    for (const y of [4, 5]) {
+      expect(paintAt(project, 5, y)).toMatchObject({ r: 255, g: 0, b: 0 });
+      expect(paintAt(project, 5, y).a).toBeLessThan(0.97);
+    }
+    expect(Math.max(...cell.fg.c.map((v, i) => Math.abs(v - cell.bg.c[i]))), `reads ${reads}: ${cell.fg.hex} on ${cell.bg.hex}`).toBeGreaterThan(15);
+    expect(cell.bg.c[0]).toBeGreaterThan(60);
+  }
 });
 
 test('Smear: thin paint carried into a clear spot is never more solid than the paint it came from', async () => {

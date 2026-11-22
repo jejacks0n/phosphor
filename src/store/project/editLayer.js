@@ -14,7 +14,7 @@ import { cellWidth } from '@/lib/CharWidth.js';
 import { fitFont } from '@/lib/BitmapFont.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells, takePins } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells, takePins, ownColored } from '@/store/project/shared.js';
 
 // A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
 // the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
@@ -415,13 +415,6 @@ function unfreeze(project, pixels, { painted = false } = {}) {
   if (frozen.length) project.clearEditCells(frozen);
   const laid = painted ? cells.filter(({ col, row }) => isLaid(project.editCellAt(col, row))) : [];
   if (laid.length) project.writeEditCells(laid.map((c) => ({ ...c, attrs: { laid: null } })));
-}
-
-// Whether the layer in use (not the base, whose cells are pins) has a cell of its own at col, row with a color of its own.
-function ownColored(project, col, row) {
-  if (onBottom(project)) return false;
-  const entry = project.editCellAt(col, row);
-  return !!(entry?.fg || entry?.bg);
 }
 
 // Whether the topmost thing under the layer in use at col, row is a shape's fill or stroke (not an art layer's character,

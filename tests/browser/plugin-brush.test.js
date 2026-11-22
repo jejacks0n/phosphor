@@ -419,3 +419,115 @@ test('a choice option with no glyphs has no empty glyph column, and a currentCol
     expect(getComputedStyle(plugin.querySelector('path')).stroke).toBe(fill);
   }
 });
+
+// R5 (docs/model.md): a plugin brush's paint is laid as the Brush's Colors only is, so over a character of the layer's
+// own with ink it's paint over the letter, which tints it (R2). The brush reads and writes paint, never characters.
+const shownAt = (project, col, row) => { const cell = project.cells[cellIndex(col, row, project.cols)]; return [cell.char, cell.fg.c, cell.bg.c]; };
+const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) <= 2);
+
+for (const tab of ['input', 'output']) {
+  test(`R5: in ${tab === 'input' ? 'PIXEL' : 'ANSI'} a put at half alpha over a letter of the layer's own tints it as the Brush at 50% does`, async () => {
+    const { project, workspace, stroke, ctx } = await painter({ move(from, to, paint) { for (const { x, y } of paint.dab(from, to, 4, 1)) paint.put(x, y, RED, 0.5); } }, { tab });
+    project.typeAt(5, 2, 'A', { fg: '#ffffff', bg: '#0000ff' });
+    project.commitPending();
+    await settle(project);
+    Object.assign(workspace, { editFgColor: '#ff0000', brushDrawWith: 'normal', editBrushSize: 4, editBrushHardness: 100, editBrushFlow: 100, editBrushOpacity: 50 });
+    builtinBrush.begin(ctx, { x: 5.5, y: 5 }, {});
+    builtinBrush.end(ctx);
+    await settle(project);
+    const [char, fg, bg] = shownAt(project, 5, 2), paint = paintAt(project, 5, 4);
+    expect([char, near(fg, [255, 127, 127]), near(bg, [128, 0, 127])]).toEqual(['A', true, true]); // pink on purple: still a letter
+    project.undo();
+    stroke([{ x: 5.5, y: 5 }]);
+    await settle(project);
+    const [char2, fg2, bg2] = shownAt(project, 5, 2), paint2 = paintAt(project, 5, 4);
+    expect([char2, near(fg2, fg), near(bg2, bg)]).toEqual(['A', true, true]);
+    expect(paint2).toMatchObject({ r: paint.r, g: paint.g, b: paint.b });
+    expect(paint2.a).toBeCloseTo(paint.a, 1);
+    expect(project.editCellAt(5, 2)).toMatchObject({ char: 'A', fg: '#ffffff', bg: '#0000ff' });
+  });
+}
+
+// The cells a brush can meet on a layer: clear, painted, a letter with and without paint over it, a blank cell of the
+// layer's own in a color (paint to Colors only), and a frozen one.
+async function meadow(calls) {
+  const made = await painter(calls, { tab: 'output' });
+  const { project } = made;
+  project.putEditPixels([{ x: 2, y: 4, r: 10, g: 200, b: 30, a: 0.5 }, { x: 8, y: 4, r: 200, g: 100, b: 0, a: 0.25 }]);
+  project.writeEditCells([
+    { col: 6, row: 2, attrs: { char: 'A', fg: '#ffffff', bg: '#0000ff' } },
+    { col: 8, row: 2, attrs: { char: 'B', fg: '#ffffff', bg: '#0000ff' } },                    // with paint over it (8, 4)
+    { col: 10, row: 2, attrs: { char: ' ', fg: '#000000', bg: '#0000ff' } },                  // shows its blue: paint to Colors only
+  ]);
+  project.commitEdit();
+  project.putEditPixels([{ x: 12, y: 4, r: 9, g: 9, b: 9, a: 1 }, { x: 12, y: 5, r: 9, g: 9, b: 9, a: 1 }]);
+  project.commitEdit();
+  project.setEditCells(new Map([...project.editCells, ['12,2', Object.freeze({ char: '%', fg: '#ff0000', bg: '#ffffff', frozen: true })]]), ['12,2']);
+  await settle(project);
+  return made;
+}
+const SPOTS = [[0, 4], [2, 4], [6, 4], [8, 4], [10, 4], [12, 4]]; // clear, paint, a letter, a letter under paint, a colored blank, frozen
+
+test('own reads the paint a write lands on: a letter reads as the paint over it, a colored blank cell as its color, and written back nothing changes', async () => {
+  const read = [];
+  const { project, stroke } = await meadow({
+    move(from, to, paint) {
+      for (const [x, y] of SPOTS) {
+        const own = paint.own(x, y);
+        read.push(own);
+        paint.set(x, y, own, own ? own.a : 0);
+      }
+    },
+  });
+  const cells = () => JSON.stringify([[...project.editCells], SPOTS.map(([x, y]) => paintAt(project, x, y))]);
+  const before = cells(), version = project.history.version;
+  stroke([at(0, 4)]);
+  expect(read[0]).toBe(null);
+  expect(near([read[1].r, read[1].g, read[1].b], [10, 200, 30])).toBe(true); // kept at half alpha: a step of rounding
+  expect(read[2]).toBe(null);                                   // the letter isn't paint
+  expect(near([read[3].r, read[3].g, read[3].b], [200, 100, 0])).toBe(true); // the paint over the letter
+  expect(read[3].a).toBeCloseTo(0.25, 2);
+  expect(read[4]).toMatchObject({ r: 0, g: 0, b: 255, a: 1 });  // what it shows, which Colors only makes paint of
+  expect(read[5]).toMatchObject({ r: 9, g: 9, b: 9, a: 1 });    // a frozen cell's paint, under it
+  expect(cells()).toBe(before);
+  expect([project.history.version, project._stroke]).toEqual([version, null]);
+});
+
+test('set makes a pixel\'s paint exactly a color at an alpha, and clears it at 0, where put lays over what was there', async () => {
+  let call = 0;
+  const { project, workspace, stroke } = await meadow({
+    move(from, to, paint) {
+      if (++call > 1) return;
+      paint.set(2, 4, RED, 0.25);          // over paint at 0.5: thinner, where a put could only add
+      paint.set(8, 4, null, 0);            // the paint over a letter cleared: the letter stays
+      paint.set(0, 4, BLUE, 0.5);
+      paint.put(0, 5, BLUE, 1);
+      paint.set(0, 5, GREEN, 1);           // the last write to a pixel wins, whichever call made it
+      paint.set(0, 6, RED, 1);
+      paint.put(0, 6, GREEN, 0.5);         // over what the stroke began with (clear), not over the red
+      paint.set(1, 4, RED, NaN);           // not a number: ignored
+      paint.set(1.5, 4, RED, 1);
+      paint.set(1, 99, RED, 1);
+      paint.set(14, 4, null, 0);           // clear already: nothing to do
+    },
+  });
+  const version = project.history.version;
+  stroke([at(0, 4)]);
+  await settle(project);
+  expect(paintAt(project, 2, 4)).toMatchObject({ r: 255, g: 0, b: 0 });
+  expect(paintAt(project, 2, 4).a).toBeCloseTo(0.25, 2);
+  expect(paintAt(project, 8, 4)).toBe(null);
+  expect(project.editCellAt(8, 2)).toMatchObject({ char: 'B', fg: '#ffffff', bg: '#0000ff' });
+  expect(paintAt(project, 0, 4).a).toBeCloseTo(0.5, 2);
+  expect(paintAt(project, 0, 5)).toMatchObject({ r: 0, g: 255, b: 0, a: 1 });
+  expect(paintAt(project, 0, 6)).toMatchObject({ r: 0, g: 255, b: 0 });
+  expect(paintAt(project, 0, 6).a).toBeCloseTo(0.5, 2);
+  expect(paintAt(project, 1, 4)).toBe(null);
+  expect(project.editCellAt(7, 2)).toBe(undefined); // (14, 4)'s cell: a clear pixel cleared leaves no ▄ behind
+  expect(project.history.version).toBe(version + 1);
+  // On the base, where every pixel is opaque, set is put: the color at its alpha over what shows.
+  workspace.pickLayer('base');
+  call = 0;
+  stroke([at(0, 4)]);
+  expect(project.baseColorAt(0, 4)).toBe('#000080');
+});
