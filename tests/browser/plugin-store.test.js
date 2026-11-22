@@ -83,15 +83,15 @@ test('a newer version replaces it and keeps it off; without the theme in use, th
   const { store, workspace } = stores();
   await installed(store);
   await store.setEnabled('phosphor.midnight', false);
-  const read = await store.read(file(changed((m) => { m.version = '1.2.0'; })));
-  expect(read.replaces.manifest.version).toBe('1.1.0');
+  const read = await store.read(file(changed((m) => { m.version = '1.3.0'; })));
+  expect(read.replaces.manifest.version).toBe('1.2.0');
   await store.install(read.manifest);
   expect(store.plugins).toHaveLength(1);
-  expect(store.plugins[0]).toMatchObject({ enabled: false, manifest: { version: '1.2.0' } });
+  expect(store.plugins[0]).toMatchObject({ enabled: false, manifest: { version: '1.3.0' } });
 
   await store.setEnabled('phosphor.midnight', true);
   workspace.theme = MIDNIGHT;
-  await installed(store, changed((m) => { m.version = '1.3.0'; m.themes[0].id = 'dusk'; }));
+  await installed(store, changed((m) => { m.version = '1.4.0'; m.themes[0].id = 'dusk'; }));
   expect(workspace.theme).toBe('dark');
 });
 

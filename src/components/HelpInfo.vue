@@ -191,7 +191,7 @@ div.help-tooltip {
   text-align: center;
   transition: opacity 0.2s ease, transform 0.2s ease;
   transform: translateY(5px);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--shadow) 60%, transparent);
   background: var(--black);
   color: var(--white);
 }

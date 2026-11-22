@@ -32,7 +32,7 @@
         "phosphor": 1,
         "id": "phosphor.midnight",
         "name": "Midnight",
-        "version": "1.1.0",
+        "version": "1.2.0",
         "author": "Phosphor",
         "description": "A deep blue theme for late nights.",
         "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight",
@@ -45,11 +45,14 @@
             "name": "Midnight",
             "base": "dark",
             "colors": {
+              "white": "#eef2ff",
+              "black": "#05070f",
               "background": "#0b1020",
               "background-highlight": "#3d59a140",
               "accent": "#7aa2f7",
               "accent-hot": "#7dcfff",
               "accent-hover": "#b4f9f8",
+              "accent-glow": "#7dcfff33",
               "accent-faint": "#7aa2f70d",
               "danger": "#f7768e",
               "danger-hover": "#ff5c7a",
@@ -70,12 +73,17 @@
               "text-dim": "#a9b1d6",
               "text-muted": "#6f7bb0",
               "text-faint": "#4b5684",
-              "text-inverted": "#0b1020"
+              "text-inverted": "#0b1020",
+              "shadow": "#02040c",
+              "guide": "#ff9e64",
+              "toast": "#e0af68",
+              "toast-text": "#0b1020",
+              "wand-fill": "#bb9af74d"
             }
           }
         ]
       },
-      "manifestHash": "e39d79ac7bffb826941fde48f10e12e960bbc08c3ac655832ec1468e0ce01edd"
+      "manifestHash": "7f9a435a42a988dfc347ea0c69f024afdf7fce92c12e141ab00f93bc95d5b16b"
     },
     {
       "official": true,

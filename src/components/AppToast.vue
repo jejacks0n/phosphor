@@ -44,10 +44,10 @@ div.app-toast {
   max-width: min(560px, calc(100vw - 32px));
   padding: 7px 14px;
   border-radius: 6px;
-  background: #e0b050;
-  color: var(--black);
+  background: var(--toast);
+  color: var(--toast-text);
   font-size: 12px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--shadow) 50%, transparent);
   cursor: pointer; /* a click closes it */
 }
 div.app-toast.two { /* two buttons don't squeeze the message: they go under it, together, when the row is too narrow */

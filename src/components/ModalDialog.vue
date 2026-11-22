@@ -88,7 +88,7 @@ dialog.modal-dialog {
   border: 1px solid var(--border-light);
   border-radius: 12px;
   color: var(--text);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  box-shadow: 0 20px 40px color-mix(in srgb, var(--shadow) 60%, transparent);
 }
 
 dialog.modal-dialog[open] { /* only while open: closed, the dialog's hidden */

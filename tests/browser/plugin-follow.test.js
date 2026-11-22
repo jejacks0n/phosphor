@@ -84,7 +84,7 @@ test('a save that is not a good manifest keeps the last good version and says wh
   await write('{nope');
   expect(await store.reload(ID)).toBe(false);
   expect(store.problems[ID]).toBe('That file isn\'t a plugin\'s manifest.');
-  expect(store.plugins[0].manifest.version).toBe('1.1.0');
+  expect(store.plugins[0].manifest.version).toBe('1.2.0');
   await write(midnight);
   expect(await store.reload(ID)).toBe(true);
   expect(store.problems[ID]).toBeUndefined();

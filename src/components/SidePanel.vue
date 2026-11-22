@@ -214,7 +214,7 @@ div.side-panel.overlay {
   margin: 0;
   padding-right: env(safe-area-inset-right, 0px);
   border-radius: 0;
-  box-shadow: -4px 0 12px rgba(0, 0, 0, 0.4);
+  box-shadow: -4px 0 12px color-mix(in srgb, var(--shadow) 40%, transparent);
   transition: transform 0.2s ease;
 }
 @starting-style {

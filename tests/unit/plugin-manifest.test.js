@@ -94,9 +94,13 @@ test('optional fields left out read as empty', () => {
 test('the slots are the color properties of :root in global.css', () => {
   const css = readFileSync(new URL('../../src/assets/global.css', import.meta.url), 'utf8');
   const root = css.slice(css.indexOf(':root {'), css.indexOf('}', css.indexOf(':root {')));
-  const NOT_SLOTS = ['logo', 'display-font-family', 'ui-font-family', 'display-font-size', 'display-line-height', 'white', 'black', 'accent-glow'];
+  const NOT_SLOTS = ['logo', 'display-font-family', 'ui-font-family', 'display-font-size', 'display-line-height'];
   const declared = [...root.matchAll(/^\s*--([a-z0-9-]+):/gm)].map(([, name]) => name).filter((name) => !NOT_SLOTS.includes(name));
   expect([...COLOR_SLOTS]).toEqual(declared);
+  // The slots a theme has had since the first: none may go, or a kept theme would be refused.
+  for (const slot of ['background', 'accent', 'surface-0', 'border', 'text', 'text-inverted']) expect(COLOR_SLOTS).toContain(slot);
+  for (const slot of ['white', 'black', 'accent-glow', 'shadow', 'guide', 'toast', 'toast-text', 'wand-fill']) expect(COLOR_SLOTS).toContain(slot);
+  expect(COLOR_SLOTS).toHaveLength(34);
 });
 
 // The store reads a kept manifest again on every load: what was accepted once must be accepted again.

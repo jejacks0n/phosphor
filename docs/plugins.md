@@ -22,7 +22,7 @@ it came from ("From a folder", "From the marketplace"). An Official badge marks 
 - **Install from a folder…** asks for a folder.
 - You can also drop a folder, a `.zip` or a manifest on the dialog.
 
-- **Replacing**: installing a plugin you already have asks "Replace Midnight 1.1.0 with 1.2.0?". The new version keeps
+- **Replacing**: installing a plugin you already have asks "Replace Midnight 1.2.0 with 1.3.0?". The new version keeps
   the old one's On or Off.
 - **On and Off**: each plugin has a switch. A plugin that's off keeps its place in the list, but nothing of it is
   offered: its themes, solvers, brushes, shapes and filters.
@@ -70,7 +70,7 @@ installed."
 
 ## Installing a plugin
 
-Before anything is installed it asks, for example "Install Midnight 1.1.0?", by whom, and what it adds. A plugin with
+Before anything is installed it asks, for example "Install Midnight 1.2.0?", by whom, and what it adds. A plugin with
 only themes says "Adds 1 theme. Runs no code." A plugin with a script says "Adds 1 theme and a script." (or "Adds a
 script.") and, under it, "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from." Nothing
 of the plugin runs before you press Install: Phosphor reads the manifest and the script's text to ask, and nothing more.
@@ -147,7 +147,7 @@ ids starting `phosphor.` are kept for the official plugins:
   "phosphor": 1,
   "id": "phosphor.midnight",
   "name": "Midnight",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "author": "Phosphor",
   "description": "A deep blue theme for late nights.",
   "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/midnight",
@@ -204,9 +204,19 @@ art's own colors aren't a theme's):
 | `border`, `border-subtle`, `border-light` | Borders, from a button's to a list's lines to the dialogs' edges. (`border-dark` is a slot nothing uses yet.) |
 | `text`, `text-dim`, `text-muted`, `text-faint` | Words, from the brightest to hints and placeholders. |
 | `text-inverted` | Words on a primary button. |
+| `white`, `black` | Words and icons on a chosen button or tab (`white`). Tooltips' ground, the rings around color swatches and the Brush's circle, and the ground behind a Marketplace preview and a room's picture (`black`). |
+| `accent-glow` | The glow around a focused field and behind a chosen tab's words. Left out, it's worked out from `accent`. |
+| `shadow` | Every drop shadow: under buttons, menus, panels, dialogs and the toast. Each keeps its own strength, so give the color whole (`#rrggbb`). |
+| `guide` | The guides, their ticks on the rulers, and the label while one is dragged. |
+| `toast`, `toast-text` | The toast's ground and its words. |
+| `wand-fill` | The Magic Wand's tint over what it selected. Its see-through is its own, so give it as `#rrggbbaa`. |
 
-White and black, the glow behind a chosen button (worked out from `accent`), shadows and backdrops, the guides, the
-warning toast and the Magic Wand's fill aren't slots yet.
+The last eight slots (from `white` down) are newer than the rest. A copy of Phosphor from before a slot was added
+refuses a theme that sets it, and leaves it out of its Marketplace, so a theme meant for older copies too leaves the
+newer slots out.
+
+Not slots: the backdrops behind dialogs, the thin dark rings that keep a guide or another person's cursor visible over
+any art, the logo and the fonts.
 
 A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
 doesn't know are left out, except that a manifest from a format newer than Phosphor's is refused. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as

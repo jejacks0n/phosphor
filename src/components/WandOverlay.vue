@@ -5,6 +5,7 @@
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
 import { viewWindow, viewIn } from '@/lib/viewWindow';
 import { ctx2d } from '@/lib/Canvas';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const props = defineProps({
   wand: { type: Object, default: null },    // workspace.wand, in this view
@@ -37,7 +38,8 @@ function draw() {
   const { mask, width, height } = wand;
   const on = (x, y) => x >= 0 && y >= 0 && x < width && y < height && mask[y * width + x] === 1;
   const edges = new Path2D();
-  ctx.fillStyle = 'rgba(90, 160, 255, 0.3)';
+  // The tint is the theme's (--wand-fill on <html>, global.css): read as it's drawn, since a canvas takes no custom property.
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--wand-fill').trim() || '#5aa0ff4d';
   for (let y = win.row; y < win.row + win.rows; y++) {
     for (let x = win.col; x < win.col + win.cols; x++) {
       if (!on(x, y)) continue;
@@ -58,7 +60,8 @@ function draw() {
 }
 const queue = () => { frame ||= requestAnimationFrame(draw); };
 
-watch(() => [props.wand, props.unit, props.display, props.tint], queue);
+const workspace = useWorkspaceStore();
+watch(() => [props.wand, props.unit, props.display, props.tint, workspace.theme], queue); // a theme picked: its tint, on the next frame
 let observer = null;
 onMounted(() => {
   viewport = props.display?.closest('article') ?? null;

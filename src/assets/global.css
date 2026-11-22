@@ -48,6 +48,13 @@
   --text-muted: #888;
   --text-faint: #666;
   --text-inverted: #000;
+
+  /* Over the art, and what floats over the page */
+  --shadow: #000;          /* every drop shadow's color; each keeps its own strength */
+  --guide: #22e3ff;        /* the guides, their ticks on the rulers and the label dragging one (GuideRulers.vue) */
+  --toast: #e0b050;        /* the toast's ground and its words (AppToast.vue) */
+  --toast-text: #000;
+  --wand-fill: #5aa0ff4d;  /* the Magic Wand's tint over what it selected (WandOverlay.vue) */
 }
 
 html, body {
@@ -86,7 +93,7 @@ button {
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   color: var(--text-dim);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 20%, transparent);
   touch-action: manipulation;
 }
 @media (hover: hover) { /* a tap on a touch screen leaves no hover look behind */
@@ -95,7 +102,7 @@ button {
     background: var(--surface-3);
     border-color: var(--accent);
     color: var(--text);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 40%, transparent);
   }
 }
 /* Pressed: on every device (the hover look is for pointers that hover). Quick in, so a tap shows it. */
@@ -195,7 +202,7 @@ button.close {
   transition: background-color, transform, border-color 0.2s ease;
   background: var(--surface-1);
   border: 2px solid var(--accent);
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--shadow) 50%, transparent);
   color: var(--text);
 }
 @media (hover: hover) {
@@ -314,14 +321,14 @@ input[type=color] {
   border-radius: 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 20%, transparent);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 input[type=color]:hover {
   transform: translateY(-1px);
   background: var(--surface-3);
   border-color: var(--accent);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 40%, transparent);
 }
 input[type=color]::-webkit-color-swatch-wrapper {
   padding: 0;
@@ -369,7 +376,7 @@ input[type=range]::-webkit-slider-thumb { /* AnimationBar's --thumb follows this
   margin-top: -7px;
   transition: all 0.2s ease;
   background: var(--accent-hot);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow) 80%, transparent);
   border: 2px solid var(--border-subtle);
 }
 input[type=range]::-moz-range-thumb {
@@ -379,7 +386,7 @@ input[type=range]::-moz-range-thumb {
   cursor: pointer;
   transition: all 0.2s ease;
   background: var(--accent-hot);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--shadow) 80%, transparent);
   border: 2px solid var(--border-subtle);
 }
 input[type=range]:hover::-webkit-slider-thumb,
@@ -436,7 +443,7 @@ span.value-tooltip {
   visibility: hidden;
   transition: opacity 0.1s ease-out, transform 0.1s ease-out;
   z-index: 100;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--shadow) 50%, transparent);
   white-space: nowrap;
 }
 span.value-tooltip::after {
@@ -550,11 +557,11 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
 
 /* :where() keeps these as specific as they were, so a component's own button styles still win. */
 :where([data-theme="light"]) button:not(.primary) {
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--shadow) 20%, transparent);
 }
 @media (hover: hover) {
   :where([data-theme="light"]) button:not(.primary):hover {
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 8px color-mix(in srgb, var(--shadow) 20%, transparent);
   }
 }
 

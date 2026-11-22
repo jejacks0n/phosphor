@@ -503,7 +503,7 @@ div.palette-layer {
   background: var(--surface-1);
   border: 1px solid var(--accent);
   border-radius: 10px;
-  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.65);
+  box-shadow: 0 10px 34px color-mix(in srgb, var(--shadow) 65%, transparent);
   overflow: hidden;
   outline: none;
   transition: width 0.25s ease;
