@@ -1,6 +1,6 @@
 // Lospec's palettes as this app reads them: the slug a typed link or name means, the page and the API address a slug
-// has, and an answer from the API read as a palette. Nothing here fetches; the answer is a stranger's, so its colors
-// are checked and its words cut before anything shows them.
+// has, an answer from the API read as a palette, and getPalette, the one fetch, made only when Get is pressed. The
+// answer is a stranger's, so its size is capped, its colors checked and its words cut before anything shows them.
 import { firstColors } from './colorList.js';
 
 export const SLUG = /^[a-z0-9-]{1,100}$/;
@@ -36,4 +36,49 @@ export function readPalette(data, slug) {
   }
   const { colors, of } = firstColors(list.map((c) => `#${c.toLowerCase()}`));
   return { slug, name: words(data.name, slug), author: words(data.author, ''), colors, of };
+}
+
+const MOST_BYTES = 64 * 1024;
+const TIMEOUT_MS = 10_000;
+
+// A body of at most `most` bytes as text, or Error('tooBig') once past it, read no further.
+async function cappedText(response, most) {
+  if (!response.body) return '';
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let size = 0, text = '';
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) return text + decoder.decode();
+    size += value.byteLength;
+    if (size > most) {
+      reader.cancel().catch(() => {});
+      throw new Error('tooBig');
+    }
+    text += decoder.decode(value, { stream: true });
+  }
+}
+
+// The palette a slug names on Lospec, asked of its API address alone (no redirect followed, no credentials sent), or an
+// Error saying which way it failed: 'notFound' (a 404, or an answer saying error), 'unreachable' (no answer, or one
+// cut off), 'notPalette' (a slug that isn't one, which asks nothing, or an answer that isn't a palette or is too big).
+// `fetch` is passed in so a plain Node script and the tests can give their own.
+export async function getPalette(slug, { fetch = globalThis.fetch } = {}) {
+  if (typeof slug !== 'string' || !SLUG.test(slug)) throw new Error('notPalette');
+  let response, text;
+  try {
+    response = await fetch(apiOf(slug), { redirect: 'error', credentials: 'omit', signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch {
+    throw new Error('unreachable');
+  }
+  if (response.status === 404) throw new Error('notFound');
+  if (!response.ok) throw new Error('unreachable');
+  try {
+    text = await cappedText(response, MOST_BYTES);
+  } catch (error) {
+    throw new Error(error.message === 'tooBig' ? 'notPalette' : 'unreachable', { cause: error });
+  }
+  let data;
+  try { data = JSON.parse(text); } catch { throw new Error('notPalette'); }
+  if (data && typeof data === 'object' && 'error' in data) throw new Error('notFound');
+  return readPalette(data, slug);
 }

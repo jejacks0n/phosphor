@@ -367,7 +367,18 @@
     "use": "Utiliser",
     "inUse": "Utilisée",
     "replaced": "Les couleurs de ce dessin ont été remplacées.",
-    "putBack": "Remettre"
+    "putBack": "Remettre",
+    "notHere": "Pas ici ?",
+    "getPlaceholder": "Le nom d'une palette ou son lien lospec.com",
+    "get": "Prendre sur Lospec",
+    "getting": "Récupération…",
+    "cut": "Les 256 premières de ses {n} couleurs ont été gardées.",
+    "errors": {
+      "notFound": "Lospec n'a pas de palette nommée {name}.",
+      "unreachable": "Impossible de joindre Lospec. Réessayez.",
+      "notPalette": "Ce n'est pas une palette que Phosphor sait lire.",
+      "noName": "Tapez le nom d'une palette ou collez son lien lospec.com."
+    }
   },
   "colorList": {
     "swatch": "{hex}, {n} sur {count}",

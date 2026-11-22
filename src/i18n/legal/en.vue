@@ -161,6 +161,8 @@ const emit = defineEmits(['open']);
       Pages, which, like any web host, receives your IP address when your browser loads the site.</p>
     <p>When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request
       and your IP address. The list of plugins itself comes from our own site.</p>
+    <p>When you get a palette from Lospec by name or link, your browser requests it from lospec.com, which sees the request
+      and your IP address. The palettes that come with Phosphor need no request.</p>
 
     <h2>The SOCIAL Tab</h2>
     <p>Nothing from the SOCIAL tab runs until you open that tab (or follow a link from one of our emails). From

@@ -32,7 +32,7 @@ export function buildInfo({ desktop = false } = {}) {
 // The built page's Content-Security-Policy: the web build sends it as a header (the _headers file, see securityHeaders;
 // header: true adds frame-ancestors, which a <meta> can't carry) and the desktop build as a <meta>. Scripts only from here,
 // Turnstile, and the page's own inline ones by hash; connections only to the SOCIAL server (both the one built in
-// and the local one, as config.js picks by hostname), Turnstile, and raw GitHub files (the plugin marketplace). Styles stay open to inline ones: the icons are
+// and the local one, as config.js picks by hostname), Turnstile, raw GitHub files (the plugin marketplace) and Lospec (Get from Lospec, in the Colors dialog). Styles stay open to inline ones: the icons are
 // SVG markup with style attributes. Not in development, where Vite's own client needs more.
 // The desktop build (VITE_DESKTOP=1) has no SOCIAL server and no Turnstile: it connects only to rooms' sockets (ws:),
 // and its marketplace fetches are the main process's (desktop/pluginList.js).
@@ -48,7 +48,7 @@ export function contentSecurityPolicy(html, api, { desktop = false, header = fal
       "connect-src 'self' ws:",
     ] : [
       `script-src 'self' blob: ${TURNSTILE} ${inline.join(' ')}`,
-      `connect-src 'self' ${servers.join(' ')} ${TURNSTILE} https://raw.githubusercontent.com`,
+      `connect-src 'self' ${servers.join(' ')} ${TURNSTILE} https://raw.githubusercontent.com https://lospec.com`,
       `frame-src ${TURNSTILE}`,
     ]),
     "img-src 'self' data: blob:",
