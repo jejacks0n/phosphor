@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch, onMounted, useTemplateRef } from 'vue';
+import { ref, shallowRef, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useResizeObserver } from '@vueuse/core';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -11,9 +11,10 @@ import ColorPalettesPage from '@/components/ColorPalettesPage.vue';
 // The color layer: the color box in the character palette layer's frame (FloatingPanel), opened by the color pair's
 // chips, Alt+F and Alt+B, or a gradient's stop (workspace.openColors), and on its Palettes page by the settings column's
 // Palettes link. Its pages are Colors (ColorsPage), the picker for the slot open, small; and Palettes
-// (ColorPalettesPage), the drawing's colors and the palette library, the big size. It's mounted exactly while
-// workspace.colorBox is set, and the two layers show one at a time: this one opening closes the character palette
-// layer, and that one opening closes this.
+// (ColorPalettesPage), the drawing's colors and the palette library, the big size. It's mounted while workspace.colorBox
+// is set, and however it goes, it clears it, as the character palette layer clears its own: so it closes with the drawing
+// and on a switch away from the art, and an opener that switches first (Palettes from SAUCE) opens a new one after. The
+// two layers show one at a time: this one opening closes the character palette layer, and that one opening closes this.
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
 const panel = useTemplateRef('panel');
@@ -29,11 +30,15 @@ const WIDTH = 280;
 // window's, or the side panel's edge dragged, which leaves the layer open. With no pair beside it (over the start
 // screen), it sits at the right, as the character palette layer does.
 const left = ref(null);
-const bar = () => panel.value?.root?.offsetParent; // what `left` is measured from: the toolbar
+// What `left` is measured from: the toolbar, kept from the first time the frame floats in it, since opened on Palettes
+// as a dialog (fixed, on a smaller window) it has none until Colors.
+const bar = shallowRef(null);
+let shrinking = null; // the width's move back to Colors, which the left waits out (see the watch below)
 const place = () => {
-  const el = panel.value?.root, box = bar()?.getBoundingClientRect();
-  if (!box) return; // not laid out
-  const pair = bar().querySelector('.color-pair')?.getBoundingClientRect();
+  const el = panel.value?.root;
+  if (shrinking || !el?.offsetParent) return; // waiting, not laid out, or a dialog
+  bar.value = el.offsetParent;
+  const box = bar.value.getBoundingClientRect(), pair = bar.value.querySelector('.color-pair')?.getBoundingClientRect();
   const frame = Math.min(onPalettes.value ? BIG_WIDTH : WIDTH, box.width - 20) + el.offsetWidth - el.clientWidth;
   left.value = pair ? Math.min(pair.left - box.left, box.width - 10 - frame) : null;
 };
@@ -59,9 +64,20 @@ const onKeyDown = (event) => {
   event.preventDefault();
 };
 
-watch(onPalettes, () => {
-  place();
+// Growing to Palettes, the new left comes at once, so the right edge never passes the toolbar's 10px line as the width
+// moves. Shrinking back, the left waits until the width is done, a toolbar's resize meanwhile too: moved at once, it
+// would put the frame, still as wide as Palettes for the move's 0.25s (coming back from the dialog too), past that
+// line. Then it hops under the pair.
+watch(onPalettes, async (wide) => {
   keepKeys();
+  shrinking = null;
+  if (!wide) {
+    await nextTick();
+    shrinking = panel.value?.root.getAnimations().find((move) => move.transitionProperty === 'width') ?? null;
+    await shrinking?.finished.catch(() => {}); // cut short by Palettes again, or the layer closed
+    shrinking = null;
+  }
+  place();
 });
 onMounted(() => {
   workspace.paletteLayerOpen = false;
@@ -71,6 +87,7 @@ onMounted(() => {
 watch(() => workspace.paletteLayerOpen, (open) => {
   if (open) close();
 });
+onBeforeUnmount(close);
 </script>
 
 <template>
