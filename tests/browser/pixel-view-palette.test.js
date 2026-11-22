@@ -8,6 +8,7 @@ import { rectShape } from '@/document/shapes.js';
 import { rgb2hex, sharedIndex } from '@/lib/ColorUtils.js';
 import { typeText } from '@/composables/useTextTool.js';
 import { ctx2d } from '@/lib/Canvas.js';
+import brush from '@/tools/brush';
 
 const COLS = 40, ROWS = 40;
 
@@ -101,5 +102,66 @@ test('a repeated color moved or taken out of the list leaves what was painted wi
     project.palette = palette;
     await settle(project);
     expect(shown().fg.hex.toLowerCase()).toBe('#ff0000');
+  }
+});
+
+// A bug report: a palette with no black chosen, a blank canvas (dark blue, the list's nearest color to black), a white
+// stroke with the Brush, and the PIXEL view's background turned black. A stroke on the base, with no layer over it, drew
+// the output again from the picture as it is before the list's colors and never snapped it; the cells were right.
+const NO_BLACK = '#1a1c2c #5d275d #b13e53 #ef7d57 #ffcd75 #a7f070 #38b764 #257179 #29366f #3b5dc9 #41a6f6 #73eff7 #f4f4f4 #94b0c2 #566c86 #333c57';
+const brushed = (app, from, to) => {
+  const ctx = { ...app, view: 'input' }, at = (x) => ({ x: x + 0.5, y: 4.5 });
+  app.workspace.editFgColor = '#ffffff';
+  brush.begin(ctx, at(from), {});
+  brush.move(ctx, at(from), at(to));
+  return () => brush.end(ctx);
+};
+// The shown colors that aren't the palette's.
+const offPalette = (project) => {
+  const palette = new Set(project.activePalette.map((c) => c.hex.toLowerCase()));
+  return [...shownColors(project)].filter((hex) => !palette.has(hex));
+};
+
+test('a stroke on the base leaves the PIXEL view in the list\'s colors: a blank canvas under a list with no black stays its darkest color', async () => {
+  const app = await createTestApp(), { project } = app;
+  Object.assign(project, { quantize: 'palette', palette: NO_BLACK });
+  await project.setBlankCanvas({ cols: 20, rows: 20 });
+  await settle(project);
+  expect([...shownColors(project)]).toEqual(['#1a1c2c']);
+  const end = brushed(app, 3, 8);
+  expect(shownAt(project, 18, 18)).toBe('#1a1c2c');          // while the stroke is open, away from it
+  expect(offPalette(project)).toEqual([]);
+  end();
+  await settle(project);
+  expect(shownAt(project, 18, 18)).toBe('#1a1c2c');
+  expect(shownAt(project, 5, 4)).toBe('#f4f4f4');            // the stroke, in the list's nearest to white
+  expect(offPalette(project)).toEqual([]);
+  brushed(app, 10, 14)();                                    // a second stroke redraws only its own part: that too
+  await settle(project);
+  expect(shownAt(project, 12, 4)).toBe('#f4f4f4');
+  expect(offPalette(project)).toEqual([]);
+  project.undo();                                            // and what an undo uncovers, down to a base with no pixels
+  await settle(project);
+  expect(shownAt(project, 12, 4)).toBe('#1a1c2c');
+  expect(offPalette(project)).toEqual([]);
+  project.undo();
+  await settle(project);
+  expect([...shownColors(project)]).toEqual(['#1a1c2c']);
+});
+
+test('and a picture under a color list stays in the list\'s colors when its base is painted on, as it does under Limited count', async () => {
+  for (const settings of [{ quantize: 'palette', palette: NO_BLACK }, { quantize: 'count', colorCount: 6 }]) {
+    const app = await createTestApp(), { project } = app;
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: ROWS, withLayer: false });
+    Object.assign(project, settings);
+    await settle(project);
+    const before = shownColors(project);
+    expect(before.size, settings.quantize).toBeLessThanOrEqual(16);
+    brushed(app, 3, 8)();
+    await settle(project);
+    expect(offPalette(project), settings.quantize).toEqual([]);
+    project.undo();
+    await settle(project);
+    expect(offPalette(project), `${settings.quantize}, undone`).toEqual([]);
   }
 });
