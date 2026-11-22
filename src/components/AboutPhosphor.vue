@@ -1,9 +1,8 @@
 <script setup>
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import ReadingDialog from '@/components/ReadingDialog.vue';
-import ToggleGroup from '@/components/ToggleGroup.vue';
+import ModalDialog from '@/components/ModalDialog.vue';
 import { LINKED_FONTS } from '@/lib/linkedFonts';
 import { licenseUrl } from '@/lib/fontLibrary';
 
@@ -17,16 +16,15 @@ const emit = defineEmits(['close']);
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
 
-// About, or Licenses: the open-source packages this build holds, with their licenses (vite.config.js writes
-// licenses.json beside the page, and the development server answers it), read the first time it's shown. A host
-// without the file answers with the page, so the list is left out there. Switching starts at the top.
+// About, or Licenses, the dialog's two tabs, in a title's place: the open-source packages this build holds, with their
+// licenses (vite.config.js writes licenses.json beside the page, and the development server answers it), read the first
+// time it's shown. A host without the file answers with the page, so the list is left out there. Switching starts at
+// the top (the dialog's doing).
 const tabs = computed(() => [{ key: 'about', label: t('about.aboutTab') }, { key: 'licenses', label: t('about.licensesLabel') }]);
-const shown = ref({ about: true, licenses: false });
-const switcher = useTemplateRef('switcher');
+const shown = ref('about');
 const licenses = ref(null);
-watch(() => shown.value.licenses, async (on) => {
-  switcher.value?.closest('.content-container')?.scrollTo(0, 0);
-  if (!on || licenses.value) return;
+watch(shown, async (tab) => {
+  if (tab !== 'licenses' || licenses.value) return;
   licenses.value = [];
   try {
     const response = await fetch(`${import.meta.env.BASE_URL}licenses.json`);
@@ -42,16 +40,12 @@ function read(page, event) {
   opener = event.currentTarget;
   workspace.legalPage = page;
 }
-watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the reading dialog gone: while it's up, what's under it can't take focus
+watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the legal page gone: while it's up, what's under it can't take focus
 </script>
 
 <template>
-  <ReadingDialog :label="t('about.label')" @close="emit('close')">
-    <div ref="switcher" class="switcher">
-      <ToggleGroup v-model="shown" single :options="tabs" :label="t('about.label')"/>
-    </div>
-
-    <section v-if="shown.licenses" class="licenses" :aria-label="t('about.licensesLabel')">
+  <ModalDialog v-model:tab="shown" reading closable :back="false" :label="t('about.label')" :tabs="tabs" @cancel="emit('close')">
+    <section v-if="shown === 'licenses'" class="licenses" :aria-label="t('about.licensesLabel')">
       <i18n-t keypath="about.licensesIntro" tag="p">
         <template #mit>
           <a href="https://github.com/jejacks0n/phosphor/blob/main/LICENSE" target="_blank" rel="noopener">{{ t('about.mitLicense') }}</a>
@@ -212,7 +206,7 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { fl
         <p class="accent">{{ t('about.motto') }}</p>
       </div>
     </template>
-  </ReadingDialog>
+  </ModalDialog>
 </template>
 
 <style scoped>
@@ -280,12 +274,6 @@ p.version {
 
 p.accent {
   color: var(--accent);
-}
-
-div.switcher {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 24px;
 }
 
 section.licenses ul.packages {

@@ -30,15 +30,12 @@ const plugins = usePluginStore();
 onMounted(() => plugins.load().then(() => { plugins.dialogTab ??= tab.value; }));
 onMounted(() => plugins.loadMarket());
 const tab = computed(() => plugins.dialogTab ?? (plugins.plugins.length ? 'installed' : 'market'));
-const TABS = ['market', 'installed'];
-// The tabs pattern: Left and Right (wrapping) move to a tab and show it.
-function onTabKey(event) {
-  const next = { ArrowRight: 1, ArrowLeft: -1 }[event.key];
-  if (!next) return;
-  event.preventDefault();
-  plugins.dialogTab = TABS[(TABS.indexOf(tab.value) + next + TABS.length) % TABS.length];
-  nextTick(() => document.getElementById(`plugins-tab-${plugins.dialogTab}`)?.focus());
-}
+// The dialog's tabs, on its first line in a title's place (ModalDialog draws them and moves between them), each naming
+// the panel below while it's the one shown; Installed says how many.
+const tabs = computed(() => [
+  { key: 'market', label: t('plugins.market.tab'), id: 'plugins-tab-market', controls: 'plugins-panel-market' },
+  { key: 'installed', label: t('plugins.installedTab'), count: plugins.plugins.length, id: 'plugins-tab-installed', controls: 'plugins-panel-installed' },
+]);
 
 // A file or folder dropped anywhere while the dialog is up is the dialog's (the page behind it is inert): a plugin is
 // asked about, and nothing dropped sends the tab off to the file. A folder's entries are read before anything awaits.
@@ -193,26 +190,8 @@ const update = (record) => {
       @choose="answer"
       @cancel="asking = null"
   />
-  <ModalDialog v-else :title="t('plugins.title')" wide full tall :focus="false" closable @cancel="emit('close')">
+  <ModalDialog v-else :label="t('plugins.title')" :tabs="tabs" :tab="tab" wide tall :focus="false" closable @update:tab="plugins.dialogTab = $event" @cancel="emit('close')">
     <div class="plugins">
-      <div class="tabs" role="tablist" :aria-label="t('plugins.title')" @keydown="onTabKey">
-        <button
-            v-for="id in TABS"
-            :id="`plugins-tab-${id}`"
-            :key="id"
-            type="button"
-            role="tab"
-            :class="{ on: tab === id }"
-            :aria-selected="tab === id ? 'true' : 'false'"
-            :aria-controls="tab === id ? `plugins-panel-${id}` : undefined"
-            :tabindex="tab === id ? 0 : -1"
-            @click="plugins.dialogTab = id"
-        >
-          {{ id === 'market' ? t('plugins.market.tab') : t('plugins.installedTab') }}
-          <span v-if="id === 'installed'" class="count">{{ plugins.plugins.length }}</span>
-        </button>
-      </div>
-
       <p v-if="plugins.off" class="note">{{ t(STARTED_OFF) }}</p>
       <p v-if="plugins.unavailable" class="note">{{ t('plugins.unavailable') }}</p>
 
@@ -327,57 +306,6 @@ div.plugins, div[role='tabpanel'] {
 }
 
 /* The tabs, as the side panel's: words in capitals, the one shown with the accent along its foot. */
-div.tabs {
-  display: flex;
-  gap: 4px;
-  margin: 2px 0 14px;
-  border-bottom: 1px solid var(--border);
-}
-div.tabs button[role='tab'] {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: auto;
-  margin-bottom: -1px;
-  padding: 6px 12px 8px;
-  border: 0;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  box-shadow: none;
-  background: none;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  transition: color 0.3s ease;
-}
-div.tabs button[role='tab']:hover { /* not the global button lift */
-  transform: none;
-  box-shadow: none;
-  background: none;
-}
-div.tabs button[role='tab']:not(.on):hover {
-  color: var(--accent);
-}
-div.tabs button[role='tab']:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-div.tabs button[role='tab'].on {
-  border-bottom-color: var(--accent);
-  color: var(--text);
-}
-span.count {
-  padding: 0 5px;
-  border-radius: 8px;
-  background: var(--surface-2);
-  font-size: 10px;
-  letter-spacing: 0;
-  color: var(--text-muted);
-}
-
 p.intro {
   margin: 0 0 10px;
   font-size: 13px;

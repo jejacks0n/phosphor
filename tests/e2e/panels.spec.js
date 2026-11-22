@@ -9,7 +9,7 @@ test('About opens from the logo, says which build it is and who brings it, and c
   await openApp(page);
   await expect(page.locator('footer').getByRole('button', { name: 'About Phosphor' })).toHaveCount(0); // the logo is the way in
   await page.getByRole('button', { name: 'About Phosphor' }).click();
-  await expect(page.locator('dialog.reading-dialog')).toBeVisible();
+  await expect(page.locator('dialog.modal-dialog.reading')).toBeVisible();
   // The build it is: major.minor with the day it was built as the third number, and the commit
   // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
   // <meta name="phosphor-build">.
@@ -20,12 +20,12 @@ test('About opens from the logo, says which build it is and who brings it, and c
   await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)?$`));
   const meta = await page.locator('meta[name="phosphor-build"]').getAttribute('content');
   expect(meta).toMatch(new RegExp(`^v\\d+\\.\\d+\\.${today} ${sha}(-dirty)?$`));
-  await expect(page.locator('dialog.reading-dialog').getByText('Brought to you by ishifishi.work and euphio.org')).toBeVisible();
+  await expect(page.locator('dialog.modal-dialog.reading').getByText('Brought to you by ishifishi.work and euphio.org')).toBeVisible();
   await expect(page.getByRole('link', { name: 'euphio.org' })).toHaveAttribute('href', 'https://euphio.org');
   await expect(page.getByRole('listitem').filter({ hasText: 'cmang' }).getByRole('link', { name: 'Durdraw' })).toHaveAttribute('href', 'https://github.com/cmang/durdraw');
   // Switched to Licenses: the icons credited as their license asks, and the build's packages, as the build found them,
   // each opening to its license.
-  await page.locator('dialog.reading-dialog').getByRole('button', { name: 'Licenses' }).click();
+  await page.locator('dialog.modal-dialog.reading').getByRole('tab', { name: 'Licenses' }).click();
   const licenses = page.getByRole('region', { name: 'Licenses' });
   await expect(licenses.getByRole('link', { name: 'Font Awesome Free' })).toHaveAttribute('href', 'https://fontawesome.com');
   await expect(licenses.getByRole('listitem').filter({ hasText: 'Font Awesome Free' }).getByRole('link', { name: 'CC BY 4.0' }))
@@ -35,7 +35,7 @@ test('About opens from the logo, says which build it is and who brings it, and c
   await vue.locator('summary').click();
   await expect(vue.locator('pre')).toContainText('Permission is hereby granted');
   await page.getByTitle('Close').click();
-  await expect(page.locator('dialog.reading-dialog')).toBeHidden();
+  await expect(page.locator('dialog.modal-dialog.reading')).toBeHidden();
 });
 
 // The page itself never scrolls: nothing hangs below the window (the panel's footer, the language picker in it, scrolls

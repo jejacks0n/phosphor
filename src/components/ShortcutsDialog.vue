@@ -141,7 +141,7 @@ const groups = computed(() => [
 </script>
 
 <template>
-  <ModalDialog :title="t('shortcuts.title')" @cancel="emit('close')">
+  <ModalDialog :title="t('shortcuts.title')" closable full @cancel="emit('close')">
     <div class="groups">
       <section v-for="group in groups" :key="group.title">
         <h4>{{ group.title }}</h4>
@@ -155,7 +155,7 @@ const groups = computed(() => [
       <p v-if="isMac" class="note">{{ t('shortcuts.macFnNote') }}</p>
     </div>
     <div class="actions">
-      <button class="primary" @click="emit('close')">{{ t('common.done') }}</button>
+      <button class="primary" autofocus @click="emit('close')">{{ t('common.done') }}</button><!-- focus starts here, not on the × -->
     </div>
   </ModalDialog>
 </template>
@@ -166,6 +166,13 @@ div.groups {
   margin: 0 -18px;
   padding: 0 18px;
   overflow-y: auto;
+}
+@media (max-width: 700px) { /* the whole window: the list takes the room, Done the bottom */
+  div.groups {
+    flex: 1;
+    min-height: 0;
+    max-height: none;
+  }
 }
 
 h4 {

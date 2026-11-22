@@ -243,6 +243,22 @@ test('Cancel closes without exporting', async () => {
   }
 });
 
+test('the × beside its title closes without exporting, as Cancel does', async () => {
+  const { project } = await drawing();
+  const exported = vi.spyOn(project, 'exportFile');
+  const { closed, unmount } = mountModal();
+  try {
+    const close = document.querySelector('.modal-dialog > .head > button.close');
+    expect(close.getAttribute('aria-label')).toBe('Close');
+    expect(document.activeElement).toBe(document.querySelector('.modal-dialog input:not([type=checkbox])')); // focus still starts in the file name
+    close.click();
+    expect(closed).toHaveBeenCalled();
+    expect(exported).not.toHaveBeenCalled();
+  } finally {
+    unmount();
+  }
+});
+
 test('.ans lists each character it replaces and what it becomes; another format lists none', async () => {
   const { project } = await drawing();
   project.typeAt(2, 0, '漢', { fg: '#ffee00', bg: '#0044aa' });

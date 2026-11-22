@@ -55,8 +55,10 @@ test('the report box links the Community Guidelines, and the link sends no repor
   expect(document.querySelector('dialog')).not.toBe(null);
 });
 
+// About's two pages are tabs on its first line, in a title's place.
+const aboutTab = (name) => [...document.querySelectorAll('dialog.modal-dialog.reading > .head [role=tablist] [role=tab]')].find((b) => b.textContent.trim() === name);
 const showLicenses = async () => {
-  [...document.querySelectorAll('.switcher button')].find((b) => b.textContent === 'Licenses').click();
+  aboutTab('Licenses').click();
   await nextTick();
 };
 
@@ -67,12 +69,14 @@ test('About switches to Licenses, which lists the build\'s open-source packages 
   vi.stubGlobal('fetch', fetched);
   await mount(AboutPhosphor);
   expect(document.querySelector('section.licenses')).toBeNull();
+  expect(document.querySelector('dialog h3')).toBeNull(); // no title: the tabs say where you are
+  expect([aboutTab('About').getAttribute('aria-selected'), aboutTab('Licenses').getAttribute('aria-selected')]).toEqual(['true', 'false']);
   const links = () => [...document.querySelectorAll('dialog a')].map((a) => a.textContent);
   expect(links()).not.toContain('Font Awesome Free'); // the fonts' and icons' licenses are on Licenses, not About
   expect(links()).not.toContain('IBM VGA 8x16');
   expect(links()).toContain('Durdraw'); // thanks stay
   expect(fetched).not.toHaveBeenCalled(); // read only when it's shown
-  const top = document.querySelector('.content-container');
+  const top = document.querySelector('dialog > .body');
   top.scrollTop = 200;
   await showLicenses();
   expect(document.querySelector('header .logo')).toBeNull();
@@ -87,7 +91,7 @@ test('About switches to Licenses, which lists the build\'s open-source packages 
   expect(section.querySelector('summary').textContent).toBe('paper 0.17.0 (MIT)');
   expect(section.querySelector('details a').href).toBe('http://paperjs.org/');
   expect(section.querySelector('pre').textContent).toContain('Copyright (c) Jürg Lehni');
-  [...document.querySelectorAll('.switcher button')].find((b) => b.textContent === 'About').click();
+  aboutTab('About').click();
   await nextTick();
   expect(document.querySelector('section.licenses')).toBeNull();
   expect(document.querySelector('header .logo')).not.toBeNull();

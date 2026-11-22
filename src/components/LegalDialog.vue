@@ -1,7 +1,7 @@
 <script setup>
 import { computed, defineAsyncComponent, shallowRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import ReadingDialog from '@/components/ReadingDialog.vue';
+import ModalDialog from '@/components/ModalDialog.vue';
 import EnLegal from '@/i18n/legal/en.vue';
 
 // The Terms, the Privacy Policy and the Community Guidelines, read over the app like About. `page` is 'terms',
@@ -28,7 +28,7 @@ const dialogTitle = computed(() => t(`legal.titles.${props.page}`));
 </script>
 
 <template>
-  <ReadingDialog :key="props.page" :label="dialogTitle" @close="emit('close')">
+  <ModalDialog :key="props.page" reading closable :back="false" :label="dialogTitle" @cancel="emit('close')">
     <div class="legal-body">
       <template v-if="DESKTOP && props.page === 'privacy'">
         <h1>{{ dialogTitle }}</h1>
@@ -36,7 +36,7 @@ const dialogTitle = computed(() => t(`legal.titles.${props.page}`));
       </template>
       <component :is="legalComponent" v-else :page="props.page" @open="emit('open', $event)"/>
     </div>
-  </ReadingDialog>
+  </ModalDialog>
 </template>
 
 <style scoped>

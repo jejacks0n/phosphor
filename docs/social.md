@@ -5,7 +5,8 @@ real time.
 
 Social lives in the side panel on the right of the workspace. Its **SOCIAL** tab (marked Beta) sits beside **LAYERS**
 and is there even before you've opened any art. While you're in a room it becomes **CHAT**. Signing in, your account
-and starting a room open in boxes over everything, each with a close button (**×**) at its top right (or Escape).
+and starting a room open in boxes over everything, each with a close button (**×**) at its top right (or Escape). On a
+screen 700 pixels wide or less each box fills the window.
 
 On a narrow screen (a phone, or a window under 769 pixels wide) the side panel comes in over the art from the right
 instead: **«** at the right end of the tab bar opens it ([The Side Panel](#the-side-panel)). Everything in Social works
