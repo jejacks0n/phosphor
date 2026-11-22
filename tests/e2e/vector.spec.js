@@ -130,22 +130,22 @@ test('the Shape tool draws a rectangle, an ellipse and a 5-sided polygon that co
     expect(await selected(page)).toEqual([list.at(-1).key]);
   }
   expect((await shapeList(page)).map((s) => s.points[0].length)).toEqual([7, 7, 7]);
-  // Sides says how many, beside its slider, and follows it; the polygon, still selected, is drawn again with it, each
-  // key press one undo step.
+  // Sides says how many, beside its slider, and follows it; the polygon, still selected, is drawn again with it, a
+  // quick run of key presses one undo step.
   const sides = page.locator('.tool-setting-group').filter({ has: page.getByLabel('Sides', { exact: true }) });
   await expect(sides.locator('.readout')).toHaveText('5');
   await page.getByLabel('Sides', { exact: true }).press('ArrowRight');
   await expect(sides.locator('.readout')).toHaveText('6');
   expect((await shapeList(page)).at(-1).points).toHaveLength(6);
-  await page.getByLabel('Sides', { exact: true }).press('ArrowLeft');
-  expect((await shapeList(page)).at(-1).points).toHaveLength(5);
+  await page.getByLabel('Sides', { exact: true }).press('ArrowRight');
+  expect((await shapeList(page)).at(-1).points).toHaveLength(7);
   await settled(page);
   expect(await cells(page)).not.toBe(bare);
   await page.mouse.click(...Object.values(await gridPoint(page, 60, 10))); // a click makes nothing
   expect(await shapeList(page)).toHaveLength(3);
   await undoSteps(page, 1);
-  expect((await shapeList(page)).at(-1).points).toHaveLength(6); // the last press of Sides
-  await undoSteps(page, 4);
+  expect((await shapeList(page)).at(-1).points).toHaveLength(5); // both presses of Sides
+  await undoSteps(page, 3);
   expect(await shapeList(page)).toHaveLength(0);
 });
 
