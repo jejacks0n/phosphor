@@ -32,6 +32,8 @@ describe('font library', () => {
     expect(names(searchLibrary(index, { tags: ['chars:cp437'] }))).toEqual(['Beta', 'Frog']);
     expect(names(searchLibrary(index, { tags: ['chars:cp437', 'shape:8x8'] }))).toEqual(['Frog']);
     expect(names(searchLibrary(index, { tags: ['ready'] }))).toEqual(['Beta']);
+    expect(names(searchLibrary(index, { tags: ['machine:IBM PC', 'machine:C64'] }))).toEqual(['alpha', 'Beta']); // one group widens
+    expect(names(searchLibrary(index, { tags: ['shape:8x8', 'shape:8x16', 'chars:cp437'] }))).toEqual(['Beta', 'Frog']); // two narrow
     expect(searchLibrary(index, { query: 'alpha', tags: ['shape:8x16'] })).toEqual([]);
     expect(tagsOf(index.linked[0], index).map((t) => t.key)).not.toContain('collection:undefined');
     expect(tagsOf(index.fonts[0], index).map((t) => t.key)).toEqual(['machine:IBM PC', 'shape:8x16', 'chars:cp437', 'collection:viler', 'ready']);
@@ -46,14 +48,14 @@ describe('font library', () => {
     expect(tagsOf({ height: 8, chars: 'cp437' }).map((t) => t.key)).toContain('shape:8x8');
   });
 
-  it('counts tags among the current matches', async () => {
+  it('counts each tag across the whole library', async () => {
     const { tagCounts } = await mod();
-    const c = tagCounts(index, { query: 'o' });
+    const c = tagCounts(index);
     expect(c.get('shape:8x8')).toBe(2);
-    expect(c.get('shape:8x16')).toBeUndefined();
-    const p = tagCounts(index, { tags: ['chars:cp437'] });
-    expect(p.get('chars:cp437')).toBe(2);
-    expect(p.get('chars:petscii')).toBeUndefined();
+    expect(c.get('shape:8x16')).toBe(1);
+    expect(c.get('chars:cp437')).toBe(2);
+    expect(c.get('chars:petscii')).toBe(1);
+    expect(c.get('ready')).toBe(1);
   });
 
   it('finds a linked font by fontId', async () => {

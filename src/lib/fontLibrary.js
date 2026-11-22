@@ -45,9 +45,12 @@ export function tagsOf(entry) {
   return tags;
 }
 
+// Tags in one group widen (IBM PC or Amiga), tags in different groups narrow (IBM PC and 8×16); a key's group is the
+// part before its colon, or the key itself (ready).
 const matches = (entry, query, tags) => {
   const have = new Set(tagsOf(entry).map((x) => x.key));
-  if (!tags.every((k) => have.has(k))) return false;
+  const groups = new Set(tags.map((k) => k.split(':')[0]));
+  if (![...groups].every((g) => tags.some((k) => k.split(':')[0] === g && have.has(k)))) return false;
   const q = query.trim().toLowerCase();
   return !q || [entry.name, entry.machine, entry.about].some((s) => s?.toLowerCase().includes(q));
 };
@@ -58,9 +61,10 @@ export function searchLibrary(index, { query = '', tags = [] } = {}) {
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function tagCounts(index, filter) {
+// How many library fonts carry each tag, across the whole library.
+export function tagCounts(index) {
   const counts = new Map();
-  for (const e of searchLibrary(index, filter)) {
+  for (const e of [...index.fonts, ...index.linked]) {
     for (const { key } of tagsOf(e)) counts.set(key, (counts.get(key) ?? 0) + 1);
   }
   return counts;
