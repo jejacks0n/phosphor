@@ -297,8 +297,9 @@ export default class Renderer {
     if (!hold) this.#heldData = null;
     else if (partial) putRows(this.#heldData, w, ctx.getImageData(x, y, area.w, area.h).data, area);
     else this.#heldData = ctx.getImageData(0, 0, w, h).data;
-    const resolved = !!this.#resolvedFor(params); // its cells don't read the output (cellsFromOutput): it's snapped here
-    this.#snapped = (paintLayer || resolved) && this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
+    // Whatever was drawn again is snapped here, not left to cellsFromOutput: an edit's cells are rebuilt under its own
+    // pixels alone (updateCells), so a base with no layer over it, painted on or undone, showed the picture unconverted.
+    this.#snapped = this.palette?.length ? snapToPalette(this.outputCanvas, this.palette, area) : null;
     if (partial) this.#snapped = null; // only the area's
     if (this.#showsResolved(params)) this.#showResolved(ctx, params, resolvedAgain ? { x: 0, y: 0, w, h } : area);
     return changed || moved || resolvedAgain;
