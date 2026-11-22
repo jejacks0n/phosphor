@@ -21,6 +21,7 @@ import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
 import FontFilters from '@/components/FontFilters.vue';
+import CloseButton from '@/components/CloseButton.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import { loadLibrary, libraryEntryOf, libraryFile, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
@@ -436,9 +437,9 @@ const exportPalettes = () => {
         @keydown.up.down.stop
     >
       <div class="filters-head">
-        <span class="title">{{ t('palette.fonts.filters') }}</span>
+        <h3 class="title">{{ t('palette.fonts.filters') }}</h3>
         <button v-if="tags.length" class="clear-all" @click="clearTags">{{ t('palette.fonts.clearAll') }}</button>
-        <button class="close-sheet" :aria-label="t('palette.fonts.closeFilters')" :title="t('palette.fonts.closeFilters')" @click="closeSheet">×</button>
+        <CloseButton class="close-sheet" :label="t('palette.fonts.closeFilters')" @click="closeSheet"/>
       </div>
       <FontFilters v-model:closed="prefs.closed" class="sheet-body" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
       <button class="show" @click="closeSheet">{{ t('palette.fonts.showFonts', { n: matches.length }, matches.length) }}</button>
@@ -766,9 +767,19 @@ div.filters-sheet .sheet-body {
   overflow-y: auto;
 }
 
+/* Its first line as a dialog's: the title 18px in, the close button (CloseButton) 6px inside the top right corner. */
+div.filters-sheet div.filters-head {
+  padding-right: 38px;
+  padding-left: 18px;
+}
+div.filters-sheet h3.title {
+  flex: 1;
+  font-size: 16px;
+}
 div.filters-sheet button.close-sheet {
-  color: var(--text-muted);
-  font-size: 18px;
+  position: absolute;
+  top: 6px;
+  right: 6px;
 }
 
 div.filters-sheet button.show {
@@ -796,7 +807,7 @@ div.filters-head span.title {
   font-weight: 600;
 }
 
-div.filters-head button {
+div.filters-head button:not(.close-sheet) { /* Clear all; the sheet's close button is CloseButton's own */
   padding: 2px 6px;
   border: none;
   background: none;

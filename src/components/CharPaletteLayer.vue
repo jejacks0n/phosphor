@@ -14,6 +14,7 @@ import { toast } from '@/composables/useToast';
 import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import FontsPage from '@/components/FontsPage.vue';
+import CloseButton from '@/components/CloseButton.vue';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
@@ -344,7 +345,7 @@ onBeforeUnmount(() => {
 <template>
   <div v-if="dialog" class="scrim" aria-hidden="true"></div>
   <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts, maximized: fullScreen }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
-    <div class="pages">
+    <div class="pages tab-strip">
       <div class="tablist" role="tablist" :aria-label="t('palette.pages.aria')">
         <button role="tab" :class="{ on: !onFonts }" :aria-selected="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
         <button role="tab" :class="{ on: onFonts }" :aria-selected="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
@@ -352,9 +353,7 @@ onBeforeUnmount(() => {
       <button v-if="canMaximize" class="maximize" :title="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" :aria-label="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" @click="maximized = !fullScreen; keepKeys()">
         <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="fullScreen ? 'M6 2v4H2M10 2v4h4M14 10h-4v4M2 10h4v4' : 'M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4'"/></svg>
       </button>
-      <button v-if="fullWindow" class="dismiss" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">
-        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg>
-      </button>
+      <CloseButton v-if="fullWindow" class="dismiss" @click="emit('close')"/>
     </div>
     <FontsPage v-if="onFonts" ref="fontsPage" :stage="fontsStage" @acted="keepKeys"/>
     <!-- the Palettes page -->
@@ -488,6 +487,7 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
+<style scoped src="./tabStrip.css"></style>
 <style scoped>
 /* Opens from the toolbar's bottom right, inside its padding. */
 div.palette-layer {
@@ -515,55 +515,9 @@ div.palette-layer.editing {
   width: 940px;
 }
 
-/* The Palettes | Fonts tabs over the page, as the side panel's, and, taking the whole window, a plain × at the row's
-   right end. */
-div.pages {
-  display: flex;
-  align-items: stretch;
-  flex-shrink: 0;
-  height: 38px;
-  padding: 0 6px;
-  border-bottom: 1px solid var(--border);
-}
-
-div.tablist {
-  position: relative;
-  display: flex;
-  flex: 1;
-}
-
-div.pages button[role='tab'] {
-  padding: 4px 12px 0; /* as the side panel's: the label a little low in the row */
-  border: none;
-  border-radius: 0;
-  box-shadow: none;
-  background: none;
-  color: var(--text-muted);
-  font: inherit;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: color 0.3s ease;
-}
-
-div.pages button[role='tab']:not(.on):hover {
-  color: var(--accent);
-}
-
-div.pages button[role='tab']:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-div.pages button[role='tab'].on {
-  font-weight: 600;
-  color: var(--text);
-  box-shadow: inset 0 -2px var(--accent);
-}
-
-div.pages button.maximize,
-div.pages button.dismiss {
+/* The Palettes | Fonts tabs over the page (tabStrip.css, a dialog's too) and, at the row's right end, the full screen
+   toggle and, taking the whole window, the close button (CloseButton), drawn alike. */
+div.pages button.maximize {
   align-self: center;
   flex: none;
   display: flex;
@@ -574,13 +528,11 @@ div.pages button.dismiss {
   color: var(--text-muted);
 }
 
-div.pages button.maximize:hover,
-div.pages button.dismiss:hover {
+div.pages button.maximize:hover {
   color: var(--text);
 }
 
-div.pages button.maximize svg,
-div.pages button.dismiss svg {
+div.pages button.maximize svg {
   width: 14px;
   height: 14px;
   fill: none;
@@ -588,6 +540,10 @@ div.pages button.dismiss svg {
   stroke-width: 1.5;
   stroke-linecap: round;
   stroke-linejoin: round;
+}
+
+div.pages button.dismiss {
+  align-self: center;
 }
 
 /* Full screen: the whole window, on any window wider than a phone's (which has it already). */
