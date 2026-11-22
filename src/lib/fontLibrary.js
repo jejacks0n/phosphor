@@ -13,6 +13,7 @@ export const licenseUrl = (path) => (import.meta.env.VITE_DESKTOP === '1' && UPS
 
 let loading = null;
 let sauceNames = null;
+let lastFile = null; // the last font fetched, { file, promise }: a preview's fetch, which Use this font then reuses
 
 // The index, fetched once per page; a failure forgets itself so Try again refetches.
 export function loadLibrary() {
@@ -74,7 +75,16 @@ export function tagCounts(index) {
 const fail = (userMessage) => { throw Object.assign(new Error(userMessage), { userMessage }); };
 
 // One library font as a File; a fetch that fails (no network, a 404) or a file of the wrong size throws with its userMessage.
-export async function libraryFile(entry) {
+// The last one fetched is kept (the Fonts page fetches a font to show its slots, then Use this font wants it), a failure not.
+export function libraryFile(entry) {
+  if (lastFile?.file !== entry.file) {
+    const promise = fetchFile(entry);
+    promise.catch(() => { if (lastFile?.promise === promise) lastFile = null; });
+    lastFile = { file: entry.file, promise };
+  }
+  return lastFile.promise;
+}
+async function fetchFile(entry) {
   const r = await fetch(libraryUrl(entry.file)).catch(() => null);
   if (!r?.ok) fail(t('font.errors.libraryUnreachable', { name: entry.name }));
   const bytes = await r.arrayBuffer().catch(() => fail(t('font.errors.libraryUnreachable', { name: entry.name })));
@@ -108,5 +118,6 @@ export function tellUsUrl(entry, index) {
 // For tests: forget the fetched index and SAUCE names.
 export const forgetLibrary = () => {
   loading = null;
+  lastFile = null;
   sauceNames = null;
 };

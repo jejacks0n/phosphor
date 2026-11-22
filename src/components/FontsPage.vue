@@ -8,8 +8,8 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { setFontWidth } from '@/composables/useFontWidth';
-import { storedBitmapFont, registerBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
-import { narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
+import { storedBitmapFont, registerBitmapFont, releaseBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
+import { parseRawFont, narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs';
@@ -22,7 +22,7 @@ import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
 import FontFilters from '@/components/FontFilters.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
-import { loadLibrary, libraryEntryOf, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
+import { loadLibrary, libraryEntryOf, libraryFile, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -186,6 +186,23 @@ const chosen = computed(() => all.value.find((f) => f.id === chosenId.value)
   ?? (libEntry.value ? all.value.find((f) => f.id === libEntry.value.fontId) : null)
   ?? (libEntry.value ? null : all.value.find((f) => f.id === inUseId.value) ?? all.value[0] ?? null));
 const held = computed(() => (index.value && chosen.value ? libraryEntryOf(index.value, chosen.value.id) : null)); // a library font's entry, for From and License
+// A library font chosen that isn't in Yours: its file fetched to show its slots (the index holds only a sample), its face
+// registered for the page until another is previewed. While it loads, or if it can't, the sample shows instead.
+const preview = shallowRef(null); // { id, font, family, key }
+watch(() => (libEntry.value && !libEntry.value.linked && !chosen.value ? libEntry.value : null), async (entry) => {
+  if (!entry || preview.value?.id === entry.id) return;
+  try {
+    const font = parseRawFont(new Uint8Array(await (await libraryFile(entry)).arrayBuffer()), entry.name);
+    if (entry.width < 8) font.cellWidth = entry.width;
+    const family = await registerBitmapFont(font, { keep: false });
+    if (libEntry.value?.id !== entry.id) return releaseBitmapFont(fontKey(font)); // chosen away while it loaded
+    if (preview.value) releaseBitmapFont(preview.value.key);
+    preview.value = { id: entry.id, font, family, key: fontKey(font) };
+  } catch {
+    // the sample stays
+  }
+});
+const previewChars = computed(() => (preview.value?.id === libEntry.value?.id ? slotChars(preview.value.font) : null));
 const bitmap = computed(() => chosen.value?.kind === 'bitmap');
 const isDrawn = computed(() => chosen.value?.id === drawnId.value);
 const isInUse = computed(() => chosen.value?.id === inUseId.value);
@@ -194,9 +211,10 @@ const count = computed(() => (chosen.value ? palettes.countFor(chosen.value.id) 
 
 // A row's size: the drawing's font as it's drawn (cellWidth), another bitmap font at its remembered width, else its own.
 const size = (f) => (f.kind === 'bitmap' ? shapeOf(f.cellWidth ?? f.width ?? f.ownWidth, f.height) : t('palette.fonts.trueType'));
-// Drawn at its own height, or twice that when it's too small to read.
+// A row's sample drawn at the font's own height; the sheet twice that when it's too small to read.
 const keys = ref({}); // a bitmap font's id -> the key it's registered under (its blocks too: BitmapFont.fontKey)
 const familyFor = (f) => f.family ?? familyOf(keys.value[f.id] ?? f.id);
+const rowStyle = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.height ?? 16}px` });
 const styleOf = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
 // The width a bitmap font is drawn at: the drawing's own cellWidth; a stored font's remembered answer, else its own width.
 const own = computed(() => (font.value ? narrowWidthOf(font.value) : null));
@@ -415,7 +433,7 @@ const exportPalettes = () => {
           >
             <div class="name"><span>{{ f.name }}</span><em>{{ size(f) }}</em></div>
             <div v-if="linkedOf(f.id)" class="credit">{{ linkedOf(f.id).linked.credit }}</div>
-            <div class="sample" :style="styleOf(f)">{{ SAMPLE }}</div>
+            <div class="sample" :style="rowStyle(f)">{{ SAMPLE }}</div>
           </div>
         </template>
         <div class="group library-group">
@@ -477,12 +495,6 @@ const exportPalettes = () => {
         <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
-      <dl v-if="held" class="origin">
-        <template v-for="l in originLines(held)" :key="l.label">
-          <dt>{{ l.label }}</dt>
-          <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
-        </template>
-      </dl>
       <template v-if="bitmap && font">
         <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
           <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
@@ -541,6 +553,12 @@ const exportPalettes = () => {
           <div v-for="(line, i) in lines" :key="i">{{ line }}</div>
         </div>
       </template>
+      <dl v-if="held" class="origin">
+        <template v-for="l in originLines(held)" :key="l.label">
+          <dt>{{ l.label }}</dt>
+          <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
+        </template>
+      </dl>
     </div>
     <!-- a library font not in Yours -->
     <div v-else-if="libEntry" class="edit-side">
@@ -561,13 +579,19 @@ const exportPalettes = () => {
       <div class="chips tag-chips">
         <button v-for="x in tagsOf(libEntry)" :key="x.key" class="chip" @click="pickTag(x.key)">{{ tagLabel(x.key) }}</button>
       </div>
+      <template v-if="previewChars">
+        <div class="grid sheet" :style="styleOf({ kind: 'bitmap', height: libEntry.height, family: preview.family })" @mouseleave="hovered = null">
+          <span v-for="(c, i) in previewChars" :key="i" class="cell" @mouseenter="hovered = i">{{ c === '␀' ? ' ' : c }}</span>
+        </div>
+        <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : t('palette.fonts.slot', { n: hovered, char: previewChars[hovered] }) }}</div>
+      </template>
+      <GlyphSample v-else-if="!libEntry.linked" :sample="libEntry.sample" :height="libEntry.height" :width="libEntry.width" class="big" />
       <dl class="origin">
         <template v-for="l in originLines(libEntry)" :key="l.label">
           <dt>{{ l.label }}</dt>
           <dd>{{ l.prefix }}<a v-if="l.href" :href="l.href" target="_blank" rel="noopener">{{ l.text }}</a><template v-else>{{ l.text }}</template></dd>
         </template>
       </dl>
-      <GlyphSample v-if="!libEntry.linked" :sample="libEntry.sample" :height="libEntry.height" :width="libEntry.width" class="big" />
     </div>
   </div>
 </template>

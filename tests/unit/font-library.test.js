@@ -92,7 +92,18 @@ describe('font library', () => {
     expect(file.name).toBe('alpha.F08');
     expect(file.size).toBe(2048);
     expect(fetchMock.mock.calls[0][0]).toBe('/fonts/library/moebius/a.F08');
+    expect(await libraryFile(index.fonts[1])).toBe(file); // the last one fetched is kept: no second fetch
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    await expect(libraryFile(index.fonts[0])).rejects.toThrow(); // Beta is 16 tall: 100 bytes is the wrong length
+  });
+
+  it('a failed fetch is not kept: asking again fetches again', async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce({ ok: false, status: 404 }).mockResolvedValueOnce({ ok: true, arrayBuffer: async () => new ArrayBuffer(256 * 8) });
+    vi.stubGlobal('fetch', fetchMock);
+    const { libraryFile } = await mod();
     await expect(libraryFile(index.fonts[1])).rejects.toThrow();
+    expect((await libraryFile(index.fonts[1])).size).toBe(2048);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('a font that can\'t be fetched (a 404, or no network) rejects with words a person can read', async () => {

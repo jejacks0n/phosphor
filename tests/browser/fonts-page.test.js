@@ -206,7 +206,7 @@ test('lists the drawing\'s font first, then yours, then the built-in ones', asyn
   const sample = (name) => row(name).querySelector('.sample');
   expect(sample('A').textContent).toBe('Aa░▒▓█▄▀╔═╗☺');
   expect(sample('A').style.fontFamily).toContain(fontId(fontA()));
-  expect(sample('A').style.fontSize).toBe('16px'); // 8 rows tall: twice its size
+  expect(sample('A').style.fontSize).toBe('8px'); // 8 rows tall: its own size
   expect(sample('B').style.fontFamily).toContain(b.id);
   expect(sample('B').style.fontSize).toBe('16px');
   expect(sample('Tall Mono').style.fontFamily).toContain(tt.id);
@@ -878,7 +878,7 @@ test('the library lists CM-7X7 as 7×7, and its Shape tag reads 7×7', async () 
   await waitFor(() => libraryNames().length);
   const row = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('CM-7X7'));
   expect(row.querySelector('.name em').textContent).toBe('7×7 · IBM PC');
-  expect(row.querySelector('canvas.glyph-sample').width).toBe(168);
+  expect(row.querySelector('canvas.glyph-sample').width).toBe(84); // 7 pixels a glyph, its own size
   expect(chip('7×7')).toBeTruthy();
   await press(row);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('7×7 · Library');
@@ -894,6 +894,15 @@ test("a library row's sample is drawn at the font's own size, not stretched to t
   expect(canvas.width).toBe(96);
   expect(canvas.getBoundingClientRect().width).toBe(96);
   expect(canvas.getBoundingClientRect().height).toBe(14);
+});
+
+test('an 8×8 library row is drawn at its own size, not doubled', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const canvas = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('Zeta')).querySelector('canvas.glyph-sample');
+  expect([canvas.width, canvas.height]).toEqual([96, 8]);
+  expect(canvas.getBoundingClientRect().height).toBe(8);
 });
 
 test('Yours, Built-in and Library fold under their titles, which count what the search and tags leave; In use never folds', async () => {
@@ -1210,6 +1219,51 @@ const chooseLibrary = async (name) => {
   await waitFor(() => libraryNames().length);
   await press([...host.querySelectorAll('.row.library')].find((r) => r.querySelector('.name span').textContent === name));
 };
+
+test("a library font chosen shows its 256 slots, fetched once (Use this font doesn't fetch it again), with From and License after them", async () => {
+  await wide();
+  const index = FIXTURE(), entry = serveFile(index, 'Zeta');
+  await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await vi.waitFor(() => expect(host.querySelectorAll('.edit-side .grid.sheet .cell').length).toBe(256));
+  expect(host.querySelector('.edit-side canvas.glyph-sample.big')).toBeNull(); // the sample was only while it loaded
+  const sheet = host.querySelector('.edit-side .grid.sheet'), originList = host.querySelector('.edit-side dl.origin');
+  expect(sheet.compareDocumentPosition(originList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  const cell = host.querySelectorAll('.edit-side .grid.sheet .cell')[65];
+  cell.dispatchEvent(new MouseEvent('mouseenter'));
+  await nextTick();
+  expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 65 A');
+  expect(fileFetches).toBe(1);
+  await press(button('Use this font'));
+  await vi.waitFor(async () => expect((await loadFonts()).some((f) => f.id === entry.fontId)).toBe(true)); // kept, before the next test clears the store
+  expect(fileFetches).toBe(1);
+});
+
+test("a library font that can't be fetched shows its sample instead of its slots", async () => {
+  await wide();
+  const index = FIXTURE();
+  serveFile(index, 'Zeta', { response: () => new Response('', { status: 404 }) });
+  await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await vi.waitFor(() => expect(fileFetches).toBe(1));
+  await nextTick();
+  expect(host.querySelector('.edit-side canvas.glyph-sample.big')).toBeTruthy();
+  expect(host.querySelector('.edit-side .grid.sheet')).toBeNull();
+  expect(host.querySelector('.problem')).toBeNull(); // only a preview: nothing to say until Use this font
+});
+
+test('a font in Yours shows From and License after its slots', async () => {
+  await wide();
+  const index = FIXTURE(), entry = serveFile(index, 'Zeta');
+  await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await press(button('Add to Yours'));
+  await vi.waitFor(() => expect(host.querySelector('.edit-side .info')).toBeTruthy());
+  await vi.waitFor(async () => expect((await loadFonts()).some((f) => f.id === entry.fontId)).toBe(true));
+  const info = host.querySelector('.edit-side .info'), originList = host.querySelector('.edit-side dl.origin');
+  expect(originList).toBeTruthy();
+  expect(info.compareDocumentPosition(originList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+});
 
 test('Use this font fetches the font, keeps it in Yours and makes it the drawing\'s font', async () => {
   const index = FIXTURE(), entry = serveFile(index, 'Zeta');

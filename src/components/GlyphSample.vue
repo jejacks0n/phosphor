@@ -1,16 +1,15 @@
 <script setup>
 // A library row's sample: the font's 12 sample glyphs drawn from their rows (base64, 12 × height
-// bytes, leftmost pixel in the high bit) at the font's own width, so the row needs no font loaded. Under 12 px tall draws doubled.
+// bytes, leftmost pixel in the high bit) at the font's own size, so the row needs no font loaded.
 import { ref, watchEffect } from 'vue';
 
 const props = defineProps({ sample: { type: String, required: true }, height: { type: Number, required: true }, width: { type: Number, default: 8 } });
 const canvas = ref(null);
-const scale = () => (props.height < 12 ? 2 : 1);
 
 watchEffect(() => {
   const el = canvas.value;
   if (!el) return;
-  const s = scale(), h = props.height;
+  const s = 1, h = props.height;
   el.width = 12 * props.width * s;
   el.height = h * s;
   const ctx = el.getContext('2d');
