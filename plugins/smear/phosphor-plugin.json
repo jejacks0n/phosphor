@@ -2,7 +2,7 @@
   "phosphor": 1,
   "id": "phosphor.smear",
   "name": "Smear",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "Phosphor",
   "description": "A brush that smudges the colors under it along the way it moves, as a finger in wet paint.",
   "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/smear",

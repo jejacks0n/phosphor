@@ -7,7 +7,7 @@
 //
 // Phosphor reads every pixel as it was when the stroke began, and a later put to a pixel replaces an earlier one, so
 // the stroke keeps its own account: for each pixel it has changed, the paint laid there so far, which with what the
-// pixel began as is what it is now. Reads says what a pixel is: What shows (every layer up to this one, as you see
+// pixel began as is what it is now. Reads says what a pixel is: All layers (every layer up to this one, as you see
 // them) or This layer (its own paint only, clear where it has none). A brush only lays paint, so This layer carries
 // paint out over clear spots and other paint, and never thins the paint it came from.
 
@@ -70,7 +70,7 @@ function move(from, to, paint) {
   travel = length - (at - 1);
   for (const key of touched) {
     const x = key % paint.cols, y = (key - x) / paint.cols, over = laid.get(key);
-    // This layer: the paint laid, over the layer's own. What shows: the least paint that shows as the pixel is now, so
+    // This layer: the paint laid, over the layer's own. All layers: the least paint that shows as the pixel is now, so
     // a layer stays as clear as it can (a color dragged over a clear spot is that color, thin, not a mix with what's under).
     if (own) paint.put(x, y, { r: over.r / over.a, g: over.g / over.a, b: over.b / over.a }, over.a);
     else {
@@ -90,7 +90,7 @@ export default {
     options: [
       { id: 'size', kind: 'slider', name: 'Size', min: 1, max: 20, step: 1, default: 6 },
       { id: 'strength', kind: 'slider', name: 'Strength', min: 0, max: 100, step: 1, default: 60 },
-      { id: 'reads', kind: 'choice', name: 'Reads', choices: ['What shows', 'This layer'], default: 0 },
+      { id: 'reads', kind: 'choice', name: 'Reads', choices: ['All layers', 'This layer'], default: 0 },
     ],
     begin,
     move,
