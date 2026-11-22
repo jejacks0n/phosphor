@@ -18,7 +18,7 @@ jobs:
   # Once, before the three builds: a tag that isn't the next version builds nothing.
   version:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 45 # its wait for main's run, below
     permissions:
       contents: read
       actions: read # to find main's run for the commit
@@ -29,12 +29,20 @@ jobs:
       - id: tag
         run: node scripts/release-tag.mjs "$GITHUB_REF_NAME"
       # The commit was tested: deploy.yml ran on main for it, this repository's own run, and succeeded (and so published
-      # it to next). A tag pushed before that run finishes, or on a commit whose run was superseded by a later merge's,
-      # fails here; re-run this once main's run has passed, or tag a commit it passed on.
+      # it to next). A run still on its way is waited for, up to 40 minutes: a tag pushed just after a merge, and the
+      # library job's moved tag, whose font commit started main's run seconds before. With none on its way (it failed,
+      # was superseded by a later merge's, or none was made within 3 minutes) this fails; re-run it once main's run has
+      # passed, or tag a commit it passed on.
       - run: |
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&head_sha=$GITHUB_SHA&status=success")
-          tested=$(jq --arg repo "$GITHUB_REPOSITORY" '[.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == $repo)] | length' <<<"$runs")
-          [ "$tested" != 0 ] || { echo "::error::$GITHUB_SHA has no successful deploy.yml run on main. Release only a commit main's tests passed on"; exit 1; }
+          for try in $(seq 1 80); do
+            runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&head_sha=$GITHUB_SHA")
+            ours=$(jq --arg repo "$GITHUB_REPOSITORY" '[.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == $repo)]' <<<"$runs")
+            [ "$(jq 'map(select(.conclusion == "success")) | length' <<<"$ours")" = 0 ] || exit 0
+            [ "$(jq 'map(select(.status != "completed")) | length' <<<"$ours")" != 0 ] || [ "$try" -le 6 ] || break
+            sleep 30
+          done
+          echo "::error::$GITHUB_SHA has no successful deploy.yml run on main. Release only a commit main's tests passed on"
+          exit 1
         env:
           GH_TOKEN: ${{ github.token }}
     outputs:
@@ -42,11 +50,16 @@ jobs:
 
   # Once, after the version check: new fonts upstream are mirrored into main and the tag moved onto them, so the release
   # and the web app carry them. A push made with the workflow's own token starts no run, but one over SSH with a deploy
-  # key does: that moved tag starts this workflow again, where nothing is new and it builds. This run then builds nothing.
+  # key does: that moved tag starts this workflow again, where nothing is new and it builds. This run then builds
+  # nothing and cancels itself, so it never ends in a success that published nothing (plugin-list.yml takes a
+  # release run's success to mean phosphor.work has its commit).
   library:
     needs: version
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: write # to cancel this run once the tag has moved
     env:
       HAS_KEY: ${{ secrets.FONTS_DEPLOY_KEY != '' }}
     steps:
@@ -71,6 +84,7 @@ jobs:
         if: steps.step.outputs.step == 'commit'
         env:
           CHANGED: ${{ steps.mirror.outputs.changed }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
@@ -80,6 +94,8 @@ jobs:
           git tag -f "$GITHUB_REF_NAME"
           git push -f origin "$GITHUB_REF_NAME"
           echo "restarted=true" >> "$GITHUB_OUTPUT"
+          echo "::notice::$CHANGED new fonts went into main and the tag moved onto them: the run the moved tag started releases"
+          gh run cancel "$GITHUB_RUN_ID"
       - if: steps.step.outputs.step == 'warn'
         run: git checkout -- . && git clean -fd public/fonts/library
     outputs:

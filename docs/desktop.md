@@ -246,8 +246,9 @@ The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A p
 A version tag first checks the font library. The workflow's library job mirrors Phosphor's two upstream font
 collections (`npm run fonts`). If nothing is new, the tag builds. If there are new fonts, the tag is main's latest
 commit and the `FONTS_DEPLOY_KEY` secret is set, it commits them to main ("The font library takes N new fonts"), moves
-the tag onto that commit and stops: the moved tag starts a fresh run, which finds nothing new and builds, so the release
-and the web app carry the same fonts. If it can't (the tag isn't main's latest commit, or there's no key), it warns and
+the tag onto that commit and cancels its own run: the moved tag starts a fresh run, which finds nothing new and builds,
+so the release and the web app carry the same fonts. That run first waits for main's tests on the font commit, as any
+release waits for main's run on its commit, up to 40 minutes. If it can't (the tag isn't main's latest commit, or there's no key), it warns and
 builds the tag as it is, without the new fonts.
 
 `FONTS_DEPLOY_KEY` is the private half of a deploy key added to the repository with write access. A push with the

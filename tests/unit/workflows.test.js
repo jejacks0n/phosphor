@@ -80,7 +80,9 @@ describe('publishing the plugin list', () => {
     const site = job(desktop, 'site');
     expect(site).toContain('needs: [version, package]');
     const jobs = [...desktop.slice(desktop.indexOf('\njobs:')).matchAll(/\n {2}([\w-]+):\n {4}/g)].map((m) => m[1]);
-    expect(jobs).toEqual(['version', 'package', 'site']); // site needs every other job
+    expect(jobs).toEqual(['version', 'library', 'package', 'site']); // site needs every other job, library through package
+    expect(job(desktop, 'package')).toContain('needs: [version, library]');
+    // The one run that ends without publishing, the library job's restart, cancels itself (the test below).
   });
 
   it('the refresh publishes only when no release is on its way and the last release is still the commit it built', () => {
@@ -188,10 +190,26 @@ describe('hosting on Cloudflare Pages', () => {
     const version = job(desktop, 'version');
     expect(version).toContain('actions: read');
     expect(version).toContain('GH_TOKEN: ${{ github.token }}');
-    expect(version).toContain('gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&head_sha=$GITHUB_SHA&status=success"');
+    expect(version).toContain('gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&head_sha=$GITHUB_SHA"');
     expect(version).toContain(`select(.event != "pull_request" and .head_repository.full_name == $repo)`);
     expect(version).toContain('::error::$GITHUB_SHA has no successful deploy.yml run on main');
-    for (const name of ['package', 'site']) expect(job(desktop, name), name).toMatch(/needs: (version|\[version, package\])\n/);
+    // It waits for a run on its way: the library job's font commit starts one seconds before its moved tag starts this.
+    // A success passes; none on its way (failed, or none made within 3 minutes) fails; at most 40 minutes.
+    expect(version).toContain('map(select(.conclusion == "success")) | length');
+    expect(version).toContain('map(select(.status != "completed")) | length');
+    expect(version).toMatch(/for try in \$\(seq 1 80\)/);
+    expect(version).toContain('sleep 30');
+    expect(version).toContain('timeout-minutes: 45');
+    for (const name of ['library', 'package', 'site']) expect(job(desktop, name), name).toMatch(/needs: (version|\[version, (library|package)\])\n/);
+  });
+
+  it('a run whose library job moved the tag cancels itself, so the refresh never takes it for a release that published', () => {
+    const library = job(desktop, 'library');
+    expect(library).toContain('actions: write');
+    expect(library).toContain('gh run cancel "$GITHUB_RUN_ID"');
+    expect(library.indexOf('git push -f origin "$GITHUB_REF_NAME"')).toBeLessThan(library.indexOf('gh run cancel'));
+    expect(job(desktop, 'package')).toContain("if: needs.library.outputs.restarted != 'true'"); // before the cancel lands
+    expect(refresh).toContain('desktop.yml/runs?event=push&status=success'); // a canceled run isn't one
   });
 
   it('keeps main\'s deploys to next in one group without canceling, a run by hand on another branch in a group of its own', () => {
