@@ -3,7 +3,7 @@
 // the filter is there, named by the Export dialog when it's left out, and refusing a room (RoomStore.pluginSolversWhy).
 import { test, expect, vi, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
+import { getActivePinia, setActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readScript } from '@/plugins/script';
@@ -42,11 +42,17 @@ const [ABERRATION, SAME, DIM] = readScript({ default: { filters: [
 const ref = solverRef('jane.fx', 'aberration');
 const GLOW = solverRef('ann.fx', 'glow'); // never installed
 
+// The stores are asked for by the active Pinia (the plugin's by onPlugin, the room's and the plugins' by the project's
+// getters), and a test before this one, finishing late while this one waits, makes its own active again (createTestApp
+// says how): the plugin then went on in that test's store, and this one's drawing had no filter to run. So this test's
+// Pinia is made the active one again after each wait.
 async function drawing() {
-  const stores = await createTestApp();
+  const stores = await createTestApp(), pinia = getActivePinia();
   await loadImage(stores.project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
+  setActivePinia(pinia);
   await onPlugin({ filters: [ABERRATION, SAME, DIM] }, { pluginId: 'jane.fx' });
   await settle(stores.project);
+  setActivePinia(pinia);
   stores.workspace.pickLayer('base'); // the groups show where Image filters do: the base picked, with a real picture
   return stores;
 }
