@@ -60,6 +60,15 @@ test('nothing leaves the app', async () => {
   expect(urls.filter((u) => /^https?:/.test(u))).toEqual([]);
 });
 
+// The page's door to Get from Lospec, through the main process to desktop/lospec.js. A slug that isn't one is refused
+// before anything is asked, so this reaches no one.
+test('the page asks the main process for a Lospec palette, which refuses what isn\'t a slug', async () => {
+  launched = await launchApp();
+  const { page } = launched;
+  expect(await page.evaluate(() => window.phosphorDesktop.lospecPalette('Bad Slug'))).toEqual({ failed: 'notPalette' });
+  expect(launched.refused).toEqual([]);
+});
+
 test('the room service keeps its port and secret across a reload, changes mode without rebinding, and stops', async () => {
   launched = await launchApp();
   const { page } = launched;
