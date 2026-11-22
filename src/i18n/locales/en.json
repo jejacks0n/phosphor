@@ -204,8 +204,8 @@
       "cga": "CGA (16 colors)",
       "count": "Limited count",
       "palette": "Custom color list",
-      "browse": "Browse",
-      "browseTitle": "Browse color palettes"
+      "palettes": "Palettes",
+      "palettesTitle": "Browse color palettes"
     },
     "paletteColors": {
       "label": "Palette colors"
@@ -350,23 +350,24 @@
     "classicRamp": "Classic ramp",
     "longRamp": "Long ramp"
   },
-  "colorsDialog": {
-    "title": "Color palettes",
-    "library": "Library",
-    "favorites": "Favorites",
-    "libraryIntro": "Sixteen-color palettes from Lospec, each by its author. Using one replaces this drawing's Custom color list.",
-    "favoritesIntro": "The palettes you starred, kept in this browser, with any you got from Lospec.",
-    "favoritesEmpty": "Nothing kept yet. ★ on a palette keeps it here.",
+  "colorPalettes": {
+    "thisDrawing": "This drawing",
+    "newDrawings": "New drawings",
+    "favorites": "Favorites · {n}",
+    "library": "Library · {n}",
+    "favoritesEmpty": "Nothing kept yet. ☆ Favorite on a palette keeps it here.",
     "search": "Search palettes",
     "none": "No palettes match.",
     "by": "by {author}",
     "onLospec": "on Lospec",
     "colors": "{n} color | {n} colors",
-    "hex": ".hex",
-    "hexAria": "Save {name} as a .hex file",
-    "star": "Favorite {name}",
-    "use": "Use",
+    "use": "Use this palette",
     "inUse": "In use",
+    "favorite": "Favorite",
+    "saveHex": "Save .hex",
+    "lospecPage": "On Lospec",
+    "useNote": "Using this palette replaces this drawing's Custom color list.",
+    "fullColor": "Full color shows every color as it is, so it has no list of colors.",
     "replaced": "This drawing's colors were replaced.",
     "putBack": "Put back",
     "notHere": "Not here?",
@@ -757,7 +758,8 @@
   },
   "colorLayer": {
     "aria": "Colors",
-    "colors": "Colors"
+    "colors": "Colors",
+    "palettes": "Palettes"
   },
   "colors": {
     "fgAria": "Foreground color",

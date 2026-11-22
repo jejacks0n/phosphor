@@ -351,6 +351,20 @@ test('Enter on a focused button leaves the selection (the button is pressed); on
   expect(workspace.selection).toBe(null);
 });
 
+// The color layer's tabs hear only their own keys (Enter, Space, Left and Right): ArrowDown on one, focused by a click,
+// is the layer's, never a nudge of the selection under it.
+test('with the color layer open, ArrowDown on its tab leaves the selection where it was', async () => {
+  const { workspace } = await editor();
+  workspace.setActiveTool('select');
+  workspace.selectAll({ c0: 1, r0: 1, c1: 3, r1: 3 });
+  workspace.openColors('fg');
+  const tab = document.body.appendChild(document.createElement('button'));
+  tab.setAttribute('role', 'tab');
+  tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }));
+  tab.remove();
+  expect(workspace.selection).toEqual({ c0: 1, r0: 1, c1: 3, r1: 3 });
+});
+
 test('Escape on a selection made with the Select tool only clears it', async () => {
   const { workspace } = await editor();
   workspace.setActiveTool('select');

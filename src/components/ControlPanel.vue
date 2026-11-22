@@ -49,6 +49,14 @@ const setPalette = (list) => {
 watch(locked, (why) => {
   if (why) store._colorPick = false;
 });
+// The color layer on its Palettes page, whatever the Color palette choice, by Manage fonts' rules (FontField): from
+// SAUCE or the room tab the art shows first (the color pair is only on PIXEL, ANSI and VECTOR), with no drawing it opens
+// over the start screen (EditWorkspace), and a phone's settings drawer, where the link is, shuts so the page shows whole.
+const openPalettes = () => {
+  if (store.image && !workspace.editMode) workspace.editorTab = 'output';
+  workspace.settingsOpen = false;
+  workspace.openColors(workspace.colorBox ?? 'fg', 'palettes');
+};
 // Dimensions: a size typed digit by digit waits for Enter, Tab or a click elsewhere (the field's change), and Escape puts
 // the field back to the grid's size, so a half-typed number never reaches the grid, a room or the undo history. The
 // stepper arrows and the up and down keys give a whole size at a time, so they resize at once: their input isn't typing.
@@ -248,7 +256,8 @@ function onKeyDown(event) {
       <div class="field">
         <div class="label-row">
           <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :name="t('panel.quantize.label')" :text="help('quantize')" /></div>
-          <button type="button" class="text browse" :title="t('panel.quantize.browseTitle')" @click="workspace.colorsOpen = true">{{ t('panel.quantize.browse') }}</button>
+          <!-- Doesn't take focus, so the open layer keeps the keyboard; data-colors-toggle: it doesn't close the layer first. -->
+          <button type="button" class="text palettes" data-colors-toggle :title="t('panel.quantize.palettesTitle')" @mousedown.prevent @click="openPalettes">{{ t('panel.quantize.palettes') }}</button>
         </div>
         <select id="quantize" v-model="store.quantize">
           <option value="none">{{ t('panel.quantize.none') }}</option>
@@ -569,8 +578,8 @@ legend button.fold span.on {
   align-items: baseline;
 }
 
-/* Browse ▸ keeps to one line, and a long label (French's Palette de couleurs) wraps beside it instead. */
-button.browse {
+/* Palettes keeps to one line, and a long label (French's Palette de couleurs) wraps beside it instead. */
+button.palettes {
   flex: none;
   white-space: nowrap;
 }

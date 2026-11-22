@@ -8,7 +8,7 @@
 // (files.js): a page writes only to a file someone picked, opened or saved this session or before (Open Recent). A file
 // opens in a window of its own when the window it's for has a drawing (windows.js), and a project already open in a
 // window brings that window forward. The Plugins dialog's marketplace fetches through here too (pluginList.js), and so
-// does the Colors dialog's Get from Lospec (lospec.js).
+// does the color layer's Get from Lospec (lospec.js).
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -458,7 +458,7 @@ else {
   // The Plugins dialog's marketplace: the list from phosphor.work (next.phosphor.work's for a pre-release) and a listed plugin's files from raw GitHub.
   handle('phosphor:plugin-list', () => fetchText(LIST_URL, { fetch: net.fetch, most: MOST_LIST_BYTES, listUrl: LIST_URL }));
   handle('phosphor:plugin-file', (_entry, url, most) => fetchFile(url, most, { fetch: net.fetch }));
-  // The Colors dialog's Get from Lospec: one palette by its slug, at the address lospec.js builds.
+  // The color layer's Get from Lospec: one palette by its slug, at the address lospec.js builds.
   handle('phosphor:lospec-palette', (_entry, slug) => fetchPalette(slug, { fetch: net.fetch }));
   ipcMain.on('phosphor:files-ready', (event) => {
     const entry = entryOf(event);
