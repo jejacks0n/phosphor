@@ -216,8 +216,8 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
   a cell that shows no character (the black of an opened file's grown lines) …` and
   `› …with Colors only, a layer's own cell that shows no character becomes a plain ▄ …`; `› R5: the report: a Half-block
   box with Write block glyphs over a line box …`, `› R5: on the base, a Half-block box …`, `› R5: a Half-block box with
-  Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …`, `› R2: in a font
-  drawn at its own width of 7 … R5: a ▄ over it keeps its halves` (blockOver over a narrow font's █) and
+  Write block glyphs on the layer above a line …` (with Merge down and the stored look), `› blockOver: …`, `› R5: in a font
+  drawn at its own width of 7 …` (blockOver over a narrow font's █ and ▀) and
   `› R5: the report: Half-block boxes over a line box …` (projects/boxes2.phosphor: the Shape tool and the Pencil, on the
   base and a layer, a half cell apart, Merge down and undo) and `› R5: the report: with Write block glyphs off …`
   (the crossings ▄s, Random's characters over the canvas, no ▄ written there); `tests/browser/plugin-brush.test.js › R5: in

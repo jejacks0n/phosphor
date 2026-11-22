@@ -711,17 +711,22 @@ test('blockOver: a textured character\'s block is its background in both halves;
 
 // A bitmap font drawn at its own width (7) measures its glyphs over 7 columns, as App.vue installs it: its █ is solid, so
 // R2 and R5 hold for it as at 8 (it measured 7/8, a textured glyph).
-test('R2: in a font drawn at its own width of 7, a typed █ under paint opens to paint, and R5: a ▄ over it keeps its halves', () => {
+const inFont7 = (check) => () => {
   useBitmapCoverage(font7);
   try {
-    expect(isSolidGlyph('█')).toBe(true);
-    expect(opensToPaint({ char: '█', fg: { hex: '#ff0000' }, bg: { hex: '#000000' } }, 'ansi')).toBe(true);
-    expect(blockOver({ char: '█', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'F', bg: 'F' });
-    expect(blockOver({ char: '▀', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'F' });
+    check();
   } finally {
     setGlyphRasterizer(null);
   }
-});
+};
+test('R2: in a font drawn at its own width of 7, a typed █ is solid and opens to paint under paint', inFont7(() => {
+  expect(isSolidGlyph('█')).toBe(true);
+  expect(opensToPaint({ char: '█', fg: { hex: '#ff0000' }, bg: { hex: '#000000' } }, 'ansi')).toBe(true);
+}));
+test('R5: in a font drawn at its own width of 7, a ▄ over a typed █ or ▀ keeps its halves', inFont7(() => {
+  expect(blockOver({ char: '█', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'F', bg: 'F' });
+  expect(blockOver({ char: '▀', fg: 'F', bg: 'B' })).toMatchObject({ char: '▄', fg: 'B', bg: 'F' });
+}));
 
 // The report (projects/boxes2.phosphor: a double-line box pinned on the base): Half-block boxes placed over it a half
 // cell apart came out otherwise, whole cells at some offsets. With the Shape tool's Write block glyphs and the Pencil's
