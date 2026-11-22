@@ -79,7 +79,8 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   leaves them out. `desktop/` is the Electron side: `main.js` (the windows, the `app://phosphor/` origin it serves
   `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
   (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
-  `selfPass.js` (passes checked in Node), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
+  `selfPass.js` (passes checked in Node), `lospec.js` (the Colors dialog's Get from Lospec: one palette asked of
+  lospec.com by its slug), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
   saved and kept in Open Recent) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
   a close or quit). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join),

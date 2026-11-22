@@ -26,6 +26,12 @@ export async function fetchText(url, { fetch, most, listUrl }) {
   if (!allowedUrl(url, listUrl)) throw new Error('notAllowed');
   const response = await fetch(url, { redirect: 'error', signal: AbortSignal.timeout(TIMEOUT_MS) });
   if (!response.ok) throw Object.assign(new Error(`status ${response.status}`), { status: response.status });
+  return cappedText(response, most);
+}
+
+// A response's body as text, read no further than `most` bytes: past it, Error('tooBig'). Lospec's palettes (lospec.js)
+// are read this way too.
+export async function cappedText(response, most) {
   if (!response.body) return '';
   const reader = response.body.getReader(), decoder = new TextDecoder();
   let size = 0, text = '';

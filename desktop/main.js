@@ -7,7 +7,8 @@
 // in the page's words and follows the focused window, and the files it opens and saves are read and written here
 // (files.js): a page writes only to a file someone picked, opened or saved this session or before (Open Recent). A file
 // opens in a window of its own when the window it's for has a drawing (windows.js), and a project already open in a
-// window brings that window forward. The Plugins dialog's marketplace fetches through here too (pluginList.js).
+// window brings that window forward. The Plugins dialog's marketplace fetches through here too (pluginList.js), and so
+// does the Colors dialog's Get from Lospec (lospec.js).
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -21,6 +22,7 @@ import { OPENABLE, filesIn, isOpenable, isProject, recentFiles, writeWhole } fro
 import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
 import { listUrl, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
+import { fetchPalette } from './lospec.js';
 
 const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
@@ -456,6 +458,8 @@ else {
   // The Plugins dialog's marketplace: the list from phosphor.work (next.phosphor.work's for a pre-release) and a listed plugin's files from raw GitHub.
   handle('phosphor:plugin-list', () => fetchText(LIST_URL, { fetch: net.fetch, most: MOST_LIST_BYTES, listUrl: LIST_URL }));
   handle('phosphor:plugin-file', (_entry, url, most) => fetchFile(url, most, { fetch: net.fetch }));
+  // The Colors dialog's Get from Lospec: one palette by its slug, at the address lospec.js builds.
+  handle('phosphor:lospec-palette', (_entry, slug) => fetchPalette(slug, { fetch: net.fetch }));
   ipcMain.on('phosphor:files-ready', (event) => {
     const entry = entryOf(event);
     if (!fromApp(event) || !entry) return;

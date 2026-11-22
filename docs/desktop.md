@@ -241,6 +241,13 @@ The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A p
 `1.2.3-beta`) reads `https://next.phosphor.work/plugins.json` instead, and so does any version started with
 `PHOSPHOR_SITE=next` in its environment. The app reads exactly one of the two, never both.
 
+## A palette from Lospec
+
+The Colors dialog's **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
+only when it's pressed. The page can't reach lospec.com, so the app asks for it and hands the page the answer, which the
+page checks as the web app does. The app builds that address itself from the palette's name, and asks for nothing else
+there.
+
 ## Releasing
 
 A version tag first checks the font library. The workflow's library job mirrors Phosphor's two upstream font

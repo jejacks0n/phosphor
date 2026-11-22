@@ -75,6 +75,30 @@ test('a 404, an error answer, a failure, text that isn\'t JSON, a body past 64 K
   }
   assert.equal(calls.length, 0);
 });
+test('given the desktop app\'s door, the palette is asked of it, never fetched, and its answer read as the web\'s is', async () => {
+  const { fetch, calls } = fakeFetch(json({ colors: ['000000'] }));
+  const asked = [];
+  const door = (answer) => async (slug) => { asked.push(slug); return answer(); };
+  const says = (answer, slug = 'x') => getPalette(slug, { fetch, ask: door(answer) }).then((p) => p, (error) => error.message);
+  assert.deepEqual(await says(() => ({ text: '{"name":"Sweetie 16","colors":["1A1C2C"]}' }), 'sweetie-16'),
+    { slug: 'sweetie-16', name: 'Sweetie 16', author: '', colors: ['#1a1c2c'], of: null });
+  assert.deepEqual(asked, ['sweetie-16']);
+  assert.equal(await says(() => ({ text: '{"error":"file not found"}' })), 'notFound');
+  assert.equal(await says(() => ({ text: '<!DOCTYPE html>' })), 'notPalette');
+  assert.equal(await says(() => ({ failed: 'notFound' })), 'notFound');
+  assert.equal(await says(() => ({ failed: 'notPalette' })), 'notPalette');
+  assert.equal(await says(() => ({ failed: 'unreachable' })), 'unreachable');
+  // Anything else it might say, or the door failing, is Lospec out of reach.
+  assert.equal(await says(() => ({ failed: 'changed' })), 'unreachable');
+  assert.equal(await says(() => ({ failed: { message: 'notFound' } })), 'unreachable');
+  assert.equal(await says(() => null), 'unreachable');
+  assert.equal(await says(() => ({ text: 42 })), 'unreachable');
+  assert.equal(await says(() => { throw new Error('Error invoking remote method'); }), 'unreachable');
+  asked.length = 0;
+  assert.equal(await says(() => ({ text: '{}' }), '../x'), 'notPalette'); // a bad slug asks nothing
+  assert.deepEqual(asked, []);
+  assert.equal(calls.length, 0);
+});
 test('the shipped set is the script\'s list, in its order: each one sixteen sound colors and a name', () => {
   assert.equal(SLUGS.length, 29);
   assert.deepEqual(shipped.map((p) => p.slug), SLUGS);
