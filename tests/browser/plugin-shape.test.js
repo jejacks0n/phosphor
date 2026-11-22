@@ -291,14 +291,23 @@ test('points edited by hand make it a path: its options are the tool\'s again an
   workspace.vectorShapeKind = ref;
 });
 
-test('a selected shape made by another kind shows that kind\'s options, whatever kind is chosen; several change together', async () => {
+test('only the chosen kind\'s options show, whatever is selected; chosen, they change every selected shape of the kind', async () => {
   const { project, workspace, ref, drag } = await shaper({ outline: ROUND });
   drag({ x: 10, y: 10 }, { x: 30, y: 20 });
   drag({ x: 2, y: 30 }, { x: 8, y: 36 });
   const keys = [...project.shapes.keys()];
   workspace.vectorSelected = keys;
+  const showing = () => vshape.options.filter((option) => option.when?.(workspace)).map((option) => option.label);
+  // Another kind chosen with the plugin's shapes selected: that kind's options alone, and they leave the selection be.
   workspace.vectorShapeKind = 'polygon';
-  expect(optionOf('Points').when(workspace)).toBe(true);
+  expect(showing()).toEqual([t('tools.vshape.sides')]);
+  set(workspace, 'Sides', 9);
+  expect(keys.map((k) => project.shapes.get(k).points.length)).toEqual([5, 5]);
+  workspace.vectorShapeKind = 'rect';
+  expect(showing()).toEqual([]);
+  // Their own kind chosen again: its options, showing the first one's values, and a change is both shapes'.
+  workspace.vectorShapeKind = ref;
+  expect(showing()).toEqual(['Points', 'Tint']);
   set(workspace, 'Points', 4);
   expect(keys.map((k) => project.shapes.get(k).points.length)).toEqual([4, 4]);
   expect(project.shapes.get(keys[1]).made.box).toEqual([2, 30, 8, 36]);
