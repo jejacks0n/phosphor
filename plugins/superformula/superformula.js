@@ -7,21 +7,26 @@
 //
 // m is Points, n1 is Pinch (small values pull the sides in between the points) and n2 = n3 is Round (small values
 // make the points sharp, larger ones blunt and bulging). With n2 = n3, r(φ) repeats every 2π / m, so the shape has m
-// points and closes for any m. The outline is 120 corners, one every 3°, scaled by its own bounds into 0 to 1 on each
-// axis, so it fills the box you drag as the built-in shapes do.
+// points and closes for any m. The outline is 120 corners, one every 3°, about the middle of its box, 0 to 1 on each
+// axis, and scaled so its farthest corner is on the box's circle: it sits in the box you drag as the built-in Polygon
+// does, and stays where it is, in its own proportions, as its values change.
 
 const CORNERS = 120;
 
 function outline({ points: m, pinch: n1, round: n2 }) {
-  const corners = [];
+  const radii = [];
   for (let i = 0; i < CORNERS; i++) {
-    const phi = (2 * Math.PI * i) / CORNERS, t = (m * phi) / 4;
-    const r = (Math.abs(Math.cos(t)) ** n2 + Math.abs(Math.sin(t)) ** n2) ** (-1 / n1);
-    corners.push([r * Math.cos(phi), -r * Math.sin(phi)]); // y down, as the canvas has it: the first point on the right
+    const t = (m * 2 * Math.PI * i) / CORNERS / 4;
+    radii.push((Math.abs(Math.cos(t)) ** n2 + Math.abs(Math.sin(t)) ** n2) ** (-1 / n1));
   }
-  const xs = corners.map(([x]) => x), ys = corners.map(([, y]) => y);
-  const x0 = Math.min(...xs), y0 = Math.min(...ys), w = Math.max(...xs) - x0, h = Math.max(...ys) - y0;
-  return [{ closed: true, points: corners.map(([x, y]) => [(x - x0) / w, (y - y0) / h]) }];
+  const reach = 2 * Math.max(...radii); // the farthest corner is half the box from its middle
+  return [{
+    closed: true,
+    points: radii.map((r, i) => {
+      const phi = (2 * Math.PI * i) / CORNERS;
+      return [0.5 + (r / reach) * Math.cos(phi), 0.5 - (r / reach) * Math.sin(phi)]; // y down, as the canvas has it: the first point on the right
+    }),
+  }];
 }
 
 export default {
