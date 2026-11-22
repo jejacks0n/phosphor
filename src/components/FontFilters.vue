@@ -44,7 +44,7 @@ const fold = (group) => emit('update:closed', props.closed.includes(group) ? pro
   <div class="font-filters">
     <section v-for="g in rows" :key="g.group" class="filter-group" :data-group="g.group">
       <button class="group-head" :aria-expanded="g.open" @click="fold(g.group)">
-        <span class="arrow" aria-hidden="true">{{ g.open ? '▾' : '▸' }}</span>
+        <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
         <span class="name">{{ t(`palette.fonts.tagGroups.${g.group}`) }}</span>
         <span class="note">{{ g.note }}</span>
       </button>
@@ -73,7 +73,7 @@ section.filter-group {
 
 button.group-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 6px;
   width: 100%;
   padding: 2px 0;
@@ -86,6 +86,26 @@ button.group-head {
   text-transform: uppercase;
   text-align: left;
   cursor: pointer;
+  box-shadow: none;
+  transition: color 0.2s;
+}
+
+button.group-head:hover {
+  transform: none;
+  background: none;
+  color: var(--text);
+}
+
+svg.chevron {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  transition: transform 0.15s;
+}
+
+button.group-head[aria-expanded='false'] svg.chevron {
+  transform: rotate(-90deg);
 }
 
 span.note {

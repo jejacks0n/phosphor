@@ -7,6 +7,8 @@ import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import HelpInfo from '@/components/HelpInfo.vue';
 import EditToolbar from '@/components/EditToolbar.vue';
+import FontFilters from '@/components/FontFilters.vue';
+import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import '@/assets/global.css';
 
 let app = null, host = null;
@@ -54,4 +56,30 @@ test('a tool slot\'s flyout corner has no background on hover; its triangle ligh
   expect(getComputedStyle(corner).backgroundColor).toBe('rgba(0, 0, 0, 0)');
   expect(getComputedStyle(corner).boxShadow).toBe('none');
   expect(getComputedStyle(triangle).borderBottomColor).not.toBe(lit);
+});
+
+test("a font filter group's header doesn't move or cast a shadow on hover", async () => {
+  await mount({ render: () => h(FontFilters, { groups: [{ group: 'shape', tags: [{ key: 'shape:8x8', label: '8×8' }] }], counts: new Map(), picked: [], closed: [] }) });
+  const head = host.querySelector('button.group-head'), before = head.getBoundingClientRect();
+  await hover(head);
+  expect(head.getBoundingClientRect().toJSON()).toEqual(before.toJSON());
+  expect(getComputedStyle(head).boxShadow).toBe('none');
+  expect(head.querySelector('svg.chevron').getBoundingClientRect().width).toBeGreaterThanOrEqual(9); // an arrow you can see
+});
+
+test("the Fonts page's Blocks, Lines and Sets tabs and its « / » don't move or cast a shadow on hover", async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ cols: 10, rows: 10 });
+  project.setDrawingFont({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
+  workspace.paletteLayerPage = 'fonts';
+  await mount(CharPaletteLayer);
+  await expect.poll(() => host.querySelectorAll('div.sections button[role="tab"]').length, PATIENT).toBe(3);
+  await expect.poll(() => host.querySelector('.top button.filters-toggle'), { timeout: 15000 }).toBeTruthy(); // once the library's index is in
+  for (const el of [[...host.querySelectorAll('div.sections button[role="tab"]')].find((b) => !b.classList.contains('on')), host.querySelector('.top button.filters-toggle')]) {
+    const before = el.getBoundingClientRect();
+    await hover(el);
+    expect(el.getBoundingClientRect().toJSON()).toEqual(before.toJSON());
+    expect(getComputedStyle(el).boxShadow).toBe('none');
+    expect(getComputedStyle(el).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+  }
 });

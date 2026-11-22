@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildIndex, charsOf, machineOf } from '../../scripts/fontLibraryIndex.mjs';
+import { buildIndex, charsOf, machineOf, storedPath } from '../../scripts/fontLibraryIndex.mjs';
 import { LINKED_FONTS, linkedFontOf } from '../../src/lib/linkedFonts.js';
 import { SAMPLE_CHARS } from '../../src/lib/BitmapGlyphs.js';
 
@@ -29,6 +29,23 @@ describe('buildIndex', () => {
   it('names: drops the extension, underscores become spaces, _2x becomes "(doubled)"', () => {
     const { index } = run([{ path: 'moebius/discmaster/Blobz+_1_2x.f16', bytes: make(16) }]);
     expect(index.fonts[0].name).toBe('Blobz+ 1 (doubled)');
+  });
+
+  it('a name with a character an address escapes (& + # %) is stored under an escaped file name, and keeps its own name, id and tags', () => {
+    const { index } = run([
+      { path: 'viler/SOFTWARE/INTEXT/&ARABIC.F14', bytes: make(14) },
+      { path: 'viler/BIGPILE/DKY#001.F16', bytes: make(16, (s) => s) },
+      { path: 'moebius/discmaster/Blobz+_1.f08', bytes: make(8, (s) => s ^ 1) },
+      { path: 'moebius/discmaster/mühle 100%.f08', bytes: make(8, (s) => s ^ 2) },
+    ], { about: { 'viler/SOFTWARE/INTEXT/&ARABIC.F14': 'Intext' } });
+    expect(index.fonts.map((f) => [f.id, f.file, f.name])).toEqual([
+      ['viler/SOFTWARE/INTEXT/&ARABIC.F14', 'viler/SOFTWARE/INTEXT/%26ARABIC.F14', '&ARABIC'],
+      ['viler/BIGPILE/DKY#001.F16', 'viler/BIGPILE/DKY%23001.F16', 'DKY#001'],
+      ['moebius/discmaster/Blobz+_1.f08', 'moebius/discmaster/Blobz%2B_1.f08', 'Blobz+ 1'],
+      ['moebius/discmaster/mühle 100%.f08', 'moebius/discmaster/mühle 100%25.f08', 'mühle 100%'],
+    ]);
+    expect([index.fonts[0].chars, index.fonts[0].about]).toEqual(['arabic', 'Intext']);
+    for (const f of index.fonts) expect(decodeURIComponent(storedPath(f.id))).toBe(f.id);
   });
 
   it('shape comes from the size, not the extension', () => {

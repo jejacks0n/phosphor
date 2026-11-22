@@ -3,7 +3,8 @@ import { t } from '@/i18n';
 
 const base = () => `${import.meta.env.BASE_URL}fonts/library/`;
 const pad = (h) => String(h).padStart(2, '0');
-// A mirrored file's address: each part of its path encoded, so a # or a space in a name (DKY#001.F16) stays in the path.
+// A mirrored file's address: each part of its stored path encoded, so a space or a % in it (DKY%23001.F16, as the mirror
+// stores DKY#001.F16) stays in the path.
 export const libraryUrl = (path) => `${base()}${path.split('/').map(encodeURIComponent).join('/')}`;
 // A collection's license or credits file (VileR's FONTS.TXT): the copy shipped with the fonts, or in the desktop app,
 // whose own files open nowhere outside it, the upstream one.

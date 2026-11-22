@@ -21,6 +21,7 @@ import FontLines from '@/components/FontLines.vue';
 import FontSets from '@/components/FontSets.vue';
 import GlyphSample from '@/components/GlyphSample.vue';
 import FontFilters from '@/components/FontFilters.vue';
+import ToggleGroup from '@/components/ToggleGroup.vue';
 import { loadLibrary, libraryEntryOf, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
@@ -55,8 +56,11 @@ const index = shallowRef(null);
 const libraryState = ref('loading'); // 'loading' | 'ready' | 'failed'
 const tags = ref([]); // the picked tags' keys
 const shownCount = ref(PAGE);
-// The Filters column's fold (null until « or Filters is pressed: then folded only in the dialog) and its groups' folds.
-const prefs = useLocalStorage('phosphor.fontFilters', { folded: null, closed: [] }, { mergeDefaults: true });
+// The Filters column's fold (null until « or » is pressed: then folded only in the dialog), its groups' folds, and the
+// list's folded groups (Yours, Built-in, Library: In use never folds).
+const prefs = useLocalStorage('phosphor.fontFilters', { folded: null, closed: [], list: [] }, { mergeDefaults: true });
+const listOpen = (key) => key === 'inUse' || !prefs.value.list.includes(key);
+const foldList = (key) => { prefs.value.list = listOpen(key) ? [...prefs.value.list, key] : prefs.value.list.filter((k) => k !== key); };
 const folded = computed(() => prefs.value.folded ?? props.stage === 'dialog');
 const showColumn = computed(() => libraryState.value === 'ready' && props.stage !== 'phone' && !folded.value);
 const fetchLibrary = async () => {
@@ -96,23 +100,21 @@ const tagList = computed(() => {
 const counts = computed(() => (index.value ? tagCounts(index.value) : new Map()));
 const toggleTag = (key) => { tags.value = tags.value.includes(key) ? tags.value.filter((k) => k !== key) : [...tags.value, key]; };
 const clearAll = () => { tags.value = []; filter.value = ''; };
-// Clear all, «, and Filters go away once pressed: the focus goes to their counterpart, or back to the layer.
+// Clear all goes away once pressed: the focus goes back to the layer.
 const clearTags = () => { tags.value = []; emit('acted'); };
 const focusOn = async (selector) => { await nextTick(); page.value.querySelector(selector)?.focus(); };
-const foldFilters = () => { prefs.value.folded = true; focusOn('button.filters-open'); };
-// Folded, Filters opens the column; on a phone, a sheet over the layer, which gives the focus back to Filters on closing.
+// « / » beside the search folds and opens the column, as the side panel's does; on a phone it opens a sheet over the
+// layer, which gives the focus back to it on closing.
 const sheetOpen = ref(false);
-const openFilters = () => {
-  if (props.stage !== 'phone') {
-    prefs.value.folded = false;
-    return focusOn('.filters-head button.fold');
-  }
+const filtersShown = computed(() => (props.stage === 'phone' ? sheetOpen.value : showColumn.value));
+const toggleFilters = () => {
+  if (props.stage !== 'phone') return void (prefs.value.folded = showColumn.value);
   sheetOpen.value = true;
   focusOn('button.close-sheet');
 };
 const closeSheet = () => {
   sheetOpen.value = false;
-  focusOn('button.filters-open');
+  focusOn('button.filters-toggle');
 };
 watch(() => props.stage, (stage) => {
   if (stage === 'phone' || !sheetOpen.value) return;
@@ -202,6 +204,8 @@ const widthNow = computed(() => (isDrawn.value ? drawn.value.cellWidth : stored.
 // 9 only on the drawing (it's never remembered per font), and a font that isn't the drawing's shows the switch only when narrow
 const widths = computed(() => (isDrawn.value || own.value ? [...(own.value ? [own.value] : []), 8, ...(isDrawn.value ? [9] : [])] : []));
 const widthOff = computed(() => isDrawn.value && project._sharing?.role === 'artist'); // the host's width is the room's
+const widthLit = computed(() => Object.fromEntries(widths.value.map((w) => [w, widthNow.value === w])));
+const widthOptions = computed(() => widths.value.map((w) => ({ key: String(w), label: String(w), disabled: widthOff.value, title: widthOff.value ? t('palette.fonts.widthInRoom') : undefined, reason: widthOff.value })));
 const setWidth = (w) => run(() => (isDrawn.value ? setFontWidth(drawn.value, w) : storePart(chosen.value.id, 'width', w)));
 const meta = computed(() => [
   bitmap.value ? shapeOf(widthNow.value, chosen.value.height) : size(chosen.value),
@@ -340,9 +344,9 @@ const save = (as) => run(async () => as(isDrawn.value ? drawn.value : await stor
 const forget = () => run(() => remove(chosen.value.id));
 // The next or previous font on screen, in the list's order, the library rows shown last (the layer passes its arrow
 // keys here). A library row chosen is where it steps from, though its font in Yours is current too.
-const step = (delta) => {
-  const library = libraryState.value === 'ready' ? libraryRows.value.map((e) => e.id) : [];
-  const ids = [...groups.value.flatMap((g) => g.rows.map((f) => f.id)), ...library];
+const step = (delta) => { // a folded group's rows are skipped
+  const library = libraryState.value === 'ready' && listOpen('library') ? libraryRows.value.map((e) => e.id) : [];
+  const ids = [...groups.value.filter((g) => listOpen(g.key)).flatMap((g) => g.rows.map((f) => f.id)), ...library];
   const at = ids.indexOf(chosenId.value), i = at >= 0 ? at : ids.indexOf(chosen.value?.id);
   const next = ids[Math.max(0, Math.min(ids.length - 1, i + delta))];
   if (!next) return;
@@ -380,23 +384,30 @@ const exportPalettes = () => {
     <!-- the list: choose a font to see it (or with the arrow keys) -->
     <div class="list-side">
       <div class="top">
+        <button
+            v-if="libraryState === 'ready'"
+            class="filters-toggle link"
+            :aria-expanded="filtersShown"
+            :aria-label="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
+            :title="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
+            @click="toggleFilters"
+        >{{ filtersShown ? '«' : '»' }}</button>
         <input v-model="filter" :placeholder="t('palette.fonts.filterPlaceholder')" :aria-label="t('palette.fonts.filterAria')">
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
       </div>
-      <div v-if="libraryState === 'ready' && (tags.length || !showColumn)" class="tag-row">
-        <button v-if="!showColumn" class="filters-open" @click="openFilters">
-          {{ t('palette.fonts.filters') }}<span v-if="tags.length" class="badge">{{ tags.length }}</span>
-        </button>
-        <button v-for="k in tags" :key="k" class="chip picked" :aria-label="t('palette.fonts.removeTag', { tag: tagLabel(k) })" @click="toggleTag(k)">{{ tagLabel(k) }} ×</button>
-        <button v-if="tags.length" class="clear" @click="clearAll">{{ t('palette.fonts.clear') }}</button>
-      </div>
       <p v-if="problem" class="problem" role="alert">{{ problem }}</p>
       <div class="list">
         <template v-for="g in groups" :key="g.key">
-          <div class="group"><span class="label">{{ g.label }}</span></div>
+          <div v-if="g.key === 'inUse'" class="group"><span class="label">{{ g.label }}</span></div>
+          <div v-else class="group">
+            <button class="group-head" :aria-expanded="listOpen(g.key)" @click="foldList(g.key)">
+              <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+              <span class="label">{{ g.label }}</span><span class="n"> · {{ g.rows.length }}</span>
+            </button>
+          </div>
           <div
-              v-for="f in g.rows"
+              v-for="f in listOpen(g.key) ? g.rows : []"
               :key="f.id"
               class="row"
               :class="{ current: f.id === chosen?.id, active: f.id === workspace.displayFontSpec.id }"
@@ -408,8 +419,12 @@ const exportPalettes = () => {
           </div>
         </template>
         <div class="group library-group">
-          <span class="label">{{ libraryState === 'ready' ? t(narrowed ? 'palette.fonts.libraryFound' : 'palette.fonts.libraryCount', { n: matches.length }, matches.length) : t('palette.fonts.library') }}</span>
+          <button class="group-head" :aria-expanded="listOpen('library')" @click="foldList('library')">
+            <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+            <span class="label">{{ libraryState === 'ready' ? t(narrowed ? 'palette.fonts.libraryFound' : 'palette.fonts.libraryCount', { n: matches.length }, matches.length) : t('palette.fonts.library') }}</span>
+          </button>
         </div>
+        <template v-if="listOpen('library')">
         <p v-if="libraryState === 'loading'" class="library-note">{{ t('palette.fonts.libraryLoading') }}</p>
         <div v-else-if="libraryState === 'failed'" class="library-note">
           <p>{{ t('palette.fonts.libraryFailed') }}</p>
@@ -433,6 +448,7 @@ const exportPalettes = () => {
           </div>
           <button v-if="matches.length > shownCount" class="more" @click="shownCount += PAGE">{{ t('palette.fonts.showMore', { n: PAGE }) }}</button>
         </template>
+        </template>
       </div>
     </div>
 
@@ -441,7 +457,6 @@ const exportPalettes = () => {
       <div class="filters-head">
         <span class="title">{{ t('palette.fonts.filters') }}</span>
         <button v-if="tags.length" class="clear-all" @click="clearTags">{{ t('palette.fonts.clearAll') }}</button>
-        <button class="fold" :aria-label="t('palette.fonts.foldFilters')" :title="t('palette.fonts.foldFilters')" @click="foldFilters">«</button>
       </div>
       <FontFilters v-model:closed="prefs.closed" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
     </aside>
@@ -476,17 +491,14 @@ const exportPalettes = () => {
         </div>
         <div v-if="widths.length" class="width-row">
           <span class="width-label">{{ t('palette.fonts.width') }}</span>
-          <div class="width-switch" role="group" :aria-label="t('palette.fonts.width')">
-            <button
-                v-for="w in widths"
-                :key="w"
-                :aria-pressed="widthNow === w"
-                :disabled="widthOff"
-                :title="widthOff ? t('palette.fonts.widthInRoom') : undefined"
-                :data-off-reason="widthOff ? '' : undefined"
-                @click="setWidth(w)"
-            >{{ w }}</button>
-          </div>
+          <ToggleGroup
+              class="width-switch"
+              single
+              :model-value="widthLit"
+              :options="widthOptions"
+              :label="t('palette.fonts.width')"
+              @update:model-value="setWidth(+Object.keys($event).find((k) => $event[k]))"
+          />
         </div>
         <FontBlocks
             v-if="section === 'blocks'"
@@ -569,42 +581,62 @@ div.sample {
   color: var(--text);
 }
 
-div.tag-row {
-  position: relative;
-  display: flex;
-  flex-wrap: wrap;
+/* Yours, Built-in and Library fold on their titles; In use's is a plain label. */
+div.group button.group-head {
+  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
-}
-
-div.tag-row button {
-  padding: 2px 8px;
-  border: 1px solid var(--surface-3);
-  border-radius: 10px;
-  background: var(--surface-1);
-  color: var(--text);
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: inherit;
   font: inherit;
-  font-size: 12px;
+  letter-spacing: inherit;
+  text-transform: inherit;
   cursor: pointer;
+  transition: color 0.2s;
 }
 
-div.tag-row button.clear {
-  border-color: transparent;
+div.group button.group-head:hover {
+  transform: none;
+  color: var(--text);
+}
+
+svg.chevron {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  transition: transform 0.15s;
+}
+
+button.group-head[aria-expanded='false'] svg.chevron {
+  transform: rotate(-90deg);
+}
+
+/* The column's head and the search's row beside it, one height. */
+div.page.fonts div.top,
+div.filters-head {
+  box-sizing: border-box;
+  height: 45px;
+}
+
+/* « / » beside the search, as the side panel's toggle */
+div.top button.filters-toggle {
+  flex: none;
+  padding: 4px;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+div.top button.filters-toggle:hover {
+  transform: none;
   background: none;
   color: var(--accent);
-}
-
-div.tag-row button.picked {
-  border-color: var(--accent);
-}
-
-span.badge {
-  margin-left: 4px;
-  padding: 0 5px;
-  border-radius: 8px;
-  background: var(--accent);
-  color: var(--surface-0);
 }
 
 aside.filters-side {
@@ -718,6 +750,13 @@ div.sections button[role='tab'] {
   letter-spacing: 0.08em;
   text-transform: uppercase;
   cursor: pointer;
+  box-shadow: none;
+  transition: color 0.3s ease; /* as the layer's own tabs: only the color changes on hover */
+}
+
+div.sections button[role='tab']:hover {
+  transform: none;
+  background: none;
 }
 
 div.sections button[role='tab']:not(.on):hover {
@@ -743,29 +782,6 @@ div.width-row {
 
 span.width-label {
   color: var(--text-muted);
-}
-
-div.width-switch {
-  display: flex;
-}
-
-div.width-switch button {
-  padding: 2px 10px;
-  border: 1px solid var(--surface-3);
-  background: none;
-  color: var(--text);
-  font: inherit;
-  cursor: pointer;
-}
-
-div.width-switch button[aria-pressed='true'] {
-  box-shadow: inset 0 -2px var(--accent);
-}
-
-div.width-switch button:disabled {
-  opacity: 0.4;
-  cursor: default;
-  pointer-events: none;
 }
 
 span.count {

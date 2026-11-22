@@ -93,6 +93,7 @@ const type = async (text) => {
   await nextTick();
 };
 const chip = (label) => [...host.querySelectorAll('.font-filters .chip')].find((el) => el.firstChild.textContent.trim() === label);
+const toggle = () => host.querySelector('.top button.filters-toggle'); // « / » beside the search
 // A window wide enough for the floating layer, with the Filters column beside the list.
 const wide = async () => {
   await page.viewport(1400, 900);
@@ -181,7 +182,7 @@ test('on a window under 1000px wide, the layer is a dialog over the page; under 
   expect(closes).toBe(1); // a press on the dimmed page closes it
   await page.viewport(690, 700);
   await vi.waitFor(() => expect([box().left, box().top, box().width]).toEqual([0, 0, 690])); // the whole window
-  expect(host.querySelector('.scrim')).toBeNull();
+  await vi.waitFor(() => expect(host.querySelector('.scrim')).toBeNull()); // the CSS can move before the media query's change event
   expect(host.querySelector('button.dismiss')).toBeTruthy();
 });
 
@@ -883,6 +884,53 @@ test('the library lists CM-7X7 as 7×7, and its Shape tag reads 7×7', async () 
   expect(host.querySelector('.edit-side .meta').textContent).toBe('7×7 · Library');
 });
 
+test("a library row's sample is drawn at the font's own size, not stretched to the row", async () => {
+  await wide();
+  const index = FIXTURE();
+  index.fonts.push(libFont('Tall', { height: 14 }));
+  await mount({ library: index });
+  await waitFor(() => libraryNames().length);
+  const canvas = [...host.querySelectorAll('.row.library')].find((r) => r.textContent.includes('Tall')).querySelector('canvas.glyph-sample');
+  expect(canvas.width).toBe(96);
+  expect(canvas.getBoundingClientRect().width).toBe(96);
+  expect(canvas.getBoundingClientRect().height).toBe(14);
+});
+
+test('Yours, Built-in and Library fold under their titles, which count what the search and tags leave; In use never folds', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const head = (name) => [...host.querySelectorAll('.list .group-head')].find((el) => el.textContent.includes(name));
+  expect(head('In use')).toBeUndefined();
+  expect(head('Built-in').textContent.trim()).toContain('Built-in · 4');
+  expect(head('Yours').textContent.trim()).toContain('Yours · 2');
+  await type('un'); // Unscii and Unifont
+  expect(head('Built-in').textContent.trim()).toContain('Built-in · 2');
+  await type('');
+  expect(head('Built-in').getAttribute('aria-expanded')).toBe('true');
+  await press(head('Built-in'));
+  expect(head('Built-in').getAttribute('aria-expanded')).toBe('false');
+  expect(names()).not.toContain('Unifont');
+  expect(names()).toContain('A'); // the drawing's font, In use
+  await press(head('Library'));
+  expect(libraryNames()).toEqual([]);
+  expect(label()).toBe('Library · 4 fonts'); // still counted while folded
+  await press(head('Library'));
+  expect(libraryNames().length).toBe(4);
+  expect(JSON.parse(localStorage.getItem('phosphor.fontFilters')).list).toEqual(['builtIn']); // remembered with the filters
+});
+
+test('the arrow keys skip a folded group', async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const head = (name) => [...host.querySelectorAll('.list .group-head')].find((el) => el.textContent.includes(name));
+  await press(head('Built-in'));
+  await chooseLibrary('Alpha');
+  await arrow('ArrowUp');
+  expect(title()).not.toBe('Unifont'); // the last built-in font, folded away
+});
+
 test('the Library group lists the library under Built-in, each row sampled', async () => {
   const index = FIXTURE();
   delete index.fonts[2].machine; // Alpha's folder names no machine
@@ -925,7 +973,7 @@ test('search matches names, machines and descriptions', async () => {
   expect(names()).toContain('IBM VGA');
 });
 
-test('the Filters column sits beside the list, each tag counted across the library; picking narrows, and picked tags show above the list', async () => {
+test('the Filters column sits beside the list, each tag counted across the library; picking narrows, with no second row of picked tags', async () => {
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
@@ -940,10 +988,9 @@ test('the Filters column sits beside the list, each tag counted across the libra
   expect(label()).toBe('Library · 2 found');
   expect(chip('Amiga').querySelector('.count').textContent).toBe('1'); // the whole library's count, not the results'
   expect(chip('Amiga').disabled).toBe(false);
-  expect(host.querySelector('.tag-row button.chip.picked').textContent).toContain('IBM PC');
-  await press(button('Clear'));
+  expect(host.querySelector('.tag-row')).toBeNull(); // the column shows what's picked
+  await press(chip('IBM PC'));
   expect(libraryNames().length).toBe(4);
-  expect(host.querySelector('.tag-row > button.chip')).toBeNull();
   expect(host.querySelector('.picker')).toBeNull();
   expect(host.querySelector('button.tags')).toBeNull();
 });
@@ -960,29 +1007,43 @@ test('tags in one group widen, tags in two narrow; Clear all keeps the search', 
   expect(label()).toBe('Library · 1 found');
   await type('t');
   await press(host.querySelector('button.clear-all'));
-  expect(host.querySelector('.tag-row button.chip.picked')).toBeNull();
+  expect(host.querySelectorAll('.font-filters .chip[aria-pressed="true"]').length).toBe(0);
   expect(host.querySelector('.top input').value).toBe('t');
   expect(host.querySelector('button.clear-all')).toBeNull();
 });
 
-test('« folds the column behind a Filters button with the picked count, remembered next time', async () => {
+test('« beside the search folds the column, » brings it back, remembered next time', async () => {
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
+  const search = host.querySelector('.top input');
+  expect(toggle().compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy(); // just before the search
+  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['«', 'true']);
   expect(host.querySelector('button.filters-open')).toBeNull();
-  await press(chip('IBM PC'));
-  await press(host.querySelector('button.fold'));
+  expect(host.querySelector('.filters-head button.fold')).toBeNull();
+  const button0 = toggle();
+  toggle().focus();
+  await press(toggle());
   expect(host.querySelector('aside.filters-side')).toBeNull();
-  expect(host.querySelector('button.filters-open .badge').textContent).toBe('1');
-  expect(host.querySelector('.tag-row button.chip.picked').textContent).toContain('IBM PC'); // still removable above the list
+  expect([toggle().textContent.trim(), toggle().getAttribute('aria-expanded')]).toEqual(['»', 'false']);
+  expect(toggle()).toBe(button0); // the same button, so the focus stays on it
+  expect(document.activeElement).toBe(button0);
   const kept = localStorage.getItem('phosphor.fontFilters');
   app.unmount();
   host.remove();
   await mount({ library: FIXTURE(), before: () => localStorage.setItem('phosphor.fontFilters', kept) }); // a new mount clears localStorage first
   await waitFor(() => libraryNames().length);
   expect(host.querySelector('aside.filters-side')).toBeNull();
-  await press(host.querySelector('button.filters-open'));
+  await press(toggle());
   expect(host.querySelector('aside.filters-side')).toBeTruthy();
+});
+
+test("the Filters column's head is as tall as the search's row beside it", async () => {
+  await wide();
+  await mount({ library: FIXTURE() });
+  await waitFor(() => libraryNames().length);
+  const height = (el) => el.getBoundingClientRect().height;
+  expect(height(host.querySelector('.filters-head'))).toBe(height(host.querySelector('.list-side .top')));
 });
 
 test('the dialog under 1000px starts folded; the floating layer is 200 and 220, full screen 260 and 320', async () => {
@@ -991,7 +1052,7 @@ test('the dialog under 1000px starts folded; the floating layer is 200 and 220, 
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
   expect(host.querySelector('aside.filters-side')).toBeNull();
-  expect(host.querySelector('button.filters-open')).toBeTruthy();
+  expect(toggle().getAttribute('aria-expanded')).toBe('false');
   await page.viewport(1400, 900);
   await vi.waitFor(() => expect(host.querySelector('aside.filters-side')).toBeTruthy()); // never pressed: the stage decides
   const widths = () => [host.querySelector('aside.filters-side'), host.querySelector('.list-side')].map((el) => Math.round(el.getBoundingClientRect().width));
@@ -1002,11 +1063,12 @@ test('the dialog under 1000px starts folded; the floating layer is 200 and 220, 
   await vi.waitFor(() => expect(widths()).toEqual([200, 220]));
 });
 
-test('on a phone, Filters opens a sheet; Show N fonts or Escape closes it, and Escape leaves the layer open', async () => {
+test('on a phone, » opens a sheet; Show N fonts or Escape closes it, and Escape leaves the layer open', async () => {
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
   expect(host.querySelector('aside.filters-side')).toBeNull();
-  const open = () => host.querySelector('button.filters-open');
+  const open = toggle;
+  expect(open().textContent.trim()).toBe('»');
   await press(open());
   const sheet = host.querySelector('.filters-sheet');
   expect(sheet.getAttribute('role')).toBe('dialog');
@@ -1035,25 +1097,21 @@ test('the Filters column sits left of the list but comes after the search in tab
   expect(aside.getBoundingClientRect().right).toBeLessThanOrEqual(host.querySelector('.list-side').getBoundingClientRect().left + 1);
 });
 
-test('the buttons that go away when pressed leave the keys with the layer', async () => {
+test('Clear all, gone once pressed, leaves the keys with the layer', async () => {
   await wide();
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  const focusPress = async (el) => { el.focus(); await press(el); await nextTick(); };
   await press(chip('IBM PC'));
-  await focusPress(host.querySelector('button.clear-all')); // Clear all goes with the tags
+  host.querySelector('button.clear-all').focus();
+  await press(host.querySelector('button.clear-all'));
   await vi.waitFor(() => expect(host.querySelector('.palette-layer').contains(document.activeElement)).toBe(true));
-  await focusPress(host.querySelector('button.fold')); // « hands the focus to Filters
-  await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.filters-open')));
-  await focusPress(host.querySelector('button.filters-open')); // and Filters back to «
-  await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.fold')));
 });
 
 test('the phone sheet closing because the window widened leaves the keys with the layer', async () => {
   onTestFinished(() => page.viewport(414, 896));
   await mount({ library: FIXTURE() });
   await waitFor(() => libraryNames().length);
-  await press(host.querySelector('button.filters-open'));
+  await press(toggle());
   await vi.waitFor(() => expect(document.activeElement).toBe(host.querySelector('button.close-sheet')));
   await page.viewport(1400, 900);
   await vi.waitFor(() => expect(host.querySelector('.filters-sheet')).toBeNull());
@@ -1089,7 +1147,7 @@ test('tags plus a query that match nothing say so, and Clear empties both', asyn
   await type('rounded'); // Topaz is Amiga: nothing under IBM PC
   expect(host.querySelector('.library-note').textContent).toContain('No fonts match.');
   await press(host.querySelector('.library-note button'));
-  expect(host.querySelector('.tag-row > button.chip')).toBeNull();
+  expect(host.querySelectorAll('.font-filters .chip[aria-pressed="true"]').length).toBe(0);
   expect(host.querySelector('.top input').value).toBe('');
   expect(libraryNames().length).toBe(4);
 });
@@ -1325,7 +1383,7 @@ test('details show tags, From and License: None given for VileR, Unknown with Te
   expect(decodeURIComponent(link('Know it? Tell us').href)).toContain('title=License for Topaz (Mœbius)');
   await press([...host.querySelectorAll('.edit-side .tag-chips .chip')].find((el) => el.textContent === 'Amiga'));
   expect(libraryNames()).toEqual(['Topaz']); // the chip became the picked tag
-  expect(host.querySelector('.tag-row > button.chip').textContent).toContain('Amiga');
+  expect(label()).toBe('Library · 1 found');
 });
 
 test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show as FROGBLOCK with its credit', async () => {
@@ -1358,6 +1416,12 @@ const slim = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 
 const widthButtons = () => [...host.querySelectorAll('.width-switch button')];
 const pressed = () => widthButtons().filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent.trim());
 const shown = () => widthButtons().map((b) => b.textContent.trim());
+
+test('the Width switch is a toggle group, its width lit', async () => {
+  await mount({ font: { ...slim(), width: 7 } });
+  expect(host.querySelector('.width-switch').classList.contains('toggle-group')).toBe(true);
+  expect(widthButtons().map((b) => b.classList.contains('on'))).toEqual([true, false, false]);
+});
 
 test('the drawing\'s narrow font shows Width 7 · 8 · 9, pressed at its width; pressing 9 widens it', async () => {
   const { project } = await mount({ font: { ...slim(), width: 7 } });

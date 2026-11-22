@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
+import { readFileSync, statSync } from 'node:fs';
 
 const index = {
   version: 1,
@@ -105,13 +106,24 @@ describe('font library', () => {
     }
   });
 
-  it('fetches a font whose path has a # or spaces in it, each part encoded', async () => {
+  it('fetches a font whose stored name has a space or a % in it, each part encoded', async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: true, arrayBuffer: async () => new ArrayBuffer(256 * 16) });
     vi.stubGlobal('fetch', fetchMock);
     const { libraryFile } = await mod();
-    await libraryFile({ name: 'DKY#001', file: 'viler/BIGPILE/DKY#001.F16', height: 16 });
+    await libraryFile({ name: 'DKY#001', file: 'viler/BIGPILE/DKY%23001.F16', height: 16 });
     await libraryFile({ name: 'PETSCII shifted', file: 'moebius/c64/PETSCII shifted.F16', height: 16 });
-    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/fonts/library/viler/BIGPILE/DKY%23001.F16', '/fonts/library/moebius/c64/PETSCII%20shifted.F16']);
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/fonts/library/viler/BIGPILE/DKY%2523001.F16', '/fonts/library/moebius/c64/PETSCII%20shifted.F16']);
+  });
+
+  // The dev server and the preview read an address as decodeURI does, which leaves %26 (&), %2B (+) and %23 (#) as they
+  // are: a file stored under such a name is never found, and the page comes back in its place.
+  it('every font in the library is stored under a name its address reaches, at the size its entry says', async () => {
+    const { libraryUrl } = await mod();
+    const root = new URL('../../public/fonts/library/', import.meta.url);
+    const { fonts } = JSON.parse(readFileSync(new URL('index.json', root), 'utf8'));
+    const lost = fonts.filter((f) => decodeURI(libraryUrl(f.file)) !== `/fonts/library/${f.file}`
+      || statSync(new URL(libraryUrl(f.file).slice('/fonts/library/'.length), root), { throwIfNoEntry: false })?.size !== 256 * f.height);
+    expect(lost.map((f) => f.id)).toEqual([]);
   });
 
   it('builds the license issue URL', async () => {

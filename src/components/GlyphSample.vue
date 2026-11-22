@@ -30,5 +30,5 @@ watchEffect(() => {
 </template>
 
 <style scoped>
-.glyph-sample { image-rendering: pixelated; display: block; }
+.glyph-sample { image-rendering: pixelated; display: block; align-self: flex-start; } /* its own size in a row's column, not stretched */
 </style>
