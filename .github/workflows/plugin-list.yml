@@ -1,7 +1,8 @@
 name: Refresh the plugin list
 
-# Rebuilds plugins.json without a code deploy: when the wiki's Plugins page is edited, daily (a listed repo's own
-# changes), and by hand. It republishes the site as it already is (the last deployed commit) with a new list.
+# Rebuilds plugins.json without a release: when the wiki's Plugins page is edited, daily (a listed repo's own changes),
+# and by hand. It republishes phosphor.work as it already is (the last release's commit) with a new list. Only
+# production: next.phosphor.work gets a fresh list with every push to main.
 on:
   gollum:
   schedule:
@@ -10,48 +11,52 @@ on:
 
 permissions:
   contents: read
-  actions: read # to find the last deploy run
+  actions: read # to find the last release run
 
-# Not deploy.yml's group (pages): a run queued in a group cancels the one pending there, so a refresh would cancel a
-# merged change's deploy. Its deploy job checks for one on its way instead.
+# Not desktop.yml's site group (production): a run queued in a group cancels the one pending there, so a refresh would
+# cancel a release's publish. Its deploy job checks for one on its way instead.
 concurrency:
   group: plugin-list
   cancel-in-progress: false # never stop a deploy halfway
 
 env:
-  # deploy.yml's runs that deployed: this repository's, not a pull request's. A pull request's run ends in success
-  # without deploying, and one from a fork's main has the head branch main.
-  OURS: '[.workflow_runs[] | select(.event != "pull_request" and .head_repository.full_name == $repo)]'
+  # desktop.yml's runs for a release tag (v1.2.3, not a pre-release's v1.2.3-beta) pushed to this repository: the runs
+  # that publish phosphor.work. Its site job is the last, after the three builds, so a run's success means it published.
+  OURS: '[.workflow_runs[] | select(.event == "push" and .head_repository.full_name == $repo and (.head_branch | test("^v[0-9]+\\.[0-9]+\\.[0-9]+$")))]'
 
 jobs:
-  build:
+  # The commit of the last successful release run (OURS): a release builds only a commit main's tests passed, so that
+  # commit was tested and shipped. Not the host's deployment history, which records each deployment against the run's
+  # own commit, which for a refresh is main's head, so after one refresh the next would publish untested main. A refresh
+  # never moves this: every one rebuilds the last release. Before the first release there's nothing to rebuild: a
+  # notice, and nothing runs after it.
+  last:
     runs-on: ubuntu-latest
     outputs:
       sha: ${{ steps.last.outputs.sha }}
     steps:
-      # The commit of the last successful run of deploy.yml on main that deployed (OURS): that workflow builds only after
-      # its tests pass, so a success means that commit was tested and shipped. Not the host's deployment history, which
-      # records each deployment against the run's own commit, which for a refresh is main's head, so after one refresh
-      # the next would rebuild untested main. A refresh never moves this: every one rebuilds the last tested deploy.
-      # (The API's runs, which say what repository a run's commit came from.) A next deploy is a pull request's run,
-      # so it never counts.
       - id: last
         run: |
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&status=success&per_page=50")
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/desktop.yml/runs?event=push&status=success&per_page=50")
           sha=$(jq -r --arg repo "$GITHUB_REPOSITORY" "$OURS | .[0].head_sha // empty" <<<"$runs")
-          test -n "$sha" || { echo "::error::No successful deploy.yml run on main to rebuild"; exit 1; }
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          if [ -n "$sha" ]; then echo "sha=$sha" >> "$GITHUB_OUTPUT"; else echo "::notice::No release has published phosphor.work yet, so this refresh publishes nothing"; fi
         env:
           GH_TOKEN: ${{ github.token }}
+
+  build:
+    needs: last
+    if: needs.last.outputs.sha != ''
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ steps.last.outputs.sha }}
+          ref: ${{ needs.last.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      # As deploy.yml builds it: a build without the key would turn every sign-up away. GITHUB_SHA is main's head here
+      # As desktop.yml builds it: a build without the key would turn every sign-up away. GITHUB_SHA is main's head here
       # and can't be overridden through env:, so it's unset: the build id then comes from the checked-out commit.
       - run: |
           test -n "$VITE_TURNSTILE_SITE_KEY" || { echo "::error::The TURNSTILE_SITE_KEY secret isn't set"; exit 1; }
@@ -61,7 +66,7 @@ jobs:
       # --refresh writes nothing and fails when it can't make a safe list, so the site keeps the list it has.
       - run: node scripts/plugin-list.mjs --out dist/plugins.json --commit "$SHA" --refresh
         env:
-          SHA: ${{ steps.last.outputs.sha }}
+          SHA: ${{ needs.last.outputs.sha }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       # Handed to the deploy job, which publishes it only if its check passes.
       - uses: actions/upload-artifact@v4
@@ -71,31 +76,31 @@ jobs:
           if-no-files-found: error
 
   deploy:
-    needs: build
+    needs: [last, build]
     runs-on: ubuntu-latest
     permissions:
-      actions: read # to look for a deploy on its way
+      actions: read # to look for a release on its way
     steps:
-      # Publishes only when no deploy.yml run is queued or running (that deploy publishes a fresh list itself) and the
-      # last deploy is still the commit this run built; otherwise a notice, not a failure. Anything not answered skips.
-      # ponytail: a deploy queued in the seconds between this check and the publish still races it; a lock shared with
-      # deploy.yml that doesn't cancel would close it, if that's ever seen.
+      # Publishes only when no release run is queued or running (that release publishes a fresh list itself) and the
+      # last release is still the commit this run built; otherwise a notice, not a failure. Anything not answered skips.
+      # ponytail: a release queued in the seconds between this check and the publish still races it; a lock shared with
+      # desktop.yml's site job that doesn't cancel would close it, if that's ever seen.
       - id: check
         run: |
-          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&per_page=50")
+          runs=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/desktop.yml/runs?event=push&per_page=50")
           busy=$(jq --arg repo "$GITHUB_REPOSITORY" "$OURS | map(select(.status != \"completed\")) | length" <<<"$runs")
-          deployed=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/deploy.yml/runs?branch=main&status=success&per_page=50")
-          last=$(jq -r --arg repo "$GITHUB_REPOSITORY" "$OURS | .[0].head_sha // empty" <<<"$deployed")
+          released=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/desktop.yml/runs?event=push&status=success&per_page=50")
+          last=$(jq -r --arg repo "$GITHUB_REPOSITORY" "$OURS | .[0].head_sha // empty" <<<"$released")
           if [ "$busy" != 0 ]; then
-            echo "::notice::A deploy is queued or running and publishes a fresh list itself, so this refresh publishes nothing"
+            echo "::notice::A release is queued or running and publishes a fresh list itself, so this refresh publishes nothing"
           elif [ "$last" != "$SHA" ]; then
-            echo "::notice::The last deploy is no longer $SHA, so this refresh publishes nothing"
+            echo "::notice::The last release is no longer $SHA, so this refresh publishes nothing"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
           fi
         env:
           GH_TOKEN: ${{ github.token }}
-          SHA: ${{ needs.build.outputs.sha }}
+          SHA: ${{ needs.last.outputs.sha }}
       - if: steps.check.outputs.publish == 'true'
         uses: actions/download-artifact@v4
         with:
@@ -106,4 +111,4 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ needs.build.outputs.sha }}
+          command: pages deploy dist --project-name=phosphor --branch=main --commit-hash=${{ needs.last.outputs.sha }}

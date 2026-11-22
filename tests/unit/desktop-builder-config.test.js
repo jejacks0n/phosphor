@@ -41,12 +41,12 @@ test('builder config names the Local Network usage, opens projects and ANSI art,
   assert.match(linux, /- deb$/m);
 });
 
-test('the desktop workflow runs only on a version tag higher than the last, and a release needs the signing secrets', () => {
+test('the release workflow runs only on a version tag higher than the last, and a release needs the signing secrets', () => {
   const yml = read('.github/workflows/desktop.yml');
   // A release (v1.2.3) or a pre-release (v1.2.3-beta), the second published as a GitHub pre-release.
   assert.match(yml, /tags: \['v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+', 'v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+-\*'\]/);
   assert.match(yml, /EP_PRE_RELEASE: \$\{\{ needs\.version\.outputs\.prerelease \}\}/);
-  assert.doesNotMatch(yml, /workflow_dispatch|branches:|pull_request/);
+  assert.doesNotMatch(yml, /workflow_dispatch|branches:|\n {2}pull_request:/);
   // One check before the three builds: the tag is package.json's version and higher than every version tag before it
   // (scripts/release-tag.mjs, tested in desktop-release-tag.test.js).
   assert.match(yml, /needs: version/);

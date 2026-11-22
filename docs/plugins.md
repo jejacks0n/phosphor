@@ -62,7 +62,7 @@ Phosphor installs from the list only the files the list was built from. Each ent
 was built, with a hash of each file. If a file has changed since, is gone (its repository deleted or made private) or
 has grown past its size limit, the install is refused: "This plugin changed after it was listed." Phosphor says "The
 marketplace couldn't be reached." only when the connection fails. Updates an author pushes show after the next refresh
-of the list, which happens when the wiki page changes, once a day, and with each deploy. The pin covers what's
+of the list, which happens when the wiki page changes, once a day, and with each release. The pin covers what's
 installed, not what runs later: a plugin's script can fetch more code after it's installed, and nothing checks that.
 
 A browser that won't keep anything (some private windows) says "This browser isn't keeping plugins, so none can be

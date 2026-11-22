@@ -86,7 +86,8 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   window at a time, its own for the others), with `src/components/social/DesktopStartPage.vue` in the lobby's
   place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml` (the icon, `build/icon.png`, drawn by `node build/make-icon.mjs`), released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
-  `scripts/release-tag.mjs`). Its
+  `scripts/release-tag.mjs`, on a commit main's tests passed), which also publishes phosphor.work for a release (not a
+  pre-release); every push to main publishes next.phosphor.work (`.github/workflows/deploy.yml`). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
 - Plugins ([docs/plugins.md](docs/plugins.md)): `src/plugins/` (`manifest.js`, a stranger's `phosphor-plugin.json` read
   into a clean manifest, and the color slots; `zip.js` and `package.js`, a folder, a `.zip` or a lone manifest read into
@@ -107,7 +108,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   listing's rules: the wiki's links, reading `plugins.json`, raw URLs, what a card's button is), `hash.js` (sha256) and
   `market.js` (the page's fetches, hash-checked), `desktop/pluginList.js` (the desktop main process's two fetches:
   phosphor.work's list and raw GitHub only), `scripts/plugin-list.mjs` (builds `plugins.json` in CI, in
-  `.github/workflows/deploy.yml`, and refreshed by `.github/workflows/plugin-list.yml`),
+  `.github/workflows/deploy.yml` for next and `.github/workflows/desktop.yml` for a release, and refreshed by `.github/workflows/plugin-list.yml`),
   `src/components/PluginMarket.vue` (the Marketplace tab) and the fixture list `tests/fixtures/plugin-list.json` (the
   dev server answers `/plugins.json` with it, and its plugins' files at `/dev-raw/`, in raw GitHub's place, from
   `vite.config.js`'s `devRawFile`), `src/components/PluginsDialog.vue`, `src/components/SolverOptions.vue` (a solver's

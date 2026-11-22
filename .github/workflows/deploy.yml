@@ -4,17 +4,17 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, labeled]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || github.ref == 'refs/heads/main' && 'pages' || format('branch-{0}', github.ref) }}
+  group: ${{ github.event_name == 'pull_request' && format('test-{0}', github.ref) || github.ref == 'refs/heads/main' && 'next' || format('branch-{0}', github.ref) }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }} # never stop a deploy halfway
 
-# A pull request's jobs check out its head commit, not the merge commit, so what is tested is what reaches next.
+# A pull request's jobs check out its head commit, not the merge commit, so what is tested is what was pushed.
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -135,22 +135,15 @@ jobs:
             test-results/
           if-no-files-found: ignore
 
-  # Builds and publishes in one job (no artifact between them): production (the Pages project's main branch) on a
-  # push or a run by hand, and next.phosphor.work (its next branch) for a pull request from this repository labeled
-  # next, at the pull request's own head commit rather than the merge commit. Fork pull requests never get here.
-  # Another label than next runs the tests above and publishes nothing.
+  # Builds and publishes in one job (no artifact between them): next.phosphor.work (the Pages project's next branch) on
+  # a push to main or a run by hand on main. A pull request runs the tests above and publishes nothing. Production
+  # (phosphor.work, the Pages project's main branch) is published only by a version tag, in desktop.yml.
   build:
     needs: [test, browser, e2e, desktop-e2e]
-    if: (github.event_name != 'pull_request' && github.ref == 'refs/heads/main') || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'next'))
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # The workflow's pages group serializes production; here the last labeled push to next wins.
-    concurrency:
-      group: ${{ github.event_name == 'pull_request' && 'next' || github.run_id }}
-      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -165,18 +158,12 @@ jobs:
         env:
           VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}
       # The plugin list is published with the site (the web build only: the desktop build never carries it). The
-      # token is for GitHub's API rate limit; plugin-list.yml rebuilds the list between deploys. A next deploy falls
-      # back on next's own list, not production's.
-      - if: github.event_name != 'pull_request'
-        run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - if: github.event_name == 'pull_request'
-        run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.event.pull_request.head.sha }} --previous https://next.phosphor.work/plugins.json
+      # token is for GitHub's API rate limit. Next falls back on next's own list, not production's.
+      - run: node scripts/plugin-list.mjs --out dist/plugins.json --commit ${{ github.sha }} --previous https://next.phosphor.work/plugins.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=phosphor --branch=${{ github.event_name == 'pull_request' && 'next' || 'main' }} --commit-hash=${{ github.event.pull_request.head.sha || github.sha }}
+          command: pages deploy dist --project-name=phosphor --branch=next --commit-hash=${{ github.sha }}
