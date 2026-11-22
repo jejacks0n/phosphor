@@ -204,6 +204,42 @@ test('opened on Palettes as a dialog, back on Colors it sits under the pair and 
   await vi.waitFor(() => expect(Math.round(host.getBoundingClientRect().right - panel().getBoundingClientRect().right)).toBe(10));
 });
 
+// Back from the dialog the box fades in at its own place, as the design says: by the time the switch's work is done
+// (the first task after it, before any frame of the fade can show it) it's already the small size under the pair, no
+// width is moving, and the fade is what's running. Read with offsetLeft and offsetWidth, which the fade's scale doesn't
+// touch.
+test('back on Colors from the dialog, the box fades in at the small size under the pair, with no shrink or hop', async () => {
+  await page.viewport(1000, 900);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1000));
+  const { workspace, panel } = await mount({ on: 'palettes', width: 700 });
+  expect(getComputedStyle(panel()).position).toBe('fixed');
+  workspace.colorLayerPage = 'colors';
+  await new Promise((resolve) => setTimeout(resolve));
+  const moves = panel().getAnimations();
+  expect(moves.some((move) => move.transitionProperty === 'width')).toBe(false);
+  expect(moves.some((move) => move.effect?.getKeyframes().some((frame) => frame.opacity === '0'))).toBe(true); // fading in
+  expect([panel().offsetLeft, panel().offsetWidth]).toEqual([120, 282]);
+});
+
+// One layer at a time on the start screen too: the color layer opening there closes the character palette layer (Manage
+// fonts open, Palettes pressed by keyboard, so no press outside closes it first).
+test('over the start screen, opening the color layer closes the character palette layer', async () => {
+  const { workspace } = await createTestApp(); // no drawing
+  host = document.body.appendChild(document.createElement('div'));
+  app = createApp(EditWorkspace).use(i18n);
+  app.mount(host);
+  workspace.paletteLayerOpen = true;
+  await nextTick();
+  expect(host.querySelector('div.layer-anchor > .palette-layer')).not.toBe(null);
+  workspace.openColors('fg', 'palettes');
+  await vi.waitFor(() => {
+    expect(host.querySelector('div.layer-anchor > .color-layer')).not.toBe(null);
+    expect(host.querySelector('.palette-layer')).toBe(null);
+  });
+  expect(workspace.paletteLayerOpen).toBe(false);
+});
+
 // As the character palette layer: it closes with the drawing (nothing left over the start screen), and opened again with
 // no drawing it sits over the start screen.
 test('it closes when the drawing does, and opens again over the start screen', async () => {

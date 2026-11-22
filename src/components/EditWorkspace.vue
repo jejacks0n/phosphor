@@ -243,10 +243,10 @@ async function addSvg(file) {
     <template v-else>
       <EditToolbar v-if="project.image && workspace.editMode"/>
       <!-- With no drawing (Manage fonts or Palettes on the start screen), the palette layer or the color layer opens at the
-           work area's top right. -->
+           work area's top right, mounted side by side as in EditToolbar, so the one opening can close the other. -->
       <div v-else-if="!project.image && (workspace.paletteLayerOpen || workspace.colorBox)" class="layer-anchor">
         <CharPaletteLayer v-if="workspace.paletteLayerOpen" @close="workspace.paletteLayerOpen = false"/>
-        <ColorLayer v-else/>
+        <ColorLayer v-if="workspace.colorBox"/>
       </div>
       <DropZone @file-dropped="handleFileSelected">
         <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
