@@ -214,3 +214,137 @@ test('a brush and a shape of one id in one plugin keep their values apart, in th
   expect([brushOption.get(fresh), shapeOption.get(fresh)]).toEqual([2, 9]);
   setActivePinia(pinia);
 });
+
+// An outline of as many corners as its Points, round its box (so a change shows in the count).
+const ROUND = ({ points }) => [{ closed: true, points: Array.from({ length: points }, (_, i) => [0.5 + 0.5 * Math.cos((2 * Math.PI * i) / points), 0.5 + 0.5 * Math.sin((2 * Math.PI * i) / points)]) }];
+const optionOf = (label) => vshape.options.find((option) => option.label === label);
+const set = (workspace, label, value) => optionOf(label).set(workspace, value);
+
+test('a drawn shape keeps what made it; selected, its options show its values and a change draws it again in its box', async () => {
+  const { project, workspace, ref, drag } = await shaper({ outline: ROUND });
+  drag({ x: 10, y: 10 }, { x: 30, y: 20 });
+  const [key] = workspace.vectorSelected, drawn = project.shapes.get(key);
+  expect(drawn.made).toEqual({ kind: ref, box: [10, 10, 30, 20], values: { points: 5, tint: '#ff0000' } });
+  expect(drawn.points).toHaveLength(5);
+  // Moved and recolored, it's still the shape it made; a change keeps where it was moved to and its colors.
+  const { withShape } = await import('@/document/shapes.js');
+  project.updateShapes([[key, withShape(drawn, { m: [1, 0, 0, 1, 4, 2], fill: '#0000ff' })]]);
+  const moved = project.shapes.get(key);
+  const version = project.history.version;
+  set(workspace, 'Points', 8);
+  optionOf('Points').commit();
+  const again = project.shapes.get(key);
+  expect(project.history.version).toBe(version + 1);
+  expect(again.points).toHaveLength(8);
+  expect(again.made).toEqual({ ...moved.made, values: { points: 8, tint: '#ff0000' } });
+  expect([again.m, again.fill, again.z]).toEqual([moved.m, moved.fill, moved.z]);
+  expect(Math.max(...again.points.map((p) => p[0]))).toBe(30); // in its box
+  expect(optionOf('Points').get(workspace)).toBe(8);
+  expect(workspace.pluginTools[`shape:${ref}`].points).toBe(8); // and the next shape's
+  project.undo();
+  expect(project.shapes.get(key).points).toHaveLength(5);
+  // With nothing selected the options are the tool's, and a change touches no shape.
+  workspace.vectorSelected = [];
+  set(workspace, 'Points', 3);
+  expect(project.shapes.get(key).points).toHaveLength(5);
+  expect(optionOf('Points').get(workspace)).toBe(3);
+});
+
+test('a slider\'s drag in the toolbar is one undo step, and a color picked is another', async () => {
+  const { project, workspace, ref, drag } = await shaper({ outline: ROUND });
+  drag({ x: 10, y: 10 }, { x: 30, y: 20 });
+  const [key] = workspace.vectorSelected;
+  await mount();
+  const slider = document.getElementById(`${ref}/points`), color = host.querySelector('input[type=color]');
+  expect(slider.value).toBe('5');
+  const version = project.history.version;
+  for (const value of ['6', '7', '9']) {
+    slider.value = value;
+    slider.dispatchEvent(new Event('input'));
+  }
+  slider.dispatchEvent(new Event('change'));
+  expect(project.shapes.get(key).points).toHaveLength(9);
+  expect(project.history.version).toBe(version + 1);
+  for (const value of ['#00ff00', '#0000ff']) {
+    color.value = value;
+    color.dispatchEvent(new Event('input'));
+  }
+  color.dispatchEvent(new Event('change'));
+  expect(project.shapes.get(key).made.values.tint).toBe('#0000ff');
+  expect(project.history.version).toBe(version + 2);
+  expect(project._stroke).toBe(null);
+});
+
+test('points edited by hand make it a path: its options are the tool\'s again and a change leaves it', async () => {
+  const { project, workspace, ref, drag } = await shaper({ outline: ROUND });
+  drag({ x: 10, y: 10 }, { x: 30, y: 20 });
+  const [key] = workspace.vectorSelected;
+  const { movePoint } = await import('@/document/shapes.js');
+  project.updateShapes([[key, movePoint(project.shapes.get(key), 0, 2, 0)]]);
+  const edited = project.shapes.get(key);
+  expect(edited.made).toBe(undefined);
+  set(workspace, 'Points', 9);
+  expect(project.shapes.get(key)).toBe(edited);
+  // Nor is it offered while another kind is chosen.
+  workspace.vectorShapeKind = 'rect';
+  expect(optionOf('Points').when(workspace)).toBe(false);
+  workspace.vectorShapeKind = ref;
+});
+
+test('a selected shape made by another kind shows that kind\'s options, whatever kind is chosen; several change together', async () => {
+  const { project, workspace, ref, drag } = await shaper({ outline: ROUND });
+  drag({ x: 10, y: 10 }, { x: 30, y: 20 });
+  drag({ x: 2, y: 30 }, { x: 8, y: 36 });
+  const keys = [...project.shapes.keys()];
+  workspace.vectorSelected = keys;
+  workspace.vectorShapeKind = 'polygon';
+  expect(optionOf('Points').when(workspace)).toBe(true);
+  set(workspace, 'Points', 4);
+  expect(keys.map((k) => project.shapes.get(k).points.length)).toEqual([4, 4]);
+  expect(project.shapes.get(keys[1]).made.box).toEqual([2, 30, 8, 36]);
+  // Its plugin turned off, it's a path until it's back: no option of it shows.
+  usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;
+  expect(vshape.options.some((option) => option.label === 'Points')).toBe(false);
+  expect(project.shapes.get(keys[0]).made.kind).toBe(ref);
+});
+
+test('an outline that fails while a slider drags is said once and leaves the shapes as they were', async () => {
+  let fail = false;
+  const { project, workspace, drag } = await shaper({ outline: (options) => { if (fail) throw new Error('boom'); return ROUND(options); } });
+  drag({ x: 10, y: 10 }, { x: 30, y: 20 });
+  const [key] = workspace.vectorSelected, drawn = project.shapes.get(key);
+  fail = true;
+  const toasts = [];
+  for (const value of [6, 7, 8]) {
+    toastMessage.value = null;
+    set(workspace, 'Points', value);
+    toasts.push(toastMessage.value);
+  }
+  optionOf('Points').commit();
+  expect(toasts.filter(Boolean)).toHaveLength(1);
+  expect(project.shapes.get(key)).toBe(drawn);
+  expect(project._stroke).toBe(null);
+});
+
+test('Polygon: Sides changes the selected polygons, and on a shape with keys only the frame\'s key', async () => {
+  const { project, workspace, drag } = await shaper();
+  workspace.vectorShapeKind = 'polygon';
+  workspace.vectorSides = 5;
+  drag({ x: 10, y: 10 }, { x: 30, y: 30 });
+  const [key] = workspace.vectorSelected;
+  expect(project.shapes.get(key).made).toEqual({ kind: 'polygon', box: [10, 10, 30, 30], values: { sides: 5 } });
+  for (let i = 0; i < 4; i++) project.addFrame('blank');
+  project.showFrame(4);
+  workspace.vectorSelected = [key];
+  set(workspace, 'Sides', 7);
+  optionOf('Sides').commit();
+  expect(project.shapes.get(key).points).toHaveLength(7);
+  expect(workspace.vectorSides).toBe(7);
+  const sides = (at) => project.resolvedOf(at).get(key).cell;
+  expect([sides(0).points.length, sides(2).points.length, sides(4).points.length]).toEqual([5, 5, 7]);
+  // Each key frame's shape is still the one it made, so Sides shows its own there.
+  expect([sides(0).made.values.sides, sides(4).made.values.sides]).toEqual([5, 7]);
+  project.showFrame(0);
+  workspace.vectorSelected = [key];
+  expect(optionOf('Sides').get(workspace)).toBe(5);
+});

@@ -11,7 +11,7 @@ test('a shape has ten parts, each its own fields', () => {
   assert.deepEqual(PARTS, ['transform', 'along', 'outline', 'fill', 'stroke', 'width', 'style', 'start', 'end', 'z']);
   assert.deepEqual(PART_FIELDS.along, ['along']);
   assert.deepEqual([PART_FIELDS.start, PART_FIELDS.end], [['start'], ['end']]);
-  assert.deepEqual(PART_FIELDS.outline, ['points', 'closed', 'more', 'rule']);
+  assert.deepEqual(PART_FIELDS.outline, ['points', 'closed', 'more', 'rule', 'made']);
   assert.deepEqual(PART_FIELDS.style, ['cap', 'join', 'miter', 'align']);
   assert.deepEqual([...ALL_PARTS], PARTS);
 });

@@ -5,7 +5,7 @@ import { withShape } from './shapes.js';
 export const PART_FIELDS = Object.freeze({
   transform: ['m'],
   along: ['along'],
-  outline: ['points', 'closed', 'more', 'rule'],
+  outline: ['points', 'closed', 'more', 'rule', 'made'],
   fill: ['fill'],
   stroke: ['stroke'],
   width: ['width'],

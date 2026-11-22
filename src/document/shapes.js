@@ -2,7 +2,7 @@
  * The vector layer's shapes, as data. A shape is a path of points with cubic Bézier handles, a fill and a
  * stroke, kept as shapes until it's baked or merged (docs/vector.md). Nothing here touches a canvas.
  *
- * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end?, follow?, along?, guide?, layer? }, frozen:
+ * Shape = { z, closed, points, fill, stroke, width, m, more?, rule?, cap?, join?, miter?, align?, start?, end?, follow?, along?, guide?, layer?, made? }, frozen:
  *   points  [[x, y, inX, inY, outX, outY, smooth], ...] in the shape's own (local) grid pixels; a handle is an
  *           offset from its point, 0, 0 for none; smooth (1 or 0): its handles stay in line when one moves
  *   closed  whether that outline closes
@@ -21,6 +21,10 @@
  *           (absent: smoothly); along, how far along that path it is, a share -1 to 2 (absent: 0); guide true: a path
  *           that only guides, never drawn. follow and guide are the same on every frame; along is a part (parts.js)
  *   layer   the id of the vector layer it's on; absent: 'vector' (artLayers.js: goodShapeLayer)
+ *   made    { kind, box, values }: what drew its outlines, so a change to its options draws them again (tools/vshape.js):
+ *           kind 'polygon' or a plugin shape's ref, box [x0, y0, x1, y1] the box it was drawn in (local, to 1/100),
+ *           values its options by id ({ sides } for a polygon). It's a part of the outline (parts.js), and goes when the
+ *           outlines change without it (withShape): a shape whose points were edited is a path
  * The optional fields are written only when they aren't the default, so a shape that uses none of them is
  * exactly what it was before they existed (an older copy of Phosphor refuses a shape with a field it doesn't
  * know, and with it the whole file's shapes or a room's whole change). A point's index is flat: the first
@@ -42,6 +46,7 @@
  */
 
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
+import { goodPluginRef, goodPluginValues } from '@/plugins/filters.js';
 import { SHAPE_KEY, alongShare, artBounds, artFromStranger, goodAlong, goodFollow, goodShapeLayer, isArt, makeArt, makeFollow } from './artLayers.js';
 export const SHAPE_PREFIX = 'v:';
 export const MOST_SHAPES = 1000; // a frame's, from a file, a project or a room
@@ -55,7 +60,7 @@ const MOST_M = 1e4;       // a transform's stretch
 const MOST_SHIFT = 1e7;   // and its move: turned or grown about a point far down the grid, a shape moves further than any point is
 const HEX = /^#[0-9a-f]{6}$/i;
 const FIELDS = ['z', 'closed', 'points', 'fill', 'stroke', 'width', 'm'];
-const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end', 'follow', 'along', 'guide', 'layer'];
+const OPTIONAL = ['more', 'rule', 'cap', 'join', 'miter', 'align', 'start', 'end', 'follow', 'along', 'guide', 'layer', 'made'];
 const RULES = ['evenodd'], CAPS = ['butt', 'square'], JOINS = ['miter', 'bevel'], ALIGNS = ['inside', 'outside', 'left', 'right']; // the values other than the default
 const GRADIENTS = ['linear', 'radial'];
 export const MOST_STOPS = 16;
@@ -116,7 +121,12 @@ const share = (v) => round(Math.min(Math.max(v, 0), 1), 4); // a tween's oversho
 
 const roundPoints = (points) => Object.freeze(points.map((p) => Object.freeze(p.slice(0, 6).map((v) => round(v, 2)).concat(p[6] ? 1 : 0))));
 
-export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer, art }) {
+// made in one order, its box rounded as points are, so a trip through JSON gives back the same.
+const makeMade = ({ kind, box, values }) => Object.freeze({
+  kind, box: Object.freeze(box.map((v) => round(v, 2))), values: Object.freeze(Object.fromEntries(Object.keys(values).sort().map((id) => [id, values[id]]))),
+});
+
+export function makeShape({ points, closed, fill = null, stroke = null, width = 1, m = IDENTITY, z = 0, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer, art, made }) {
   if (art) return makeArt({ z, m, art, follow, along, layer });
   const shape = {
     z,
@@ -139,6 +149,7 @@ export function makeShape({ points, closed, fill = null, stroke = null, width = 
   if (along && alongShare(along)) shape.along = alongShare(along);
   if (guide) shape.guide = true;
   if (layer && layer !== 'vector') shape.layer = layer;
+  if (made) shape.made = makeMade(made);
   return Object.freeze(shape);
 }
 
@@ -236,7 +247,11 @@ export function locate(shape, i) {
   return null;
 }
 
-export const withShape = (shape, changes) => makeShape({ ...shape, ...changes });
+// A change to the outlines that doesn't say what made them leaves a path: made goes.
+const OUTLINE_FIELDS = ['points', 'closed', 'more'];
+export const withShape = (shape, changes) => makeShape({
+  ...shape, ...(!('made' in changes) && OUTLINE_FIELDS.some((field) => field in changes) && { made: undefined }), ...changes,
+});
 
 // The style a new shape gets (workspace.vectorStyle), its colors as it takes them: 'fg' is the foreground color
 // now (none: no color).
@@ -416,14 +431,14 @@ export function ellipseShape(x0, y0, x1, y1, style) {
   });
 }
 
-// A polygon inscribed in the box, its first corner at the top.
+// A polygon inscribed in the box, its first corner at the top; made says so, so Sides can change it later.
 export function polygonShape(x0, y0, x1, y1, sides, style) {
   const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2, rx = (x1 - x0) / 2, ry = (y1 - y0) / 2;
   const points = Array.from({ length: sides }, (_, i) => {
     const a = -Math.PI / 2 + (2 * Math.PI * i) / sides;
     return corner(cx + rx * Math.cos(a), cy + ry * Math.sin(a));
   });
-  return makeShape({ points, closed: true, ...style });
+  return makeShape({ points, closed: true, ...style, made: { kind: 'polygon', box: [x0, y0, x1, y1], values: { sides } } });
 }
 
 // Segment i's four control points, local.
@@ -593,12 +608,22 @@ function goodFill(fill) {
 }
 const goodPoints = (points) => Array.isArray(points) && points.length > 0
   && points.every((p) => Array.isArray(p) && p.length === 7 && p.slice(0, 6).every((v) => finite(v, MOST_COORD)) && (p[6] === 0 || p[6] === 1));
+// A stranger's made: exactly kind, box and values; a polygon's values its sides (3 to 12), a plugin shape's as a drawing
+// keeps a plugin's values (goodPluginValues); the box's corners in order (a flat box is one a drag across draws).
+function goodMade(made) {
+  if (!made || typeof made !== 'object' || Array.isArray(made) || Object.keys(made).sort().join() !== 'box,kind,values') return false;
+  const { kind, box, values } = made;
+  if (!Array.isArray(box) || box.length !== 4 || !box.every((v) => finite(v, MOST_COORD)) || box[0] > box[2] || box[1] > box[3]) return false;
+  if (kind === 'polygon') return !!values && typeof values === 'object' && Object.keys(values).join() === 'sides' && Number.isInteger(values.sides) && values.sides >= 3 && values.sides <= 12;
+  return goodPluginRef(kind) && goodPluginValues(values);
+}
+
 export function shapeFromStranger(value) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   if ('art' in value) return artFromStranger(value);
   const keys = Object.keys(value);
   if (!FIELDS.every((f) => f in value) || !keys.every((k) => FIELDS.includes(k) || OPTIONAL.includes(k))) return null;
-  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer } = value;
+  const { z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer, made } = value;
   if (!Number.isInteger(z) || Math.abs(z) > MOST_Z || typeof closed !== 'boolean') return null;
   if (!goodFill(fill) || !goodFill(stroke)) return null;
   if (!finite(width, MOST_WIDTH) || width < 0) return null;
@@ -619,7 +644,8 @@ export function shapeFromStranger(value) {
   if (('start' in value && (!finite(start, 1) || start <= 0)) || ('end' in value && (!finite(end, 1) || end < 0 || end === 1))) return null; // shares, the defaults 0 and 1 left out
   if (('follow' in value && !goodFollow(follow, false)) || ('along' in value && !goodAlong(along)) || ('guide' in value && guide !== true)) return null;
   if ('layer' in value && !goodShapeLayer(layer)) return null;
-  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer });
+  if ('made' in value && !goodMade(made)) return null;
+  return makeShape({ z, closed, points, fill, stroke, width, m, more, rule, cap, join, miter, align, start, end, follow, along, guide, layer, made });
 }
 
 export const isGoodShapeKey = (key) => typeof key === 'string' && SHAPE_KEY.test(key);

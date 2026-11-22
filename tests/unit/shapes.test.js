@@ -561,3 +561,52 @@ test('copyShapes gives new keys and points followers at the copies', () => {
   assert.equal(again.shapes.get(keyMap.get('v:rider')).layer, undefined);
   assert.equal(again.shapes.get(keyMap.get('v:rider')).follow.key, keyMap.get('v:path'));
 });
+
+const REF = 'plugin:phosphor.superformula/superformula';
+const PLUGGED = makeShape({
+  points: [[0, 0, 0, 0, 0, 0, 0], [4, 0, 0, 0, 0, 0, 0], [2, 4, 0, 0, 0, 0, 0]], closed: true, fill: '#ff0000',
+  made: { kind: REF, box: [0, 0, 4.004, 4], values: { round: 1.7, points: 5, on: true, choice: 2, tint: '#00ff00' } },
+});
+
+test('made: a polygon says what made it, in one order, its box rounded as points are', () => {
+  const flat = polygonShape(2, 3, 10, 3, 6, { fill: '#ff0000' }); // a drag straight across: a flat box
+  assert.deepEqual(flat.made, { kind: 'polygon', box: [2, 3, 10, 3], values: { sides: 6 } });
+  assert.deepEqual(Object.keys(PLUGGED.made), ['kind', 'box', 'values']);
+  assert.deepEqual(Object.keys(PLUGGED.made.values), ['choice', 'on', 'points', 'round', 'tint']);
+  assert.deepEqual(PLUGGED.made.box, [0, 0, 4, 4]);
+  assert.ok(Object.isFrozen(PLUGGED.made) && Object.isFrozen(PLUGGED.made.box) && Object.isFrozen(PLUGGED.made.values));
+  assert.equal('made' in rectShape(0, 0, 4, 4, {}), false);
+});
+
+test('made stays through changes to the rest of a shape and goes when its outlines change without it', () => {
+  const polygon = polygonShape(0, 0, 10, 10, 5, { fill: '#ff0000' });
+  for (const kept of [transformed(polygon, translation(3, 1)), withShape(polygon, { fill: '#0000ff', width: 3, rule: 'evenodd' }), copyShapes(new Map([['v:a', polygon]]), 'vector').shapes.values().next().value]) {
+    assert.deepEqual(kept.made, polygon.made);
+  }
+  for (const edited of [movePoint(polygon, 0, 1, 1), deletePoint(polygon, 0), setSmooth(polygon, 1, true), splitAt(polygon, 0, 0.5), withShape(polygon, { closed: false }), withShape(polygon, { more: [[true, polygon.points]] })]) {
+    assert.equal(edited.made, undefined);
+  }
+  const again = withShape(polygon, { points: polygonShape(0, 0, 10, 10, 7, {}).points, made: { ...polygon.made, values: { sides: 7 } } });
+  assert.deepEqual(again.made.values, { sides: 7 });
+});
+
+test('made round trips through JSON and a stranger\'s check, and a stranger\'s that isn\'t one refuses the shape', () => {
+  for (const shape of [PLUGGED, polygonShape(2, 3, 10, 3, 12, { stroke: '#000000' })]) {
+    const back = shapeFromStranger(JSON.parse(JSON.stringify(shape)));
+    assert.ok(back && sameShape(back, shape));
+  }
+  const as = (made) => shapeFromStranger({ ...JSON.parse(JSON.stringify(PLUGGED)), made });
+  const good = JSON.parse(JSON.stringify(PLUGGED.made));
+  assert.ok(as(good));
+  for (const bad of [
+    null, [], { ...good, extra: 1 }, { kind: good.kind, box: good.box },
+    { ...good, kind: 'rect' }, { ...good, kind: 'plugin:no-dot/x' }, { ...good, kind: 'superformula' },
+    { ...good, box: [4, 0, 0, 4] }, { ...good, box: [0, 0, 4] }, { ...good, box: [0, 0, 4, Infinity] }, { ...good, box: [0, 0, 4, 1e9] },
+    { ...good, values: { 'bad-id': 1 } }, { ...good, values: { tint: '#00FF00' } }, { ...good, values: { tint: 'red' } }, { ...good, values: [] },
+    { ...good, values: Object.fromEntries(Array.from({ length: 13 }, (_, i) => [`o${i}`, i])) },
+    { kind: 'polygon', box: [0, 0, 4, 4], values: { sides: 13 } }, { kind: 'polygon', box: [0, 0, 4, 4], values: { sides: 2.5 } },
+    { kind: 'polygon', box: [0, 0, 4, 4], values: { sides: 5, more: 1 } },
+  ]) {
+    assert.equal(as(bad), null, JSON.stringify(bad));
+  }
+});
