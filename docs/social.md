@@ -301,7 +301,7 @@ tab becomes its **CHAT**. An unlisted room with a password asks for it first, on
   while your view follows theirs.
 - **Tracking**: The box is the host's whole view. While you track, the art is drawn at their zoom (never above 100%),
   or smaller if that's what it takes to fit their whole view in your window.
-- **Looking around**: Scroll away to look on your own, keeping the zoom you had. The tag becomes **Track ›**, which
+- **Looking around**: Scroll away to look on your own, keeping the zoom you had. The tag becomes **Track**, which
   brings you back at the host's zoom. Scroll the box out of sight and the tag waits at the edge of the art, with an
   arrow pointing to it.
 - **Zoom**: from 25% to 100%, with **−** and **+** in the art's corner, Ctrl+wheel or a pinch. Zooming is looking
@@ -339,7 +339,7 @@ an unconfirmed member sees **Confirm your email to chat**.
   send about one a second (three at once, then one a second). Too fast says "Please wait a moment before sending
   another message." and keeps what you typed.
 - **Your name** sits on the message box, with a **…** menu for **Edit account** and **Sign out**.
-- **Earlier messages** load as you scroll up (**↑ Scroll up for earlier messages**), and **You joined** marks where you
+- **Earlier messages** load as you scroll up (**Scroll up for earlier messages**), and **You joined** marks where you
   came in.
 - **Comings and goings** show between messages, and those with nothing said between them share one line (*tin-owl
   joined, wren left, pixel_fox joined*). Someone who comes and goes more than once in a line is named once, by how it

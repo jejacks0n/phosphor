@@ -75,7 +75,7 @@ const rows = computed(() => {
                 <time :datetime="new Date(row.editedAt).toISOString()">{{ row.when }}</time>
                 <span class="status" :class="row.status">{{ t(`zero.status.${row.status}`) }}</span>
               </span>
-              <span class="go">{{ row.openElsewhere ? t(`zero.${elsewhere}`) : `${t('zero.open')} ›` }}</span>
+              <span class="go">{{ row.openElsewhere ? t(`zero.${elsewhere}`) : t('zero.open') }}</span>
             </button>
           </li>
         </ul>

@@ -1,4 +1,4 @@
-// The settings Font field: the dropdown and the size choose the font; Manage fonts ▸ opens the palette layer's Fonts
+// The settings Font field: the dropdown and the size choose the font; Manage fonts opens the palette layer's Fonts
 // page, where fonts are loaded, saved and removed.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
@@ -35,7 +35,7 @@ async function mount({ drawing = true, tab } = {}) {
   return { project, workspace };
 }
 const labels = () => [...host.querySelectorAll('button')].map((b) => b.textContent.trim());
-const manage = () => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Manage fonts ▸');
+const manage = () => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Manage fonts');
 
 test('the Font field chooses; Manage fonts opens the Fonts page', async () => {
   const { workspace } = await mount({ tab: 'input' });

@@ -17,7 +17,7 @@ test('Get from Lospec works under the built page\'s policy: the palette is kept,
     });
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Browse ▸' }).click();
+  await page.getByRole('button', { name: 'Browse' }).click();
   const dialog = page.getByRole('dialog', { name: 'Color palettes' });
   await dialog.getByRole('textbox', { name: "A palette's name or lospec.com link" }).fill('https://lospec.com/palette-list/sweetie-16');
   await dialog.getByRole('button', { name: 'Get from Lospec' }).click();

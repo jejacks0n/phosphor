@@ -169,12 +169,12 @@ An [art layer](vector.md#art-layers) always moves a whole cell at a time, so its
 
 ### The Keys Panel
 
-On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up with the scrubber's. **Keys** on the bar opens and folds it, as does the **▾** at its top left, and it stays as you left it. It shows the selected shape (with several selected, the first). With none, it says "Select a shape to view its keyframes."
+On VECTOR with Animate on, the Keys panel sits over the bar, its frames lined up with the scrubber's. **Keys** on the bar opens and folds it, as does the fold arrow at its top left, and it stays as you left it. It shows the selected shape (with several selected, the first). With none, it says "Select a shape to view its keyframes."
 
 **Rows**: Each part that changes in the shape's life is a row:
 
 - **Name**: The part.
-- **◀** and **▶**: Go to the part's previous and next key.
+- The previous-key and next-key arrows: Go to the part's previous and next key.
 - **◇**: Keys the part on the frame showing with the value it has there. It's lit **◆** when there's a key there, and a click deletes it.
 - **Lane**: A diamond for each key, a bar where the part tweens (with its easing's curve in the middle), a thin line where it holds, and a line across the lanes at the frame showing. A Duplicate's keys are drawn in its color. Frames outside the shape's life (before it starts, after a Wipe or Duplicate without it, or after it's erased) are dimmed.
 
@@ -218,7 +218,7 @@ Type a value and press Enter, or leave the field, and the part is keyed on the f
 
 **Narrow panels**: Where the panel is too narrow for its lanes and its buttons beside them (a tablet with the side panel open, say), the top line stays one line: the part names, **+ Add key** and the trash can keep their room, the easing menu shows only its curve, and the lanes and their ruler narrow to what's left, still lined up with each other, scrolling and zooming as above. A row whose values don't fit beside it (Transform's, usually) has a button there instead that opens them in a box over the row. The box stays open while you type, and closes with Escape or a click outside it. Escape in one of its fields puts back what you typed as it closes the box.
 
-**On a phone**: There's no values column and no **◀** or **▶**. A **◇** (lit **◆** where there's a key) ends each row and does what the middle one does on a wide screen, and the button beside it opens the row's values in a box. The top line is the **▾**, **+ Add key**, then the easing, the motion, and the trash can; the ruler, with **−** and **+**, has the line under it. The diamonds are taller, for a finger.
+**On a phone**: There's no values column and no previous-key or next-key arrows. A **◇** (lit **◆** where there's a key) ends each row and does what the middle one does on a wide screen, and the button beside it opens the row's values in a box. The top line is the fold arrow, **+ Add key**, then the easing, the motion, and the trash can; the ruler, with **−** and **+**, has the line under it. The diamonds are taller, for a finger.
 
 ### Start and End
 
@@ -240,7 +240,7 @@ A shape or an art layer can follow a path ([Following a Path](vector.md#followin
 - **Closed and open paths**: On a closed path, past 100% comes around again, so an elastic tween springs around the loop and back. On an open one it stops at the ends.
 - **Moving it by hand**: Dragging the follower on VECTOR slides it along its path, and the arrow keys step its Along by 1% (Shift: 10%). Both key Along on the frame showing. Its X and Y in the Transform row aren't typed: the path decides them.
 
-The row's name, **Along ▾**, is the menu that sets how it follows:
+The row's name, **Along**, is the menu that sets how it follows:
 
 - **Move along path using its own keys** (default): Along's keys place it.
 - **Stay with line start** / **Stay with line end**: The follower sits on the path's Start (or End) on every frame, whatever its own Along keys say. They're kept, but don't apply while it rides. Its Along value shows that tip's percent, grayed out, and dragging it does nothing.
@@ -250,7 +250,7 @@ The row's name, **Along ▾**, is the menu that sets how it follows:
 
 A path that others follow, or one marked as a guide, has a **Guide** button on the panel's top line: a guide is a reference path that doesn't draw. An art layer can't be a path, a follower can't be followed, and a path others follow can't follow another.
 
-**Ride a dot on a spark's tip**: Draw the spark's line and key its **End** from 0 to 100% (its **Start** too, for a streak that runs off). Draw a dot, choose **Follow a path…** and click the line, then **Along ▾ → Stay with line end**. The dot stays on the tip whatever you do to the line's timing or easing. Make the line a **Guide** and only the dot shows, moving along the curve.
+**Ride a dot on a spark's tip**: Draw the spark's line and key its **End** from 0 to 100% (its **Start** too, for a streak that runs off). Draw a dot, choose **Follow a path…** and click the line, then **Along → Stay with line end**. The dot stays on the tip whatever you do to the line's timing or easing. Make the line a **Guide** and only the dot shows, moving along the curve.
 
 **Move a shape along a curve**: Draw the curve, have the shape follow it, key Along at 0% on the first frame and 100% on the last, and choose an easing. **Rotate to face path** turns it as the curve turns, and **Guide** hides the curve.
 

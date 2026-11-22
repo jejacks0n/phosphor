@@ -403,7 +403,7 @@ test('while the settings are locked the Custom color list writes nothing, and a 
   }
 });
 
-test('Browse ▸ beside Color palette opens the Colors dialog, whatever the palette choice, and is off when settings are locked', async () => {
+test('Browse beside Color palette opens the Colors dialog, whatever the palette choice, and is off when settings are locked', async () => {
   const { project, workspace } = await grid(40, 40);
   const { host, gone } = mountPanel();
   const browse = () => host.querySelector('#quantize').closest('.field').querySelector('button.browse');
@@ -412,7 +412,7 @@ test('Browse ▸ beside Color palette opens the Colors dialog, whatever the pale
       project.quantize = quantize;
       workspace.colorsOpen = false;
       await nextTick();
-      expect(browse().textContent).toBe('Browse ▸');
+      expect(browse().textContent).toBe('Browse');
       expect(browse().title).toBe('Browse color palettes');
       browse().click();
       expect(workspace.colorsOpen).toBe(true);

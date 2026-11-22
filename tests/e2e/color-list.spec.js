@@ -69,7 +69,7 @@ test.describe('on a phone', () => {
     await expect.poll(() => store(page, 'workspace', (w) => w.settingsOpen)).toBe(false);
 
     await page.getByRole('button', { name: 'Foreground color' }).tap();
-    await page.getByRole('button', { name: 'Edit colors ▸' }).tap();
+    await page.getByRole('button', { name: 'Edit colors' }).tap();
     await expect(page.getByRole('dialog', { name: 'Color picker' })).toHaveCount(0);
     await expect.poll(() => store(page, 'workspace', (w) => w.settingsOpen)).toBe(true);
     await expect(page.locator('.color-list button.swatch[aria-pressed=true]')).toBeFocused();
@@ -79,7 +79,7 @@ test.describe('on a phone', () => {
     for (const swatch of await swatches(page).all()) expect(await swatch.getAttribute('draggable')).not.toBe('true');
     await expect(page.getByRole('textbox', { name: 'Palette colors' })).toHaveValue('#ff0000');
     // Under a finger: ◂ ▸ a fingertip wide, on a line under the color with Remove, the whole hex showing over them; and
-    // the small links (Remove, Import, Export, Browse ▸) take a press a little above and below their words.
+    // the small links (Remove, Import, Export, Browse) take a press a little above and below their words.
     const box = (selector) => page.locator(selector).boundingBox();
     const [field, earlier, later] = [await box('.color-list #palette'), await box('.color-list button.earlier'), await box('.color-list button.later')];
     expect([earlier.width, later.width].every((width) => width >= 44)).toBe(true);

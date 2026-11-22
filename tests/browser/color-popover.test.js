@@ -255,7 +255,7 @@ test('with a Custom color list the color box links to its editor; not with anoth
   const picked = () => panel.host.querySelector('.color-list button.swatch[aria-pressed=true]');
   try {
     await open();
-    expect(link()?.textContent.trim()).toBe('Edit colors ▸');
+    expect(link()?.textContent.trim()).toBe('Edit colors');
     project.quantize = 'cga';
     await nextTick();
     expect(link()).toBe(null);

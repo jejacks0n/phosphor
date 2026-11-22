@@ -204,7 +204,7 @@
       "cga": "CGA (16 colors)",
       "count": "Limited count",
       "palette": "Custom color list",
-      "browse": "Browse ▸",
+      "browse": "Browse",
       "browseTitle": "Browse color palettes"
     },
     "paletteColors": {
@@ -405,7 +405,7 @@
     "label": "Font",
     "help": "Sets the display font for your canvas. Load, save, and remove fonts (bitmap fonts, or monospaced TrueType, OpenType, or WOFF fonts from your computer) with Manage fonts. Bitmap fonts look best at multiples of their native size (such as 16px or 32px for 8×16 fonts). Your font choice is saved in your browser. In a shared room, you see the host's font.",
     "sauceNotFetched": "Couldn't fetch the font {name} named in this file's SAUCE. It opened in the font in use.",
-    "manage": "Manage fonts ▸",
+    "manage": "Manage fonts",
     "manageTitle": "Load, save, and remove fonts on the palette layer's Fonts page",
     "groupBuiltIn": "Built-in",
     "groupYours": "Yours",
@@ -775,7 +775,7 @@
     "cantPaint": "{hex}: this color cannot be produced with current slider settings",
     "noneTitle": "None: keep existing color",
     "recentTitle": "Recent: {hex}",
-    "editColors": "Edit colors ▸"
+    "editColors": "Edit colors"
   },
   "palette": {
     "file": {
@@ -830,8 +830,8 @@
       "exitFullScreen": "Exit full screen",
       "filterPlaceholder": "Filter palettes…",
       "filterAria": "Filter palettes",
-      "doneBtn": "◂ Done",
-      "editBtn": "Edit ▸",
+      "doneBtn": "Done",
+      "editBtn": "Edit",
       "newBtn": "＋ New",
       "utf8": "UTF-8",
       "lockedNote": "Built-in — editing creates a custom copy",
@@ -933,7 +933,7 @@
       "saveRaw": "Save .F{height}",
       "savePng": "Save PNG",
       "exportPalettes": "Export palettes",
-      "toPalettes": "Palettes ▸",
+      "toPalettes": "Palettes",
       "remove": "Remove",
       "removeTitle": "Forget this browser's copy of the font",
       "sheetNote": "All 256 slots, as the font draws them",
@@ -1519,7 +1519,7 @@
     "unsupported": "This browser does not support the security features required for Social rooms.",
     "agreeTerms": "I am 13 or older and agree to the {terms}, {privacy}, and {guidelines}",
     "nav": {
-      "cancel": "‹ Cancel",
+      "cancel": "Cancel",
       "cancelSignOut": "Cancel and sign out"
     },
     "consent": {
@@ -1701,7 +1701,7 @@
       "artRegionAria": "The room's art",
       "trackAria": "Track {name}",
       "trackingState": "· tracking",
-      "trackBtn": "Track ›"
+      "trackBtn": "Track"
     },
     "pause": {
       "hostChanging": "Transferring host controls. Drawing is paused…",
@@ -1753,7 +1753,7 @@
       "acceptReplacesDirty": "Accepting replaces your current canvas, which has unsaved changes.",
       "showCursors": "Show others' cursors",
       "messagesAria": "Messages",
-      "scrollForEarlier": "↑ Scroll up for earlier messages",
+      "scrollForEarlier": "Scroll up for earlier messages",
       "youJoined": "You joined",
       "presence": {
         "joined": "{person} joined",

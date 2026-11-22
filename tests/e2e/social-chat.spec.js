@@ -216,7 +216,7 @@ test('a watcher\'s message reaches both with their name, a time and "(you)" only
   expect(await store(watcher, 'room', (r) => r.status)).toBe('live');
   await expect(log(watcher).getByText('You joined')).toBeVisible();
   await expect(messages(watcher)).toHaveCount(0);
-  await expect(log(watcher).getByText('↑ Scroll up for earlier messages')).toHaveCount(0);
+  await expect(log(watcher).getByText('Scroll up for earlier messages')).toHaveCount(0);
 
   await say(watcher, 'hello');
   await expect(box(watcher)).toHaveValue('');
@@ -271,14 +271,14 @@ test('60 messages before a second watcher joins: the last 50, "You joined", and 
   await expect(messages(late)).toHaveCount(50);
   await expect(messages(late).first()).toContainText('m11');
   await expect(messages(late).last()).toContainText('m60');
-  await expect(log(late).getByText('↑ Scroll up for earlier messages')).toBeVisible();
+  await expect(log(late).getByText('Scroll up for earlier messages')).toBeVisible();
   await expect(log(late).getByText('You joined')).toBeVisible();
   await expect.poll(() => log(late).evaluate((el) => el.scrollHeight - el.scrollTop - el.clientHeight)).toBeLessThan(8);   // at the bottom
 
   await log(late).evaluate((el) => { el.scrollTop = 0; });
   await expect(messages(late)).toHaveCount(60);
   await expect(messages(late).first()).toContainText('m1');
-  await expect(log(late).getByText('↑ Scroll up for earlier messages')).toHaveCount(0);
+  await expect(log(late).getByText('Scroll up for earlier messages')).toHaveCount(0);
   // the place held: m11, which was at the top, is still where the eye was
   const fromTop = async () => (await messages(late).nth(10).boundingBox()).y - (await log(late).boundingBox()).y;
   await expect.poll(async () => Math.abs(await fromTop())).toBeLessThan(60);

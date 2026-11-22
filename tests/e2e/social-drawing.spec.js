@@ -1327,7 +1327,7 @@ test('an artist draws in the host\'s font and size, follows a change, and has th
   await expect(font(artist)).toHaveValue('vga');
   await expect(font(artist)).toBeDisabled();
   await expect(size(artist)).toBeDisabled();
-  await expect(artist.getByRole('button', { name: 'Manage fonts ▸' })).toBeDisabled(); // the drawing's settings are the host's
+  await expect(artist.getByRole('button', { name: 'Manage fonts' })).toBeDisabled(); // the drawing's settings are the host's
   await expect(artist.getByText("Using the host's font while in this room.")).toBeVisible();
   expect(await store(artist, 'project', (p) => p.cols * 8 + 4)).toBeCloseTo(await artist.locator('.ansi-editor div.display').evaluate((c) => c.getBoundingClientRect().width), 0);
 

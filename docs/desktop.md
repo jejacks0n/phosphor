@@ -250,7 +250,7 @@ The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A p
 
 ## A palette from Lospec
 
-In the **Color palettes** dialog (**Browse ▸** beside Color palette), **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
+In the **Color palettes** dialog (**Browse** beside Color palette), **Get from Lospec** asks `https://lospec.com/palette-list/<name>.json` for the one palette typed,
 only when it's pressed. The page can't reach lospec.com, so the app asks for it and hands the page the answer, which the
 page checks as the web app does. The app builds that address itself from the palette's name, and asks for nothing else
 there.

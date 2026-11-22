@@ -18,14 +18,14 @@ that reopens in Phosphor with the same cells, font and palette, and that looks t
   `fontSheet` (from `src/lib/BitmapFont.js`) for the sheet. When `input/qa/` has packs, use the fonts and the XBins
   beside them instead, and say so in a note.
 - A photo from `tests/fixtures/images/` for the conversion.
-- To load a file: the Fonts page's + Load file box (reached by Manage fonts ▸), as a person picks a file (`e2e.fixture` is for `tests/fixtures/`; her
+- To load a file: the Fonts page's + Load file box (reached by Manage fonts), as a person picks a file (`e2e.fixture` is for `tests/fixtures/`; her
   own files are written into the run folder).
 - Habits: loads the font before anything else, saves often, opens her export again to check it.
 - A desktop with a mouse and a pen tablet.
 
 ## What they lean on
 
-- Manage fonts ▸ and the Fonts page: + Load and the bitmap fonts it takes, Save .F## and Save PNG
+- Manage fonts and the Fonts page: + Load and the bitmap fonts it takes, Save .F## and Save PNG
   ([Managing Fonts](../../characters.md#managing-fonts), [Bitmap Fonts](../../characters.md#bitmap-fonts)).
 - Palettes that belong to a font, Export palettes and Import
   ([Palettes That Belong to a Font](../../characters.md#palettes-that-belong-to-a-font)).
@@ -62,7 +62,7 @@ script. Every section ends with Free time.
 ## Load my font
 
 ### 1. Load a raw font
-- Does: on the start screen, before any drawing is open, clicks Manage fonts ▸ beside the Font field, clicks + Load on
+- Does: on the start screen, before any drawing is open, clicks Manage fonts beside the Font field, clicks + Load on
   the Fonts page and picks her `.F08` file; closes the layer, reloads the page and starts a blank canvas.
 - Expects: the font is chosen at once and listed under In use (its line says the next drawing's font), with its 256 slots shown when its row is chosen;
   the reload keeps it; the blank canvas starts in it (the Font field shows it, and the art is drawn in it); Save .F08 and Save PNG
@@ -128,7 +128,7 @@ the same through each.
 ## My font's blocks
 
 ### 8. A font whose lower half is somewhere else
-- Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts ▸ and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells. Then builds another copy with slots 176, 177 and 178 blanked, loads it with + Load, exports an XBin in it and opens that.
+- Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells. Then builds another copy with slots 176, 177 and 178 blanked, loads it with + Load, exports an XBin in it and opens that.
 - Expects: the Blocks row shows Lower at slot 240 and every other block at its CP437 slot; the note says the lower half was found at 240; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you"; the copy without shades, loaded and again as the XBin opens, brings a short toast: "This font has no Light, Medium, or Dark block, so those characters draw blank." with a **Set up its blocks** button that opens the Fonts page on that font with Light picked.
 - Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font change (the drawing goes back to its previous font), and check the paint stays and still shows as half blocks, then redo.
 - Rated: no (drawing)
@@ -248,7 +248,7 @@ change one cell on the way.
 ## My font's lines and sets
 
 ### 23. Make a line style
-- Does: with her `.F16` in use, opens Manage fonts ▸, chooses its row, opens **Lines**, clicks **+ New line style** and names it "Heavy". Clicks the first tile and then slots 1 to 11 in the sheet one after another, then goes to the drawing and opens the Pencil's **Draw with**. Draws a box with Shapes in it, then a Single line across it.
+- Does: with her `.F16` in use, opens Manage fonts, chooses its row, opens **Lines**, clicks **+ New line style** and names it "Heavy". Clicks the first tile and then slots 1 to 11 in the sheet one after another, then goes to the drawing and opens the Pencil's **Draw with**. Draws a box with Shapes in it, then a Single line across it.
 - Expects: after each click the next tile is picked and the note says how many pieces are to go; "Heavy" isn't under **Draw with** until the eleventh is set, then is offered after **Double line**, below a rule that the arrow keys pass over; clicking the slot that draws a block is refused with the slot's block named, and clicking a slot she already gave another of Heavy's pieces is refused with that piece named, her tile still picked; the box has her corners and tees, and where the Single line crosses it the crossing cell holds the new line's piece as if the other line weren't there (the Single line came last, so Single's ─; where hers comes last, her own piece), and drawn again over itself the box joins itself.
 - Probes: `again`: draw the same box twice and check it's the same; `undo-redo`: undo the style and check it leaves **Draw with**, then redo.
 - Rated: no (drawing)
@@ -278,8 +278,8 @@ change one cell on the way.
 - Rated: no (library)
 
 ### 28. Use a library font
-- Does: on the Fonts page, chooses a VileR font and a Mœbius font in the Library group; reads the tags, From and License lines; clicks a tag chip; presses Use this font on one and Add to Yours on the other; chooses the first again; chooses FROGBLOCK, follows Get it ↗, then uses + Load with the file.
-- Expects: details say "w×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it ↗, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name, and its credit shows under the settings panel's Font field while the drawing uses it.
+- Does: on the Fonts page, chooses a VileR font and a Mœbius font in the Library group; reads the tags, From and License lines; clicks a tag chip; presses Use this font on one and Add to Yours on the other; chooses the first again; chooses FROGBLOCK, follows Get it, then uses + Load with the file.
+- Expects: details say "w×h · Library" with both buttons; VileR says None given · credits in FONTS.TXT, Mœbius says Unknown · Know it? Tell us; a tag chip becomes the picked tag; Use this font makes it the drawing's font and puts it in Yours, Add to Yours only puts it in Yours; a font already in Yours shows its stored details with the same From and License lines and isn't added twice; FROGBLOCK says "not included" with Get it, + Load and its credit, and the loaded file shows as FROGBLOCK with its credit under its name, and its credit shows under the settings panel's Font field while the drawing uses it.
 - Probes: `interrupt`: reload right after Use this font and check the font is in Yours once, then Use this font on another with the network off: it says Phosphor couldn't fetch it and to check the connection, and changes nothing.
 - Rated: no (library)
 - Also: uses Amiga Topaz 1+ from the library, opens the SAUCE tab, then presses undo; adds Amiga Topaz 2 to Yours, then uses it; exports an `.ans`, then opens a file whose SAUCE font name is Amiga Topaz 1+ (and one that says IBM VGA), and again with the network off.
@@ -316,7 +316,7 @@ change one cell on the way.
 - Rated: no (fonts)
 
 ### 34. The font manager full screen
-- Does: on a big window, opens Manage fonts ▸, presses the full screen button at the layer's top right, chooses a font and edits its Blocks, presses it again; then on a window under 1000px wide does the same; then at a phone's width looks for it.
+- Does: on a big window, opens Manage fonts, presses the full screen button at the layer's top right, chooses a font and edits its Blocks, presses it again; then on a window under 1000px wide does the same; then at a phone's width looks for it.
 - Expects: full screen takes the whole window with the font list still beside the details, and a × closes it; pressing it again puts the layer back where it floated (or the dialog back over the dimmed page); the layer closed and opened again floats; a phone's width has no full screen button, since the layer takes the whole window already.
 - Probes: `extremes`: shrink the window while in full screen, down past a phone's width and back.
 - Rated: no (fonts)

@@ -146,12 +146,12 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
 
 ### 6. Try the looks
 - Does: picks each Art style (ANSI, Color ASCII, Monochrome ASCII) and each Color palette from their pickers. On Custom
-  color list she shuts the drawer, taps the color pair and then Edit colors ▸. Then she comes back to ANSI and Full
+  color list she shuts the drawer, taps the color pair and then Edit colors. Then she comes back to ANSI and Full
   color.
 - Expects: each pick redraws the picture in under the `setting` budget; the pickers are the phone's own and readable;
   Limited count shows a Color count slider and Custom color list shows its colors as swatches, both fitting the column,
   a whole #rrggbb showing in the hex field; ◂ and ▸, a fingertip wide on the line under it, move the picked color a place (a finger's drag on a swatch scrolls
-  the drawer and moves nothing). Edit colors ▸ shuts the color box and opens the drawer with the picked swatch focused.
+  the drawer and moves nothing). Edit colors shuts the color box and opens the drawer with the picked swatch focused.
 - Probes: `again`: pick the same style twice; `undo-redo`: undo the last three picks from Actions → Undo and check the
   pickers and the picture go back together.
 - Rated: no (touch only: no keyboard shows here)
@@ -313,7 +313,7 @@ frames, and pinch while it plays.
 - Does: presses New project (choosing Start without saving if it asks, as in step 21), then looks at the start
   screen.
 - Expects: "Pick up where you left off" lists her work under Choose a file and Start with a blank canvas, with its time, whether
-  it's Unchanged, Changed or Saved, and "Resume ›"; tapping the row brings it back; the list fits at 390 wide, every
+  it's Unchanged, Changed or Saved, and "Resume"; tapping the row brings it back; the list fits at 390 wide, every
   row two lines (the name, then the time and status) with Resume beside them.
 - Probes: `out-of-order`: from the start screen, start a blank canvas first: Animate is off and no bar shows, though
   it was on in the drawing she left; then open her work again and check Animate is back on with its frames;

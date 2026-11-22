@@ -419,7 +419,7 @@ it('offers only the font\'s glyphs', async () => {
   app.mount(host);
   try {
     const button = (text) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
-    button('Edit ▸').click();
+    button('Edit').click();
     await nextTick();
     const glyphs = () => [...host.querySelectorAll('.grid button.g')];
     expect(glyphs()).toHaveLength(256);

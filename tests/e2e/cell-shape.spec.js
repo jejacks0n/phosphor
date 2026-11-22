@@ -11,7 +11,7 @@ const lowerF08 = () => {
 
 test('in an 8×8 font a click in the PIXEL view lands on the grid pixel under it', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Manage fonts ▸' }).click();
+  await page.getByRole('button', { name: 'Manage fonts' }).click();
   const layer = page.locator('.palette-layer');
   const [chooser] = await Promise.all([page.waitForEvent('filechooser'), layer.getByRole('button', { name: '+ Load' }).click()]);
   await chooser.setFiles(lowerF08());

@@ -256,7 +256,7 @@ You can attach any shape or art layer to a line or another shape (its path) so i
 2. Select the one shape or art layer you want to animate, with Vector select.
 3. In the **Keys** panel, open **+ Add key** and choose **Follow a path…** at the bottom.
 4. Click the line or shape you want to follow. A shape that can be the path is drawn thick in the accent color under the pointer. The follower's middle goes onto the path at the point nearest where it was. **Esc**, a click on empty canvas, choosing another tool or tab, or turning Animate off cancels.
-5. In the follower's **Along ▾** menu, choose how it follows the path.
+5. In the follower's **Along** menu, choose how it follows the path.
 6. Mark the path as a **Guide** if you want it to remain invisible in the final artwork.
 
 An art layer can't be a path, nor can a shape that follows one itself, and a shape that others follow can't follow a path (a message says so). A path can have any number of followers.
