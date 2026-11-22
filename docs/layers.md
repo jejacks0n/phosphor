@@ -156,38 +156,17 @@ The Transforms, Adjustments and Image filters in the sidebar change the picture 
 The settings on the left come in sections, each following a layer:
 
 - **Drawing** (all layers): **Dimensions**, **Art style** (ANSI, Color ASCII, Monochrome ASCII), **Font**, and
-  **Color palette** with its **Color count** or **Palette colors**. These belong to the whole drawing, whichever
-  layer is selected. **Palette colors** shows the Custom color list as swatches, one of them picked, with the picked
-  color's chip (the system color picker), its hex, **◂** and **▸** to move it a place (on a touch screen they sit under the color, a fingertip wide), and **Remove**; **+** adds a copy
-  of it at the end. The swatches are one **Tab** stop, the picked one: from there **←** and **→** pick the one before
-  or after, **↑** and **↓** the one a row away, and **Home** and **End** the first and last. A hex typed takes effect
-  on **Enter** or leaving the field and **Escape** puts back the one in use; a list of two or more colors typed or
-  pasted there replaces every color, and the toast's **Put back** brings the old list back. **Import** reads a `.hex`
-  or `.txt` file's colors in place of the list (again with **Put back**; a file over 1 MB isn't read) and **Export**
-  saves the list as a `.hex` file. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color in
-  the list. **Browse**, beside Color palette whatever it's set to, opens the **Color palettes** dialog: **Library**
-  holds sixteen-color palettes from Lospec, and **Favorites** the ones you starred, newest first, kept in this browser.
-  Each card shows the palette's colors, its name (a link to its page on Lospec) and its author, and the search above
-  narrows either tab by name or author. **Use** sets Color palette to Custom color list with that palette's colors, and
-  the dialog stays open; the card whose colors are the list, in the same order, says **In use**. After a Use the foot of
-  the dialog says the drawing's colors were replaced, with **Put back**, which brings back the Color palette and the list
-  as they were before the first Use, however many you tried; closing the dialog keeps what's in use. **★** keeps a
-  palette under Favorites or takes it out, and **.hex** saves it as a `.hex` file. A palette that isn't in the Library
-  can be got: under its search, **Not here?** takes a palette's name (`Sweetie 16`) or its lospec.com link, and **Get
-  from Lospec** asks lospec.com for that one palette, and only when it's pressed; opening the dialog, browsing and
-  using the Library ask nothing of anyone. The palette is kept under Favorites, which the dialog then shows with it
-  first (one of more than 256 colors keeps its first 256, and says so). When Lospec has no palette by that name, can't
-  be reached, or answers with something that isn't a palette, the line under the field says which and nothing is kept.
-  In the browser a name Lospec doesn't have and Lospec out of reach get the same message, since Lospec's answer for a
-  missing palette is one the page isn't allowed to read; the desktop app asks Lospec itself and tells them apart.
-  Get changes nothing of the drawing, so it works while the settings are locked. Browse is off while the settings
-  are, and a lock that comes while the dialog is open turns Use and Put back off. About's Licenses tab credits the
-  palettes to Lospec's Palette List and their authors.
+  **Color palette** with its **Color count** (Limited count) or a **Palettes** link beside it. These belong to the whole
+  drawing, whichever layer is selected. **Palettes** opens the color layer on its **Palettes** page (see
+  [The Color Layer](#the-color-layer)), where the Custom color list is edited and the palettes are browsed; the column
+  holds nothing more of them. It follows the rules of **Manage fonts**: the settings drawer shuts on a phone, from
+  SAUCE it shows ANSI first, and with no drawing open it opens over the start screen, so the palette chosen is the one
+  the next drawing starts with. It's off while the settings are locked.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.
 - **Adjustments**: **Brightness**, **Contrast**, **Black point**, **White point**, **Midtones**, **Saturation**,
   **Posterize** and **Threshold** (with its **Dark color** and **Light color**).
 - **Characters · (layer name)**: The selected layer's **Choose characters**, **Characters** set (with presets in
-  its ▾ menu, a bitmap font's own sets first: [The Font's Sets](characters.md#the-fonts-sets)), **Character seed** (**Generate new seed** shuffles it), **Solids**, **Pattern light**, and for the base
+  its menu, a bitmap font's own sets first: [The Font's Sets](characters.md#the-fonts-sets)), **Character seed** (**Generate new seed** shuffles it), **Solids**, **Pattern light**, and for the base
   and a vector layer with a palette, **Dither style** and **Dither**. Inside an [art layer](vector.md#art-layers) it's
   its vector layer's. On the start screen, with no drawing open, it's the base's: the settings the next drawing starts
   with. Some only show when they apply: the seed with Random, Pattern light with Best match or By shape,
@@ -216,7 +195,7 @@ slider group says how many of its sliders are on.
 
 On a phone the settings slide out from **☰** at the left end of the tab bar. Opened with the keys, focus goes into them,
 to the Phosphor logo, so **Tab** goes on to **Dimensions**. **Escape** shuts them and puts focus back on **☰**. In a field
-you type in, such as Dimensions or the hex under **Palette colors**, Escape is the field's: it puts back what was there,
+you type in, such as Dimensions or the hex of the Custom color list, Escape is the field's: it puts back what was there,
 and the settings stay open.
 
 A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see
@@ -265,7 +244,7 @@ Moving a slider in Transforms, Adjustments or Image filters is an undo step, lik
 - **A New Drawing**: Starts with every slider back at its default, whatever the drawing before had them at: a picture,
   an SVG or a blank canvas, and the start screen after **New project**.
 - **Characters Steps**: The Characters section's settings are undo steps the same way, on the layer they belong to: a
-  choice picked (Choose characters, a preset from ▾, Dither style), a Characters set or seed typed, **Generate new
+  choice picked (Choose characters, a preset from the menu, Dither style), a Characters set or seed typed, **Generate new
   seed**, and a Solids, Pattern light or Dither drag or run of nudges.
 - **Typing in a Field**: While you're typing in the Characters or seed field, **Cmd+Z** (**Ctrl+Z**) undoes your
   typing there, as in any text field. Once you've pressed **Enter** or left the field, it undoes the step.
@@ -1202,10 +1181,55 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
   **Alt+↑** and **Alt+↓** in Edit Mode, step past it. **Recent** keeps the palette colors you picked; a recent color
   the palette doesn't have (one picked in Full Color) shows as the palette's nearest. With a Custom color list,
-  **Edit colors** at the foot of the box shuts it and takes you to **Palette colors** in the settings, on its picked
-  color (on a phone the settings drawer opens). It isn't there while the settings are off.
+  the color layer's **Palettes** page edits it ([The Color Layer](#the-color-layer)).
 - **Shift+Cmd+X** (Shift+Ctrl+X): Swap the foreground and background. Plain **X** swaps them too, except in Edit Mode,
   where it types.
+
+### The Color Layer
+
+The color pair's box is a layer, as the character palette layer is: it opens under the pair, 282px across, with two tabs,
+**Colors** and **Palettes**. **Colors** is the picker described above. **Palettes** is the layer's big size, laid out
+like the Fonts page: a list on the left and the details of the chosen row on the right. It floats under the toolbar on a
+big window; on a smaller one (under 1000px wide, or 520px tall) it opens as a dialog over the dimmed page, and on a
+phone's width (under 700px) it takes the whole window. Opening the color layer closes the character palette layer, and
+the other way round. **Escape** closes it (in a field you type in, the field's own Escape comes first), as does a click
+outside it or the **×** at the top right of the dialog. **↓** and **↑** walk the list.
+
+- **The List**: **This drawing** first (with no drawing open, **New drawings**: the palette the next drawing starts
+  with), then **Favorites** and **Library**, a search narrowing the rows by name or author, and **Get from Lospec** at the
+  foot. **Library** holds sixteen-color palettes from Lospec, kept in this browser; **Favorites** the ones you starred,
+  newest first.
+- **The Details**: A palette's name and author, **Use this palette** (**In use** when its colors are the list, in the
+  same order), **Favorite**, **Save .hex**, **On Lospec** (its page), and its colors as swatches with their hex under
+  them. **Use this palette** sets Color palette to Custom color list with those colors, and the layer stays open. A line
+  at the details' foot says the drawing's colors were replaced, with **Put back**, which brings back the Color palette
+  and the list as they were before the first Use, however many you tried. Closing the layer keeps what's in use.
+- **This Drawing**: With a Custom color list it's the editor: **Import .hex** (replacing the list with a `.hex` or
+  `.txt` file's colors; a file over 1 MB isn't read) and **Export .hex** as buttons, the colors as large swatches with
+  their hex, a **+** that adds a copy of the picked color at the end, and under them the picked color's chip (the system
+  color picker), its hex, the move earlier and move later buttons, and **Remove**. With hundreds of colors the swatches
+  scroll inside the details, so the buttons stay in reach. The swatches are one **Tab** stop, the picked one: from there
+  **←** and **→** pick the one before or after, **↑** and **↓** the one a row away, and **Home** and **End** the first
+  and last. A hex typed takes effect on **Enter** or leaving the field, and **Escape** puts back the one in use. A list
+  of two or more colors typed or pasted there replaces every color. Each replacement says so in a toast with
+  **Put back**. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color
+  in the list.
+- **Any Other Palette**: **This drawing** shows its colors, read-only, and **Edit as a Custom color list** makes them the
+  list (for Full color, the list kept from before). It's off for Limited count with no picture, and while the settings
+  are locked. **Put back** undoes it. Any hand edit of the list, whether typed, picked, moved, imported or put back by
+  its toast, ends **Put back**. Another drawing opening while the layer is open forgets it too.
+- **Get from Lospec**: A palette that isn't in the Library can be got: **Not here?** takes a palette's name
+  (`Sweetie 16`) or its lospec.com link, and **Get from Lospec** asks lospec.com for that one palette, and only when it's
+  pressed; opening the layer, browsing and using the Library ask nothing of anyone. The palette is kept under
+  Favorites, which then shows it first (one of more than 256 colors keeps its first 256, and says so). When Lospec has
+  no palette by that name, can't be reached, or answers with something that isn't a palette, the line under the field
+  says which and nothing is kept. In the browser a name Lospec doesn't have and Lospec out of reach get the same
+  message, since Lospec's answer for a missing palette is one the page isn't allowed to read; the desktop app asks
+  Lospec itself and tells them apart. Get changes nothing of the drawing, so it works while the settings are locked.
+- **While the Settings Are Locked** (in a room, as an artist): the editor, **Use this palette** and **Put back** are off,
+  with the reason shown. A lock that comes while the layer is open turns them off.
+
+About's Licenses tab credits the palettes to Lospec's Palette List and their authors.
 
 ### All the Shortcuts
 

@@ -252,7 +252,7 @@ A bitmap font can carry character sets of its own, for the characters it draws w
 
 - **Build one**: Click into the set's characters, then click slots on the sheet to add them in order. A slot can go in twice, and repeats are kept: a character in a set twice is picked twice as often by **Random**. Or type into the field: it takes the characters the font has, and leaves the others out. **Backspace** takes the last one off. What you type and take off in one visit to the field is one undo step, taken when you leave it.
 - **Empty sets**: A set with no characters is kept, so you can fill it later, but isn't offered.
-- **Under Characters**: The **Characters** field's ▾ menu lists the font's sets first, under the font's name, then the stock sets under **Stock**. Picking one puts its characters in the field. **Show stock sets** on the Fonts page is one switch for the font: off, the stock sets leave the menu. A font with no sets of its own shows the stock ones whatever it says.
+- **Under Characters**: The **Characters** field's menu lists the font's sets first, under the font's name, then the stock sets under **Stock**. Picking one puts its characters in the field. **Show stock sets** on the Fonts page is one switch for the font: off, the stock sets leave the menu. A font with no sets of its own shows the stock ones whatever it says.
 - **They're kept**: Like lines, with the drawing and with this browser's copy of the font, and go to the artists drawing in a room.
 - **In a room**: Sets can't change in a room. Artists drawing with the host get the font's sets, and watchers see the drawing in the font.
 
@@ -271,7 +271,7 @@ In a drawing with a bitmap font, a palette you make (or a built-in one you copy 
 - **Yours**, with **+ New**, **Import** and **Export**.
 - **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 
-Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font> ▾** or **Any font ▾**; its menu has **Use with any font** or **Tie to <font>**. **Duplicate**, **Export** and, for your own palettes, **Delete** are in its **…** menu. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
+Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font>** or **Any font**, each a menu; its menu has **Use with any font** or **Tie to <font>**. **Duplicate**, **Export** and, for your own palettes, **Delete** are in its **…** menu. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
 
 ### For Fonts Not Loaded
 
