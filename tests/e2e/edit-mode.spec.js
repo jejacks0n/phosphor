@@ -1,6 +1,8 @@
 import { test, expect } from './support.js';
 import { openApp, store, chars, editAt, settled, cellPoint } from './support.js';
 
+test.use({ displayFont: 'jetbrains' }); // the view's scrolling and sizes here were measured in its cells
+
 test('typing, Enter, Backspace, a paste and an input-method composition', async ({ page }) => {
   await openApp(page);
   await editAt(page, 2, 2);

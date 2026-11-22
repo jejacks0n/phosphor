@@ -4,6 +4,8 @@ import { readFile } from 'node:fs/promises';
 import { test, expect, tab, store, chars, editAt, cellPoint, settled, saveAs, openApp, imageInput, otherBrowser, pickLayer } from './support.js';
 import { fakeRoom, member, ROOM_ID, goLive, shown, chat, addressIs, selected, ARTIST, rowOf, invitation, mayDraw, fromMenu, invitedPage, artistPage, watcherPage, joinFromCard, followLink } from './social-support.js';
 
+test.use({ displayFont: 'jetbrains' }); // the view's scrolling and sizes here were measured in its cells
+
 const WAITING_WORDS = 'Waiting for the host to reconnect. Drawing is paused…';
 const CHANGING_WORDS = 'Transferring host controls. Drawing is paused…';
 const GETTING_WORDS = 'Syncing canvas from the host. Drawing is paused…';

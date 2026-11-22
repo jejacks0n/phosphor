@@ -1,6 +1,8 @@
 import { test, expect } from './support.js';
 import { openApp, store, tab, cellPoint, screenPixel, settled } from './support.js';
 
+test.use({ displayFont: 'jetbrains' }); // the view's scrolling and sizes here were measured in its cells
+
 // The ANSI view draws only the cells in view, plus a margin, so a long piece is drawn sharp to its
 // end. tests/fixtures/images/tall.png opens at 80 x 2400 (1200 lines).
 const scroller = (page) => page.locator('.ansi-editor > article');

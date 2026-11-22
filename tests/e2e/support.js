@@ -36,10 +36,18 @@ export const test = base.extend({
   consented: [true, { option: true }],
   // A policy refusal a test expects (framing's), as a regular expression on the console message.
   expectedRefusal: [null, { option: true }],
-  context: async ({ context, consented }, use) => {
+  // The font the art is drawn in at first (an id in displayFonts.js), for a file whose numbers were measured in another
+  // than the app's default, IBM VGA: `test.use({ displayFont: 'jetbrains' })`. A font the test then picks is kept.
+  displayFont: [null, { option: true }],
+  context: async ({ context, consented, displayFont }, use) => {
     await noBlur(context);
     await noFilePickers(context);
     if (consented) await seedConsent(context);
+    if (displayFont) await context.addInitScript((id) => {
+      try {
+        if (localStorage.getItem('phosphor.displayFont') === null) localStorage.setItem('phosphor.displayFont', id);
+      } catch { /* about:blank has no storage */ }
+    }, displayFont);
     await context.route('http://localhost:8787/**', (route) => route.abort());
     await context.routeWebSocket('ws://localhost:8787/**', (ws) => ws.close());
     await use(context);

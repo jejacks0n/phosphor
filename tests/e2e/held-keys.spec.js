@@ -1,6 +1,8 @@
 import { test, expect } from './support.js';
 import { openApp, store, cellPoint } from './support.js';
 
+test.use({ displayFont: 'jetbrains' }); // the view's scrolling and sizes here were measured in its cells
+
 // Held keys: Alt (Option) swaps a drawing tool for the color picker, Alt+Shift picks the background,
 // Space pans with any tool; the ANSI status bar says so.
 const ws = (page, read) => store(page, 'workspace', read);

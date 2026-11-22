@@ -130,25 +130,30 @@ test('the status bar\'s Smooth button turns anti-aliasing off and on, in both vi
   await expect(page.locator('.ansi-editor pre.display')).toHaveCSS('-webkit-font-smoothing', 'antialiased');
 });
 
-test('the canvas follows the Smooth button: white text on black has gray edges when smooth, none when sharp', async ({ page }) => {
-  await page.goto('/');
-  await page.getByRole('button', { name: 'Start with a blank canvas' }).click();
-  await tab(page, 'ANSI').click();
-  await settled(page);
-  await editAt(page, 1, 1);
-  await page.keyboard.insertText('Rag@&%3sw');
-  await page.keyboard.press('Escape');
-  // Gray pixels (neither black nor white) in the typed cells: col 1 on, row 1 (inside its 2px border).
-  const box = await page.locator('.ansi-editor div.display').boundingBox();
-  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
-  const cw = (box.width - 4) / cols, ch = (box.height - 4) / rows;
-  const grays = async () => {
-    const data = await screenPixels(page, { x: box.x + 2 + cw, y: box.y + 2 + ch, width: cw * 9, height: ch });
-    let n = 0;
-    for (let i = 0; i < data.length; i += 4) if (data[i] > 16 && data[i] < 240 && data[i] === data[i + 1]) n++;
-    return n;
-  };
-  expect(await grays()).toBeGreaterThan(0);
-  await page.getByRole('button', { name: 'Smooth', exact: true }).click();
-  await expect.poll(grays).toBe(0);
+// In a vector font: a bitmap font at its own size (the default, IBM VGA) can draw no gray edge however it's smoothed.
+test.describe('in JetBrains Mono', () => {
+  test.use({ displayFont: 'jetbrains' });
+
+  test('the canvas follows the Smooth button: white text on black has gray edges when smooth, none when sharp', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('button', { name: 'Start with a blank canvas' }).click();
+    await tab(page, 'ANSI').click();
+    await settled(page);
+    await editAt(page, 1, 1);
+    await page.keyboard.insertText('Rag@&%3sw');
+    await page.keyboard.press('Escape');
+    // Gray pixels (neither black nor white) in the typed cells: col 1 on, row 1 (inside its 2px border).
+    const box = await page.locator('.ansi-editor div.display').boundingBox();
+    const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
+    const cw = (box.width - 4) / cols, ch = (box.height - 4) / rows;
+    const grays = async () => {
+      const data = await screenPixels(page, { x: box.x + 2 + cw, y: box.y + 2 + ch, width: cw * 9, height: ch });
+      let n = 0;
+      for (let i = 0; i < data.length; i += 4) if (data[i] > 16 && data[i] < 240 && data[i] === data[i + 1]) n++;
+      return n;
+    };
+    await expect.poll(grays).toBeGreaterThan(0);
+    await page.getByRole('button', { name: 'Smooth', exact: true }).click();
+    await expect.poll(grays).toBe(0);
+  });
 });

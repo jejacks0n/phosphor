@@ -5,6 +5,8 @@ import { readFile } from 'node:fs/promises';
 import { test, expect } from './support.js';
 import { openApp, store, settled, cellPoint, drag, saveAs, autosaved, imageInput, zeroState, tab } from './support.js';
 
+test.use({ displayFont: 'jetbrains' }); // the view's scrolling and sizes here were measured in its cells
+
 const ws = (page, read) => store(page, 'workspace', read);
 const guides = (page) => ws(page, (w) => w.guides);
 const scroller = (page) => page.locator('.ansi-editor > article');
