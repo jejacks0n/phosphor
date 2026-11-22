@@ -159,7 +159,7 @@
         "name": "Rain",
         "version": "1.2.0",
         "author": "Kim",
-        "description": "A gray, rainy theme.",
+        "description": "A light theme, cool and gray as a rainy day.",
         "homepage": "https://github.com/kim/phosphor-rain",
         "script": "",
         "license": "MIT",
@@ -168,16 +168,47 @@
           {
             "id": "rain",
             "name": "Rain",
-            "base": "dark",
+            "base": "light",
             "colors": {
-              "background": "#1c2024",
-              "accent": "#8fa3b5",
-              "surface-0": "#23282d"
+              "white": "#ffffff",
+              "black": "#1f2a33",
+              "background": "#c9d3db",
+              "background-highlight": "#ffffff66",
+              "accent": "#3d6f95",
+              "accent-hot": "#2f6690",
+              "accent-hover": "#1f4c70",
+              "accent-glow": "#3d6f9533",
+              "accent-faint": "#3d6f950d",
+              "danger": "#c2413b",
+              "danger-hover": "#a8322d",
+              "warning": "#b7791f",
+              "success": "#2f855a",
+              "surface-dark": "#ffffff",
+              "surface-0": "#eef2f5",
+              "surface-1": "#e4eaef",
+              "surface-2": "#d9e1e8",
+              "surface-3": "#cdd7df",
+              "surface-4": "#c0ccd6",
+              "surface-light": "#1f2a33",
+              "border": "#bcc8d2",
+              "border-dark": "#aab8c4",
+              "border-subtle": "#d5dee6",
+              "border-light": "#9fb0bd",
+              "text": "#1b2730",
+              "text-dim": "#33424e",
+              "text-muted": "#5d6f7d",
+              "text-faint": "#8494a1",
+              "text-inverted": "#ffffff",
+              "shadow": "#3a4a57",
+              "guide": "#d9480f",
+              "toast": "#33424e",
+              "toast-text": "#eef2f5",
+              "wand-fill": "#3d6f954d"
             }
           }
         ]
       },
-      "manifestHash": "6863a9208d726dbb8fc6b4436ff1a992e58e304d84743fe7cb67dd7a39aa0f56"
+      "manifestHash": "04033187b3a9e99cabed5102a546d8f923387cd926f89c0992b5763b81b98bee"
     }
   ]
 }
