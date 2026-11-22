@@ -11,7 +11,9 @@
 //
 // A polygon or a plugin shape keeps what made it (shapes.js: made). Only the chosen kind's options show; with shapes of
 // that kind selected they show the first one's values, and a change draws the selected ones of the kind again in their
-// boxes (and is the next shape's too); a slider's drag or a color picked is one undo step. Its points edited by hand, it's a path, and its options are the tool's again. A
+// boxes (and is the next shape's too); a slider's drag or a color picked is one undo step. The row follows the
+// selection: when it changes to one whose first shape remembers its kind, that kind is chosen (EditToolbar watches,
+// selectedKind says which), so picking a star shows the star's options; a click in the row after still chooses. Its points edited by hand, it's a path, and its options are the tool's again. A
 // plugin shape whose plugin isn't on offer is a path until it is. On a shape with keys, the change is the frame's.
 import { t } from '@/i18n/index.js';
 import { ellipseShape, makeShape, polygonShape, rectShape, styleColors, withShape } from '@/document/shapes.js';
@@ -50,6 +52,13 @@ function pluginShapes() {
 export function shapeKind(workspace) {
   const kind = workspace.vectorShapeKind;
   return BUILT_IN.includes(kind) || pluginShapes().some(({ ref }) => ref === kind) ? kind : 'rect';
+}
+
+// The kind the selection was made by, for the row to follow: the first selected shape's, when it remembers one that's
+// on offer (a polygon, or a plugin shape whose plugin is on); null for a plain path, or with nothing selected.
+export function selectedKind(workspace) {
+  const kind = useProjectStore().shapes.get(workspace.vectorSelected[0])?.made?.kind;
+  return kind && (kind === 'polygon' || pluginShapes().some(({ ref }) => ref === kind)) ? kind : null;
 }
 
 // A plugin shape's outlines for its option values, or null when its outline threw or gave what isn't outlines (said, with

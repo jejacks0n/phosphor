@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { bakeWarning, mergeWarning, useDrawingStore } from '@/store/DrawingStore';
 import { PAINT_OFF_TOOLS, getTool, keyLabel, optionValue, setOptionValue, slotFace, toolSlots, toolTitle } from '@/tools';
+import { selectedKind } from '@/tools/vshape.js';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 import RangeField from '@/components/RangeField.vue';
 import ColorPair from '@/components/ColorPair.vue';
@@ -264,6 +265,14 @@ const STYLE_NAMES = computed(() => ({
 const styleName = computed(() => STYLE_NAMES.value[project.renderStyle] ?? 'ANSI');
 // Unfolded, the slider names the layer itself ("ANSI Overlay"); folded, the dropdown's button does.
 const overlaySetting = computed(() => ({ ...OVERLAY_SETTING.value, label: t('toolbar.overlay.styleOverlay', { style: styleName.value }) }));
+
+// The Shape tool's row of kinds follows the selection: a shape selected that remembers what made it (a polygon, a
+// plugin's shape) chooses its kind, so its options are the ones showing. Only as the selection changes, so a kind
+// clicked in the row with that shape still selected stays chosen.
+watch(() => workspace.vectorSelected.join(' '), () => {
+  const kind = selectedKind(workspace);
+  if (kind) workspace.vectorShapeKind = kind;
+});
 
 // A tool that stops being offered (flip after switching to an ASCII art style) shouldn't stay active unseen.
 watch(tools, (offered) => {
