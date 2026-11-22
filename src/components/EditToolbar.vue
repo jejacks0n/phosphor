@@ -652,7 +652,10 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             <span>{{ option.label }}</span>
             <input type="checkbox" :checked="optionValue(workspace, option)" @change="setOptionValue(workspace, option, $event.target.checked)"/>
           </label>
-          <input v-else-if="option.type === 'color'" type="color" class="option-color" :value="optionValue(workspace, option)" :aria-label="option.label" :title="option.label" @input="setOptionValue(workspace, option, $event.target.value)" @change="option.commit?.()"/>
+          <label v-else-if="option.type === 'color'" class="color-wrapper" :title="option.title">
+            <span>{{ option.label }}</span>
+            <input type="color" class="option-color" :value="optionValue(workspace, option)" :aria-label="option.label" @input="setOptionValue(workspace, option, $event.target.value)" @change="option.commit?.()"/>
+          </label>
           <div v-else-if="option.type === 'segmented'" class="segmented" role="group" :aria-label="option.label">
             <button
                 v-for="choice in option.choices"
@@ -1014,7 +1017,8 @@ div.tool-setting-group :deep(div.range-wrapper) {
   width: auto;
 }
 
-label.checkbox-wrapper {
+label.checkbox-wrapper,
+label.color-wrapper {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1024,6 +1028,14 @@ label.checkbox-wrapper {
   text-transform: uppercase;
   color: var(--text-muted);
   user-select: none;
+}
+
+/* A color option's swatch: the page's color field, a little smaller to sit in the row. */
+input.option-color {
+  flex-shrink: 0;
+  width: 32px;
+  height: 22px;
+  padding: 3px;
 }
 
 div.divider,

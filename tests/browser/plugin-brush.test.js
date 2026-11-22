@@ -130,6 +130,7 @@ test('the toolbar draws the options, keeps changes, and ] steps the size to its 
   expect(host.querySelector('input[type=range]')).toBeTruthy();
   const color = host.querySelector('input[type=color]');
   expect(color.getAttribute('aria-label')).toBe('Tint');
+  expect(color.closest('label.color-wrapper').textContent.trim()).toBe('Tint'); // its name beside it, as a slider's and a checkbox's
   expect(color.value).toBe('#ff0000');
   color.value = '#00ff00';
   color.dispatchEvent(new Event('input'));
