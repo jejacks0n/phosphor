@@ -207,9 +207,6 @@
       "palettes": "Palettes",
       "palettesTitle": "Parcourir les palettes de couleurs"
     },
-    "paletteColors": {
-      "label": "Couleurs de la palette"
-    },
     "ditherStyle": {
       "label": "Style de tramage",
       "floyd": "Floyd–Steinberg",
@@ -366,6 +363,7 @@
     "favorite": "Favori",
     "saveHex": "Enregistrer .hex",
     "lospecPage": "Sur Lospec",
+    "editAsList": "Modifier comme liste de couleurs personnalisée",
     "useNote": "Utiliser cette palette remplace la liste de couleurs personnalisée de ce dessin.",
     "fullColor": "Les couleurs réelles montrent chaque couleur telle qu'elle est : elles n'ont pas de liste de couleurs.",
     "replaced": "Les couleurs de ce dessin ont été remplacées.",
@@ -385,13 +383,14 @@
   "colorList": {
     "swatch": "{hex}, {n} sur {count}",
     "add": "Ajouter une couleur",
+    "hex": "Hex de la couleur choisie",
     "color": "Couleur",
     "earlier": "Déplacer avant",
     "later": "Déplacer après",
     "remove": "Retirer",
     "count": "{n} couleur | {n} couleurs",
-    "import": "Importer",
-    "export": "Exporter",
+    "import": "Importer .hex",
+    "export": "Exporter .hex",
     "importTitle": "Remplacer la liste par les couleurs d'un fichier .hex",
     "exportTitle": "Enregistrer la liste dans un fichier .hex",
     "noColors": "Aucune couleur trouvée dans {name}.",

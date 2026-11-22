@@ -18,7 +18,6 @@ import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
 import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
-import ColorList from '@/components/ColorList.vue';
 import SolverOptions from '@/components/SolverOptions.vue';
 import { isSolverRef } from '@/plugins/solvers';
 import { filterEntry } from '@/plugins/filters';
@@ -41,14 +40,6 @@ const standIn = useStandIn();
 
 // Why the settings are off, if they are (useSettingsLock).
 const locked = useSettingsLock();
-// The Custom color list's editor: its import toast's Put back sits outside the fieldset, so a write is refused while the
-// settings are off; and a pick still open when they went off is over, since a disabled chip may never say it ended.
-const setPalette = (list) => {
-  if (!locked.value) store.palette = list;
-};
-watch(locked, (why) => {
-  if (why) store._colorPick = false;
-});
 // The color layer on its Palettes page, whatever the Color palette choice, by Manage fonts' rules (FontField): from
 // SAUCE or the room tab the art shows first (the color pair is only on PIXEL, ANSI and VECTOR), with no drawing it opens
 // over the start screen (EditWorkspace), and a phone's settings drawer, where the link is, shuts so the page shows whole.
@@ -269,16 +260,6 @@ function onKeyDown(event) {
       </div>
 
       <RangeField v-if="store.quantize === 'count'" :setting="getSetting('colorCount')" v-model="store.colorCount"/>
-      <!-- One editor per drawing, so its toast's Put back never reaches another (keyed by the document). -->
-      <ColorList
-          v-else-if="store.quantize === 'palette'"
-          :key="store.documentId ?? ''"
-          class="field"
-          :model-value="store.palette"
-          :name="store.filename ?? ''"
-          @update:model-value="setPalette"
-          @picking="store._colorPick = $event"
-      />
     </fieldset>
 
     <template v-for="(group, i) in sections" :key="group.id">

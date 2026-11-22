@@ -207,9 +207,6 @@
       "palettes": "Palettes",
       "palettesTitle": "Browse color palettes"
     },
-    "paletteColors": {
-      "label": "Palette colors"
-    },
     "ditherStyle": {
       "label": "Dither style",
       "floyd": "Floyd–Steinberg",
@@ -366,6 +363,7 @@
     "favorite": "Favorite",
     "saveHex": "Save .hex",
     "lospecPage": "On Lospec",
+    "editAsList": "Edit as a Custom color list",
     "useNote": "Using this palette replaces this drawing's Custom color list.",
     "fullColor": "Full color shows every color as it is, so it has no list of colors.",
     "replaced": "This drawing's colors were replaced.",
@@ -385,13 +383,14 @@
   "colorList": {
     "swatch": "{hex}, {n} of {count}",
     "add": "Add a color",
+    "hex": "Hex of the picked color",
     "color": "Color",
     "earlier": "Move earlier",
     "later": "Move later",
     "remove": "Remove",
     "count": "{n} color | {n} colors",
-    "import": "Import",
-    "export": "Export",
+    "import": "Import .hex",
+    "export": "Export .hex",
     "importTitle": "Replace the list with a .hex file's colors",
     "exportTitle": "Save the list as a .hex file",
     "noColors": "No colors found in {name}.",

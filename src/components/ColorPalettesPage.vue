@@ -10,6 +10,7 @@ import { getPalette, pageOf, slugOf } from '@/lib/lospec';
 import { desktop } from '@/social/desktop';
 import { downloadBlob } from '@/document/projectIO';
 import ArrowIcon from '@/components/ArrowIcon.vue';
+import ColorList from '@/components/ColorList.vue';
 
 // The color layer's Palettes page (docs/layers.md), laid out as the Fonts page: on the left one list, This drawing (New
 // drawings with none open: the settings the next one starts with), Favorites (the palettes starred, ColorLibraryStore)
@@ -17,9 +18,11 @@ import ArrowIcon from '@/components/ArrowIcon.vue';
 // row chosen. Choosing only shows a palette: Use this palette makes it the drawing's Custom color list, and its button
 // says In use while its colors are the list, in its order. Put back is a line at the details' foot. It brings back the
 // Color palette choice and the list as they were before the first Use, however many were tried since, and what it would
-// bring back is forgotten when the layer closes or another drawing opens (a desktop window's start screen opening a
-// file), so it never writes one drawing's choice and list onto another. A lock can arrive while the page is open
-// (someone joins the room): Use and Put back are off then, with the settings column's reason. At the list's foot, Get
+// bring back is forgotten when the layer closes, when another drawing replaces this one while the toolbar stays mounted,
+// or when the list is edited by hand, so it never writes one drawing's choice and list onto another or over an edit. With the Custom color list chosen,
+// This drawing is the list's editor (ColorList); with any other choice it shows the colors and Edit as a Custom color
+// list makes them the list. A lock can arrive while the page is open (someone joins the room): Use, Put back and the
+// editor are off then, with the settings column's reason. At the list's foot, Get
 // from Lospec asks Lospec for one palette by name or link, the page's only request, keeps it under Favorites and
 // chooses it; it changes nothing of the drawing, so a lock doesn't stop it.
 const emit = defineEmits(['acted']); // a press that may have taken its own button away
@@ -39,6 +42,8 @@ const drawingColors = computed(() => {
   if (quantize === 'count') return (project.activePalette ?? []).map((p) => p.hex.toLowerCase());
   return null;
 });
+// This drawing's row id: not a slug, which is only letters, digits and hyphens, so no palette's can be it.
+const DRAWING = ':drawing';
 const choiceName = computed(() => t(`panel.quantize.${project.quantize}`));
 
 const search = ref('');
@@ -52,7 +57,7 @@ const groups = computed(() => {
   let at = 0;
   const rowsOf = (group, list) => list.map((palette) => ({ id: palette.slug, group, palette, at: at++ }));
   return [
-    { key: 'drawing', label: t(project.image ? 'colorPalettes.thisDrawing' : 'colorPalettes.newDrawings'), rows: [{ id: 'drawing', group: 'drawing', at: at++ }] },
+    { key: 'drawing', label: t(project.image ? 'colorPalettes.thisDrawing' : 'colorPalettes.newDrawings'), rows: [{ id: DRAWING, group: 'drawing', at: at++ }] },
     { key: 'favorites', label: t('colorPalettes.favorites', { n: library.kept.length }), rows: rowsOf('favorites', matching(library.kept)) },
     { key: 'library', label: t('colorPalettes.library', { n: SHIPPED.length }), rows: rowsOf('library', matching(SHIPPED)) },
   ];
@@ -60,16 +65,16 @@ const groups = computed(() => {
 const rows = computed(() => groups.value.flatMap((g) => g.rows));
 const nothingMatches = computed(() => !!search.value.trim() && rows.value.length === 1);
 
-const chosen = ref('drawing'); // 'drawing' or a palette's slug
+const chosen = ref(DRAWING); // DRAWING or a palette's slug
 const chosenIn = ref('drawing'); // the group it was chosen in
 const choose = ({ id, group }) => {
   chosen.value = id;
   chosenIn.value = group;
 };
-const palette = computed(() => (chosen.value === 'drawing' ? null : library.kept.find((p) => p.slug === chosen.value) ?? SHIPPED.find((p) => p.slug === chosen.value) ?? null));
+const palette = computed(() => (chosen.value === DRAWING ? null : library.kept.find((p) => p.slug === chosen.value) ?? SHIPPED.find((p) => p.slug === chosen.value) ?? null));
 // A palette got from Lospec and taken out of Favorites is in neither list any more: This drawing shows instead.
 watch(palette, (shown) => {
-  if (!shown) choose({ id: 'drawing', group: 'drawing' });
+  if (!shown) choose({ id: DRAWING, group: 'drawing' });
 });
 // The next or previous row on screen (the layer passes its arrow keys here), from the row chosen; one the search hides
 // steps from the top.
@@ -96,6 +101,16 @@ function use(colors) {
   project.quantize = 'palette';
   emit('acted');
 }
+// Edit as a Custom color list: this drawing's colors as they show here (Full color's are the list kept), made the list.
+const canEdit = computed(() => !locked.value && !(project.quantize === 'count' && !drawingColors.value?.length));
+const editAsList = () => use(drawingColors.value ?? listColors(project.palette));
+// A hand edit of the list (typed, picked, moved, imported, put back by its toast) is the person's own, so what Put back
+// would bring back is theirs to keep: it ends Put back. A lock stops it, as it stops everything of the settings.
+const edited = (text) => {
+  if (locked.value) return;
+  before.value = null;
+  project.palette = text;
+};
 function putBack() {
   if (locked.value || !before.value) return;
   project.quantize = before.value.quantize; // the choice first, so the old list never shows as the new one
@@ -205,10 +220,30 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
         </div>
         <p class="use-note">{{ t('colorPalettes.useNote') }}</p>
       </template>
+      <!-- One editor per drawing, so its toast's Put back never reaches another (keyed by the document). -->
+      <ColorList
+          v-else-if="project.quantize === 'palette'"
+          :key="project.documentId ?? ''"
+          :model-value="project.palette"
+          :name="project.filename ?? ''"
+          :disabled="!!locked"
+          @update:model-value="edited"
+          @picking="project._colorPick = $event"
+      />
       <template v-else>
         <div class="head">
           <span class="title">{{ choiceName }}</span>
           <span v-if="drawingColors?.length" class="meta">{{ t('colorPalettes.colors', drawingColors.length) }}</span>
+        </div>
+        <div class="actions">
+          <button
+              type="button"
+              class="ghost edit"
+              :disabled="!canEdit"
+              :title="locked ?? undefined"
+              :data-off-reason="locked ? '' : undefined"
+              @click="editAsList"
+          >{{ t('colorPalettes.editAsList') }}</button>
         </div>
         <div v-if="drawingColors?.length" class="swatches">
           <div v-for="(color, i) in drawingColors" :key="i" class="swatch"><i :style="{ background: color }"></i><span>{{ color }}</span></div>

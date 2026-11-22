@@ -3,7 +3,7 @@
 // grid gains or loses cells at the right and bottom, and what's past the edge comes back when it
 // grows). Random characters belong to their cell's position, so they survive a width change. A step undo could
 // bring back keeps its cells where they are too: a grid change never forgets the undo steps before it.
-import { test, expect, vi } from 'vitest';
+import { test, expect } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -13,7 +13,6 @@ import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 import EditWorkspace from '@/components/EditWorkspace.vue';
-import { closeToast, toastAction, toastMessage } from '@/composables/useToast';
 
 async function grid(cols = 40, rows = 40) {
   const { project, workspace } = await createTestApp();
@@ -310,99 +309,6 @@ function mountPanel() {
   app.mount(host);
   return { host, gone: () => { app.unmount(); host.remove(); } };
 }
-
-// The report (maya-5): Escape in Palette colors kept the typed list, and a click elsewhere then applied it. Escape now
-// puts the field back to the color in use, as it does in Dimensions.
-test('Palette colors: Escape puts the field back to the color in use, and a blur after it changes nothing', async () => {
-  const { project } = await grid(40, 40);
-  project.quantize = 'palette';
-  project.palette = '#FFFFFF #000000';
-  const { host, gone } = mountPanel();
-  await nextTick();
-  const field = host.querySelector('#palette');
-  try {
-    expect(field.value).toBe('#ffffff');
-    await userEvent.tripleClick(field);
-    await userEvent.keyboard('#00FF00');
-    await userEvent.keyboard('{Escape}');
-    expect(field.value).toBe('#ffffff');
-    field.blur(); // a click elsewhere
-    expect(project.palette).toBe('#FFFFFF #000000'); // nothing rewritten
-  } finally {
-    gone();
-  }
-});
-
-test('the Custom color list is swatches in the settings column, and a color changed there is the palette setting', async () => {
-  const { project } = await grid(40, 40);
-  project.quantize = 'palette';
-  project.palette = '#FFFFFF #000000';
-  const { host, gone } = mountPanel();
-  await nextTick();
-  try {
-    expect(host.querySelectorAll('.color-list .swatch')).toHaveLength(2);
-    const field = host.querySelector('#palette');
-    await userEvent.tripleClick(field);
-    await userEvent.keyboard('#00ff00{Enter}');
-    expect(project.palette).toBe('#00ff00 #000000');
-  } finally {
-    gone();
-  }
-});
-
-// Put back would write the old drawing's list onto the one opened since.
-test('the import toast goes when another drawing opens, so its Put back can\'t reach it', async () => {
-  const { project } = await grid(40, 40);
-  project.quantize = 'palette';
-  project.palette = '#FFFFFF #000000';
-  const { host, gone } = mountPanel();
-  await nextTick();
-  try {
-    const input = host.querySelector('input.hex-file'), files = new DataTransfer();
-    files.items.add(new File(['1a1c2c\n5d275d\n'], 'sweetie.hex'));
-    input.files = files.files;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    await vi.waitFor(() => expect(toastAction.value?.label).toBe('Put back'));
-    project.documentId = 'another';
-    await nextTick();
-    expect(toastMessage.value).toBe(null);
-  } finally {
-    closeToast();
-    gone();
-  }
-});
-
-// The toast's Put back sits outside the settings' fieldset, so it isn't off with them.
-test('while the settings are locked the Custom color list writes nothing, and a pick open when the lock came is over', async () => {
-  const { project } = await grid(40, 40);
-  project.quantize = 'palette';
-  project.palette = '#FFFFFF #000000';
-  const { host, gone } = mountPanel();
-  await nextTick();
-  try {
-    const input = host.querySelector('input.hex-file'), files = new DataTransfer();
-    files.items.add(new File(['1a1c2c\n5d275d\n'], 'sweetie.hex'));
-    input.files = files.files;
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    await vi.waitFor(() => expect(project.palette).toBe('#1a1c2c #5d275d'));
-    const chip = host.querySelector('input.chip');
-    chip.value = '#ff0000';
-    chip.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(project._colorPick).toBe(true);
-    project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
-    await nextTick();
-    expect(project._colorPick).toBe(false);
-    const before = project.palette;
-    toastAction.value.run(); // Put back
-    chip.value = '#00ff00';
-    chip.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(project.palette).toBe(before);
-  } finally {
-    project.stopSharing();
-    closeToast();
-    gone();
-  }
-});
 
 test('Palettes beside Color palette opens the color layer on Palettes, whatever the choice, off when settings are locked', async () => {
   const { project, workspace } = await grid(40, 40);
