@@ -1,0 +1,21 @@
+/* A small, quiet link of a button, styled like the panel's RESET buttons beside the section titles: Manage fonts ▸ beside
+   Font's label (FontField), the Custom color list's Remove, Import and Export (ColorList). */
+button.text {
+  padding: 3px 0;
+  border: none;
+  box-shadow: none !important;
+  background: transparent;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  opacity: 0.8; /* as the RESET buttons */
+  cursor: pointer;
+}
+
+button.text:hover {
+  transform: none;
+  background: transparent;
+  color: var(--accent-hot);
+}

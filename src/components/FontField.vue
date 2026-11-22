@@ -111,6 +111,7 @@ const onSize = (event) => {
   </div>
 </template>
 
+<style scoped src="./textLink.css"></style>
 <style scoped>
 select {
   flex: 1;
@@ -120,27 +121,6 @@ select {
 input.size {
   width: 56px;
   flex-shrink: 0;
-}
-
-/* Beside the label, styled like the panel's RESET buttons: small, quiet, uppercase. */
-button.text {
-  padding: 3px 0;
-  border: none;
-  box-shadow: none !important;
-  background: transparent;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  opacity: 0.8; /* as the RESET buttons beside the section titles */
-  cursor: pointer;
-}
-
-button.text:hover {
-  transform: none;
-  background: transparent;
-  color: var(--accent-hot);
 }
 
 p.problem {

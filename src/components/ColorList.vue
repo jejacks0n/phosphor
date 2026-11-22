@@ -2,7 +2,7 @@
 import { onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useMediaQuery } from '@vueuse/core';
-import { toast } from '@/composables/useToast';
+import { closeToast, toast } from '@/composables/useToast';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 import { MOST_COLORS, firstColors, hexFile, listColors, moved, sameColors, withColor, withCopy, without, writeList } from '@/lib/colorList';
 
@@ -16,8 +16,14 @@ const emit = defineEmits(['update:modelValue', 'picking']);
 const { t } = useI18n();
 
 const colors = computed(() => listColors(props.modelValue));
-const picked = ref(0);
-watch(() => colors.value.length, (n) => { picked.value = Math.max(0, Math.min(picked.value, n - 1)); });
+// The place picked, read inside the list whatever its holder did with a write (+ picks the copy's place before the list
+// holds it, and a holder may not take it), and kept there when the list shrinks.
+const place = ref(0);
+const picked = computed({
+  get: () => Math.max(0, Math.min(place.value, colors.value.length - 1)),
+  set: (i) => { place.value = i; },
+});
+watch(() => colors.value.length, () => { place.value = picked.value; });
 const current = computed(() => colors.value[picked.value] ?? '');
 
 const write = (list) => {
@@ -51,7 +57,8 @@ const remove = () => {
   picked.value = Math.min(picked.value, rest.length - 1); // its neighbor: the next one, or the one before the last
 };
 
-// The system picker's chip: every color it moves through is applied, and the pick ends when it closes.
+// The system picker's chip: every color it moves through is applied, and the pick ends when it closes, or when the chip
+// loses focus (a picker moved and brought back to where it started closes with no change).
 let picking = false;
 const onPick = (event) => {
   if (!picking) emit('picking', (picking = true));
@@ -81,8 +88,12 @@ const onDrop = (i) => {
 };
 
 // A .hex file (Lospec's: six digits a line) or any text with colors in it replaces the list, and the toast puts back
-// the list as it was, as it was written.
+// the list as it was, as it was written. The toast goes when the editor does, so no Put back is left that does nothing.
 const file = ref(null);
+let importToast = null;
+onBeforeUnmount(() => {
+  if (importToast) closeToast(importToast);
+});
 const onFile = async (event) => {
   const [chosen] = event.target.files;
   event.target.value = ''; // so the same file can be chosen again
@@ -91,7 +102,7 @@ const onFile = async (event) => {
   if (!found.length) return toast(t('colorList.noColors', { name: chosen.name }));
   const before = props.modelValue, { colors: list, of } = firstColors(found);
   write(list);
-  toast(of ? t('colorList.importedCut', { name: chosen.name, n: of }) : t('colorList.imported', { name: chosen.name }), {
+  importToast = toast(of ? t('colorList.importedCut', { name: chosen.name, n: of }) : t('colorList.imported', { name: chosen.name }), {
     action: { label: t('colorList.putBack'), run: () => emit('update:modelValue', before) },
   });
 };
@@ -128,7 +139,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
       >+</button>
     </div>
     <div class="picked">
-      <input type="color" class="chip" :aria-label="t('colorList.color')" :title="t('colorList.color')" :value="current || '#000000'" @input="onPick" @change="endPick">
+      <input type="color" class="chip" :aria-label="t('colorList.color')" :title="t('colorList.color')" :value="current || '#000000'" @input="onPick" @change="endPick" @blur="endPick">
       <input
           id="palette"
           type="text"
@@ -149,13 +160,14 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
       <span class="links">
         <button type="button" class="import text" :title="t('colorList.importTitle')" @click="file.click()">{{ t('colorList.import') }}</button>
         <span aria-hidden="true">·</span>
-        <button type="button" class="export text" :title="t('colorList.exportTitle')" @click="exportList">{{ t('colorList.export') }}</button>
+        <button type="button" class="export text" :title="t('colorList.exportTitle')" :disabled="!colors.length" @click="exportList">{{ t('colorList.export') }}</button>
       </span>
     </div>
     <input ref="file" type="file" class="hex-file" accept=".hex,.txt,text/plain" hidden @change="onFile">
   </div>
 </template>
 
+<style scoped src="./textLink.css"></style>
 <style scoped>
 /* Eight to a row, as the color box lays out the same list. */
 div.swatches {
@@ -235,27 +247,6 @@ span.links {
   gap: 6px;
   color: var(--text-faint);
   font-size: 10px;
-}
-
-/* Small, quiet links, as Manage fonts ▸ beside Font's label (FontField) and the panel's RESET buttons. */
-button.text {
-  padding: 3px 0;
-  border: none;
-  box-shadow: none !important;
-  background: transparent;
-  font: inherit;
-  font-size: 10px;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  opacity: 0.8;
-  cursor: pointer;
-}
-
-button.text:hover {
-  transform: none;
-  background: transparent;
-  color: var(--accent-hot);
 }
 
 button.remove {
