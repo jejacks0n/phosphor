@@ -93,7 +93,8 @@ async function get() {
   problem.value = '';
   getting.value = true;
   try {
-    const palette = await getPalette(slug, import.meta.env.VITE_DESKTOP === '1' ? { ask: (s) => desktop.lospecPalette(s) } : {});
+    const asks = import.meta.env.VITE_DESKTOP === '1' ? { ask: (s) => desktop.lospecPalette(s) } : {};
+    const palette = await getPalette(slug, asks);
     library.keep(palette);
     cut.value = palette.of ? { slug, of: palette.of } : null;
     typed.value = '';
