@@ -7,7 +7,7 @@ import { createApp, h, nextTick, ref } from 'vue';
 import { i18n } from '@/i18n';
 import ColorList from '@/components/ColorList.vue';
 import '@/assets/global.css';
-import { closeToast, toastAction, toastMessage } from '@/composables/useToast';
+import { closeToast, toast, toastAction, toastMessage } from '@/composables/useToast';
 
 let app, host;
 afterEach(() => {
@@ -18,8 +18,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-// The editor on its own, its list held as Task 3's settings column will hold it; `wrap` puts it inside something.
-async function mount(value, wrap = (node) => node) {
+// The editor on its own, its list held as the settings column holds it; `wrap` puts it inside something, and with `takes`
+// false the holder doesn't take what the editor writes (as the settings column while they're locked).
+async function mount(value, wrap = (node) => node, { takes = true } = {}) {
   const list = ref(value), emitted = [], picks = [];
   host = document.createElement('div');
   document.body.append(host);
@@ -27,7 +28,7 @@ async function mount(value, wrap = (node) => node) {
     render: () => wrap(h(ColorList, {
       modelValue: list.value,
       name: 'art',
-      'onUpdate:modelValue': (v) => { list.value = v; emitted.push(v); },
+      'onUpdate:modelValue': (v) => { if (takes) list.value = v; emitted.push(v); },
       onPicking: (v) => picks.push(v),
     })),
   }).use(i18n);
@@ -36,6 +37,11 @@ async function mount(value, wrap = (node) => node) {
   return { list, emitted, picks };
 }
 
+const gone = () => {
+  app.unmount();
+  host.remove();
+  app = host = null;
+};
 const swatches = () => [...host.querySelectorAll('div.swatches > button.swatch')];
 const field = () => host.querySelector('input#palette');
 const pressed = () => swatches().findIndex((s) => s.getAttribute('aria-pressed') === 'true');
@@ -183,6 +189,17 @@ test('+ adds a copy of the picked color after the last and picks it; Remove take
   expect(host.querySelector('button.remove').disabled).toBe(false);
 });
 
+test('a holder that doesn\'t take the copy + adds leaves one of the list\'s colors picked, with its hex in the field', async () => {
+  const { emitted } = await mount('#111111 #222222', undefined, { takes: false });
+  await press(swatches()[1]);
+  await press(host.querySelector('button.add'));
+  expect(emitted).toEqual(['#111111 #222222 #222222']);
+  expect(swatches()).toHaveLength(2);
+  expect(pressed()).toBe(1);
+  expect(field().value).toBe('#222222');
+  expect(host.querySelector('button.later').disabled).toBe(true);
+});
+
 test('the picked place is kept in range when the list changes from outside', async () => {
   const { list } = await mount('#111111 #222222 #333333');
   await press(swatches()[2]);
@@ -213,7 +230,21 @@ test('the system picker recolors as it moves and says when the pick starts and e
   expect(picks.at(-1)).toBe(false);
 });
 
-test('with a mouse a swatch dragged onto another moves there; under a finger the swatches aren\'t draggable', async () => {
+// A browser fires input and no change when the picker is moved and brought back to where it started.
+test('a pick ends when the chip loses focus, with no change from the picker', async () => {
+  const { picks } = await mount('#ffffff #000000');
+  const chip = host.querySelector('input.chip');
+  chip.focus();
+  chip.value = '#ff0000';
+  await fire(chip, 'input');
+  chip.value = '#ffffff';
+  await fire(chip, 'input');
+  chip.blur();
+  await nextTick();
+  expect(picks).toEqual([true, false]);
+});
+
+test('with a mouse a swatch dragged onto another moves there and stays picked', async () => {
   await page.viewport(1200, 800);
   onTestFinished(() => page.viewport(414, 896));
   await vi.waitFor(() => expect(innerWidth).toBe(1200));
@@ -252,6 +283,24 @@ test('Import replaces the list with a .hex file\'s colors and offers Put back; a
   expect(toastMessage.value).toBe('Palette colors replaced with the first 256 of big.hex\'s 300.');
 });
 
+test('the import toast goes with the editor, so its Put back is never left doing nothing; another toast since is left alone', async () => {
+  await mount('#FFF #000');
+  await importFile('1a1c2c\n5d275d\n', 'sweetie.hex');
+  gone();
+  expect(toastMessage.value).toBe(null);
+
+  await mount('#FFF #000');
+  await importFile('1a1c2c\n', 'one.hex');
+  toast('Something else.');
+  gone();
+  expect(toastMessage.value).toBe('Something else.');
+
+  await mount('#FFF #000');
+  toast('Something else.');
+  gone();
+  expect(toastMessage.value).toBe('Something else.'); // nothing imported, nothing closed
+});
+
 test('Export saves the list as <name>.hex', async () => {
   await mount('#FFF #a50 #000');
   const saved = [];
@@ -260,6 +309,12 @@ test('Export saves the list as <name>.hex', async () => {
   await press(host.querySelector('button.export'));
   expect(saved[0].name).toBe('art.hex');
   expect(await saved[0].blob.text()).toBe('ffffff\naa5500\n000000\n');
+});
+
+test('Export is off with no colors to save, as + is', async () => {
+  await mount('');
+  expect(host.querySelector('button.export').disabled).toBe(true);
+  expect(host.querySelector('button.add').disabled).toBe(true);
 });
 
 test('inside a disabled fieldset every control of it is off', async () => {
