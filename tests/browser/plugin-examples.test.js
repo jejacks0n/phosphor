@@ -96,6 +96,11 @@ test('Smear: Strength 100 carries the color the whole way, and one long move sme
   expect(layerPaint(project)).toEqual(long);
 });
 
+test('Smear: Reads offers All layers, the default, and This layer', async () => {
+  const reads = (await read(smearText)).brushes[0].options.find((option) => option.id === 'reads');
+  expect([reads.choices, reads.default]).toEqual([['All layers', 'This layer'], 0]);
+});
+
 test('Smear: a press alone changes nothing', async () => {
   const { project, stroke } = await smearing();
   project.putEditPixels(RED_BLUE);
@@ -105,7 +110,7 @@ test('Smear: a press alone changes nothing', async () => {
   expect(layerPaint(project)).toEqual(before);
 });
 
-test('Smear: Reads This layer on a clear layer changes nothing; What shows smears the picture under it onto the layer', async () => {
+test('Smear: Reads This layer on a clear layer changes nothing; All layers smears the picture under it onto the layer', async () => {
   const { project, workspace, ref, stroke } = await smearing();
   const layer = project.editId;
   workspace.pickLayer('base');

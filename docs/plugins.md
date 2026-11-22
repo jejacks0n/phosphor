@@ -455,7 +455,7 @@ export default {
     options: [
       { id: 'size', kind: 'slider', name: 'Size', min: 1, max: 20, step: 1, default: 6 },
       { id: 'strength', kind: 'slider', name: 'Strength', min: 0, max: 100, step: 1, default: 60 },
-      { id: 'reads', kind: 'choice', name: 'Reads', choices: ['What shows', 'This layer'], default: 0 },
+      { id: 'reads', kind: 'choice', name: 'Reads', choices: ['All layers', 'This layer'], default: 0 },
     ],
     begin,   // optional: the press, before its first move
     move,    // the pointer from one place to the next
