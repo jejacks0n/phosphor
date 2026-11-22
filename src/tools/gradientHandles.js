@@ -183,7 +183,7 @@ export const gradientDrag = {
     if (!again) return false;
     workspace.vectorStop = stop;
     workspace.vectorPoint = null;
-    workspace.colorBox = slot === 'fill' ? 'fg' : 'bg';
+    workspace.openColors(slot === 'fill' ? 'fg' : 'bg');
     return true;
   },
 

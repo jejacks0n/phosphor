@@ -755,6 +755,10 @@
       "wandDeselectTitle": "Deselect so tools can draw anywhere again (Esc)"
     }
   },
+  "colorLayer": {
+    "aria": "Colors",
+    "colors": "Colors"
+  },
   "colors": {
     "fgAria": "Foreground color",
     "fgTitle": "Foreground: {color} ({key})",
@@ -774,8 +778,7 @@
     "none": "None",
     "cantPaint": "{hex}: this color cannot be produced with current slider settings",
     "noneTitle": "None: keep existing color",
-    "recentTitle": "Recent: {hex}",
-    "editColors": "Edit colors"
+    "recentTitle": "Recent: {hex}"
   },
   "palette": {
     "file": {

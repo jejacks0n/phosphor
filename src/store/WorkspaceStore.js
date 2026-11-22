@@ -154,7 +154,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     colorsOpen: false,       // the Colors dialog (ColorsDialog), from Browse ▸ beside Color palette
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
     legalPage: null,         // the Terms, Privacy Policy or Community Guidelines while one's open (LegalDialog): 'terms' | 'privacy' | 'guidelines'
-    colorBox: null,          // the color box (ColorPair's popover) while it's open: 'fg' | 'bg'
+    colorBox: null,          // the color box (ColorLayer) while it's open, for this slot: 'fg' | 'bg'
+    colorLayerPage: 'colors', // the color layer's page: 'colors' | 'palettes'
     versionsOpen: false,     // the autosaved versions list (VersionsDialog)
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'png' and the animated formats (SaveDialog)
     unsavedAsk: null,        // { name, go, stay?, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
@@ -425,6 +426,12 @@ export const useWorkspaceStore = defineStore('workspace', {
         fgIndex: this.editFgNone ? undefined : this.editFgIndex,
         bgIndex: this.editBgNone ? undefined : this.editBgIndex,
       };
+    },
+    // The color layer opened for a slot, on a page: Colors (that slot's picker) or Palettes. Opening it again for another
+    // slot or page moves it there; the chips close it for the slot already open (ColorPair).
+    openColors(slot = 'fg', page = 'colors') {
+      this.colorBox = slot;
+      this.colorLayerPage = page;
     },
     swapColors() {
       [this.editFgColor, this.editBgColor] = [this.editBgColor, this.editFgColor];

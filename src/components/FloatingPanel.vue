@@ -4,14 +4,16 @@ import { useI18n } from 'vue-i18n';
 import { useMediaQuery } from '@vueuse/core';
 import CloseButton from '@/components/CloseButton.vue';
 
-// The frame a layer opening from the toolbar sits in (the character palette layer's): small, it floats under the
-// toolbar's bottom right, or `left` px along it; `wide`, it grows to the big size, which on a smaller window is a dialog
-// over the dimmed page and on a phone's width the whole window. Its first line holds the page's tabs, then a full screen
-// button and, taking the whole window, a close button. A press outside closes it; Escape is the page's to hear.
+// The frame a layer opening from the toolbar sits in (the character palette layer's, the color layer's): small, it
+// floats under the toolbar's bottom right, or `left` px along it; `wide`, it grows to the big size, which on a smaller
+// window is a dialog over the dimmed page and on a phone's width the whole window. Its first line holds the page's tabs,
+// then a full screen button and, taking the whole window, a close button. A press outside closes it; Escape is the
+// page's to hear. The tabs a layer puts in the first line carry that layer's scope, so the layer loads tabStrip.css
+// (scoped) itself.
 defineOptions({ inheritAttrs: false }); // the parent's class and listeners go on the panel, not the scrim beside it
 const props = defineProps({
   wide: Boolean,
-  label: { type: String, default: '' },
+  label: { type: String, default: undefined }, // no aria-label at all without one
   width: { type: Number, default: 300 },
   left: { type: Number, default: null },
   keep: { type: String, default: '' }, // a selector whose presses don't close it (its own toggle's)
@@ -160,7 +162,9 @@ div.floating-panel.editing.maximized {
   transition: none;
 }
 
-/* The rules below are the pages' (the Palettes page's, the Fonts page's): they reach into them (:deep). */
+/* From here on: how a page and its list and editor sides size in each of the frame's forms, the frame's own dialog,
+   scrim and phone rules among them, and then, from div.list-side on, the rules every page shares (the Palettes page's,
+   the Fonts page's). What reaches into a page does it with :deep. */
 :deep(div.page) {
   display: flex;
   flex: 1;

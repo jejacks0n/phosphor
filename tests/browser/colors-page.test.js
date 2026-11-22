@@ -1,12 +1,9 @@
-// The color box with a palette: a swatch the sliders can't make shows its palette color, can't be picked, and says
-// why; the others paint their palette colors. It's a popover anchored under the color pair, which nothing clips.
-import { test, expect, vi, onTestFinished } from 'vitest';
-import { page } from 'vitest/browser';
+// The color layer's Colors page with a palette: a swatch the sliders can't make shows its palette color, can't be
+// picked, and says why; the others paint their palette colors. (Where the layer opens is color-layer.test.js's.)
+import { test, expect, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
-import ColorPopover from '@/components/ColorPopover.vue';
-import ColorPair from '@/components/ColorPair.vue';
-import ControlPanel from '@/components/ControlPanel.vue';
+import ColorsPage from '@/components/ColorsPage.vue';
 import { i18n } from '@/i18n';
 import { toastMessage } from '@/composables/useToast';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -20,7 +17,7 @@ test('under Saturation 0 the CGA colors show, only the grays can be picked, and 
   workspace.editorTab = 'output';
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ColorPopover, { slotName: 'fg' }).use(i18n);
+  const app = createApp(ColorsPage, { slotName: 'fg' }).use(i18n);
   app.mount(host);
   await new Promise((resolve) => requestAnimationFrame(resolve));
   const swatches = [...host.querySelectorAll('.swatches .swatch')];
@@ -43,31 +40,6 @@ test('under Saturation 0 the CGA colors show, only the grays can be picked, and 
   expect(swatches.filter((s) => !s.disabled).length).toBe(4); // black, gray, dark gray and white
 });
 
-test('a chip opens the box as a popover under the pair, lined up with its left edge, out of a box that hides what overflows', async () => {
-  const { workspace } = await createTestApp();
-  const host = document.createElement('div');
-  Object.assign(host.style, { position: 'fixed', left: '40px', top: '60px', width: '42px', height: '30px', overflow: 'hidden' });
-  document.body.append(host);
-  const app = createApp(ColorPair).use(i18n);
-  app.mount(host);
-  host.querySelector('.chip.fg').click();
-  await nextTick();
-  const box = host.querySelector('.color-popover');
-  for (const animation of box.getAnimations()) animation.finish();
-  const pair = host.querySelector('.color-pair').getBoundingClientRect(), at = box.getBoundingClientRect();
-  const fg = box.querySelector('.head button'), { left, top, width, height } = fg.getBoundingClientRect();
-  try {
-    expect(workspace.colorBox).toBe('fg');
-    expect(box.matches(':popover-open')).toBe(true);
-    expect(Math.round(at.left)).toBe(Math.round(pair.left));
-    expect(Math.round(at.top - pair.bottom)).toBe(6);
-    expect(document.elementFromPoint(left + width / 2, top + height / 2)).toBe(fg); // over what hides the rest
-  } finally {
-    app.unmount();
-    host.remove();
-  }
-});
-
 // The browser's eyedropper, standing in: open() gives what's asked of it.
 function eyeDropper(open) {
   const had = Object.getOwnPropertyDescriptor(window, 'EyeDropper');
@@ -78,7 +50,7 @@ function eyeDropper(open) {
 async function openBox(props) {
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ColorPopover, props).use(i18n);
+  const app = createApp(ColorsPage, props).use(i18n);
   app.mount(host);
   await nextTick();
   return { host, close: () => { app.unmount(); host.remove(); } };
@@ -90,7 +62,8 @@ test('Pick from the screen chooses the color the eyedropper gives for the slot o
   workspace.editorTab = 'output';
   let answer = async () => ({ sRGBHex: '#12AB34' });
   const restore = eyeDropper(() => answer());
-  const { host, close } = await openBox({ slotName: 'bg' });
+  const onClose = vi.fn();
+  const { host, close } = await openBox({ slotName: 'bg', onClose });
   try {
     const button = host.querySelector('button[aria-label="Pick a color from anywhere on the screen"]');
     button.click();
@@ -101,7 +74,7 @@ test('Pick from the screen chooses the color the eyedropper gives for the slot o
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(workspace.editBgColor).toBe('#12ab34');
     expect(toastMessage.value).toBe(null);
-    expect(host.querySelector('.color-popover').matches(':popover-open')).toBe(true); // it stays open, as after a swatch
+    expect(onClose).not.toHaveBeenCalled(); // it stays open, as after a swatch
   } finally {
     close();
     restore();
@@ -142,7 +115,7 @@ test('#199: in Full color with BG None, pressing the color it holds chooses it; 
   expect([project.quantize, workspace.editBgNone, workspace.editBgColor]).toEqual(['none', true, '#000000']); // as a drawing starts
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ColorPopover, { slotName: 'bg' }).use(i18n);
+  const app = createApp(ColorsPage, { slotName: 'bg' }).use(i18n);
   app.mount(host);
   try {
     await nextTick();
@@ -224,71 +197,5 @@ test('with Hue moved, Recent keeps the palette color picked, and picking it agai
     expect(workspace.editFgColor).toBe(stored);
   } finally {
     close();
-  }
-});
-
-// The color box's way to the Custom color list's editor: it shuts the box and leaves the settings showing (on a narrow
-// window their drawer opens; on a wide one they're always there), with focus on the editor's picked swatch.
-test('with a Custom color list the color box links to its editor; not with another palette, nor when settings are locked', async () => {
-  const { project, workspace, pinia } = await createTestApp();
-  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
-  workspace.editorTab = 'output';
-  project.quantize = 'palette';
-  project.palette = '#ffffff #000000 #ff0000';
-  const mount = (component, props) => {
-    const host = document.createElement('div');
-    document.body.append(host);
-    const app = createApp(component, props).use(pinia).use(i18n);
-    app.mount(host);
-    return { host, gone: () => { app.unmount(); host.remove(); } };
-  };
-  const panel = mount(ControlPanel);
-  let box = null;
-  const open = async () => {
-    const onClose = vi.fn();
-    box?.gone();
-    box = mount(ColorPopover, { slotName: 'fg', onClose });
-    await nextTick();
-    return onClose;
-  };
-  const link = () => box.host.querySelector('button.edit-colors');
-  const picked = () => panel.host.querySelector('.color-list button.swatch[aria-pressed=true]');
-  try {
-    await open();
-    expect(link()?.textContent.trim()).toBe('Edit colors');
-    project.quantize = 'cga';
-    await nextTick();
-    expect(link()).toBe(null);
-    project.quantize = 'palette';
-    await nextTick();
-    expect(link()).not.toBe(null);
-    project.startSharing({ send: () => {}, role: 'artist', me: 'ann' }); // only the host's now
-    await nextTick();
-    expect(link()).toBe(null);
-    project.stopSharing();
-    await nextTick();
-
-    panel.host.querySelectorAll('.color-list button.swatch')[2].click(); // not the first, so focus can't land there by chance
-    await nextTick();
-    let onClose = await open();
-    link().click();
-    expect(onClose).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(document.activeElement).toBe(picked()));
-    expect(picked().getAttribute('aria-label')).toContain('#ff0000');
-    expect(workspace.settingsOpen).toBe(true); // a narrow window's drawer, opened
-
-    workspace.settingsOpen = false;
-    await page.viewport(1200, 800);
-    onTestFinished(() => page.viewport(414, 896));
-    await vi.waitFor(() => expect(innerWidth).toBe(1200));
-    onClose = await open();
-    link().click();
-    expect(onClose).toHaveBeenCalledOnce();
-    await vi.waitFor(() => expect(document.activeElement).toBe(picked()));
-    expect(workspace.settingsOpen).toBe(false); // a wide window's settings show without the drawer
-  } finally {
-    project.stopSharing();
-    box?.gone();
-    panel.gone();
   }
 });

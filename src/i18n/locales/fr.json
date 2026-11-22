@@ -755,6 +755,10 @@
       "wandDeselectTitle": "Désélectionner pour que les outils puissent à nouveau dessiner partout (Échap)"
     }
   },
+  "colorLayer": {
+    "aria": "Couleurs",
+    "colors": "Couleurs"
+  },
   "colors": {
     "fgAria": "Couleur de premier plan",
     "fgTitle": "Premier plan : {color} ({key})",
@@ -774,8 +778,7 @@
     "none": "Aucun",
     "cantPaint": "{hex} : cette couleur ne peut pas être produite avec les réglages actuels des curseurs",
     "noneTitle": "Aucun : conserver la couleur existante",
-    "recentTitle": "Récente : {hex}",
-    "editColors": "Modifier les couleurs"
+    "recentTitle": "Récente : {hex}"
   },
   "palette": {
     "file": {

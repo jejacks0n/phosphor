@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onMounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, onBeforeUnmount, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore, recentColor } from '@/store/WorkspaceStore';
@@ -13,12 +13,10 @@ import { gradientKey, gradientSlot, recolorStop } from '@/tools/gradientHandles.
 import RangeField from '@/components/RangeField.vue';
 import picker from '@/tools/picker.js';
 import { toast } from '@/composables/useToast';
-import { useSettingsLock } from '@/composables/useSettingsLock';
-import { desktopQuery } from '@/social/config';
 import ArrowIcon from '@/components/ArrowIcon.vue';
 
-// The color picker for one slot of the pair. Its middle follows the active palette: swatch grids
-// for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
+// The color layer's Colors page (ColorLayer): the color picker for one slot of the pair. Its middle follows the active
+// palette: swatch grids for CGA, VGA, custom and adaptive palettes; the native picker plus colors already in use for
 // 24-bit. A palette swatch stores a color that displays as its palette color under the color
 // adjustments (paletteChoices), so every palette color the adjustments can make can be painted with; one
 // they can't shows its palette color under a "no" sign and can't be picked. The recent colors are palette colors too,
@@ -75,7 +73,7 @@ const swatches = computed(() => {
 });
 const sections = computed(() => swatchSections(project.quantize, swatches.value));
 // Colors every cells layer's edit cells use, and (folded away until asked for) the other colors in their paint.
-// Paint is read when the popover opens: the layers aren't reactive, and don't change while this is open.
+// Paint is read when the page opens: the layers aren't reactive, and don't change while this is open.
 const cellsLayers = () => project.layers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => layer.id);
 const inUse = computed(() => drawingColors(cellsLayers().flatMap((id) => [...project.cellsOf(id).values()])));
 const painted = computed(() => {
@@ -159,24 +157,10 @@ const setMiter = (e) => {
   e.target.value = style.value('miter');
 };
 
-// With a Custom color list, the way to its editor in the settings column (ColorList): the box shuts, a narrow
-// window's settings drawer opens (a wide one's settings always show), and focus goes to the editor's picked swatch,
-// once the drawer has put it on its first control. Not while the settings are off, as the editor is then.
-const locked = useSettingsLock();
-const editsColors = computed(() => project.quantize === 'palette' && !locked.value);
-async function editColors() {
-  emit('close');
-  if (!matchMedia(desktopQuery).matches && !workspace.settingsOpen) workspace.toggleSettings();
-  await nextTick();
-  document.querySelector('.color-list button.swatch[aria-pressed=true]')?.focus();
-}
-
-const onPointerDown = (event) => {
-  if (root.value && !root.value.contains(event.target) && !event.target.closest('.color-pair')) emit('close');
-};
+// Escape closes the layer from anywhere while this page is open (a press outside is the layer's frame's to hear).
 const onKeyDown = (event) => {
   if (event.key !== 'Escape') return;
-  event.preventDefault(); // the popover takes this Escape (not the selection)
+  event.preventDefault(); // the color box takes this Escape (not the selection)
   emit('close');
 };
 // The arrow keys move focus to the nearest control that way (the swatches, None, the recent colors,
@@ -200,28 +184,16 @@ const onArrow = (event) => {
   const next = nearestInDirection(from.getBoundingClientRect(), controls.map((el) => el.getBoundingClientRect()), event.key);
   if (next >= 0) controls[next].focus();
 };
-// A manual popover, so it's drawn over everything and nothing it's in clips it; its own code closes it. It hangs
-// under the color pair, anchored to it (the pair's --anchor) where the browser can; elsewhere placed here, once.
-const anchored = typeof CSS !== 'undefined' && CSS.supports('position-area: block-end');
 onMounted(() => {
-  if (!anchored) {
-    const pair = root.value.parentElement.getBoundingClientRect();
-    Object.assign(root.value.style, { top: `${pair.bottom + 6}px`, left: `${pair.left}px` });
-  }
-  root.value.showPopover();
   // Focus starts on the slot's color, so the arrows go from there.
   (root.value?.querySelector('.swatch.selected') ?? root.value?.querySelector('button'))?.focus();
-  document.addEventListener('pointerdown', onPointerDown, true);
   window.addEventListener('keydown', onKeyDown, true);
 });
-onBeforeUnmount(() => {
-  document.removeEventListener('pointerdown', onPointerDown, true);
-  window.removeEventListener('keydown', onKeyDown, true);
-});
+onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
 </script>
 
 <template>
-  <div ref="root" popover="manual" class="color-popover" role="dialog" :aria-label="t('colors.popoverAria')" @keydown="onArrow">
+  <div ref="root" class="color-popover" role="dialog" :aria-label="t('colors.popoverAria')" @keydown="onArrow">
     <div class="head">
       <button :class="{ on: slotName === 'fg' }" @click="emit('update:slotName', 'fg')">{{ vector ? t('vector.fill') : t('colors.fg') }}</button>
       <button :class="{ on: slotName === 'bg' }" @click="emit('update:slotName', 'bg')">{{ vector ? t('vector.stroke') : t('colors.bg') }}</button>
@@ -290,9 +262,6 @@ onBeforeUnmount(() => {
       ></button>
     </div>
 
-    <!-- .stop: a click that reached the art's area would shut the drawer it opens. -->
-    <button v-if="editsColors" type="button" class="edit-colors text" @click.stop="editColors">{{ t('colors.editColors') }}</button>
-
     <div v-if="strokeSide" class="stroke-settings">
       <RangeField :setting="WIDTH" v-model="width" @commit="style.finish">
         <input type="number" class="width-value" min="0.5" max="64" step="0.1" :aria-label="t('vector.widthValue')" :title="t('vector.widthValue')" :value="style.value('width')" @change="setWidth"/>
@@ -317,55 +286,20 @@ onBeforeUnmount(() => {
   </div>
 </template>
 
-<style scoped src="./textLink.css"></style>
 <style scoped>
-/* The popover's own styles undone: no centering, scrollbar or system colors. */
+/* The page in the layer's frame (FloatingPanel), which has the border and a height it stops at: taller than that (the
+   Stroke side on a short window), the page scrolls. */
 div.color-popover {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  overflow: visible;
-  color: inherit;
-  width: 260px;
-  padding: 10px;
-  background: var(--surface-1);
-  border: 1px solid var(--accent);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px color-mix(in srgb, var(--shadow) 60%, transparent);
   display: flex;
   flex-direction: column;
   gap: 6px;
+  padding: 10px;
+  overflow-y: auto;
 }
 
-/* Under the pair, lined up with its left edge, flipped to whichever side keeps it in the window. */
-@supports (position-area: block-end) {
-  div.color-popover {
-    position-anchor: var(--anchor);
-    position-area: block-end span-inline-end;
-    position-try-fallbacks: flip-inline, flip-block, flip-block flip-inline;
-    margin-block-start: 6px;
-  }
-}
-
-/* It fades in, and slides a little from the pair unless motion is reduced. */
-div.color-popover:popover-open {
-  transition: opacity 0.12s ease-out, translate 0.12s ease-out;
-}
-@starting-style {
-  div.color-popover:popover-open {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: no-preference) {
-  @starting-style {
-    div.color-popover:popover-open {
-      translate: 0 -4px;
-    }
-  }
-}
-
-div.head,
-div.foot {
+/* Keyed on the page, so the frame's rule every page shares for div.head doesn't decide its gap. */
+div.color-popover div.head,
+div.color-popover div.foot {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -634,9 +568,5 @@ button.row-label.fold:hover {
 
 .spacer {
   flex: 1;
-}
-
-button.edit-colors {
-  align-self: flex-start;
 }
 </style>
