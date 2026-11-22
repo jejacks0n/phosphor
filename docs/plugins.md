@@ -335,7 +335,8 @@ export default {
 | `shader` | The passes for the graphics card. | Optional; each string 64 KB at most. |
 
 **Options** ([Options](#options)) show under the Characters section when the solver is chosen, and are kept for each
-layer and saved with the drawing.
+layer and saved with the drawing. A new drawing (a picture or a blank canvas) keeps them as it keeps the choice of
+solver; a project opened brings its own.
 
 ### The two passes
 

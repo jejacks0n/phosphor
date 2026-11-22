@@ -348,15 +348,14 @@ export const documentActions = {
 
   // Swap in a new base image and start a fresh document around it (out of an art layer first): with the base and the
   // edit layer, which a project's own layers replace as it opens, or with baseOnly the base alone (newLayers). A plugin
-  // solver's options are the patch's, else none (its defaults): replaced, not merged with the last drawing's
-  // (putSettings), before the new layers take the document's character settings.
+  // solver's options are the patch's (a file's own: replaced, not merged with the last drawing's, by putSettings), else
+  // the last drawing's, kept as the choice of solver is, before the new layers take the document's character settings.
   replaceImage(image, imageBuffer, patch = {}, { baseOnly = false } = {}) {
     if (this._artInside) this.leaveArt();
     if (imageBuffer) findUniform(image, imageBuffer); // a blank canvas reopened fills the grid again
     this.renderer.reset();
     this.activePalette = [];
     putSettings(this, {
-      solverOptions: {},
       documentId: randomId(),
       fileId: randomId(), // a new drawing's; a file opened brings its own in the patch
       filePath: null, // desktop: a project opened from its file says it after
