@@ -5,7 +5,8 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { paletteChoices } from '@/lib/PixelTransforms.js';
 import { rectShape } from '@/document/shapes.js';
-import { rgb2hex } from '@/lib/ColorUtils.js';
+import { rgb2hex, sharedIndex } from '@/lib/ColorUtils.js';
+import { typeText } from '@/composables/useTextTool.js';
 import { ctx2d } from '@/lib/Canvas.js';
 
 const COLS = 40, ROWS = 40;
@@ -78,4 +79,27 @@ test('the reporter\'s drawing: the brown swatch paints brown on Layer 1 in the P
   await settle(project);
   expect(project.lowerGroup.upper).toContain('edit');
   expect(shownAt(project, 9, 9)).toBe('#aa5500');
+});
+
+// A typed cell keeps the index of a color the list holds lower down (sharedIndex), for the export; the list then changed
+// so that index holds another color, or is gone.
+test('a repeated color moved or taken out of the list leaves what was painted with it showing its color', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: COLS, rows: ROWS });
+  Object.assign(project, { quantize: 'palette', palette: '#ff0000 #00ff00 #ff0000' });
+  await settle(project);
+  workspace.pickLayer('edit');
+  workspace.setColor('fg', '#ff0000', { index: sharedIndex(2, project.activePalette) }); // the third swatch
+  workspace.textCursor = { col: 5, row: 5 };
+  typeText(project, workspace, 'X');
+  await settle(project);
+  const shown = () => project.cells[5 * project.cols + 5];
+  expect(project.editCellAt(5, 5).fgIndex).toBe(2);
+  expect(shown().char).toBe('X');
+  expect(shown().fg.hex.toLowerCase()).toBe('#ff0000');
+  for (const palette of ['#ff0000 #ff0000 #00ff00', '#00ff00 #ff0000']) {
+    project.palette = palette;
+    await settle(project);
+    expect(shown().fg.hex.toLowerCase()).toBe('#ff0000');
+  }
 });

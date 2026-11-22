@@ -202,6 +202,7 @@ export const useProjectStore = defineStore('project', {
     _by: ALONE, // who the ledger knows this person as
     _sharing: null, // the room this document is shared with (sharing.js)
     _hosting: false, // a room you host shows this document, with or without anyone drawing in it (RoomStore)
+    _colorPick: false, // the Custom color list's system picker is open: a room hears the list once, when it shuts (drawing/host.js)
     _paused: false,
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay

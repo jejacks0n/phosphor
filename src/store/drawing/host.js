@@ -246,9 +246,10 @@ export function hostSide({ project, me, artist, artists, invited, invitation, pa
     stops.push(() => clearInterval(checks));
     const keeps = setInterval(() => project.keepLedger(), KEEP_LEDGER_EVERY_MS);
     stops.push(() => clearInterval(keeps));
-    stops.push(watch(() => [settingsJson(project), project._sliderBefore, project._charsBefore], () => {   // a slider's end goes as one change
+    // A slider's drag, a characters gesture and a color pick go as one change, when they end.
+    stops.push(watch(() => [settingsJson(project), project._sliderBefore, project._charsBefore, project._colorPick], () => {
       const now = settingsJson(project), gridNow = `${project.cols},${project.rows}`;
-      if (project._sliderBefore || project._charsBefore || now === sent) return;
+      if (project._sliderBefore || project._charsBefore || project._colorPick || now === sent) return;
       sent = now;
       if (gathering()) {   // from a catch-up, and everyone hears it in what they're answered
         grid = gridNow;

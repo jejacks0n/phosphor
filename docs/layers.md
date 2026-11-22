@@ -157,8 +157,13 @@ The settings on the left come in sections, each following a layer:
 
 - **Drawing** (all layers): **Dimensions**, **Art style** (ANSI, Color ASCII, Monochrome ASCII), **Font**, and
   **Color palette** with its **Color count** or **Palette colors**. These belong to the whole drawing, whichever
-  layer is selected. A list typed into **Palette colors** takes effect on **Enter** or leaving the field; **Escape** puts
-  back the one in use.
+  layer is selected. **Palette colors** shows the Custom color list as swatches, one of them picked, with the picked
+  color's chip (the system color picker), its hex, **◂** and **▸** to move it a place, and **Remove**; **+** adds a copy
+  of it at the end. A hex typed takes effect on **Enter** or leaving the field and **Escape** puts back the one in use;
+  a list of two or more colors typed or pasted there replaces every color. **Import** reads a `.hex` or `.txt` file's
+  colors in place of the list (the toast's **Put back** brings the old one back) and **Export** saves the list as a
+  `.hex` file. A changed color rewrites nothing drawn: paint and cells keep their colors and show as the nearest color in
+  the list.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.
 - **Adjustments**: **Brightness**, **Contrast**, **Black point**, **White point**, **Midtones**, **Saturation**,
   **Posterize** and **Threshold** (with its **Dark color** and **Light color**).
@@ -192,8 +197,8 @@ slider group says how many of its sliders are on.
 
 On a phone the settings slide out from **☰** at the left end of the tab bar. Opened with the keys, focus goes into them,
 to the Phosphor logo, so **Tab** goes on to **Dimensions**. **Escape** shuts them and puts focus back on **☰**. In a field
-you type in, such as Dimensions or **Palette colors**, Escape is the field's: it puts back what was there, and the
-settings stay open.
+you type in, such as Dimensions or the hex under **Palette colors**, Escape is the field's: it puts back what was there,
+and the settings stay open.
 
 A layer whose character settings differ from the base's makes a drawing that saves in the newer form (see
 **Saving** under [The Layers List](#the-layers-list)).

@@ -10,6 +10,7 @@ import { useRoomStore } from '@/store/RoomStore';
 import { CHAR_KEYS, SETTINGS, getSetting } from '@/store/settings';
 import { useLayerName } from '@/composables/useLayerName';
 import { useStandIn, solverName } from '@/composables/useStandIn';
+import { useSettingsLock } from '@/composables/useSettingsLock';
 
 import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
@@ -17,6 +18,7 @@ import HelpInfo from '@/components/HelpInfo.vue';
 import RangeField from '@/components/RangeField.vue';
 import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
+import ColorList from '@/components/ColorList.vue';
 import SolverOptions from '@/components/SolverOptions.vue';
 import { isSolverRef } from '@/plugins/solvers';
 import { filterEntry } from '@/plugins/filters';
@@ -37,9 +39,16 @@ const plugins = usePluginStore();
 const room = useRoomStore();
 const standIn = useStandIn();
 
-// Why the settings are off, if they are: only the host's in a room; and inside an art layer the dimmed rest is a snapshot
-// of how they had the picture, which a change would leave stale.
-const locked = computed(() => drawing.hostOnly || (store.artInside ? t('art.settingsOff') : null));
+// Why the settings are off, if they are (useSettingsLock).
+const locked = useSettingsLock();
+// The Custom color list's editor: its import toast's Put back sits outside the fieldset, so a write is refused while the
+// settings are off; and a pick still open when they went off is over, since a disabled chip may never say it ended.
+const setPalette = (list) => {
+  if (!locked.value) store.palette = list;
+};
+watch(locked, (why) => {
+  if (why) store._colorPick = false;
+});
 // Dimensions: a size typed digit by digit waits for Enter, Tab or a click elsewhere (the field's change), and Escape puts
 // the field back to the grid's size, so a half-typed number never reaches the grid, a room or the undo history. The
 // stepper arrows and the up and down keys give a whole size at a time, so they resize at once: their input isn't typing.
@@ -248,10 +257,14 @@ function onKeyDown(event) {
       </div>
 
       <RangeField v-if="store.quantize === 'count'" :setting="getSetting('colorCount')" v-model="store.colorCount"/>
-      <div v-else-if="store.quantize === 'palette'" class="field">
-        <label for="palette">{{ t('panel.paletteColors.label') }}</label>
-        <input type="text" id="palette" v-model.lazy="store.palette" @keydown.esc="$event.target.value = store.palette" placeholder="#FFFFFF #000000">
-      </div>
+      <ColorList
+          v-else-if="store.quantize === 'palette'"
+          class="field"
+          :model-value="store.palette"
+          :name="store.filename ?? ''"
+          @update:model-value="setPalette"
+          @picking="store._colorPick = $event"
+      />
     </fieldset>
 
     <template v-for="(group, i) in sections" :key="group.id">
