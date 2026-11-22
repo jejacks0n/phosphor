@@ -661,7 +661,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
                 class="choice"
                 :class="{ on: shownChoice(option) === choice }"
                 @click="setOptionValue(workspace, option, choice.value)"
-            ><span class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
+            ><span v-if="offered(option).some((c) => c.glyph)" class="glyph">{{ typeof choice.glyph === 'function' ? choice.glyph(workspace) : choice.glyph }}</span><span>{{ choice.label }}</span></button>
           </DropdownMenu>
           <RangeField v-else compact :setting="option" :model-value="optionValue(workspace, option)" @update:model-value="setOptionValue(workspace, option, $event)"/>
         </template>
@@ -772,6 +772,7 @@ div.tool-group > * {
   width: 16px;
   height: 16px;
   fill: var(--text-faint);
+  color: var(--text-faint);
 }
 
 .tools-menu :deep(.dropdown-trigger:hover) svg,
@@ -779,6 +780,7 @@ div.tool-group > * {
 .snap-menu :deep(.dropdown-trigger:hover svg),
 .tools-menu button.choice.on :deep(svg) {
   fill: var(--white);
+  color: var(--white);
 }
 
 /* The active tool is in the menu: the ⋯ lights up like a tool button; so does a phone's magnet when it snaps. */
@@ -791,6 +793,7 @@ div.tool-group > * {
 .tools-menu.holds-active :deep(svg),
 .snap-menu.on :deep(.dropdown-trigger svg) {
   fill: var(--white);
+  color: var(--white);
 }
 
 /* Menu items are an icon (or glyph) and a label; a label that wraps stays in its own column. */
@@ -1038,6 +1041,7 @@ div.vector-options > :deep(button) {
 
 button :deep(svg) {
   fill: var(--text-faint);
+  color: var(--text-faint);
   width: 16px;
   height: 16px;
   display: block;
@@ -1046,12 +1050,14 @@ button :deep(svg) {
 @media (hover: hover) { /* a tap on a touch screen leaves no hover look behind */
   button:hover :deep(svg) {
     fill: var(--text);
+    color: var(--text);
   }
 }
 
 /* The VECTOR row's icon buttons (Copy, Cut, Paste) are its component's, which the rule above doesn't reach. */
 div.vector-options > :deep(button svg) {
   fill: var(--text-faint);
+  color: var(--text-faint);
   width: 16px;
   height: 16px;
   display: block;
@@ -1060,11 +1066,13 @@ div.vector-options > :deep(button svg) {
 @media (hover: hover) {
   div.vector-options > :deep(button:hover svg) {
     fill: var(--text);
+    color: var(--text);
   }
 }
 
 button.primary :deep(svg) {
   fill: var(--text);
+  color: var(--text);
 }
 
 @media (hover: hover) {
@@ -1077,6 +1085,7 @@ button.primary :deep(svg) {
 @media (hover: hover) {
   button.primary:hover :deep(svg) {
     fill: var(--text-inverted);
+    color: var(--text-inverted);
   }
 }
 
@@ -1088,6 +1097,7 @@ button.active {
 
 button.active :deep(svg) {
   fill: var(--white);
+  color: var(--white);
 }
 
 button:disabled,
@@ -1113,6 +1123,7 @@ div.vector-options > :deep(button:disabled) {
 
 /* Icon choices take the button's text color, and are as tall as a text label. */
 button.text :deep(svg) {
+  color: inherit;
   width: 15px;
   height: 15px;
   fill: currentColor;

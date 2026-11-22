@@ -19,6 +19,7 @@ import { ownHangMark } from '../support/ownHangMark.js';
 import { cellIndex } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
 import builtinBrush from '@/tools/brush';
+import '@/assets/global.css'; // the color tokens, for the icon colors
 
 let mounted = null, host = null;
 beforeAll(() => page.viewport(1200, 800));
@@ -394,4 +395,26 @@ test('the plugins reloaded mid-stroke: the stroke ends on the script it began on
   expect(paintAt(project, 0, 0)).toBe(null); // the new script wasn't part of it
   project.undo();
   expect([[2, 2], [3, 3], [4, 4], [9, 9]].map(([x, y]) => paintAt(project, x, y))).toEqual(Array(4).fill(null));
+});
+
+test('a choice option with no glyphs has no empty glyph column, and a currentColor icon is the color of the built-ins\'', async () => {
+  const app = await start('input');
+  const stroked = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M2 12C5 12 6 6 9 6" fill="none" stroke="currentColor"/><circle cx="3" cy="12" r="2" fill="currentColor"/></svg>';
+  const [ref] = (await onPlugin({ brushes: [brush({ icon: stroked })] })).brushes;
+  app.workspace.setActiveTool(ref);
+  await mount(EditToolbar);
+  [...host.querySelectorAll('.option-menu .dropdown-trigger')].at(-1).click();
+  await nextTick();
+  const choice = [...host.querySelectorAll('button.choice')].find((b) => b.textContent.trim() === 'Drag');
+  expect(choice.querySelector('span.glyph')).toBeNull();
+  // A built-in's paths take the fill the toolbar gives its svg (faint, lit when active); currentColor is that fill too.
+  const plugin = [...host.querySelectorAll('svg')].find((svg) => svg.querySelector('circle[fill]'));
+  for (const active of [true, false]) {
+    app.workspace.setActiveTool(active ? ref : 'brush');
+    await nextTick();
+    const fill = getComputedStyle(plugin).fill;
+    expect(fill).toBe(active ? 'rgb(255, 255, 255)' : getComputedStyle(host.querySelector('button:not(.active):not(.primary) > svg')).fill);
+    expect(getComputedStyle(plugin.querySelector('circle')).fill).toBe(fill);
+    expect(getComputedStyle(plugin.querySelector('path')).stroke).toBe(fill);
+  }
 });
