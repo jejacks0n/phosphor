@@ -244,6 +244,44 @@ test('a pick ends when the chip loses focus, with no change from the picker', as
   expect(picks).toEqual([true, false]);
 });
 
+// A system color panel that isn't modal (macOS's) can be left open after the color was moved and brought back, with no
+// change or blur ever to come.
+test('a pick that goes quiet ends by itself, so a panel left open can\'t hold a room\'s changes back for good; the next move starts another', async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => vi.useRealTimers());
+  const { picks } = await mount('#ffffff #000000');
+  const chip = host.querySelector('input.chip');
+  const move = async (hex) => {
+    chip.value = hex;
+    await fire(chip, 'input');
+  };
+  await move('#ff0000');
+  expect(picks).toEqual([true]);
+  vi.advanceTimersByTime(999);
+  expect(picks).toEqual([true]);
+  vi.advanceTimersByTime(1);
+  expect(picks).toEqual([true, false]);
+  await move('#ee0000');
+  expect(picks).toEqual([true, false, true]);
+  for (let i = 0; i < 6; i++) {
+    vi.advanceTimersByTime(500);
+    await move(`#${(0xd0 - i).toString(16)}0000`);
+  }
+  expect(picks).toEqual([true, false, true]);
+});
+
+test('a pick ended by its change or blur isn\'t ended again when the quiet time passes', async () => {
+  vi.useFakeTimers();
+  onTestFinished(() => vi.useRealTimers());
+  const { picks } = await mount('#ffffff #000000');
+  const chip = host.querySelector('input.chip');
+  chip.value = '#ff0000';
+  await fire(chip, 'input');
+  await fire(chip, 'change');
+  vi.advanceTimersByTime(2000);
+  expect(picks).toEqual([true, false]);
+});
+
 test('with a mouse a swatch dragged onto another moves there and stays picked', async () => {
   await page.viewport(1200, 800);
   onTestFinished(() => page.viewport(414, 896));
