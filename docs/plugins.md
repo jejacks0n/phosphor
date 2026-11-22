@@ -121,7 +121,7 @@ resort.
 ## Picking a plugin's theme
 
 Once a plugin with a theme is on, a select appears under the language and the Dark, Light and System icons at the
-bottom of the settings panel. It reads **Themes…** until you pick one of the plugins' themes from it; while one is in use, none of the
+bottom of the settings panel. It reads **Themes (from plugins)…** until you pick one of the plugins' themes from it; while one is in use, none of the
 icons is checked. Pick an icon to go back to Phosphor's own themes. Your choice is saved in your browser, and a reload
 shows the theme from the first moment, before the app has started.
 
