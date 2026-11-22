@@ -289,8 +289,8 @@ change one cell on the way.
 - Rated: no (fonts)
 
 ### 30. Another narrow font, kept at 8
-- Does: uses another library font narrower than 8 and presses Keep it 8 wide; presses undo, then chooses another font and the narrow one again, and presses Keep it 8 wide; draws a few cells; chooses another font and the narrow one again; exports an XBin and opens it.
-- Expects: Keep it 8 wide draws the font in cells 8 pixels wide, as one undo step; after the undo it's drawn at its own width again, and choosing it asks again; once kept at 8, choosing it again asks nothing and stays 8 wide, with the drawn cells where they were; the opened XBin is drawn 8 wide and asks nothing.
+- Does: uses another library font narrower than 8 and presses Keep it 8 wide; presses undo, then chooses another font and the narrow one again, and presses Keep it 8 wide; draws a few cells; chooses another font and the narrow one again; exports an XBin and opens it; then, in a drawing whose SAUCE tab says 9px, chooses a third narrow font and presses Keep it 8 wide.
+- Expects: Keep it 8 wide draws the font in cells 8 pixels wide, as one undo step; after the undo it's drawn at its own width again, and choosing it asks again; once kept at 8, choosing it again asks nothing and stays 8 wide, with the drawn cells where they were; the opened XBin is drawn 8 wide and asks nothing; in the 9px drawing Keep it 8 wide draws it 9 wide and Letter spacing stays 9px.
 - Probes: `speed`: press Keep it 8 wide and undo at once, then choose another font and the narrow one again: it asks again; `back-out`: with the narrow font in use and unanswered, + Load its file again: it asks again.
 - Rated: no (fonts)
 

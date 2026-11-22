@@ -106,6 +106,18 @@ test('Keep it 8 wide draws at 8 and remembers it; choosing the font again asks n
   expect(project.drawingFont.cellWidth).toBe(8);
 });
 
+// Ruling 12: a remembered keep-8 shows 9 when Letter spacing is 9px, so the answer keeps the drawing's 9px too.
+test('Keep it 8 wide on a drawing whose Letter spacing is 9px draws it 9 wide, keeps 9px, and remembers 8', async () => {
+  const { project, workspace } = await blank();
+  project.sauceLetterSpacing = '9';
+  const id = await inYours(workspace), { choose } = useFontActions();
+  await choose(id);
+  expect(project.drawingFont.cellWidth).toBe(7);
+  await toastSecond.value.run();
+  expect([project.fontWidth, project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['', '9', 9]);
+  await kept(id, 8);
+});
+
 test('closing the question unanswered asks again next time', async () => {
   const { project, workspace } = await blank();
   const id = await inYours(workspace), { choose } = useFontActions();

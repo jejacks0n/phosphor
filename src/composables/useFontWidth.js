@@ -17,7 +17,7 @@ export function askFontWidth(font) {
   if (!project.image || !n || workspace.roomFont || blocksOf(font)[1] === null) return;
   const answer = (width) => () => {
     if (!project.drawingFont || fontId(project.drawingFont) !== id) return;
-    return setFontWidth(font, width);
+    return setFontWidth(font, width === 8 && project.letterSpacing9 ? 9 : width); // Keep it 8 wide keeps 9px at 9, remembered as 8
   };
   question = {
     id,
