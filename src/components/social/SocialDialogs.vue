@@ -115,12 +115,12 @@ div.people-forms button {
   flex-shrink: 0;
   white-space: nowrap;
 }
-div.people-forms p.notice {   /* clear of the dialog's close button, over its top right corner */
+div.people-forms p.notice {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 8px;
-  margin: 0 30px 12px 0;
+  margin: 0 0 12px;   /* the whole width: the dialog's close button is on the line above */
   padding: 8px 10px;
   border-radius: 4px;
   background: var(--surface-2);

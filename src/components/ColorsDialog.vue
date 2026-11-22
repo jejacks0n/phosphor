@@ -119,7 +119,7 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
 <template>
   <ModalDialog v-model:tab="tab" :label="t('colorsDialog.title')" :tabs="tabs" wide tall :focus="false" closable @cancel="emit('close')">
     <div ref="root" class="colors">
-      <div :id="`colors-panel-${tab}`" role="tabpanel" :aria-labelledby="`colors-tab-${tab}`">
+      <div :id="`colors-panel-${tab}`" :key="tab" role="tabpanel" :aria-labelledby="`colors-tab-${tab}`"><!-- its own for each tab, so a tab's palettes start from the top -->
         <p class="intro">{{ t(tab === 'library' ? 'colorsDialog.libraryIntro' : 'colorsDialog.favoritesIntro') }}</p>
         <input v-model="search" type="search" class="search" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" :placeholder="t('colorsDialog.search')" :aria-label="t('colorsDialog.search')">
         <template v-if="tab === 'library'">
@@ -186,18 +186,6 @@ div.colors, div[role='tabpanel'] {
   flex: 1 1 auto;
   flex-direction: column;
   min-height: 0;
-}
-
-/* In a phone's window (the dialog is all of it: ModalDialog's rule) the whole tab scrolls, its words, search and Get
-   going up with the cards, so the palettes get the room; Put back's line stays. */
-@media (max-width: 700px), (max-height: 520px) {
-  div[role='tabpanel'] {
-    display: block;
-    overflow: auto;
-  }
-  ul.cards {
-    overflow: visible;
-  }
 }
 
 p.intro {

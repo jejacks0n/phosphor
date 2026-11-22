@@ -15,10 +15,14 @@ button.text {
   cursor: pointer;
 }
 
-button.text:hover {
+button.text:hover { /* not the global button's lift */
   transform: none;
   background: transparent;
-  color: var(--accent-hot);
+}
+@media (hover: hover) { /* a tap on a touch screen leaves no hover look behind */
+  button.text:hover {
+    color: var(--accent-hot);
+  }
 }
 
 /* Under a finger it takes a press a little above and below its words; where it sits doesn't change. */
