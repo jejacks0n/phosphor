@@ -642,6 +642,7 @@ button.group-head[aria-expanded='false'] svg.chevron {
 /* The column's head and the search's row beside it, one height: the row's 34px controls, its padding and border. */
 div.page.fonts div.top,
 div.filters-head {
+  flex-shrink: 0; /* in a short window the column below scrolls; the heads don't give way */
   box-sizing: border-box;
   height: 55px;
 }

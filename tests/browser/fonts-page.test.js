@@ -1055,6 +1055,18 @@ test("the Filters column's head is as tall as the search's row beside it", async
   expect(height(host.querySelector('.filters-head'))).toBe(height(host.querySelector('.list-side .top')));
 });
 
+test("in a short window, a long Filters column scrolls and its head and the search's row keep their height", async () => {
+  await page.viewport(1400, 600);
+  onTestFinished(() => page.viewport(414, 896));
+  const index = FIXTURE();
+  for (let i = 0; i < 80; i += 1) index.fonts.push(libFont(`Many${i}`, { machine: `Machine ${i}`, height: 6 + (i % 30) }));
+  await mount({ library: index });
+  await waitFor(() => libraryNames().length);
+  const aside = host.querySelector('aside.filters-side');
+  expect(aside.scrollHeight).toBeGreaterThan(aside.clientHeight);
+  expect([host.querySelector('.filters-head'), host.querySelector('.list-side .top')].map((el) => el.getBoundingClientRect().height)).toEqual([55, 55]);
+});
+
 test('the dialog under 1000px starts folded; the floating layer is 200 and 220, full screen 260 and 320', async () => {
   await page.viewport(900, 700);
   onTestFinished(() => page.viewport(414, 896));
