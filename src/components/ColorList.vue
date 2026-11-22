@@ -59,12 +59,19 @@ const remove = () => {
 
 // The system picker's chip: every color it moves through is applied, and the pick ends when it closes, or when the chip
 // loses focus (a picker moved and brought back to where it started closes with no change).
-let picking = false;
+let picking = false, quiet = null;
+// A pick also ends when the chip has been still this long: a system panel that isn't modal (macOS's) can stay open with
+// neither change nor blur to come, and a pick that never ends would keep a room from hearing the host for good. A move
+// after it starts another.
+const PICK_QUIET_MS = 1000;
 const onPick = (event) => {
   if (!picking) emit('picking', (picking = true));
+  clearTimeout(quiet);
+  quiet = setTimeout(endPick, PICK_QUIET_MS);
   write(recolored(event.target.value));
 };
 const endPick = () => {
+  clearTimeout(quiet);
   if (picking) emit('picking', (picking = false));
 };
 onBeforeUnmount(endPick);
