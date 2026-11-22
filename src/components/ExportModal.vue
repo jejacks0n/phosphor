@@ -129,7 +129,7 @@ function cancel() {
 </script>
 
 <template>
-  <ModalDialog :title="t('export.modal.title')" :sub="t('export.modal.sub')" wide @cancel="cancel">
+  <ModalDialog :title="t('export.modal.title')" :sub="t('export.modal.sub')" wide closable @cancel="cancel">
     <div class="export-body">
 
       <!-- Up and Down move between the formats; Enter or Space picks the one focused. -->

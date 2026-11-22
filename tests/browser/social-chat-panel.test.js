@@ -212,6 +212,19 @@ test('the room menu has no End room: that\'s on the SOCIAL tab', async () => {
   expect([...host.querySelectorAll('.dropdown-content button')].map((b) => b.textContent)).toEqual(['Copy link', 'Settings and stats']);
 });
 
+test('Settings and stats has the ×, which closes it and puts focus back on the menu', async () => {
+  await mount('host', 0);
+  const trigger = host.querySelector('.room-menu .dropdown-trigger');
+  trigger.click();
+  await vi.waitFor(() => expect(host.querySelector('.dropdown-content')).not.toBe(null));
+  [...host.querySelectorAll('.dropdown-content button')].find((b) => b.textContent === 'Settings and stats').click();
+  const stats = () => document.querySelector('dialog[aria-label="Settings and stats"]');
+  await vi.waitFor(() => expect(stats()).not.toBe(null));
+  stats().querySelector(':scope > .head > button.close').click(); // with no keyboard, the only way out but Back
+  await vi.waitFor(() => expect(stats()).toBe(null));
+  expect(document.activeElement).toBe(trigger);
+});
+
 // Report, on a message: for a confirmed member, on other people's messages that show.
 const reports = () => [...host.querySelectorAll('button.report')].map((b) => b.getAttribute('aria-label'));
 const claims = (fields) => ({ sub: 'u_me', name: 'me', guest: false, verified: true, key: 'k', exp: 0, ...fields });

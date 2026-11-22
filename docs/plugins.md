@@ -10,7 +10,8 @@ in the desktop app), and nowhere else: another browser or computer doesn't have 
 ## The Plugins dialog
 
 **Plugins**, under the language and theme at the bottom of the settings panel, opens the dialog (on the desktop app,
-**Plugins…** in the Phosphor menu on macOS, in Help elsewhere). It has two tabs, **Marketplace** and **Installed**. It
+**Plugins…** in the Phosphor menu on macOS, in Help elsewhere). It has two tabs along its top, **Marketplace** and
+**Installed**, with the close button (**×**) at their right end. It
 opens on Installed when you have any plugins, and on Marketplace when you have none; the tab you used last stays for the
 rest of the visit. The dialog is 860 pixels wide, and on a screen 700 pixels wide or less it fills the window.
 
@@ -194,15 +195,15 @@ art's own colors aren't a theme's):
 | Slot | What it colors |
 |---|---|
 | `background`, `background-highlight` | The area around the art, and the glow over its top left corner. |
-| `accent` | Headings, the tab shown, a hovered button's border, the close button's ring, focus, links. |
-| `accent-hot`, `accent-hover` | A primary button (Install, Export) and its border; the chosen tool or option; the close button on hover. |
+| `accent` | Headings, the tab shown, a hovered button's border, focus, links. |
+| `accent-hot`, `accent-hover` | A primary button (Install, Export) and its border; the chosen tool or option. |
 | `accent-faint` | The drop box under a file being dragged in. |
 | `danger`, `danger-hover` | Remove and other danger buttons, and the words that say something failed. |
 | `warning`, `success` | Notes that warn, and ones that say something worked. |
 | `surface-0` … `surface-4` | The page behind everything (`surface-0`), then panels, buttons, fields and menus, each a step up. |
 | `surface-dark`, `surface-light` | The checkerboard behind see-through art; a primary button on hover. |
 | `border`, `border-subtle`, `border-light` | Borders, from a button's to a list's lines to the dialogs' edges. (`border-dark` is a slot nothing uses yet.) |
-| `text`, `text-dim`, `text-muted`, `text-faint` | Words, from the brightest to hints and placeholders. |
+| `text`, `text-dim`, `text-muted`, `text-faint` | Words, from the brightest to hints and placeholders; a dialog's close button (`text-muted`, and `text` on hover). |
 | `text-inverted` | Words on a primary button. |
 | `white`, `black` | Words and icons on a chosen button or tab (`white`). Tooltips' ground and the rings around color swatches (`black`). |
 | `accent-glow` | The glow around a focused field and behind a chosen tab's words. Left out, it's worked out from `accent`. |

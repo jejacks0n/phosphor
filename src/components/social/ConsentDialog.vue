@@ -17,7 +17,7 @@ function read(page, event) {
   opener = event.currentTarget;
   workspace.legalPage = page;
 }
-watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the reading dialog gone: while it's up, what's under it can't take focus
+watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the legal page gone: while it's up, what's under it can't take focus
 
 // Answered, focus goes back to what asked (the Lobby tab, say), or on from the tab that's showing, unless what's
 // showing took it.

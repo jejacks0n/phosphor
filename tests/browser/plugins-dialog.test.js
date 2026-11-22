@@ -73,14 +73,15 @@ const pick = async (text) => {
   files.items.add(new File([text], 'phosphor-plugin.json', { type: 'application/json' }));
   input.files = files.files;
   input.dispatchEvent(new Event('change'));
-  await vi.waitFor(() => expect(document.querySelector('dialog h3')?.textContent).not.toBe('Plugins'));
+  await vi.waitFor(() => expect(heading()).not.toBe('Plugins'));
 };
-const heading = () => document.querySelector('dialog h3').textContent;
+// What the dialog showing is called: a question's title, or the Plugins dialog's name (its tabs are in a title's place).
+const heading = () => document.querySelector('dialog h3')?.textContent ?? document.querySelector('dialog').getAttribute('aria-label');
 const dialogText = () => document.querySelector('dialog').textContent;
 const installed = async (text = midnight) => {
   await pick(text);
   await page.getByRole('button', { name: /^(Install|Replace)/ }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
 };
 
 test("a loaded plugin's row counts what its script adds", async () => {
@@ -102,7 +103,7 @@ test('empty, it says what plugins are; a manifest picked is asked about, then li
   expect(dialogText()).toContain('Adds 1 theme. Runs no code.');
   expect(dialogText()).not.toContain('runs code in Phosphor');
   await page.getByRole('button', { name: /^Install/ }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   const row = document.querySelector('dialog li');
   for (const words of ['Midnight', '1.2.0', 'by Phosphor', '1 theme', 'A deep blue theme for late nights.']) expect(row.textContent).toContain(words);
   const link = row.querySelector('a');
@@ -116,7 +117,7 @@ test('Cancel at the question installs nothing', async () => {
   const store = await mount();
   await pick(midnight);
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   expect(store.plugins).toEqual([]);
 });
 
@@ -172,11 +173,11 @@ test('Remove asks first, then forgets it', async () => {
   expect(heading()).toBe('Remove Midnight?');
   expect(dialogText()).toContain('Its themes go with it.');
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   expect(store.plugins).toHaveLength(1);
   await page.getByRole('button', { name: 'Remove Midnight' }).click();
   await page.getByRole('button', { name: /^Remove/ }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   expect(store.plugins).toEqual([]);
 });
 
@@ -186,7 +187,7 @@ test('installing a plugin again asks to replace it', async () => {
   await pick(changed((m) => { m.version = '1.3.0'; }));
   expect(heading()).toBe('Replace Midnight 1.2.0 with 1.3.0?');
   await page.getByRole('button', { name: /^Replace/ }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   expect(store.plugins[0].manifest.version).toBe('1.3.0');
 });
 
@@ -267,10 +268,10 @@ const drop = (element, text) => {
 
 test('a manifest dropped anywhere on the dialog is asked about, and a drop on the question is taken without leaving the page', async () => {
   await mount();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
-  expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
+  expect(drop(document.querySelector('dialog > .head'), midnight)).toBe(true);
   await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.2.0?'));
-  expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
+  expect(drop(document.querySelector('dialog > .head'), midnight)).toBe(true);
   expect(heading()).toBe('Install Midnight 1.2.0?');
 });
 
@@ -283,7 +284,7 @@ test('a browser that will not keep plugins asks nothing about a dropped file, an
   expect(store.plugins).toEqual([]);
 
   store.unavailable = true;
-  expect(drop(document.querySelector('dialog h3'), midnight)).toBe(true);
+  expect(drop(document.querySelector('dialog > .head'), midnight)).toBe(true);
   await new Promise((resolve) => setTimeout(resolve, 50));
   expect(heading()).toBe('Plugins');
 });
@@ -308,7 +309,7 @@ const pickFolder = async (manifestText, script = SCRIPT) => {
   files.items.add(new File([script], 'edges.js', { type: 'text/javascript' }));
   input.files = files.files;
   input.dispatchEvent(new Event('change'));
-  await vi.waitFor(() => expect(document.querySelector('dialog h3')?.textContent).not.toBe('Plugins'));
+  await vi.waitFor(() => expect(heading()).not.toBe('Plugins'));
 };
 
 test('the question for a plugin with a script warns that it runs code; a theme-only one says it runs none', async () => {
@@ -324,7 +325,7 @@ test('the question for a plugin with a script warns that it runs code; a theme-o
   expect(dialogText()).toContain(WARNING);
   expect(dialogText()).not.toContain('Runs no code');
   await page.getByRole('button', { name: /^Install/ }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   expect(store.solvers[solverRef('phosphor.midnight', 'edges')]).toMatchObject({ name: 'Edges' });
   expect(document.querySelector('dialog li').textContent).toContain('Runs code');
 
@@ -368,7 +369,7 @@ const folderDrop = (children) => {
   const dir = { isFile: false, isDirectory: true, name: 'midnight', createReader: () => ({ readEntries: (resolve) => resolve(read ? [] : (read = true, children)) }) };
   const event = new Event('drop', { bubbles: true, cancelable: true });
   Object.defineProperty(event, 'dataTransfer', { value: { items: [{ webkitGetAsEntry: () => dir }], files: [] } });
-  document.querySelector('dialog h3').dispatchEvent(event);
+  document.querySelector('dialog > .head').dispatchEvent(event);
   return event.defaultPrevented;
 };
 
@@ -378,12 +379,12 @@ test('a dropped folder is asked about; a dropped zip too', async () => {
   await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.2.0?'));
   expect(dialogText()).toContain(WARNING);
   await page.getByRole('button', { name: 'Cancel' }).click();
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
 
   const zip = await zipOf([['midnight-main/phosphor-plugin.json', scripted()], ['midnight-main/edges.js', SCRIPT]]);
   const data = new DataTransfer();
   data.items.add(new File([zip], 'midnight-main.zip', { type: 'application/zip' }));
-  document.querySelector('dialog h3').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
+  document.querySelector('dialog > .head').dispatchEvent(new DragEvent('drop', { dataTransfer: data, bubbles: true, cancelable: true }));
   await vi.waitFor(() => expect(heading()).toBe('Install Midnight 1.2.0?'));
   expect(dialogText()).toContain('Adds 1 theme and a script.');
 });
@@ -415,8 +416,10 @@ const selected = () => document.querySelector('dialog [role=tab][aria-selected=t
 
 test('Marketplace and Installed are tabs: arrow keys move between them, and Installed shows its count', async () => {
   await mount(async (store) => { await store.install(JSON.parse(midnight)); });
-  const tabs = [...document.querySelectorAll('dialog [role=tablist] [role=tab]')];
+  const tabs = [...document.querySelectorAll('dialog > .head [role=tablist] [role=tab]')]; // the dialog's first line, in a title's place
   expect(tabs.map((one) => one.textContent.replace(/\s+/g, ' ').trim())).toEqual(['Marketplace', 'Installed 1']);
+  expect(document.querySelector('dialog h3')).toBeNull();
+  expect(document.querySelector('dialog').getAttribute('aria-label')).toBe('Plugins');
   const panel = page.getByRole('tabpanel').element();
   expect(panel.getAttribute('aria-labelledby')).toBe(tabs[1].id);
   expect(tabs[1].getAttribute('aria-controls')).toBe(panel.id);
@@ -507,7 +510,7 @@ test('an Installed row says Official or From the marketplace, Update when the li
   expect(dialogText()).toContain('Official');
   await page.getByRole('button', { name: /^Replace/ }).click();
   await vi.waitFor(() => expect(store.plugins.find(({ id }) => id === 'phosphor.midnight').manifest.version).toBe('1.3.0'));
-  await expect.element(page.getByRole('heading', { name: 'Plugins' })).toBeVisible();
+  await expect.element(page.getByRole('dialog', { name: 'Plugins' })).toBeVisible();
   expect(selected()).toMatch(/^Installed/);
   expect(page.getByRole('button', { name: 'Update Midnight' }).query()).toBe(null);
 });

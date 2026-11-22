@@ -31,7 +31,7 @@ function read(page, event) {
   opener = event.currentTarget;
   workspace.legalPage = page;
 }
-watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the reading dialog gone: while it's up, what's under it can't take focus
+watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { flush: 'post' }); // the legal page gone: while it's up, what's under it can't take focus
 const SHOWN_MS = 4000;
 
 const title = computed(() => (props.room ? t('social.report.titleRoom') : t('social.report.titlePerson', { name: props.name })));

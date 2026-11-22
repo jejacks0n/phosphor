@@ -1,0 +1,58 @@
+/* A first line of tabs (the Palettes and Fonts layer's Palettes | Fonts, a dialog's About | Licenses): the tabs as the
+   side panel's, a rule under the line, and whatever closes or resizes it at the line's right end. */
+div.tab-strip {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  height: 38px;
+  padding: 0 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+div.tab-strip [role='tablist'] {
+  position: relative;
+  display: flex;
+  flex: 1;
+}
+
+div.tab-strip button[role='tab'] {
+  padding: 4px 12px 0; /* as the side panel's: the label a little low in the row */
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+div.tab-strip button[role='tab']:not(.on):hover {
+  color: var(--accent);
+}
+
+div.tab-strip button[role='tab']:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+div.tab-strip button[role='tab'].on {
+  font-weight: 600;
+  color: var(--text);
+  box-shadow: inset 0 -2px var(--accent);
+}
+
+/* A tab's count (the Plugins dialog's Installed). */
+div.tab-strip button[role='tab'] span.count {
+  margin-left: 2px;
+  padding: 0 5px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  color: var(--text-muted);
+}

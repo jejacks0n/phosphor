@@ -1,15 +1,24 @@
 // ModalDialog is a modal <dialog>: open (the page behind it inert) before its slot mounts, so a field the slot focuses
 // on mounting has the focus; a close request or the backdrop cancels, and the dialog stays until whoever shows it
-// takes it away, even when the browser closes it itself. ReadingDialog, over it, is one too.
-import { afterEach, expect, test, vi } from 'vitest';
+// takes it away, even when the browser closes it itself. Its first line (a title, or tabs, and the ×) stays while its
+// body scrolls, the big ones fill a phone's window, and a reading one (About, the legal pages) opens over another.
+import { afterEach, expect, onTestFinished, test, vi } from 'vitest';
+import { page } from 'vitest/browser';
 import { createApp, defineComponent, h, nextTick, onMounted, ref, vModelText, withDirectives } from 'vue';
 import { i18n } from '@/i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
-import ReadingDialog from '@/components/ReadingDialog.vue';
 import AppToast from '@/components/AppToast.vue';
-import '@/assets/global.css'; // button.close, the app's close button
+import '@/assets/global.css'; // the app's buttons and titles
 import { toast, closeToast } from '@/composables/useToast';
 import { cancelTopDialog } from '@/lib/focus';
+
+// The browser tests' window is a phone's (414 wide), where a big dialog is the whole window: a claim about one in its
+// box is made in a desktop's.
+async function desktop() {
+  await page.viewport(1200, 800);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1200));
+}
 
 let app, host;
 afterEach(() => {
@@ -64,6 +73,7 @@ test('focus starts in its first field to type in that shows, ahead of an [autofo
 });
 
 test('a close request cancels and leaves it open; the backdrop cancels a short one, not a long one', async () => {
+  await desktop();
   const { refuse, cancels, dialog } = await mount();
   refuse.value = true;
   dialog().dispatchEvent(new Event('cancel', { cancelable: true }));
@@ -85,17 +95,109 @@ test('a close request cancels and leaves it open; the backdrop cancels a short o
   expect(long.cancels.value).toBe(0);
 });
 
-test('a closable one has its × over its top right corner, and a long one scrolling under it leaves it there', async () => {
-  const many = () => Array.from({ length: 60 }, (_, i) => h('p', `Line ${i}`));
-  const { dialog } = await mount({ closable: true, long: true }, many);
-  const close = dialog().querySelector('button.close'), box = dialog().getBoundingClientRect();
-  const at = close.getBoundingClientRect();
-  expect(at.right).toBeGreaterThan(box.right);   // over the corner, not inside it
-  expect(at.top).toBeLessThan(box.top);
-  const body = dialog().querySelector('.body');
+const many = () => Array.from({ length: 60 }, (_, i) => h('p', `Line ${i}`));
+const closeOf = (dialog) => dialog.querySelector(':scope > .head > button.close');
+
+test('a closable one has the thin × inside its top right corner, on a first line the body scrolls under', async () => {
+  await desktop();
+  const { cancels, dialog } = await mount({ closable: true, long: true }, many);
+  const close = closeOf(dialog()), box = dialog().getBoundingClientRect(), at = close.getBoundingClientRect();
+  expect(close.getAttribute('aria-label')).toBe('Close');
+  expect(close.querySelector('svg')).toBeTruthy();          // the Palettes and Fonts layer's ×, drawn: not a letter
+  expect(close.textContent.trim()).toBe('');
+  expect([Math.round(box.right - at.right), Math.round(at.top - box.top)]).toEqual([7, 7]); // 6px in, past the 1px border
+  const title = dialog().querySelector(':scope > .head > h3#modal-dialog-title');
+  expect(title.textContent).toBe('Ask');
+  const body = dialog().querySelector(':scope > .body');
+  expect(body.contains(title)).toBe(false);
+  expect(body.getBoundingClientRect().top).toBeGreaterThanOrEqual(at.bottom); // nothing of the body passes under the ×
   body.scrollTop = 400;
   expect(body.scrollTop).toBeGreaterThan(0);
   expect(close.getBoundingClientRect().top).toBe(at.top);
+  expect(Math.round(title.getBoundingClientRect().top - box.top)).toBe(19); // where it was: 18px in, past the border
+  close.click();
+  expect(cancels.value).toBe(1);
+});
+
+test('one with neither a title nor tabs keeps a line for its ×, and one with no × has no first line', async () => {
+  const { dialog } = await mount({ title: '', label: 'Sign in', closable: true, long: true }, many);
+  const close = closeOf(dialog());
+  expect(dialog().querySelector(':scope > .body').getBoundingClientRect().top).toBeGreaterThanOrEqual(close.getBoundingClientRect().bottom);
+  expect(dialog().getAttribute('aria-label')).toBe('Sign in');
+  app.unmount();
+  host.remove();
+  const bare = await mount({ title: '', label: 'Stats' });
+  expect(bare.dialog().querySelector(':scope > .head')).toBe(null);
+});
+
+const TABS = [{ key: 'about', label: 'About' }, { key: 'licenses', label: 'Licenses', count: 3, id: 'tab-licenses', controls: 'panel-licenses' }];
+// ModalDialog with tabs, the chosen one kept by whoever shows it.
+async function mountTabs(props = {}) {
+  const tab = ref('about');
+  const mounted = await mount({ title: '', label: 'About Phosphor', tabs: TABS, ...props, get tab() { return tab.value; }, 'onUpdate:tab': (key) => { tab.value = key; } }, many);
+  return { ...mounted, tab, tabs: () => [...mounted.dialog().querySelectorAll(':scope > .head [role=tablist] [role=tab]')] };
+}
+
+test('tabs are its first line in a title\'s place: the chosen one marked, a press and the arrow keys choosing', async () => {
+  const { dialog, tab, tabs } = await mountTabs({ closable: true });
+  expect(dialog().querySelector('h3')).toBe(null);
+  expect(dialog().querySelector('[role=tablist]').getAttribute('aria-label')).toBe('About Phosphor');
+  expect(tabs().map((el) => el.textContent.replace(/\s+/g, ' ').trim())).toEqual(['About', 'Licenses 3']);
+  expect(tabs()[1].querySelector('span.count').textContent).toBe('3');
+  expect(tabs().map((el) => [el.getAttribute('aria-selected'), el.tabIndex, el.classList.contains('on')])).toEqual([['true', 0, true], ['false', -1, false]]);
+  expect([tabs()[1].id, tabs()[1].getAttribute('aria-controls')]).toEqual(['tab-licenses', null]); // its panel isn't there until it's chosen
+  tabs()[1].click();
+  await nextTick();
+  expect(tab.value).toBe('licenses');
+  expect(tabs().map((el) => el.getAttribute('aria-selected'))).toEqual(['false', 'true']);
+  expect(tabs()[1].getAttribute('aria-controls')).toBe('panel-licenses');
+  tabs()[1].focus();
+  tabs()[1].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); // past the last: round to the first
+  await nextTick();
+  expect(tab.value).toBe('about');
+  expect(document.activeElement).toBe(tabs()[0]);
+  tabs()[0].dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+  await nextTick();
+  expect(tab.value).toBe('licenses');
+  expect(document.activeElement).toBe(tabs()[1]);
+});
+
+test('the tabs\' line is the Palettes and Fonts layer\'s: 38px over a rule, the × at its right end, the body from its top on a new tab', async () => {
+  await desktop();
+  const { dialog, tab, tabs } = await mountTabs({ closable: true, long: true });
+  const head = dialog().querySelector(':scope > .head'), close = closeOf(dialog());
+  expect(Math.round(head.getBoundingClientRect().height)).toBe(39); // 38px and its rule
+  expect(getComputedStyle(head).borderBottomWidth).toBe('1px');
+  const style = getComputedStyle(tabs()[0]);
+  expect([style.fontSize, style.textTransform, style.fontWeight]).toEqual(['11px', 'uppercase', '600']);
+  expect(getComputedStyle(tabs()[1]).fontWeight).toBe('400');
+  const strip = head.getBoundingClientRect(), at = close.getBoundingClientRect();
+  expect(Math.round(strip.right - at.right)).toBe(6);
+  expect(Math.abs(at.top + at.height / 2 - (strip.top + (strip.height - 1) / 2))).toBeLessThanOrEqual(0.5); // in the middle of the line
+  expect(tabs()[0].getBoundingClientRect().left).toBeLessThan(at.left);
+  const body = dialog().querySelector(':scope > .body');
+  body.scrollTop = 300;
+  tab.value = 'licenses';
+  await nextTick();
+  expect(body.scrollTop).toBe(0);
+});
+
+test('a big one (long, wide, reading or full) is a phone\'s whole window, and a small one keeps its margin', async () => {
+  for (const props of [{ long: true }, { wide: true }, { reading: true }, { full: true }]) {
+    const { dialog } = await mount(props);
+    const box = dialog().getBoundingClientRect();
+    expect([props, box.left, box.top, box.width, box.height]).toEqual([props, 0, 0, innerWidth, innerHeight]);
+    expect(getComputedStyle(dialog()).borderTopWidth).toBe('0px');
+    app.unmount();
+    host.remove();
+  }
+  const small = await mount();
+  expect(small.dialog().getBoundingClientRect().width).toBe(innerWidth - 40);
+  app.unmount();
+  host.remove();
+  await desktop();
+  const boxed = await mount({ long: true });
+  expect(boxed.dialog().getBoundingClientRect().width).toBe(600);
 });
 
 test('closed by the browser, it cancels, and opens again when whoever shows it says no', async () => {
@@ -118,22 +220,26 @@ test('taken away by whoever shows it, it doesn\'t cancel', async () => {
   expect(cancels.value).toBe(0);
 });
 
-test('a reading dialog opens over it, modal, and closes on its backdrop', async () => {
+test('a reading one (About, the legal pages) opens over it, modal, wider, its × focused, and closes on its backdrop', async () => {
+  await desktop();
   await mount();
   const read = ref(true);
   const readingHost = document.createElement('div');
   document.body.append(readingHost);
-  const reading = createApp({ render: () => (read.value ? h(ReadingDialog, { label: 'Terms', onClose: () => { read.value = false; } }, () => 'Text') : null) }).use(i18n);
+  const reading = createApp({ render: () => (read.value ? h(ModalDialog, { reading: true, closable: true, back: false, label: 'Terms', onCancel: () => { read.value = false; } }, () => 'Text') : null) }).use(i18n);
   reading.mount(readingHost);
   await nextTick();
   try {
-    const dialog = document.querySelector('dialog.reading-dialog');
+    const dialog = document.querySelector('dialog.modal-dialog.reading');
     expect(dialog.matches(':modal')).toBe(true);
-    expect(document.activeElement).toBe(dialog.querySelector('button.close'));
+    expect(dialog.getAttribute('aria-label')).toBe('Terms');
+    expect(dialog.getBoundingClientRect().width).toBe(802);
+    expect(document.activeElement).toBe(closeOf(dialog));
     dialog.click(); // at 0, 0: the backdrop
     await nextTick();
-    expect(document.querySelector('dialog.reading-dialog')).toBe(null);
+    expect(document.querySelector('dialog.modal-dialog.reading')).toBe(null);
     expect(document.querySelector('dialog.modal-dialog').open).toBe(true);
+    expect(cancelTopDialog()).toBe(true); // the one under it: a reading one with back false left Back alone
   } finally {
     reading.unmount();
     readingHost.remove();

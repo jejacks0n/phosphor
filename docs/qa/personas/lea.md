@@ -400,7 +400,8 @@ and sideways.
   taps Install on Outlines, reads the question and taps Cancel. The app answers `/plugins.json` with the fixture list
   (`tests/fixtures/plugin-list.json`), and the development server serves the listed plugins' files from the checkout, so
   Install works there.
-- Expects: the dialog fills the whole window (no page behind it showing at the sides) with the tabs, search and Show menu
+- Expects: the dialog fills the whole window (no page behind it showing at the sides) with the Marketplace and Installed
+  tabs as its first line, the × at their right end (no "Plugins" title over them), the search and Show menu
   in reach of a thumb, and the cards in one column, each with its art band, name, version, Official or author, a description
   cut to two lines and its button, nothing wider than 390; Fog's button says Reading… (and does nothing when tapped)
   until its question shows; Fog's question names Fog, its author and "from the

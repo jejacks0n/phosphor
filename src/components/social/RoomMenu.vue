@@ -48,7 +48,7 @@ async function copyLink() {
     <button class="danger end" @click="ending = true">{{ t('social.host.endRoom') }}</button>
     <EndRoomDialog v-if="ending" @end="room.endRoom()" @cancel="ending = false" />
 
-    <ModalDialog v-if="stats" wide :label="t('social.menu.settingsAndStats')" @cancel="closeStats">
+    <ModalDialog v-if="stats" wide closable :label="t('social.menu.settingsAndStats')" @cancel="closeStats">
       <div class="people-forms">
         <HostRoomPage />
       </div>
