@@ -2,8 +2,7 @@
 // searched by name or author; Use making a palette the drawing's Custom color list, Put back undoing every Use since the
 // dialog opened, ★ keeping a palette, .hex saving one, Use and Put back off while the settings are locked, and Get from
 // Lospec, with fetch stubbed: nothing asked until it's pressed, the palette kept under Favorites, or what went wrong.
-import { afterEach, expect, test, vi, onTestFinished } from 'vitest';
-import { page } from 'vitest/browser';
+import { afterEach, expect, test, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import ColorsDialog from '@/components/ColorsDialog.vue';
@@ -76,19 +75,20 @@ test('Library lists the shipped palettes: colors, name linking to its Lospec pag
   expect(card('Endesga 16').querySelector('span.author').textContent).toBe('by ENDESGA');
 });
 
-test('on a phone the whole tab scrolls, words, search and palettes together, so the palettes get the room; on a desktop only the palettes scroll', async () => {
+test('only the palettes scroll, as the Plugins dialog\'s cards do, and each tab\'s start from the top', async () => {
   await mount();
   const panel = () => dialog().querySelector('[role=tabpanel]'), list = () => dialog().querySelector('ul.cards');
-  expect(getComputedStyle(panel()).overflowY).toBe('auto');         // the browser tests' window is a phone's
-  expect(panel().scrollHeight).toBeGreaterThan(panel().clientHeight);
-  expect(list().scrollHeight).toBe(list().clientHeight);            // the list doesn't scroll inside it
-  panel().scrollTop = 400;
-  expect(dialog().querySelector('input[type=search]').getBoundingClientRect().bottom).toBeLessThan(panel().getBoundingClientRect().top + 1); // gone up with the rest
-  await page.viewport(1200, 800);
-  onTestFinished(() => page.viewport(414, 896));
-  await vi.waitFor(() => expect(innerWidth).toBe(1200));
-  expect(panel().scrollHeight).toBe(panel().clientHeight);
+  expect(panel().scrollHeight).toBe(panel().clientHeight);           // the words, the search and Get stay put
   expect(list().scrollHeight).toBeGreaterThan(list().clientHeight);
+  for (const li of cards().slice(0, 14)) await press(li.querySelector('button.star')); // enough favorites to scroll too
+  list().scrollTop = 300;
+  expect(list().scrollTop).toBe(300);
+  await show('favorites');
+  expect(list().scrollHeight).toBeGreaterThan(list().clientHeight);
+  expect(list().scrollTop).toBe(0); // not where Library was left
+  list().scrollTop = 200;
+  await show('library');
+  expect(list().scrollTop).toBe(0);
 });
 
 test('its fields suit a phone\'s keyboard: no capitals, no corrections, and a key that says what Enter does', async () => {

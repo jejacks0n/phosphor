@@ -47,7 +47,7 @@ const nameId = (entry) => `market-${entry.manifest.id}`;
   <div class="market">
     <p class="intro">{{ t('plugins.market.intro') }}</p>
     <div class="find">
-      <input v-model="view.search" type="search" :placeholder="t('plugins.market.search')" :aria-label="t('plugins.market.search')">
+      <input v-model="view.search" type="search" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" :placeholder="t('plugins.market.search')" :aria-label="t('plugins.market.search')">
       <select v-model="view.filter" :aria-label="t('plugins.market.show')">
         <option v-for="(_, id) in FILTERS" :key="id" :value="id">{{ t(`plugins.market.${id}`) }}</option>
       </select>

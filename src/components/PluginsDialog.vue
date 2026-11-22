@@ -305,7 +305,6 @@ div.plugins, div[role='tabpanel'] {
   min-height: 0;
 }
 
-/* The tabs, as the side panel's: words in capitals, the one shown with the accent along its foot. */
 p.intro {
   margin: 0 0 10px;
   font-size: 13px;
