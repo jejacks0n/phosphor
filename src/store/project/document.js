@@ -10,10 +10,9 @@ import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectF
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { knownBlocksOf, loadFonts, addBitmapFont, storedBitmapFont } from '@/lib/userFonts.js';
-import { encodeBlocks, encodeFont, decodeBlocks, decodeFont, fontId } from '@/lib/BitmapFont.js';
-import { encodeLines, encodeSets } from '@/lib/FontLines.js';
+import { decodeBlocks, decodeFont, fontId } from '@/lib/BitmapFont.js';
 import { sauceFont } from '@/lib/fontLibrary.js';
-import { fontSettingsOf } from '@/store/project/font.js';
+import { asksWidth, fontSettingsOf } from '@/store/project/font.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
@@ -30,6 +29,7 @@ import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, withLetterSpacing } from '@/lib/Sauce.js';
 import { toast } from '@/composables/useToast.js';
 import { sayMissingBlocks } from '@/composables/useFontSetup.js';
+import { askFontWidth } from '@/composables/useFontWidth.js';
 import { busyWhile } from '@/composables/useBusy.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults, sliderDefaults } from '@/store/settings.js';
@@ -287,6 +287,9 @@ export const documentActions = {
           toast(t('font.sauceNotFetched', { name: sauce.fontName }));
         }
       }
+      // An XBin's own font, with the lines, sets and width answer kept in this browser for it.
+      const own = art.xbin && art.font && { ...art.font, lines: stored?.lines, sets: stored?.sets, width: stored?.width };
+      const ask = asksWidth(named ?? own); // narrow with no answer: opened narrow, and asked
       const opened = await this.setBlankCanvas({
         withLayer: true,
         ...settingDefaults(),
@@ -294,7 +297,7 @@ export const documentActions = {
         rows: 2 * art.rows,
         ...nameOf(file),
         // the font in use stays, but an XBin sets it: its own, or none (IBM VGA, below)
-        ...(named ? fontSettingsOf(named) : art.xbin ? { fontBitmap: art.font ? encodeFont(art.font) : '', fontName: art.font?.name ?? '', fontBlocks: art.font?.blocks ? encodeBlocks(art.font.blocks) : '', fontLines: stored?.lines ? encodeLines(stored.lines) : '', fontSets: stored?.sets ? encodeSets(stored.sets) : '' } : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets, fontWidth: this.fontWidth }),
+        ...(named || art.xbin ? fontSettingsOf(named ?? own) : { fontBitmap: this.fontBitmap, fontName: this.fontName, fontBlocks: this.fontBlocks, fontLines: this.fontLines, fontSets: this.fontSets, fontWidth: this.fontWidth }),
         ...(Array.isArray(art.palette) && art.palette.some((hex, i) => hex !== PALETTES.cga[ANSI_OF_DOS[i]].hex)
           ? { quantize: 'palette', palette: art.palette.join(' ') } // an XBin's own 16, in its DOS order
           : { quantize: Array.isArray(art.palette) ? 'cga' : art.palette }),
@@ -324,7 +327,8 @@ export const documentActions = {
       this.render();
       this.markSaved();
       this.asOpened = true;
-      if (art.font) sayMissingBlocks(this.drawingFont); // an XBin's own font, missing blocks besides its lower half
+      if (ask) askFontWidth(this.drawingFont); // the one toast, before any about blocks
+      else if (art.font) sayMissingBlocks(this.drawingFont); // an XBin's own font, missing blocks besides its lower half
     });
   },
 

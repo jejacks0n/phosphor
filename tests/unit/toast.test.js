@@ -1,6 +1,6 @@
 // The message at the bottom of the screen: ten seconds, whatever said it, or until it's closed; or one that stays, with a button.
 import { test, expect, vi, afterEach } from 'vitest';
-import { toast, toastMessage, toastAction, closeToast } from '@/composables/useToast';
+import { toast, toastMessage, toastAction, toastSecond, closeToast } from '@/composables/useToast';
 
 afterEach(() => { vi.useRealTimers(); toastMessage.value = null; });
 
@@ -56,4 +56,17 @@ test('closing by id closes only that message, never the one that replaced it', (
   expect(toastMessage.value).toBe('someone else’s');
   closeToast(); // with no id: whatever is showing
   expect(toastMessage.value).toBe(null);
+});
+
+test('a second action is carried beside the first, and cleared by closing or by the next message', () => {
+  const second = { label: 'Keep it 8 wide', run: () => {} };
+  toast('Slim is 7 pixels wide.', { stay: true, action: { label: 'Draw it 7 wide', run: () => {} }, second });
+  expect(toastSecond.value.label).toBe('Keep it 8 wide');
+  closeToast();
+  expect(toastSecond.value).toBe(null);
+  toast('Slim is 7 pixels wide.', { stay: true, action: { label: 'Draw it 7 wide', run: () => {} }, second });
+  toast('Saved.', { action: { label: 'Undo', run: () => {} } });
+  expect(toastAction.value.label).toBe('Undo');
+  expect(toastSecond.value).toBe(null);
+  closeToast();
 });

@@ -74,3 +74,48 @@ test('on a phone, a long toast takes the width of the screen less its margins, c
   expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth); // its label on one line, not squeezed
   expect(button.getBoundingClientRect().height).toBeLessThan(30);
 });
+
+test('a toast with two buttons runs the pressed one and closes', async () => {
+  await mount();
+  const runs = [];
+  const ask = () => toast('Slim is 7 pixels wide.', { stay: true, action: { label: 'Draw it 7 wide', run: () => runs.push(7) }, second: { label: 'Keep it 8 wide', run: () => runs.push(8) } });
+  ask();
+  await nextTick();
+  const buttons = () => [...shown().querySelectorAll('button')];
+  expect(buttons().map((b) => b.textContent)).toEqual(['Draw it 7 wide', 'Keep it 8 wide']);
+  buttons()[1].click();
+  expect(runs).toEqual([8]);
+  expect(toastMessage.value).toBe(null);
+  ask();
+  await nextTick();
+  buttons()[0].click();
+  expect(runs).toEqual([8, 7]);
+  expect(toastMessage.value).toBe(null);
+  toast('Saved.', { action: { label: 'Undo', run: () => {} } }); // a later toast with one button has no second
+  await nextTick();
+  expect(buttons().map((b) => b.textContent)).toEqual(['Undo']);
+});
+
+test('on a phone, a toast with two buttons puts them under the message, together, whole and on the screen', async () => {
+  await page.viewport(390, 844);
+  onTestFinished(() => page.viewport(414, 896));
+  await expect.poll(() => innerWidth).toBe(390);
+  await mount();
+  toast('CM-7X7 fait 7 pixels de large.', { stay: true, action: { label: 'La dessiner sur 7 de large', run: () => {} }, second: { label: 'La garder sur 8 de large', run: () => {} } });
+  await nextTick();
+  const box = shown().getBoundingClientRect();
+  const text = document.createRange();
+  text.selectNodeContents(shown().firstChild); // the message
+  expect(text.getClientRects()).toHaveLength(1); // the message on one line, not squeezed beside the buttons
+  const [one, two] = [...shown().querySelectorAll('button')].map((b) => b.getBoundingClientRect());
+  expect(one.top).toBe(two.top); // the buttons together, under it
+  expect(one.top).toBeGreaterThanOrEqual(text.getBoundingClientRect().bottom);
+  expect(box.left).toBeGreaterThanOrEqual(16);
+  expect(box.right).toBeLessThanOrEqual(390 - 16);
+  for (const button of shown().querySelectorAll('button')) {
+    const each = button.getBoundingClientRect();
+    expect(each.left).toBeGreaterThanOrEqual(box.left);
+    expect(each.right).toBeLessThanOrEqual(box.right);
+    expect(button.scrollWidth).toBeLessThanOrEqual(button.clientWidth); // its label whole
+  }
+});

@@ -805,11 +805,11 @@ test('a project without a font of its own keeps the narrow drawing’s width', a
   expect(project.drawingFont.cellWidth).toBe(7);
 });
 
-test('picked again with no answer, the drawing’s own narrow font keeps its width and is no step', async () => {
+test('picked again with no answer, the drawing’s own narrow font keeps its width, is no step, and asks again (Ruling 4)', async () => {
   const project = await blank();
   await project.setDrawingFont(narrow());
   const version = project.history.version;
-  expect(await project.setDrawingFont(narrow())).toBeUndefined();
+  expect(await project.setDrawingFont(narrow())).toEqual({ ask: true });
   expect(project.fontWidth).toBe('7');
   expect(project.history.version).toBe(version);
 });

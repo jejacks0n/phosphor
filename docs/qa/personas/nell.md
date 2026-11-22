@@ -282,6 +282,18 @@ change one cell on the way.
 - Also: uses Amiga Topaz 1+ from the library, opens the SAUCE tab, then presses undo; adds Amiga Topaz 2 to Yours, then uses it; exports an `.ans`, then opens a file whose SAUCE font name is Amiga Topaz 1+ (and one that says IBM VGA), and again with the network off.
 - Also expects: Font name reads Amiga Topaz 1+ after Use this font and one undo takes the font and the name back together; Amiga Topaz 2 used after Add to Yours sets Font name to Amiga Topaz 2 too; the opened file shows in Amiga Topaz 1+ with that font in Yours and nothing to undo; the IBM VGA file opens as it always did; offline, the file still opens, in the font in use, with a note that the font couldn't be fetched.
 
+### 29. A font 7 pixels wide
+- Does: on the Fonts page, finds CM-7X7 in the Library group and presses Use this font; reads the toast and closes it with its ×; chooses another font from the Font dropdown, then CM-7X7 again, and presses Draw it 7 wide; chooses another font, then CM-7X7 once more.
+- Expects: the toast says "CM-7X7 is 7 pixels wide." with Draw it 7 wide and Keep it 8 wide, and stays until answered or closed; the cells are 7 pixels wide while it's up, after it's closed and after Draw it 7 wide; closed, it asks again the next time CM-7X7 is chosen; answered, CM-7X7 is in Yours and choosing it again asks nothing and draws it 7 wide.
+- Probes: `interrupt`: reload with the toast up, then choose another font and CM-7X7 again: it asks again.
+- Rated: no (fonts)
+
+### 30. Another narrow font, kept at 8
+- Does: uses another library font narrower than 8 and presses Keep it 8 wide; presses undo, then chooses another font and the narrow one again, and presses Keep it 8 wide; draws a few cells; chooses another font and the narrow one again; exports an XBin and opens it.
+- Expects: Keep it 8 wide draws the font in cells 8 pixels wide, as one undo step; after the undo it's drawn at its own width again, and choosing it asks again; once kept at 8, choosing it again asks nothing and stays 8 wide, with the drawn cells where they were; the opened XBin is drawn 8 wide and asks nothing.
+- Probes: `speed`: press Keep it 8 wide and undo at once, then choose another font and the narrow one again: it asks again; `back-out`: with the narrow font in use and unanswered, + Load its file again: it asks again.
+- Rated: no (fonts)
+
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 
 ## Known

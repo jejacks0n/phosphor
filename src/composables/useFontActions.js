@@ -4,6 +4,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { DEFAULT_FONT_ID } from '@/lib/displayFonts';
 import { addFont, addBitmapFont, storedBitmapFont, storeFontPart, removeFont } from '@/lib/userFonts';
 import { sayMissingBlocks } from '@/composables/useFontSetup';
+import { askFontWidth } from '@/composables/useFontWidth';
 import { fontId, fontName, fontSheet } from '@/lib/BitmapFont';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 import { libraryFile } from '@/lib/fontLibrary';
@@ -21,11 +22,14 @@ export function useFontActions() {
   const hostsFont = computed(() => !!workspace.roomFont); // the host's, so not yours to change here
   const drawsIn = (id) => !!project.drawingFont && fontId(project.drawingFont) === id;
 
-  // A bitmap font becomes the drawing's own; any other font takes it away again.
+  // A bitmap font becomes the drawing's own (one narrower than 8 with no answer asks its width); any other font takes
+  // it away again. Whether it asked.
   async function choose(id, options) {
     if (loaded.value.find((font) => font.id === id)?.kind === 'bitmap') {
-      await project.setDrawingFont(await storedBitmapFont(id), options);
-      return;
+      const font = await storedBitmapFont(id);
+      if (!(await project.setDrawingFont(font, options))?.ask) return false;
+      askFontWidth(font);
+      return true;
     }
     workspace.displayFont = id; // first, so a toast about the cells' shape names it
     if (project.drawingFont) await project.setDrawingFont(null);
@@ -46,8 +50,8 @@ export function useFontActions() {
       }
     }
     workspace.userFonts = [...loaded.value.filter((f) => f.id !== font.id), font];
-    if (!hostsFont.value) await choose(font.id, options);
-    if (bitmap && (hostsFont.value || drawsIn(font.id))) sayMissingBlocks(await storedBitmapFont(font.id)); // blocks it lacks besides its lower half (useFontSetup)
+    const asked = !hostsFont.value && await choose(font.id, options);
+    if (bitmap && !asked && (hostsFont.value || drawsIn(font.id))) sayMissingBlocks(await storedBitmapFont(font.id)); // blocks it lacks besides its lower half (useFontSetup); the width question is the one toast
     return font;
   }
 

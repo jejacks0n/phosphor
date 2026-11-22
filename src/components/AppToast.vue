@@ -1,16 +1,15 @@
 <script setup>
 import { watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { toastMessage, toastAction, closeToast } from '@/composables/useToast';
+import { toastMessage, toastAction, toastSecond, closeToast } from '@/composables/useToast';
 
 const { t } = useI18n();
 
 // A manual popover, so it's drawn over a modal dialog (which no z-index is), and nothing but closeToast closes it.
 // Shown from its ref, as it goes in; a new message shows it again, over a dialog opened since.
 let shown = null;
-// An action's button closes the toast before it runs, so a message the action shows stays.
-const act = () => {
-  const { run } = toastAction.value;
+// An action's button (either of two) closes the toast before it runs, so a message the action shows stays.
+const act = ({ run }) => {
   closeToast();
   run();
 };
@@ -27,7 +26,7 @@ watch(toastMessage, (now, was) => {
 
 <template>
   <Transition name="toast">
-    <div v-if="toastMessage" :ref="show" popover="manual" class="app-toast" role="status" :title="t('common.close')" @click="closeToast()">{{ toastMessage }}<button v-if="toastAction" type="button" class="action" :title="toastAction.label" @click.stop="act">{{ toastAction.label }}</button></div>
+    <div v-if="toastMessage" :ref="show" popover="manual" :class="['app-toast', { two: toastSecond }]" role="status" :title="t('common.close')" @click="closeToast()">{{ toastMessage }}<span v-if="toastAction" class="actions"><button type="button" class="action" :title="toastAction.label" @click.stop="act(toastAction)">{{ toastAction.label }}</button><button v-if="toastSecond" type="button" class="action" :title="toastSecond.label" @click.stop="act(toastSecond)">{{ toastSecond.label }}</button></span></div>
   </Transition>
 </template>
 
@@ -51,6 +50,17 @@ div.app-toast {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
   cursor: pointer; /* a click closes it */
 }
+div.app-toast.two { /* two buttons don't squeeze the message: they go under it, together, when the row is too narrow */
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+
+span.actions {
+  display: flex;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
 button.action {
   flex-shrink: 0;
   white-space: nowrap;
