@@ -204,10 +204,11 @@ test('opened on Palettes as a dialog, back on Colors it sits under the pair and 
   await vi.waitFor(() => expect(Math.round(host.getBoundingClientRect().right - panel().getBoundingClientRect().right)).toBe(10));
 });
 
-// Back from the dialog the box fades in at its own place, as the design says: by the time the switch's work is done
-// (the first task after it, before any frame of the fade can show it) it's already the small size under the pair, no
-// width is moving, and the fade is what's running. Read with offsetLeft and offsetWidth, which the fade's scale doesn't
-// touch.
+// Back from the dialog the box fades in at its own place, as the design says: once the switch's work is done it's already
+// the small size under the pair, no width is moving, and the fade is what's running. That work (the watch's nextTick,
+// finish(), place() and the render after) is all microtasks, and the test waits in microtasks only, so no timer, frame
+// or raster comes between, the fade can't have run however slow the runner, and what's read is what the first frame
+// shows. Read with offsetLeft and offsetWidth, which the fade's scale doesn't touch.
 test('back on Colors from the dialog, the box fades in at the small size under the pair, with no shrink or hop', async () => {
   await page.viewport(1000, 900);
   onTestFinished(() => page.viewport(414, 896));
@@ -215,7 +216,7 @@ test('back on Colors from the dialog, the box fades in at the small size under t
   const { workspace, panel } = await mount({ on: 'palettes', width: 700 });
   expect(getComputedStyle(panel()).position).toBe('fixed');
   workspace.colorLayerPage = 'colors';
-  await new Promise((resolve) => setTimeout(resolve));
+  for (let i = 0; i < 50 && panel().offsetLeft !== 120; i++) await Promise.resolve(); // (it lands in 5)
   const moves = panel().getAnimations();
   expect(moves.some((move) => move.transitionProperty === 'width')).toBe(false);
   expect(moves.some((move) => move.effect?.getKeyframes().some((frame) => frame.opacity === '0'))).toBe(true); // fading in
