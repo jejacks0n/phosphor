@@ -296,7 +296,7 @@ change one cell on the way.
 
 ### 31. Switch a font to 9 and back
 - Does: with her 8-wide font in use, opens its details on the Fonts page, notes the Width switch, presses 9, draws a few characters, presses 8, then undoes twice and redoes once; chooses a font only in Yours and presses a width on its switch; opens an XBin in a 7-wide font that isn't in Yours, presses 8 on its switch while its question shows, and opens that XBin again; then loads a 7-wide font with no lower half block, reads the toast, and chooses another font and that one again.
-- Expects: the switch shows 8 and 9 for her font (7, 8 and 9 for a 7-wide one) with the width in use pressed, and the meta line says it (8×16); 9 redraws the cells 9 pixels wide with her drawn cells where they were, repeats the line and block characters into the ninth column and leaves the rest blank (the shades ░▒▓ too), and sets Letter spacing to 9px; 8 puts both back; each press is one undo; a font only in Yours changes its remembered width and not the drawing; a narrow font an XBin brought, not in Yours, joins Yours on a press, its width question closes, and the next XBin in it asks nothing; the 7-wide font with no lower half says to set up its blocks instead of asking its width, stays 7 wide, and asks its width the next time it's chosen.
+- Expects: the switch shows 8 and 9 for her font (7, 8 and 9 for a 7-wide one) with the width in use pressed, and the meta line says it (8×16); 9 redraws the cells 9 pixels wide with her drawn cells where they were, repeats the line and block characters into the ninth column and leaves the rest blank (the shades ░▒▓ too), and sets Letter spacing to 9px; 8 puts both back; each press is one undo; a font only in Yours changes its remembered width and not the drawing; a narrow font an XBin brought, not in Yours, joins Yours on a press, its width question closes, and the next XBin in it asks nothing; the 7-wide font with no lower half says to set up its blocks instead of asking its width, stays 7 wide, and asks its width the next time it's chosen once its blocks are set up.
 - Probes: `speed`: press 9 and 8 ten times fast; `undo-redo`: undo and redo across the width and check Letter spacing and the switch agree.
 - Rated: no (fonts)
 
@@ -309,7 +309,7 @@ change one cell on the way.
 ### 33. The library at real widths
 - Does: on the Fonts page, searches the library for CM-7X7, reads its row and the sample beside it, chooses it and reads its details, then opens Tags ▾ and looks at the Shape group.
 - Expects: the row says 7×7 with its machine and its sample is drawn 7 pixels a glyph; the details say "7×7 · Library" and its Shape tag reads 7×7; Shape lists the shapes by height, then width (7×7 before 8×8, 8×14 before 8×16); picking 7×7 lists only the 7-wide fonts of that height.
-- Probes: `extremes`: pick 4×8 and then another Shape tag.
+- Probes: `extremes`: pick 4×6 and then another Shape tag.
 - Rated: no (fonts)
 
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.

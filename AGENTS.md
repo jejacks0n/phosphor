@@ -38,7 +38,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   - `vector.js`: the vector layer's shapes: added, changed, restacked, deleted, and the cells they cover drawn again
   - `layers.js`: the layers' names, eyes and own character settings (`setLayerChars`), layers added, moved, deleted and duplicated, and the cells layer in use (`useLayer`)
   - `sliders.js`: slider moves as undo steps
-  - `font.js`: the drawing's bitmap font (`setDrawingFont`)
+  - `font.js`: the drawing's bitmap font (`setDrawingFont`) and the width it's drawn at (`setDrawingFontWidth`)
   - `history.js`: recording edits, undo and redo
   - `animation.js`: frames: moving between them, adding, deleting, reordering, timing, a whole movie's palette
   - `sharing.js`: the document shared with a room: slices of an edit going out, changes heard, undo asking the host

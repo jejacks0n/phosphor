@@ -11,7 +11,8 @@ import { blocksOf, fontId, narrowWidthOf } from '@/lib/BitmapFont';
 // the width still changes and a toast says the answer wasn't kept). Closed unanswered, nothing is kept, so it's asked
 // next time. Not asked with no drawing, nor in someone else's room (the host's width is theirs: useFontActions'
 // hostsFont), nor for a font with no lower half: "Set up its blocks" has the one toast (useFontSetup), and the width
-// is asked the next time the font is chosen. An answer once the drawing's font is another does nothing.
+// is asked the next time the font is chosen once its blocks are set up. An answer once the drawing's font is another
+// does nothing. Keep it 8 wide keeps the drawing's Letter spacing: a 9px drawing stays 9 wide, remembered as 8.
 export function askFontWidth(font) {
   const project = useProjectStore(), workspace = useWorkspaceStore(), n = narrowWidthOf(font), id = fontId(font);
   if (!project.image || !n || workspace.roomFont || blocksOf(font)[1] === null) return;
