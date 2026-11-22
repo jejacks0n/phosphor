@@ -480,7 +480,7 @@ and sideways.
   Round about; drags another star; undoes the second.
 - Expects: the row of shapes shows Superformula's star after Rectangle, Ellipse and Polygon, named "Superformula
   (Superformula)"; chosen, Points, Pinch and Round follow the row, fitting 390 wide; the drag draws a soft five-pointed
-  star live in the next shape's style, centered in the box she drags, and selected when she lets go; Points 8 turns that
+  star live in the next shape's style, centered in the box she drags with a point straight up, and selected when she lets go; Points 8 turns that
   star eight-pointed in the same box, and Round reshapes it as she drags, each one undo step; the second star comes out
   eight-pointed with her Round, as the first now is; each star is one undo step, and a path the Node tool can edit
   ([Shape](../../vector.md#shape-u), [Writing a shape](../../plugins.md#writing-a-shape)).

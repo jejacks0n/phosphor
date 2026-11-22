@@ -186,18 +186,23 @@ test('Superformula: the default outline is one closed outline of 120 corners, al
   expect(Math.max(...points.map(([x, y]) => Math.hypot(x - 0.5, y - 0.5)))).toBeCloseTo(0.5, 9);
 });
 
-// Corner i is at the angle 2π i / 120 from the formula's origin, so with the origin at the box's middle and one scale
-// for both axes, every corner is that way from (0.5, 0.5), whatever the values: the star stays put as they change.
+// Corner i is a turn of 2π i / 120 on from the top, clockwise, about the formula's origin, so with the origin at the
+// box's middle and one scale for both axes, every corner is that way from (0.5, 0.5), whatever the values: the star
+// stays put as they change, its first corner straight up from the middle, as the Polygon's is.
 test('Superformula: its center is the box\'s middle and its proportions its own, whatever the values', async () => {
   for (const values of [{}, { points: 1 }, { points: 3 }, { points: 5, pinch: 1, round: 4 }, { points: 7, pinch: 0.1, round: 0.1 }, { points: 20, round: 3 }]) {
     const [{ points }] = await outlineOf(values);
     let worst = 0;
     points.forEach(([x, y], i) => {
-      const phi = (2 * Math.PI * i) / points.length, r = Math.hypot(x - 0.5, y - 0.5);
-      worst = Math.max(worst, Math.abs(x - 0.5 - r * Math.cos(phi)), Math.abs(y - 0.5 + r * Math.sin(phi)));
+      const turn = -Math.PI / 2 + (2 * Math.PI * i) / points.length, r = Math.hypot(x - 0.5, y - 0.5);
+      worst = Math.max(worst, Math.abs(x - 0.5 - r * Math.cos(turn)), Math.abs(y - 0.5 - r * Math.sin(turn)));
     });
     expect(worst, JSON.stringify(values)).toBeLessThan(1e-9);
   }
+  // At its defaults the first corner is a point of the star: the top of the box, in its middle.
+  const [{ points: star }] = await outlineOf();
+  expect(star[0][0]).toBeCloseTo(0.5, 9);
+  expect(star[0][1]).toBeCloseTo(0, 9);
 });
 
 // r(φ) = r(φ + 2π/3) with Points 3: each corner is as far from the middle as the one a third of a turn on (40 of 120).
