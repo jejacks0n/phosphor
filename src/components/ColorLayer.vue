@@ -13,7 +13,9 @@ import ColorsPage from '@/components/ColorsPage.vue';
 const { t } = useI18n();
 const workspace = useWorkspaceStore();
 const panel = useTemplateRef('panel');
-const WIDTH = 260;
+// The frame's width: inside it the page's 10px padding leaves the swatches 260px, as the color box had before it was a
+// layer (282px across with the border, as that box was).
+const WIDTH = 280;
 
 // It opens under the toolbar at the pair's left, but never so far along that its right edge, border and all, comes
 // nearer than 10px to the toolbar's (the frame is never wider than the toolbar less 20px). Measured as it opens and
