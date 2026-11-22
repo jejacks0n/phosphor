@@ -346,6 +346,23 @@
     "classicRamp": "Classic ramp",
     "longRamp": "Long ramp"
   },
+  "colorList": {
+    "swatch": "{hex}, {n} of {count}",
+    "add": "Add a color",
+    "color": "Color",
+    "earlier": "Move earlier",
+    "later": "Move later",
+    "remove": "Remove",
+    "count": "{n} color | {n} colors",
+    "import": "Import",
+    "export": "Export",
+    "importTitle": "Replace the list with a .hex file's colors",
+    "exportTitle": "Save the list as a .hex file",
+    "noColors": "No colors found in {name}.",
+    "imported": "Palette colors replaced with {name}'s.",
+    "importedCut": "Palette colors replaced with the first 256 of {name}'s {n}.",
+    "putBack": "Put back"
+  },
   "font": {
     "label": "Font",
     "help": "Sets the display font for your canvas. Load, save, and remove fonts (bitmap fonts, or monospaced TrueType, OpenType, or WOFF fonts from your computer) with Manage fonts. Bitmap fonts look best at multiples of their native size (such as 16px or 32px for 8×16 fonts). Your font choice is saved in your browser. In a shared room, you see the host's font.",
