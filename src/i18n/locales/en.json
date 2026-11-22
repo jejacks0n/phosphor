@@ -770,6 +770,8 @@
     },
     "layer": {
       "dialogAria": "Character palettes",
+      "fullScreen": "Full screen",
+      "exitFullScreen": "Exit full screen",
       "filterPlaceholder": "Filter palettes…",
       "filterAria": "Filter palettes",
       "doneBtn": "◂ Done",

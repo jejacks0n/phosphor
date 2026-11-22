@@ -770,6 +770,8 @@
     },
     "layer": {
       "dialogAria": "Palettes de caractères",
+      "fullScreen": "Plein écran",
+      "exitFullScreen": "Quitter le plein écran",
       "filterPlaceholder": "Filtrer les palettes…",
       "filterAria": "Filtrer les palettes",
       "doneBtn": "◂ Terminé",

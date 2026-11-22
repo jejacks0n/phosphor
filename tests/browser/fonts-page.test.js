@@ -140,6 +140,31 @@ test('floating, however wide, the layer has no close button: a press outside clo
   expect(host.querySelector('button.dismiss')).toBeNull();
 });
 
+test('the full screen button takes the whole window and gives it back; on a phone the layer already has it', async () => {
+  await page.viewport(1400, 900);
+  onTestFinished(() => page.viewport(414, 896));
+  await mount();
+  const layer = host.querySelector('.palette-layer'), box = () => layer.getBoundingClientRect();
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute'));
+  const full = () => host.querySelector('.pages button.maximize');
+  expect(full().getAttribute('aria-label')).toBe('Full screen');
+  await press(full());
+  await vi.waitFor(() => expect([box().left, box().top, box().width, box().height]).toEqual([0, 0, 1400, 900]));
+  expect(getComputedStyle(host.querySelector('.page')).flexDirection).toBe('row'); // the list stays beside the editor
+  expect(full().getAttribute('aria-label')).toBe('Exit full screen');
+  expect(host.querySelector('button.dismiss')).toBeTruthy(); // nothing left outside it to press
+  await press(full());
+  await vi.waitFor(() => expect(getComputedStyle(layer).position).toBe('absolute'));
+  expect(host.querySelector('button.dismiss')).toBeNull();
+  await page.viewport(850, 700); // a dialog over the page: full screen drops the scrim
+  await vi.waitFor(() => expect(host.querySelector('.scrim')).toBeTruthy());
+  await press(full());
+  await vi.waitFor(() => expect([box().left, box().top, box().width]).toEqual([0, 0, 850]));
+  expect(host.querySelector('.scrim')).toBeNull();
+  await page.viewport(690, 700);
+  await vi.waitFor(() => expect(full()).toBeNull());
+});
+
 test('on a window under 1000px wide, the layer is a dialog over the page; under 700px, the whole window', async () => {
   await page.viewport(850, 700);
   onTestFinished(() => page.viewport(414, 896));

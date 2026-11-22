@@ -306,8 +306,13 @@ const wide = computed(() => editing.value || onFonts.value);
 // whole window (the media queries below). Either way it has a close button.
 const smallWindow = useMediaQuery('(max-width: 1000px), (max-height: 520px)');
 const phoneWidth = useMediaQuery('(max-width: 700px)');
-const fullWindow = computed(() => wide.value && smallWindow.value);
-const dialog = computed(() => fullWindow.value && !phoneWidth.value);
+// Wide and short of the whole window, the layer can be made to take it (its full screen button), list still beside the
+// editor; that holds until it closes.
+const maximized = ref(false);
+const canMaximize = computed(() => wide.value && !phoneWidth.value);
+const fullScreen = computed(() => maximized.value && canMaximize.value);
+const fullWindow = computed(() => wide.value && (smallWindow.value || fullScreen.value));
+const dialog = computed(() => fullWindow.value && !phoneWidth.value && !fullScreen.value);
 watch(wide, () => {
   const el = root.value;
   if (!el || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
@@ -337,12 +342,15 @@ onBeforeUnmount(() => {
 
 <template>
   <div v-if="dialog" class="scrim" aria-hidden="true"></div>
-  <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
+  <div ref="root" class="palette-layer" :class="{ editing: editing || onFonts, maximized: fullScreen }" tabindex="0" role="dialog" :aria-label="t('palette.layer.dialogAria')" @keydown="onKeyDown">
     <div class="pages">
       <div class="tablist" role="tablist" :aria-label="t('palette.pages.aria')">
         <button role="tab" :class="{ on: !onFonts }" :aria-selected="!onFonts" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.pages.palettes') }}</button>
         <button role="tab" :class="{ on: onFonts }" :aria-selected="onFonts" @click="workspace.paletteLayerPage = 'fonts'">{{ t('palette.pages.fonts') }}</button>
       </div>
+      <button v-if="canMaximize" class="maximize" :title="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" :aria-label="t(fullScreen ? 'palette.layer.exitFullScreen' : 'palette.layer.fullScreen')" @click="maximized = !fullScreen; keepKeys()">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="fullScreen ? 'M6 2v4H2M10 2v4h4M14 10h-4v4M2 10h4v4' : 'M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4'"/></svg>
+      </button>
       <button v-if="fullWindow" class="dismiss" :title="t('common.close')" :aria-label="t('common.close')" @click="emit('close')">×</button>
     </div>
     <FontsPage v-if="onFonts" ref="fontsPage" @acted="keepKeys"/>
@@ -566,6 +574,46 @@ div.pages button.dismiss {
 
 div.pages button.dismiss:hover {
   color: var(--text);
+}
+
+div.pages button.maximize {
+  align-self: center;
+  flex: none;
+  display: flex;
+  padding: 6px;
+  border: none;
+  box-shadow: none;
+  background: none;
+  color: var(--text-muted);
+}
+
+div.pages button.maximize:hover {
+  color: var(--text);
+}
+
+div.pages button.maximize svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Full screen: the whole window, on any window wider than a phone's (which has it already). */
+div.palette-layer.editing.maximized {
+  position: fixed;
+  inset: 0;
+  z-index: 5000;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  transition: none;
 }
 
 /* The rules below that the Fonts page shares reach into it (:deep). */

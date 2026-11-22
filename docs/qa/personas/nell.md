@@ -312,6 +312,12 @@ change one cell on the way.
 - Probes: `extremes`: pick 4×6 and then another Shape tag.
 - Rated: no (fonts)
 
+### 34. The font manager full screen
+- Does: on a big window, opens Manage fonts ▸, presses the full screen button at the layer's top right, chooses a font and edits its Blocks, presses it again; then on a window under 1000px wide does the same; then at a phone's width looks for it.
+- Expects: full screen takes the whole window with the font list still beside the details, and a × closes it; pressing it again puts the layer back where it floated (or the dialog back over the dimmed page); the layer closed and opened again floats; a phone's width has no full screen button, since the layer takes the whole window already.
+- Probes: `extremes`: shrink the window while in full screen, down past a phone's width and back.
+- Rated: no (fonts)
+
 **Free time:** she'd make a second style, draw a spiral with each, and undo the lot.
 
 ## Known
