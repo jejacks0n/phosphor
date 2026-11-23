@@ -3,6 +3,7 @@ import { test, expect, beforeEach, afterEach } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import { drawnCells } from '@/lib/GifFile.js';
 import { cellsPng, MAX_PREVIEW_PIXELS } from '@/lib/PngFile.js';
+import { MAX_BACKING_AREA } from '@/lib/CellCanvas.js';
 import { colorOf } from '@/lib/Cells.js';
 import { setDisplayFont } from '@/lib/displayFonts.js';
 import { fontWith } from '../support/blockFonts.js';
@@ -43,10 +44,17 @@ test('a 4×6 font drawn 4 wide gives a PNG 4 pixels a column', async () => {
 
 test('a drawing taller than one canvas is drawn in bands at full size', async () => {
   const lines = 1666, fits = Math.min(lines, Math.floor(MAX_PREVIEW_PIXELS / (2400 * 16))); // the lines that fit under the cap
-  const cells = grid(300, lines, (x, y) => (y === fits - 1 ? cell('█', { r: 255, g: 0, b: 0 }, { r: 0, g: 0, b: 0 }) : cell(' ', { r: 0, g: 0, b: 0 }, { r: 0, g: 0, b: 0 })));
+  const band = Math.floor(MAX_BACKING_AREA / (2400 * 16)); // a band's lines, as cellsPng cuts them
+  const marks = new Map([[0, 10], [band - 1, 60], [band, 110], [fits - 1, 160]]); // line -> a red of its own
+  const black = { r: 0, g: 0, b: 0 };
+  const cells = grid(300, lines, (x, y) => (marks.has(y) ? cell('█', { r: marks.get(y), g: 0, b: 0 }, black) : cell(' ', black, black)));
   const png = await decoded(await cellsPng(300, lines, cells));
   expect([png.width, png.height]).toEqual([2400, 16 * fits]);
-  expect(fits).toBeLessThan(lines); // the top lines only: more than one band, and the rest cut
-  const last = 4 * ((16 * fits - 8) * 2400 + 5); // inside the last drawn line's █
-  expect([...png.data.slice(last, last + 3)]).toEqual([255, 0, 0]);
+  expect(fits).toBeGreaterThan(band + 1); // more than one band, and the rest of the drawing cut
+  expect(fits).toBeLessThan(lines);
+  const pixel = (y) => [...png.data.slice(4 * (y * 2400 + 5), 4 * (y * 2400 + 5) + 3)];
+  for (const [line, red] of marks) {
+    expect(pixel(16 * line + 8)).toEqual([red, 0, 0]); // in its own line, at its own height
+    if (line > 0 && !marks.has(line - 1)) expect(pixel(16 * line - 1)).toEqual([0, 0, 0]); // and not in the one above
+  }
 });
