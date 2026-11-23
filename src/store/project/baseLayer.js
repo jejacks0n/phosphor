@@ -1,11 +1,11 @@
 // The base layer's own pixels and pins: erasing (black, with a pinned space), flipping a cell's
 // halves, and writing pixels. Base edits are exact: over the image as the pipeline shows it, never
 // resampled or put through the effects. Each is part of the current edit; the caller commits it.
-import { withPins, withoutPins } from '@/document/baseRecords.js';
+import { movePins, withPins, withoutPins } from '@/document/baseRecords.js';
 import { BLANK, cellKey, parseKey } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
-import { pastEdge, takePins } from '@/store/project/shared.js';
+import { forgetPastEdge, lineMoves, pastEdge, takePins } from '@/store/project/shared.js';
 
 export const baseLayerActions = {
   // Erase the base in these cells: black, with a pinned space (and no 256-color index).
@@ -141,6 +141,14 @@ export const baseLayerActions = {
     if (paint) this.eraseBase(left.filter((col) => !lands.has(col)).map((col) => ({ col, row })));
   },
 
+  // A line or column of the base put in at row or col (delta 1) or taken out there (-1): insertLine and the others with the
+  // base picked. As Insert typing moves a row (shiftBaseCells with paint), every cell from there on moves, its pixels as
+  // they show (the picture's among them, as a moved selection's are), its pin and its indexes; what's pushed past the
+  // grid's edge goes, and the line or column left behind is erased, black with a pinned space. True once done (an artist's
+  // is refused: HOST_ONLY_ACTIONS). Part of the current edit; the caller commits it.
+  shiftBaseLines(row, delta) { return shiftBase(this, lineMoves(this, 'row', row, delta)); },
+  shiftBaseColumns(col, delta) { return shiftBase(this, lineMoves(this, 'col', col, delta)); },
+
   // Paint grid pixels ({ x, y, r, g, b, alpha }) onto the base's own pixels at an opacity, stacking or not, as a cells
   // layer's paint goes (PaintLayer.paint): the Brush with the base picked. Off-grid ones are skipped.
   paintBasePixels(pixels, opacity = 100, stack = false) {
@@ -167,6 +175,34 @@ export const baseLayerActions = {
     this.refreshCells(inGrid);
   },
 };
+
+// The base with lineMoves' moves made (shiftBaseLines, shiftBaseColumns).
+function shiftBase(project, moves) {
+  if (!moves.length) return false;
+  project.ensureLayer();
+  project.beginEdit();
+  forgetPastEdge(project);
+  const k = project.baseLayer.scale, pixels = [], left = [];
+  for (const { span, from, dx, dy } of moves) {
+    const w = span.c1 - span.c0 + 1, h = span.r1 - span.r0 + 1;
+    const block = Object.assign(document.createElement('canvas'), { width: w * k, height: 2 * h * k });
+    if (from) {
+      const ctx = ctx2d(block);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(project.basePixelsOf(from), (from.c0 + dx - span.c0) * k, 2 * (from.r0 + dy - span.r0) * k);
+    }
+    project.baseLayer.pasteCells(block, span.c0, span.r0, w, h);
+    for (let row = span.r0; row <= span.r1; row++) {
+      for (let x = span.c0; x <= span.c1; x++) pixels.push({ x, y: 2 * row }, { x, y: 2 * row + 1 });
+      if (dx) left.push({ col: dx > 0 ? span.c0 : span.c1, row });
+    }
+    if (dy) for (let col = span.c0; col <= span.c1; col++) left.push({ col, row: dy > 0 ? span.r0 : span.r1 });
+  }
+  project.setBaseRecords(movePins(project.baseRecords, moves));
+  project.refreshCells(pixels);
+  project.eraseBase(left);
+  return true;
+}
 
 // Pixels written over a pinned cell's half drop that color's 256-color index: it's the pixel's own color now (the Brush
 // paints 0's black, never 16's).
