@@ -404,7 +404,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await section.getByRole('button', { name: 'Turn on' }).click();
   await section.getByLabel('Password').fill('correct horse battery');
   await section.getByRole('button', { name: 'Continue' }).click();
-  expect(server.sent('POST', '/api/auth/two-factor/enable')[0].body).toEqual({ password: 'correct horse battery' });
+  await expect.poll(() => server.sent('POST', '/api/auth/two-factor/enable').map((r) => r.body)).toEqual([{ password: 'correct horse battery' }]);   // sent after the click, not by it
 
   await expect(section.getByText('Scan this QR code with your authenticator app, or enter the secret key manually:')).toBeVisible();
   await expect(section.getByRole('img', { name: 'QR code' })).toBeVisible();
@@ -418,7 +418,7 @@ test('Two-factor: turning it on asks for your password, shows a QR code and the 
   await expect(section.getByRole('alert')).toHaveText("That code isn't right");
   await section.getByLabel('Code from the app').fill('123 456');
   await section.getByRole('button', { name: 'Turn on' }).click();
-  expect(server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '000000' }, { code: '123456' }]);
+  await expect.poll(() => server.sent('POST', '/api/auth/two-factor/verify-totp').map((r) => r.body)).toEqual([{ code: '000000' }, { code: '123456' }]);
 
   await expect(section.getByText('Store these backup codes in a safe place. Each code can be used once if you lose access to your authenticator app.')).toBeVisible();
   await expect(section.locator('li')).toHaveCount(10);
@@ -540,7 +540,7 @@ test('Two-factor: Turn off and New backup codes ask for the password', async ({ 
   await section.getByRole('button', { name: 'New backup codes' }).click();
   await section.getByLabel('Password').fill('correct horse battery');
   await section.getByRole('button', { name: 'Make new codes' }).click();
-  expect(server.sent('POST', '/api/auth/two-factor/generate-backup-codes')[0].body).toEqual({ password: 'correct horse battery' });
+  await expect.poll(() => server.sent('POST', '/api/auth/two-factor/generate-backup-codes').map((r) => r.body)).toEqual([{ password: 'correct horse battery' }]);
   await expect(section.locator('li')).toHaveCount(10);
   await expect(section.locator('li').first()).toHaveText('fresh-code0');
   await section.getByRole('button', { name: 'Done' }).click();
