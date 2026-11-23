@@ -398,9 +398,11 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
     const draw = WebGL2RenderingContext.prototype.drawArrays;
+    // The solver's context, not the picture's own (WebGLProcessor's is WebGL 2 as well, and the one that keeps its
+    // drawing buffer): a picture that can't be processed never gets as far as the solver's check.
     vi.spyOn(WebGL2RenderingContext.prototype, 'drawArrays').mockImplementation(function (...args) {
       draw.apply(this, args);
-      this.getExtension('WEBGL_lose_context').loseContext(); // as a watchdog does to a shader that never ends
+      if (!this.getContextAttributes()?.preserveDrawingBuffer) this.getExtension('WEBGL_lose_context').loseContext(); // as a watchdog does to a shader that never ends
     });
     project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'lost' });
     await settle(project);

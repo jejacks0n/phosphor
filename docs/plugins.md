@@ -689,8 +689,11 @@ plugins.
 
 ### The passes
 
-Each pass is the body of a GLSL ES 1.00 function, `vec3 filter()`, that returns the pixel's new color (0 to 1 a channel,
-clamped after). Phosphor puts it after a prelude of its own:
+Each pass is the body of a GLSL ES 3.00 function that returns the pixel's new color as a `vec3` (0 to 1 a channel,
+clamped after). It's the language a solver's shader is written in ([The shader](#the-shader)), so there are whole
+numbers to work with and a loop may run as far as an option says, as a blur's does to its radius. GLSL ES 3.00 keeps
+some everyday words for itself: a variable named `sample`, `filter`, `input`, `output`, `common` or `active` doesn't
+build, in a filter's pass or a solver's. Phosphor puts it after a prelude of its own:
 
 - `pixel(vec2 d)`: the color of the pixel `d` pixels away from this one (the edge's past the border), as the pass before
   left it, as a `vec3` of 0 to 1. `d` counts the pixels the effects work in, `uResolution`'s, which needn't be the
@@ -705,7 +708,8 @@ Passes run in order, each reading what the one before left. There's no JavaScrip
 graphics card.
 
 A pass that doesn't build is skipped, with the rest of its filter, and the group and the plugin's row show the
-compiler's log ("Aberration's filter didn't build: …"). A filter that loses the graphics card is off until you reload
+compiler's log ("Aberration's filter didn't build: …"), its line numbers counted from your pass's first line. A browser
+with no WebGL 2 builds no filter, and says so the same way; the picture's own effects work there as before. A filter that loses the graphics card is off until you reload
 ("Aberration's filter lost the graphics card, and is off until you reload.").
 
 ### A drawing without the filter
