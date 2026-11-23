@@ -315,7 +315,7 @@ Its manifest names the script:
   "phosphor": 1,
   "id": "phosphor.outlines",
   "name": "Outlines",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "Phosphor",
   "script": "outlines.js"
 }

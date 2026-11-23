@@ -116,7 +116,7 @@ test('a listed plugin is installed from its raw files, kept as from the marketpl
 test('a served file one byte off its listed hash is refused in words, and an older version stays', async () => {
   await store.loadMarket();
   const files = [
-    { path: 'phosphor-plugin.json', file: new File([outlinesManifest.replace('1.0.0', '0.9.0')], 'phosphor-plugin.json') },
+    { path: 'phosphor-plugin.json', file: new File([outlinesManifest.replace('1.0.1', '0.9.0')], 'phosphor-plugin.json') },
     { path: 'outlines.js', file: new File([outlinesScript], 'outlines.js') },
   ];
   const fromFile = await store.read(files);

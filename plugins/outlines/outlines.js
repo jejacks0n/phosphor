@@ -71,7 +71,7 @@ function lineCell(look, k) {
 // no ink (a space), else its solid (█, else ▄, else its first character), as the shader's 255 is.
 let blankFor = null, blank = '';
 function elsewhere(cell, look) {
-  if (look.options.elsewhere === 0) return look.byShape(cell);
+  if (look.options.elsewhere === 0) return look.byShape();
   if (blankFor !== look) { // look is the same object all through a resolve
     const set = look.glyphs.filter((g) => !g.own).map((g) => g.char);
     blankFor = look;
@@ -114,7 +114,7 @@ function refine(cell, look) {
 }
 
 // ---- GLSL ----
-// Each pass is the body of a function Phosphor puts after its prelude (docs/plugins.md, "The shader passes"); the
+// Each pass is the body of a function Phosphor puts after its prelude (docs/plugins.md, "The shader"); the
 // pieces both passes share are strings put together here. The tables come from the JavaScript's, so they can't drift.
 // A glyph is named by its index: ownGlyph[n] is the index of this solver's nth character (in chars, LINES joined), so
 // line k of the Lines choice is ownGlyph[4 * opt_lines + k], wherever the layer's set put it.
