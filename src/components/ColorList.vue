@@ -112,29 +112,36 @@ const onSwatchKey = (event, i) => {
 
 // With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the details, so it can't.
 // While it's dragged the swatches are shown in the order a drop would leave, with a dashed placeholder where it would
-// land: over another swatch, the placeholder takes that one's place. Each is keyed by its place in the list, so the
-// one dragged is moved, not drawn again, and its drag goes on.
+// land: over another swatch, the placeholder takes that one's place. Each is keyed by its color (and which of that
+// color it is, when the list holds one twice), so the one dragged is moved, not drawn again, and its drag goes on, and
+// after a drop every swatch is the one the preview showed, none redrawn in another color. The swatches the placeholder
+// passes slide to their places (the TransitionGroup's `shifting`), as they do for ◂ ▸.
 const mouse = useMediaQuery('(pointer: fine)');
 let dragged = null;
 const landing = ref(null); // where the swatch dragged would land; null when none is
 const shown = computed(() => {
-  const all = colors.value.map((hex, i) => ({ hex, i }));
+  const seen = new Map();
+  const all = colors.value.map((hex, i) => {
+    const color = hex.toLowerCase(), n = (seen.get(color) ?? 0) + 1;
+    seen.set(color, n);
+    return { hex, i, key: `${color} ${n}` };
+  });
   return landing.value === null ? all : moved(all, dragged, landing.value);
 });
 // Near the swatches' top or bottom, or past it, the drag scrolls them as a Select drag scrolls the view (edgeStep): the
 // pointer is read from every dragover in the page, so it's known above or below them too, and over them only.
-const box = ref(null);
-let pointer = null;
+let box = null, pointer = null;
 useEventListener(document, 'dragover', (event) => {
   if (dragged !== null) pointer = { x: event.clientX, y: event.clientY };
 });
 const edgeScroll = useRafFn(({ delta }) => {
-  const r = box.value?.getBoundingClientRect();
+  const r = box?.getBoundingClientRect();
   if (!pointer || !r || pointer.x < r.left || pointer.x > r.right) return;
-  box.value.scrollTop += edgeStep(pointer.y, r.top, r.bottom, delta);
+  box.scrollTop += edgeStep(pointer.y, r.top, r.bottom, delta);
 }, { immediate: false });
 const onDragStart = (event, i) => {
   dragged = i;
+  box = event.currentTarget.closest('div.swatches');
   edgeScroll.resume();
   event.dataTransfer?.setData('text/plain', colors.value[i]); // some browsers start no drag without data
   // The browser takes the drag image from the swatch as it is once this returns, so the placeholder comes a moment later.
@@ -144,12 +151,13 @@ const onDragStart = (event, i) => {
 };
 // Over the swatches a drop is taken, and the placeholder goes to the swatch under the pointer (its place as shown). A
 // dragenter is taken too: when what's under the pointer changes (the placeholder just moved there) Chrome sends that,
-// not a dragover, and a drop let go then would be refused if it weren't.
+// not a dragover, and a drop let go then would be refused if it weren't. A swatch still sliding is no place to land: the
+// pointer finds it on its way, not where it goes, and the placeholder would be sent back and forth.
 const onDragOver = (event) => {
   if (dragged === null) return;
   event.preventDefault();
   const over = event.target.closest('div.swatch');
-  if (over) landing.value = [...event.currentTarget.children].indexOf(over);
+  if (over && !over.classList.contains('shifting')) landing.value = [...event.currentTarget.children].indexOf(over);
 };
 const onDrop = () => {
   if (dragged !== null && landing.value !== null && landing.value !== dragged) {
@@ -159,8 +167,7 @@ const onDrop = () => {
   endDrag();
 };
 const endDrag = () => {
-  dragged = null;
-  pointer = null;
+  dragged = box = pointer = null;
   edgeScroll.pause();
   landing.value = null;
 };
@@ -205,8 +212,8 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
       <button type="button" class="ghost import" :disabled="disabled" :title="t('colorList.importTitle')" @click="file.click()">{{ t('colorList.import') }}</button>
       <button type="button" class="ghost export" :disabled="disabled || !colors.length" :title="t('colorList.exportTitle')" @click="exportList">{{ t('colorList.export') }}</button>
     </div>
-    <div ref="box" class="swatches" @dragenter="onDragOver" @dragover="onDragOver" @drop.prevent="onDrop">
-      <div v-for="{ hex, i } in shown" :key="i" class="swatch" :class="{ placeholder: landing !== null && i === dragged }">
+    <TransitionGroup tag="div" class="swatches" move-class="shifting" :css="false" @dragenter="onDragOver" @dragover="onDragOver" @drop.prevent="onDrop">
+      <div v-for="{ hex, i, key } in shown" :key="key" class="swatch" :class="{ placeholder: landing !== null && i === dragged }">
         <button
             type="button"
             class="swatch"
@@ -226,6 +233,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
         <span aria-hidden="true">{{ hex }}</span>
       </div>
       <button
+          key="add"
           type="button"
           class="add"
           :aria-label="t('colorList.add')"
@@ -233,7 +241,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
           :disabled="disabled || !colors.length || colors.length >= MOST_COLORS"
           @click="add"
       >+</button>
-    </div>
+    </TransitionGroup>
     <div class="picked">
       <input type="color" class="chip" :aria-label="t('colorList.color')" :title="t('colorList.color')" :disabled="disabled" :value="current || '#000000'" @input="onPick" @change="endPick" @blur="endPick">
       <input
@@ -299,6 +307,18 @@ div.color-list button.swatch {
 
 div.color-list button.swatch:hover {
   transform: none;
+}
+
+/* A swatch's color changes at once (not the buttons' fade through every property), and a swatch moving to another
+   place slides there, unless motion is reduced. */
+div.color-list button.swatch {
+  transition-property: transform, filter;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  div.color-list div.swatch.shifting {
+    transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1);
+  }
 }
 
 div.color-list button.swatch[aria-pressed=true] {

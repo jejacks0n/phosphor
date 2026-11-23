@@ -1217,7 +1217,8 @@ outside it or the **×** at the top right of the dialog. **↓** and **↑** wal
   `.txt` file's colors; a file over 1 MB isn't read) and **Export .hex** as buttons, the colors as large swatches with
   their hex, a **+** that adds a copy of the picked color at the end, and under them the picked color's chip (the system
   color picker), its hex, the move earlier and move later buttons, and **Remove**. With a mouse a swatch can be dragged
-  to another place, and while it's dragged a dashed outline shows where it will land. With hundreds of colors the
+  to another place: while it's dragged a dashed outline shows where it will land, and the others slide out of its way
+  (as they slide for the move buttons, unless your system asks for reduced motion). With hundreds of colors the
   swatches scroll inside the details, so the buttons stay in reach, and a swatch dragged near their top or bottom (or
   past it) scrolls them. The swatches are one **Tab** stop, the picked one: from there
   **←** and **→** pick the one before or after, **↑** and **↓** the one a row away, and **Home** and **End** the first
