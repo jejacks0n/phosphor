@@ -16,7 +16,9 @@ const email = ref('');
 const password = ref('');
 const terms = ref(false);
 const error = ref(null);
-const ready = computed(() => terms.value && !usernameProblem(username.value) && !social.busy);
+// A password past the most is kept as typed, said beside the field, and not sent.
+const tooLong = computed(() => password.value.length > PASSWORD_MAX);
+const ready = computed(() => terms.value && !usernameProblem(username.value) && !tooLong.value && !social.busy);
 
 // A widget that doesn't load leaves the token null, and the server says what it thinks of that.
 const widget = ref(null);
@@ -47,11 +49,12 @@ async function create() {
       </div>
       <div class="counted">
         <label>{{ t('social.auth.passwordLabel') }}
-          <input v-model="password" type="password" autocomplete="new-password" minlength="10" :maxlength="PASSWORD_MAX" required aria-describedby="create-password-count create-password-help">
+          <input v-model="password" type="password" autocomplete="new-password" minlength="10" required :aria-invalid="tooLong" aria-describedby="create-password-count create-password-help create-password-long">
         </label>
-        <FieldCount id="create-password-count" :count="password.length" :most="PASSWORD_MAX" />
+        <FieldCount id="create-password-count" :count="password.length" :most="PASSWORD_MAX" uncapped />
       </div>
       <p id="create-password-help" class="help">{{ t('social.auth.passwordHelp') }}</p>
+      <p v-if="tooLong" id="create-password-long" class="error">{{ t('social.auth.passwordTooLong', { most: PASSWORD_MAX }) }}</p>
       <div ref="widget" class="turnstile"></div>
       <label class="terms">
         <input v-model="terms" type="checkbox">

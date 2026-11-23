@@ -41,6 +41,8 @@ const changingPassword = ref(false);
 const currentPassword = ref('');
 const newPassword = ref('');
 const confirmPassword = ref('');
+// A new password past the most is kept as typed, said beside the field, and not sent.
+const newTooLong = computed(() => newPassword.value.length > PASSWORD_MAX);
 const passwordError = ref(null);
 
 // Two-factor is one of three asks (turn on, turn off, new backup codes), each wanting the password; turning on then
@@ -136,6 +138,7 @@ function endPassword() {
 }
 
 async function submitPassword() {
+  if (newTooLong.value) return;
   passwordError.value = null;
   if (newPassword.value !== confirmPassword.value) passwordError.value = t('social.account.passwordsDontMatch');
   else if (await social.changePassword(currentPassword.value, newPassword.value)) endPassword();
@@ -273,15 +276,16 @@ async function deleteAccount() {
         <label>{{ t('social.account.currentPassword') }} <input v-model="currentPassword" type="password" autocomplete="current-password" required></label>
         <div class="counted">
           <label>{{ t('social.auth.newPasswordLabel') }}
-            <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" :maxlength="PASSWORD_MAX" required aria-describedby="new-password-count new-password-help">
+            <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" required :aria-invalid="newTooLong" aria-describedby="new-password-count new-password-help new-password-long">
           </label>
-          <FieldCount id="new-password-count" :count="newPassword.length" :most="PASSWORD_MAX" />
+          <FieldCount id="new-password-count" :count="newPassword.length" :most="PASSWORD_MAX" uncapped />
         </div>
-        <label>{{ t('social.account.confirmNewPassword') }} <input v-model="confirmPassword" type="password" autocomplete="new-password" :maxlength="PASSWORD_MAX" required></label>
+        <label>{{ t('social.account.confirmNewPassword') }} <input v-model="confirmPassword" type="password" autocomplete="new-password" required></label>
         <p id="new-password-help" class="help">{{ t('social.account.newPasswordHelp') }}</p>
+        <p v-if="newTooLong" id="new-password-long" class="error">{{ t('social.auth.passwordTooLong', { most: PASSWORD_MAX }) }}</p>
         <div class="actions">
           <button type="button" @click="endPassword">{{ t('common.cancel') }}</button>
-          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword">{{ t('social.account.changePassword') }}</button>
+          <button class="primary" type="submit" :disabled="social.busy || !currentPassword || !newPassword || !confirmPassword || newTooLong">{{ t('social.account.changePassword') }}</button>
         </div>
         <p v-if="passwordError" class="error" role="alert">{{ passwordError }}</p>
         <p class="forgot"><button type="button" class="link" @click="social.page = 'forgot'">{{ t('social.auth.forgotPassword') }}</button></p>
