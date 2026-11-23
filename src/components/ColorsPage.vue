@@ -218,6 +218,8 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
       >{{ t(`vector.${kind}`) }}</button>
     </div>
 
+    <!-- the colors to pick from: they scroll by themselves, so the head and the foot stay in reach -->
+    <div class="colors">
     <div v-for="(section, i) in sections" :key="i" class="swatches" :style="{ gridTemplateColumns: `repeat(${section.columns}, 1fr)` }">
       <button
           v-for="color in section.colors"
@@ -248,6 +250,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
         <button v-for="hex in painted" :key="hex" class="swatch" :style="{ backgroundColor: shown(hex) }" :title="hex" @click="choose(hex)"></button>
       </div>
     </template>
+    </div>
 
     <div class="foot">
       <button v-if="offersNone" class="swatch none" :class="{ selected: isNone }" :title="t('colors.noneTitle')" @click="choose(null)"></button>
@@ -291,11 +294,26 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
 <style scoped>
 /* The page in the layer's frame (FloatingPanel), which has the border and a height it stops at: taller than that (the
    Stroke side on a short window), the page scrolls. */
+/* The box scrolls only when even its fixed parts don't fit (VECTOR's Stroke side on a short window). */
 div.color-popover {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding: 10px;
+  overflow-y: auto;
+}
+
+/* The colors scroll by themselves (a list of 256 is 32 rows), so the head, None and Recent stay put. They keep a few
+   rows on a short window, where the box scrolls instead. A selected swatch's ring is drawn past its edge, and a scrolling
+   box cuts off what's past its own: room for it inside, taken back outside, so the swatches sit where they did. */
+div.color-popover div.colors {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 64px;
+  margin: -3px;
+  padding: 3px;
   overflow-y: auto;
 }
 
