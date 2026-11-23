@@ -39,6 +39,23 @@ test('a swatch dragged with the mouse onto another shows a placeholder there, mo
   for (const hex of await cellColors(page)) expect(LIST.split(' ')).toContain(hex);
 });
 
+test('a swatch dragged to the bottom of many scrolls them, and lands where the placeholder is', async ({ page }) => {
+  const many = Array.from({ length: 120 }, (_, i) => `#${(i * 2).toString(16).padStart(2, '0')}4080`);
+  await openApp(page);
+  await customList(page, many.join(' '));
+  const box = page.locator('.color-list div.swatches');
+  const r = await box.boundingBox(), from = await swatches(page).nth(0).boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, r.y + r.height - 4, { steps: 8 });
+  await expect.poll(() => box.evaluate((el) => el.scrollTop)).toBeGreaterThan(200);
+  await page.mouse.move(from.x + from.width / 2 + 1, r.y + r.height / 2); // up into the middle, where it holds still
+  const at = await box.evaluate((el) => [...el.querySelectorAll('div.swatch')].findIndex((cell) => cell.classList.contains('placeholder')));
+  expect(at).toBeGreaterThan(10);
+  await page.mouse.up();
+  await expect.poll(async () => (await store(page, 'project', (p) => p.palette)).split(' ').indexOf(many[0])).toBe(at);
+});
+
 test('Import takes a .hex file and Put back restores the list; Export downloads it', async ({ page }) => {
   await openApp(page);
   await customList(page);

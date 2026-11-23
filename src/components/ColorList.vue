@@ -1,7 +1,8 @@
 <script setup>
 import { onBeforeUnmount, ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useMediaQuery } from '@vueuse/core';
+import { useEventListener, useMediaQuery, useRafFn } from '@vueuse/core';
+import { edgeStep } from '@/composables/useEditorInteractions';
 import { closeToast, toast } from '@/composables/useToast';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 import { MOST_COLORS, firstColors, hexFile, listColors, moved, sameColors, withColor, withCopy, without, writeList } from '@/lib/colorList';
@@ -120,8 +121,21 @@ const shown = computed(() => {
   const all = colors.value.map((hex, i) => ({ hex, i }));
   return landing.value === null ? all : moved(all, dragged, landing.value);
 });
+// Near the swatches' top or bottom, or past it, the drag scrolls them as a Select drag scrolls the view (edgeStep): the
+// pointer is read from every dragover in the page, so it's known above or below them too, and over them only.
+const box = ref(null);
+let pointer = null;
+useEventListener(document, 'dragover', (event) => {
+  if (dragged !== null) pointer = { x: event.clientX, y: event.clientY };
+});
+const edgeScroll = useRafFn(({ delta }) => {
+  const r = box.value?.getBoundingClientRect();
+  if (!pointer || !r || pointer.x < r.left || pointer.x > r.right) return;
+  box.value.scrollTop += edgeStep(pointer.y, r.top, r.bottom, delta);
+}, { immediate: false });
 const onDragStart = (event, i) => {
   dragged = i;
+  edgeScroll.resume();
   event.dataTransfer?.setData('text/plain', colors.value[i]); // some browsers start no drag without data
   // The browser takes the drag image from the swatch as it is once this returns, so the placeholder comes a moment later.
   setTimeout(() => {
@@ -146,6 +160,8 @@ const onDrop = () => {
 };
 const endDrag = () => {
   dragged = null;
+  pointer = null;
+  edgeScroll.pause();
   landing.value = null;
 };
 
@@ -189,7 +205,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
       <button type="button" class="ghost import" :disabled="disabled" :title="t('colorList.importTitle')" @click="file.click()">{{ t('colorList.import') }}</button>
       <button type="button" class="ghost export" :disabled="disabled || !colors.length" :title="t('colorList.exportTitle')" @click="exportList">{{ t('colorList.export') }}</button>
     </div>
-    <div class="swatches" @dragenter="onDragOver" @dragover="onDragOver" @drop.prevent="onDrop">
+    <div ref="box" class="swatches" @dragenter="onDragOver" @dragover="onDragOver" @drop.prevent="onDrop">
       <div v-for="{ hex, i } in shown" :key="i" class="swatch" :class="{ placeholder: landing !== null && i === dragged }">
         <button
             type="button"
@@ -258,7 +274,9 @@ div.color-list {
 }
 
 /* The picked swatch's ring is drawn 3px outside it (its outline and offset), and a scrolling box cuts off what's past
-   its edges: room for the ring inside, taken back outside, so the swatches sit where they did. */
+   its edges: room for the ring inside, taken back outside, so the swatches sit where they did. The browser doesn't
+   keep a swatch in view as the placeholder moves during a drag (scroll anchoring), which scrolled a row and put
+   another swatch under the pointer. */
 div.color-list > div.swatches {
   flex: 0 1 auto;
   align-content: start;
@@ -266,6 +284,7 @@ div.color-list > div.swatches {
   margin: -3px;
   padding: 3px;
   overflow-y: auto;
+  overflow-anchor: none;
 }
 
 div.color-list button.swatch {
