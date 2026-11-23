@@ -105,7 +105,7 @@ test('Licenses credits the color palettes to Lospec\'s Palette List and their au
   await mount(AboutPhosphor);
   await showLicenses();
   const line = [...document.querySelectorAll('section.licenses ul.assets li')].find((li) => li.textContent.startsWith('Color palettes'));
-  expect(line.textContent).toBe('Color palettes: from the Lospec Palette List, each by the author its card names');
+  expect(line.textContent).toBe('Color palettes: from the Lospec Palette List, each by the author its row names');
   const link = line.querySelector('a');
   expect([link.textContent, link.href, link.target]).toEqual(['Lospec', 'https://lospec.com/palette-list', '_blank']);
 });
