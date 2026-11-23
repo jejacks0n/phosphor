@@ -17,7 +17,6 @@ export const usePaletteStore = defineStore('palettes', {
     userPalettes: useLocalStorage('phosphor.palettes', []),       // { id, name, glyphs, font? }[]; font is { id, name, height } of the bitmap font it belongs to
     activeId: useLocalStorage('phosphor.activePalette', 'shades'),
     recentChars: useLocalStorage('phosphor.recentChars', []),
-    hiddenBuiltins: useLocalStorage('phosphor.hiddenBuiltins', []), // ids of the bitmap fonts the built-ins are hidden for
     flashIndex: null, // the F-key slot that just changed (the strip flashes it)
   }),
 
@@ -44,15 +43,11 @@ export const usePaletteStore = defineStore('palettes', {
       return this.all.filter(p => !p.builtin && p.font?.id === id);
     },
     builtins: () => BUILTIN_PALETTES,
-    // Whether the drawing's bitmap font has the built-ins put away (they rarely suit a font that isn't CP437's shapes).
-    builtinsHidden() {
-      return !!this.currentFont && Array.isArray(this.hiddenBuiltins) && this.hiddenBuiltins.includes(this.currentFont.id);
-    },
     general() {
       return this.all.filter(p => !p.builtin && !p.font);
     },
     shown() {
-      return [...this.tied, ...(this.builtinsHidden ? [] : this.builtins), ...this.general];
+      return [...this.tied, ...this.builtins, ...this.general];
     },
     // Yours tied to a font that isn't in use, built in or kept in this browser.
     unloaded() {
@@ -113,14 +108,6 @@ export const usePaletteStore = defineStore('palettes', {
       const palette = { id: newId(), name: t('palette.copyName', { name: source.name }), glyphs: [...source.glyphs], font: source.builtin ? this.currentFont : source.font };
       this.userPalettes = [...this.userPalettes, palette];
       return palette.id;
-    },
-
-    // Hides the built-ins while the drawing's bitmap font is in use, or shows them again.
-    hideBuiltins(hidden) {
-      const id = this.currentFont?.id;
-      if (!id) return;
-      const list = (Array.isArray(this.hiddenBuiltins) ? this.hiddenBuiltins : []).filter(f => f !== id);
-      this.hiddenBuiltins = hidden ? [...list, id] : list;
     },
 
     // Ties one of yours to a font (or to none: it shows with any font).

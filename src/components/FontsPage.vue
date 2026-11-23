@@ -191,8 +191,10 @@ const chosen = computed(() => all.value.find((f) => f.id === chosenId.value)
   ?? (libEntry.value ? null : all.value.find((f) => f.id === inUseId.value) ?? all.value[0] ?? null));
 const held = computed(() => (index.value && chosen.value ? libraryEntryOf(index.value, chosen.value.id) : null)); // a library font's entry, for From and License
 // A library font chosen that isn't in Yours: its file fetched to show its slots (the index holds only a sample), its face
-// registered for the page until another is previewed. While it loads, or if it can't, the sample shows instead.
+// registered for the page until another is previewed. While it loads the sheet is an empty frame (the sample there
+// first was a flash before the slots); if it can't be fetched, the sample shows instead.
 const preview = shallowRef(null); // { id, font, family, key }
+const previewFailed = ref(null); // the library id whose file couldn't be fetched or read
 watch(() => (libEntry.value && !libEntry.value.linked && !chosen.value ? libEntry.value : null), async (entry) => {
   if (!entry || preview.value?.id === entry.id) return;
   try {
@@ -203,7 +205,7 @@ watch(() => (libEntry.value && !libEntry.value.linked && !chosen.value ? libEntr
     if (preview.value) releaseBitmapFont(preview.value.key);
     preview.value = { id: entry.id, font, family, key: fontKey(font) };
   } catch {
-    // the sample stays
+    previewFailed.value = entry.id; // the sample shows
   }
 });
 const previewChars = computed(() => (preview.value?.id === libEntry.value?.id ? slotChars(preview.value.font) : null));
@@ -238,6 +240,17 @@ const bitmapOf = (f) => (f.id === drawnId.value ? drawn.value : storedBitmapFont
 // The chosen bitmap font as a drawing holds one, with its blocks: the drawing's own, else the browser's copy.
 const kept = shallowRef(null); // shallow: its parts go back to the browser's store, which can't keep a proxy
 const font = computed(() => (!bitmap.value ? null : isDrawn.value ? drawn.value : kept.value));
+// The Blocks, Lines and Sets tiles draw a glyph in their box's middle, a whole number of times the font's size: a narrow
+// font in a face at its own width, whatever width it's drawn at, so its ink isn't left of the middle at 8; an 8-wide one
+// at its width now, so 9 shows the ninth column. (The sheet draws the slots as the drawing does.)
+const tileFamily = ref('');
+const tileFont = computed(() => font.value && { ...font.value, cellWidth: own.value ?? (widthNow.value === 9 ? 9 : 8) });
+watch(() => tileFont.value && fontKey(tileFont.value), async (key) => {
+  if (!key) return;
+  const family = await registerBitmapFont(tileFont.value);
+  if (tileFont.value && fontKey(tileFont.value) === key) tileFamily.value = family;
+}, { immediate: true });
+const tileStyle = computed(() => chosen.value?.height && { '--tile-glyph-size': `${chosen.value.height * Math.max(1, Math.floor(22 / chosen.value.height))}px` });
 watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], async ([id], [was] = []) => {
   if (id !== was) kept.value = null; // the same font kept again stays on screen, so its fields keep their focus
   if (!id) return;
@@ -501,7 +514,7 @@ const exportPalettes = () => {
       <FontFilters v-model:closed="prefs.closed" :groups="tagList" :counts="counts" :picked="tags" @toggle="toggleTag" />
     </aside>
     <!-- the chosen font -->
-    <div v-if="chosen" class="edit-side">
+    <div v-if="chosen" class="edit-side" :style="tileStyle">
       <div class="head">
         <span class="title">{{ chosen.name }}</span>
         <span class="meta">{{ meta }}</span>
@@ -540,7 +553,7 @@ const exportPalettes = () => {
         <FontBlocks
             v-if="section === 'blocks'"
             :font="font"
-            :family="familyFor(chosen)"
+            :family="tileFamily || familyFor(chosen)"
             :picked="picked"
             :disabled="inRoom"
             :reason="t('palette.fonts.blocksInRoom')"
@@ -551,7 +564,7 @@ const exportPalettes = () => {
             v-else
             ref="part"
             :font="font"
-            :family="familyFor(chosen)"
+            :family="tileFamily || familyFor(chosen)"
             :picked="picked"
             :disabled="inRoom"
             :reason="t('palette.fonts.blocksInRoom')"
@@ -626,7 +639,8 @@ const exportPalettes = () => {
         </div>
         <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : t('palette.fonts.slot', { n: hovered, char: previewChars[hovered] }) }}</div>
       </template>
-      <GlyphSample v-else-if="!libEntry.linked" :sample="libEntry.sample" :height="libEntry.height" :width="libEntry.width" class="big" />
+      <GlyphSample v-else-if="!libEntry.linked && previewFailed === libEntry.id" :sample="libEntry.sample" :height="libEntry.height" :width="libEntry.width" class="big" />
+      <div v-else-if="!libEntry.linked" class="grid sheet"></div>
       <dl class="origin">
         <template v-for="l in originLines(libEntry)" :key="l.label">
           <dt>{{ l.label }}</dt>
