@@ -87,7 +87,7 @@ test('A typed filename: trimmed, its extension (if typed) dropped, slashes made 
 });
 
 // Every way in (the file input, a drop, a project opened over another) asks isProjectFile.
-test('a project is a file named .phosphor, in any case: ART.PHOSPHOR opens', () => {
+test('a project is a file named .pho or .phosphor, in any case: ART.PHOSPHOR and A.PHO open', () => {
   assert.ok(isProjectFile('ART.PHOSPHOR'));
   assert.ok(isProjectFile('art.Phosphor'));
   assert.ok(isProjectFile('live-main.phosphor'));
