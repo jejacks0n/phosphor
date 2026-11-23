@@ -246,20 +246,21 @@ div.people-forms div.form-page div.foot-row {   /* Sign in's two: No account? at
 div.people-forms div.form-page div.foot-row p.foot {
   margin: 0;
 }
-/* A page that starts with its heading (Start a room's too) has it where a box's title goes, 18px in, and the × on its line, short of it: the
+/* A page that starts with its heading (Start a room's too, and the host's Settings and stats with its title) has it where a box's title goes, 18px in, and the × on its line, short of it: the
    head that held the × alone takes no room. (A notice over the page, or a page that starts with Cancel, keeps the ×'s own
    line.) */
-dialog:has(div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child) > div.head {
+dialog:has(div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child, div.people-forms > div.host-room:first-child > header:first-child) > div.head {
   min-height: 0;
   padding: 0;
 }
-dialog:has(div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child) > div.head > button.close {
+dialog:has(div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child, div.people-forms > div.host-room:first-child > header:first-child) > div.head > button.close {
   top: 13px;
 }
-dialog:has(div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child) > div.body {
+dialog:has(div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child, div.people-forms > div.host-room:first-child > header:first-child) > div.body {
   padding-top: 18px;
 }
-div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child {
+div.people-forms > :is(div.form-page, div.start-room):first-child > h2:first-child,
+div.people-forms > div.host-room:first-child > header:first-child {
   padding-right: 24px;
 }
 div.people-forms div.form-page div.turnstile:empty {

@@ -188,7 +188,7 @@ lobby, and look at Who's here.
 - Does: picks Unlisted (link only), types a password, presses Go live; opens Settings and stats from the room menu;
   has `tin_owl` follow the room's link, type a wrong password, then the right one; then ends the room from Settings and
   stats (End room, then End room in the question).
-- Expects: the Lobby card box goes for a link-only room; Settings and stats says "Share the room link and password with the people you want to invite.", and under Room settings "Set when the room started": Only with the link, Password set;
+- Expects: the Lobby card box goes for a link-only room; Settings and stats says "Share the room link and password with the people you want to invite.", and Room settings says nothing of what was set at the start (no "Set when the room started");
   `tin_owl` is asked Join this room?, then for the password ("Wrong password", then in); ending says "End this room?"
   and "All participants will be disconnected (including co-artists), and room chat will be cleared.", and `tin_owl` sees "The host
   ended the room" ([Hosting](../../social.md#hosting)).
@@ -209,7 +209,7 @@ lobby, and look at Who's here.
 - Rated: yes, wants Enter on Go live
 
 **Free time:** she'd press Copy link and paste it into the chat box (if the browser refuses, "Couldn't copy the link"
-should say so), open Settings and stats and read Room settings' facts, fold the side panel with its fold button and open it with the unfold button,
+should say so), open Settings and stats and read Room settings, fold the side panel with its fold button and open it with the unfold button,
 and drag the panel wider.
 
 ## Live, with people watching
@@ -369,7 +369,7 @@ invitation clears), then have them join again from the card (step 22 makes them 
 
 ### 18. Read the night's numbers
 - Does: opens Settings and stats and reads it all.
-- Expects: the name, Live for (H:MM:SS, counting up), Copy link and End room at the top; Here now, Max, Total, Messages
+- Expects: the name, Live for (H:MM:SS, counting up) at the top, the link under them with a copy icon right after it and End room at the right, and the title level with the dialog's ×; Here now, Max, Total, Messages
   and Removed, matching what happened so far (a person who came back counts once in Total; joins and leaves aren't
   messages); Who came by lists each visitor with their time, Here now or Left at, and their messages, newest last, with
   "Show N more" past ten rows ([Hosting](../../social.md#hosting)).

@@ -1694,11 +1694,7 @@
         "removed": "Retirés"
       },
       "roomSettings": "Paramètres de la salle",
-      "kickGuests": "Retirer aussi l'invité actuellement présent dans la salle | Retirer aussi les {count} invités actuellement présents dans la salle",
-      "setAtStart": "Défini au démarrage de la salle",
-      "listedInLobby": "Répertoriée dans le hall",
-      "onlyWithLink": "Accessible uniquement avec le lien",
-      "passwordSet": "Mot de passe défini"
+      "kickGuests": "Retirer aussi l'invité actuellement présent dans la salle | Retirer aussi les {count} invités actuellement présents dans la salle"
     },
     "cameBy": {
       "heading": "Visiteurs passés",
@@ -1738,7 +1734,6 @@
       "hostHeading": "Héberger une salle",
       "address": "Adresse",
       "ipSeen": "Les personnes avec qui vous vous connectez voient votre adresse IP.",
-      "copy": "Copier",
       "copyAddress": "Copier l'adresse",
       "copyAria": "Copier {address}",
       "letInAria": "Faire entrer {name}",

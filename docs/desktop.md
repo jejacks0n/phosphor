@@ -145,7 +145,7 @@ Try another port."
 ### The addresses
 
 While you host, **Settings and stats** (in the room menu of the chat panel) lists the addresses others can join at,
-each with **Copy**: this computer's network addresses with the port, such as `192.168.1.20:31337`. Home and office
+each with a copy button right after it: this computer's network addresses with the port, such as `192.168.1.20:31337`. Home and office
 network addresses come first, and Tailscale's last, marked **Tailscale**. With no network, it shows `127.0.0.1` and the port, and says "Only this computer can join.
 Connect to a network to share an address." Under them:
 

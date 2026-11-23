@@ -2,7 +2,7 @@
 // the session's five numbers, Copy link, Room settings and their facts, End room (which asks first),
 // who came by, and one status region that's always there.
 import { test, expect, afterEach, vi } from 'vitest';
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
@@ -12,6 +12,8 @@ import { nameColor, nameGlyph } from '@/social/names';
 import { clock } from '@/social/chat';
 import HostRoomPage from '@/components/social/HostRoomPage.vue';
 import StartRoomPage from '@/components/social/StartRoomPage.vue';
+import ModalDialog from '@/components/ModalDialog.vue';
+import '@/components/social/SocialDialogs.vue'; // its styles for a page in a dialog (div.people-forms)
 
 const rgb = (hex) => `rgb(${[1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).join(', ')})`;
 let app = null, host = null;
@@ -37,7 +39,7 @@ async function mount(state) {
   return { room, region: host.querySelector('[role=status]') };
 }
 
-const button = (name) => [...host.querySelectorAll('button')].find((b) => b.textContent === name);
+const button = (name) => [...host.querySelectorAll('button')].find((b) => (b.textContent.trim() || b.getAttribute('aria-label')) === name); // an icon's by its label
 const watcher = (peer, name, fields) => ({ peer, sub: `u_${peer}`, name, guest: false, tracking: true, connected: true, ...fields });
 
 const tile = (label) => {
@@ -82,13 +84,10 @@ test('the five numbers are the session\'s', async () => {
   ]);
 });
 
-test('settings are the welcome, guests and max watchers; listed or link only and the password are facts', async () => {
+test('settings are the welcome, guests and max watchers, with nothing about what was set at the start', async () => {
   await mount({ hasPassword: true, room: { name: 'just us', welcome: 'hi', public: false, allowGuests: true, max: 12, count: 0 } });
   expect([...host.querySelectorAll('input, textarea')].map((el) => el.type)).toEqual(['textarea', 'checkbox', 'number']);
-  expect(host.textContent).toContain('Set when the room started');
-  expect(host.textContent).toContain('Only with the link');
-  expect(host.textContent).toContain('Password set');
-  expect(host.textContent).not.toContain('Listed in the lobby');
+  for (const words of ['Set when the room started', 'Only with the link', 'Password set', 'Listed in the lobby']) expect(host.textContent).not.toContain(words);
 });
 
 test('a listed room\'s signal can be changed: the room\'s is chosen to begin with, and Save sends the new one', async () => {
@@ -142,13 +141,6 @@ test('turning off Allow guests offers to kick the guests here too, unticked; sav
   box.click();
   await nextTick();
   expect(kick()).toBe(null);
-});
-
-test('a listed room says so', async () => {
-  await mount();
-  expect(host.textContent).toContain('Listed in the lobby');
-  expect(host.textContent).not.toContain('Password set');
-  expect(host.textContent).not.toContain('No password');
 });
 
 test('End room asks first: Cancel keeps the room, End room ends it', async () => {
@@ -387,4 +379,26 @@ test('hosting is refused while a layer is on a plugin solver, naming it and sayi
   await nextTick();
   expect(host.textContent).not.toContain('plugin solver');
   expect(button('Go live').disabled).toBe(false);
+});
+
+// As the room's ⋯ menu shows it: Settings and stats, in a dialog with a ×.
+test('in Settings and stats, the title is on the ×\'s line, the page is inset once, the link\'s copy button is beside it and End room at the right', async () => {
+  await mount({});
+  app.unmount();
+  app = createApp({ render: () => h(ModalDialog, { wide: true, closable: true, label: 'Settings and stats' }, () => h('div', { class: 'people-forms' }, h(HostRoomPage))) }).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const dialog = document.querySelector('dialog'), rect = (el) => el.getBoundingClientRect(), mid = (r) => (r.top + r.bottom) / 2;
+  const title = rect(dialog.querySelector('h2')), close = rect(dialog.querySelector('button.close'));
+  expect(Math.abs(mid(title) - mid(close))).toBeLessThan(2);
+  expect(title.left - rect(dialog).left).toBeLessThan(20); // the dialog's 18px, not 16px more
+  const copyButton = dialog.querySelector('button[aria-label="Copy link"]');
+  expect([copyButton.textContent.trim(), !!copyButton.querySelector('svg')]).toEqual(['', true]); // an icon
+  const link = rect(dialog.querySelector('.link-text')), copy = rect(copyButton);
+  const end = rect([...dialog.querySelectorAll('button')].find((b) => b.textContent === 'End room'));
+  expect(Math.abs(mid(copy) - mid(link))).toBeLessThan(2);
+  expect(copy.left - link.right).toBeGreaterThanOrEqual(0);
+  expect(copy.left - link.right).toBeLessThan(8); // right beside it
+  expect(Math.abs(mid(end) - mid(link))).toBeLessThan(2);
+  expect(Math.abs(end.right - rect(dialog.querySelector('div.host-room')).right)).toBeLessThan(1);
 });
