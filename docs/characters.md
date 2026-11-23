@@ -269,9 +269,11 @@ In a drawing with a bitmap font, a palette you make (or a built-in one you copy 
 - **For <font>**: the palettes tied to the font in use, shown first while it's in use (for a TrueType or built-in font, once one is tied to it).
 - **Built-in**. Its **Hide** puts them away while this font is in use, for a font whose shapes they don't suit: they leave the list and the strip's previous and next palette buttons, and **Show** brings them back. Other fonts keep them.
 - **Yours**, with **+ New**, **Import** and **Export**.
-- **For fonts not loaded (N)**, collapsed ([For Fonts Not Loaded](#for-fonts-not-loaded)).
+- **For fonts not loaded (N)**, folded at first ([For Fonts Not Loaded](#for-fonts-not-loaded)).
 
-Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font>** or **Any font**, each a menu; its menu has **Use with any font** or **Tie to <font>**. **Duplicate**, **Export** and, for your own palettes, **Delete** are in its **…** menu. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. A character the font lacks can stay in a palette tied to it, marked as not fitting.
+Each group folds on its title, as the Fonts page's do, and the folds are remembered in this browser. A fold only tidies the list: the built-ins stay on the strip's previous and next palette buttons unless **Hide** puts them away.
+
+Palettes tied to a font are hidden while another font is in use, and the one you had chosen comes back with its font (including when you undo **Use this font**). The editor's head says **For <font>** or **Any font**, each a menu; its menu has **Use with any font** or **Tie to <font>**. **Duplicate**, **Export** and, for your own palettes, **Delete** are in its **…** menu. In a font drawing the source tabs are the font's own (**<font> · 256**), **In this drawing** and **Recent**; there's no Unicode tab. The sources are drawn as the Fonts page draws a font's slots, 16 to a row, a bitmap font under 12 pixels tall at twice its size; a click puts a character in the aimed slot, and pressing and holding one shows it large over the sheet without picking it (a press elsewhere, **Escape** or a scroll puts it away). A character the font lacks can stay in a palette tied to it, marked as not fitting.
 
 ### For Fonts Not Loaded
 

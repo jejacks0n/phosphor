@@ -21,6 +21,7 @@ afterEach(() => {
   host?.remove();
   app = host = null;
   vi.restoreAllMocks();
+  localStorage.removeItem('phosphor.charPaletteGroups'); // the folds, remembered in this browser
 });
 
 // The layer mounted over a blank canvas, with font A unless font is false; setup makes palettes first.
@@ -93,6 +94,55 @@ test('Hide under Built-in puts the built-ins away while the font is in use; Show
   await nextTick();
   await press(button('Show', group('Built-in')));
   expect(row('Shades & blocks')).toBeTruthy();
+});
+
+test('every group folds on its title, as the Fonts page\'s do, remembered; For fonts not loaded starts folded', async () => {
+  const setup = (p) => {
+    named(p, 'Frogs');
+    p.tie(named(p, 'Toads'), { id: 'bitmap-deadbeef', name: 'TEST', height: 16 });
+  };
+  const { palettes } = await mount({ setup });
+  const head = (label) => group(label).querySelector('button.group-head');
+  expect(['For A', 'Built-in', 'Yours', 'For fonts not loaded (1)'].map((label) => head(label)?.getAttribute('aria-expanded')))
+    .toEqual(['true', 'true', 'true', 'false']);
+  expect(head('Built-in').querySelector('svg.chevron')).toBeTruthy();
+  await press(head('Built-in'));
+  expect(row('Shades & blocks')).toBeUndefined();
+  expect(palettes.builtinsHidden).toBe(false); // folding only tidies the list: the strip still steps through them
+  expect(button('Hide', group('Built-in'))).toBeTruthy();
+  await press(head('For A'));
+  expect(row('Frogs')).toBeUndefined(); // made with A in use, so tied to it
+  await press(head('For fonts not loaded (1)'));
+  expect(row('Toads · TEST')).toBeTruthy();
+  const kept = localStorage.getItem('phosphor.charPaletteGroups');
+  expect(JSON.parse(kept)).toEqual(['builtin', 'tied']);
+  app.unmount();
+  host.remove();
+  await mount({ setup: (p) => { setup(p); localStorage.setItem('phosphor.charPaletteGroups', kept); } }); // the test app starts with storage cleared
+  expect(['For A', 'Built-in', 'Yours', 'For fonts not loaded (1)'].map((label) => head(label).getAttribute('aria-expanded'))).toEqual(['false', 'false', 'true', 'true']);
+});
+
+test('the sources draw as the Fonts page\'s sheet does, and a long press shows a glyph large without picking it', async () => {
+  const { palettes } = await mount();
+  await press(button('Edit'));
+  const glyphs = () => host.querySelectorAll('.pane .grid button.g');
+  const pane = host.querySelector('.pane .grid');
+  expect(getComputedStyle(glyphs()[65].querySelector('.glyph-cell')).fontSize).toBe('16px'); // an 8-line font, twice its size
+  expect(getComputedStyle(pane).gridTemplateColumns.split(' ')).toHaveLength(16);
+  const before = [...palettes.active.glyphs];
+  const cell = glyphs()[65];
+  cell.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await vi.waitFor(() => expect(document.querySelector('.glyph-zoom')?.matches(':popover-open')).toBe(true), { timeout: 2000 });
+  expect(document.querySelector('.glyph-zoom .glyph').textContent).toBe('A');
+  expect(getComputedStyle(document.querySelector('.glyph-zoom .glyph')).fontSize).toBe('96px');
+  cell.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+  await press(cell); // the click that ends the press
+  expect(palettes.all.find((p) => p.id === palettes.active.id).glyphs).toEqual(before); // nothing picked
+  document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+  await nextTick();
+  expect(document.querySelector('.glyph-zoom')).toBeNull();
+  await press(glyphs()[66]); // a click still picks
+  expect(host.querySelector('.slots .slot .glyph-cell').textContent).toBe('B');
 });
 
 test('a wide but short window shrinks the editor before it becomes a dialog over the page', async () => {
