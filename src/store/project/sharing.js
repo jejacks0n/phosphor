@@ -298,7 +298,10 @@ export const sharingActions = {
     stroke.cells ??= new Set();
     for (const [key] of own) stroke.cells.add(layerKey(id, key));
     const k = this.paintLayer.scale; // runs are the layer's pixels, k to a grid pixel
-    for (const [x, y, length] of runs) for (let i = 0; i < length; i++) stroke.cells.add(layerKey(id, `${Math.floor((x + i) / k)},${Math.floor(y / k) >> 1}`));
+    for (const [x, y, length] of runs) { // a key a cell its run crosses, not a pixel (a fill's runs hold a million)
+      const row = Math.floor(y / k) >> 1;
+      for (let col = Math.floor(x / k), last = Math.floor((x + length - 1) / k); col <= last; col++) stroke.cells.add(layerKey(id, `${col},${row}`));
+    }
     stroke.sent = true;
 
     const change = { cells, runs }, { pending, screen } = this._sharing ?? {};
