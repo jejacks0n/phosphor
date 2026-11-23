@@ -13,7 +13,8 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The drawing's layers, top of the stack first (project.layers, reversed), the base at the bottom. Picking a row
 // decides the tabs and what the tools act on; its eye hides or shows the layer; a click on the picked row's name, a
-// double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. Each row but
+// double-click on any name, or F2 renames it, Enter or leaving the box keeps the name and Escape doesn't. ↑ ↓ Home End
+// walk the rows. Each row but
 // the bottom has a ⋯ menu (Rename, Duplicate, Delete, Merge down, Move up, Move down) and drags to another place in the stack, never
 // below the bottom.
 // A header over the list counts the layers (of the most a drawing holds), and its two icon buttons, Add layer and Add
@@ -78,6 +79,22 @@ watch(() => workspace.deleteLayerAsk, async (now, was) => {
   await nextTick();
   if (!document.activeElement || document.activeElement === document.body) backToRow(workspace.pickedLayer);
 }, { flush: 'sync' });
+
+// ↑ ↓ Home End walk the rows, picking as they go, as the tabs do, past a row that's off. The rows own them (data-walk,
+// ownsKey), so the view doesn't take focus for them, and they stop here, so a focused row never moves Edit Mode's cursor
+// or nudges a selection. With a modifier they're someone else's (Alt+↑ puts a line in at the cursor).
+function walk(layer, e) {
+  const rows = layers.value, here = rows.findIndex((row) => row.id === layer.id);
+  const [from, by] = { ArrowUp: [here, -1], ArrowDown: [here, 1], Home: [-1, 1], End: [rows.length, -1] }[e.key] ?? [];
+  if (!by || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  e.preventDefault();
+  e.stopPropagation();
+  for (let at = from + by; rows[at]; at += by) {
+    if (rows[at].off) continue;
+    workspace.pickLayer(rows[at].id);
+    return backToRow(rows[at].id);
+  }
+}
 
 // The ⋯ menu's Merge down: the layer into the one under it, as the toolbar's (off with its reason, asking how into the base).
 const { offFor: mergeOff, mergeDown } = useMergeDown();
@@ -190,7 +207,7 @@ function cancel() {
           <button
               v-else class="pick" :aria-pressed="workspace.shownPick === layer.id" :title="layer.off ?? layer.name"
               :aria-disabled="layer.off ? 'true' : null" :aria-describedby="layer.off ? `${uid}-${layer.id}-off` : null"
-              @click="pick(layer, $event)" @keydown.f2.prevent="rename(layer)"
+              data-walk @click="pick(layer, $event)" @keydown.f2.prevent="rename(layer)" @keydown="walk(layer, $event)"
           >
             <svg viewBox="0 0 16 16" aria-hidden="true"><path :d="layer.icon"/></svg>
             <span class="name" @dblclick="rename(layer)">{{ layer.name }}</span>

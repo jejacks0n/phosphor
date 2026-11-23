@@ -94,7 +94,7 @@ script. Every section ends with Free time.
   slider, Bake, and check there's still none, and no Image filters; then paint on Layer 1 and Blend into source image:
   Image filters show, Picture · Base doesn't; then add a photo as a layer and merge it down onto the base: Picture ·
   Base shows, and Smoothing changes the photo.
-- Rated: yes, wants a key to step through the layers (Alt+[ and Alt+], as in Photoshop)
+- Rated: yes, wants Alt+] and Alt+[ (Option on a Mac) to step through the layers, as in Photoshop
 
 ### 3. Try every art style
 - Does: sets Art style to Color ASCII, then Monochrome ASCII, then back to ANSI, looking at each.
@@ -240,7 +240,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   Characters says "Characters · Layer 2"; each add is one undo step.
 - Probes: `again`: add another right away (Layer 3), then delete it from its ⋯ menu; `undo-redo`: undo the last add and
   check the layer goes and Layer 1 is picked again.
-- Rated: yes, wants Shift+Cmd+N
+- Rated: yes, wants Shift+Cmd+N (Photoshop's, which the browser keeps); Shift+Alt+N (Shift+Option+N) is Phosphor's
 
 ### 16. Paint over the picture
 - Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity, and paints a few strokes on Layer 2.

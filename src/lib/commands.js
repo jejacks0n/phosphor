@@ -155,6 +155,28 @@ const onPick = (ctx) => art(ctx) && !!ctx.project.layerById(picked(ctx));
 const layerWords = (key) => said('shortcuts.commands.layer', () => ({ action: t(key) }));
 const notBase = (ctx) => (picked(ctx) === 'base' ? 'shortcuts.reasons.baseLayer' : null); // the base has no ⋯ menu
 const hiddenPick = (ctx) => !!ctx.project.layerById(picked(ctx))?.hidden;
+// Alt+] and Alt+[: the row above or below the picked one in LAYERS, picked as a click picks it, stopping at the ends (a
+// row that's off refuses, and it's the bottom one). While typing, vector layers are passed, so the view stays ANSI and
+// the cursor placed: asked of the workspace, as the command list runs it with no typing.
+const stepLayer = (by) => ({
+  where: (ctx) => art(ctx) && free(ctx) && shut(ctx) && !ctx.workspace.isPainting,
+  run: ({ project, workspace }) => {
+    const typing = workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor;
+    const layers = project.layers, from = layers.findIndex((layer) => layer.id === workspace.shownPick);
+    if (from < 0) return; // VECTOR's pick before its first shape: the vector layer it will bring isn't a row yet
+    for (let at = from + by; layers[at]; at += by) {
+      if (!(typing && layers[at].kind === 'vector')) return workspace.pickLayer(layers[at].id);
+    }
+  },
+});
+// Shift+Alt+N and Shift+Alt+V: LAYERS' Add layer and Add vector layer, off as they are. Not while typing (Option's ˜ and ◊
+// type there), and once a press.
+const newLayer = (kind) => ({
+  once: true,
+  where: (ctx) => art(ctx) && free(ctx) && shut(ctx) && !ctx.typing && !ctx.workspace.isPainting,
+  available: ({ project }) => ok(addOff(project, useDrawingStore())),
+  run: ({ workspace }) => workspace.addLayerAbovePick(kind),
+});
 // VECTOR's buttons for the selected shapes.
 const chosenShapes = ({ project, workspace }) => workspace.vectorSelected.filter((key) => project.shapes.has(key));
 const onShapes = (id, key, run) => ({
@@ -357,6 +379,10 @@ export const COMMANDS = [
     run: (ctx) => ctx.project.setLayerHidden(picked(ctx), true) },
   { id: 'layer.show', group: 'layers', label: layerWords('layers.show'), where: (ctx) => onPick(ctx) && hiddenPick(ctx),
     run: (ctx) => ctx.project.setLayerHidden(picked(ctx), false) },
+  { id: 'layer.above', group: 'layers', keys: 'Alt+BracketRight', label: words('layerAboveBelow'), title: said('shortcuts.commands.layerAbove'), ...stepLayer(1) },
+  { id: 'layer.below', group: 'layers', keys: 'Alt+BracketLeft', label: words('layerAboveBelow'), title: said('shortcuts.commands.layerBelow'), ...stepLayer(-1) },
+  { id: 'layer.newCells', group: 'layers', keys: 'Shift+Alt+KeyN', label: said('layers.addCells'), ...newLayer('cells') },
+  { id: 'layer.newVector', group: 'layers', keys: 'Shift+Alt+KeyV', label: said('layers.addVector'), ...newLayer('vector') },
 
   // VECTOR's: the stacking order (Forward and Back as their buttons, and to the front or back of the layer), and copies
   // of the selected shapes.

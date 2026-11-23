@@ -170,14 +170,15 @@ export function useTextTool(project, workspace, textInput) {
 
   // The textarea has focus while the tool is in use (after the click that placed the cursor has
   // focused whatever it focuses, and after the color box, the shortcuts list, the command list, the save
-  // dialog or Versions closes), and never takes it from a real field.
+  // dialog or Versions closes), and never takes it from a real field, nor from a row of a list walked by the
+  // arrows (data-walk: LAYERS'), whose walk onto a cells layer brings typing back while the arrows go on walking.
   const inUse = () => workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor && !workspace.paletteLayerOpen;
   watch(() => [inUse(), workspace.textCursor, workspace.colorBox, workspace.shortcutsOpen, workspace.commandListOpen, workspace.saveDialog, workspace.versionsOpen], () => setTimeout(() => {
     const el = textInput?.value;
     if (!el) return;
     if (!inUse()) {
       if (document.activeElement === el) el.blur();
-    } else if (document.activeElement !== el && !editableFocus()) {
+    } else if (document.activeElement !== el && !editableFocus() && document.activeElement?.dataset?.walk === undefined) {
       el.focus({ preventScroll: true });
     }
   }));

@@ -239,7 +239,7 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
 - Does: picks his top layer (Layer 2, from step 11), presses Add layer.
 - Expects: Layer 3 on top, picked.
 - Probes: `again`: add one more and delete it from its ⋯ menu; `interrupt`: rename it with F2 on its row, Escape.
-- Rated: yes, wants Shift+Cmd+N
+- Rated: yes, wants Shift+Cmd+N (the browser keeps it); Shift+Alt+N (Shift+Option+N) is Phosphor's
 
 ### 16. Drop the logo on my piece
 - Does: drops `logo.ans` on the canvas at a cell, and picks Add to this drawing.

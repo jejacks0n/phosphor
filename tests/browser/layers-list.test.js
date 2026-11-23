@@ -2,7 +2,7 @@
 // a click on the picked row's name (or a double-click) to rename it, ⋯ to rename or move it, and a header over it counting
 // the layers, with Add layer and Add vector layer.
 import { test, expect, afterEach, vi } from 'vitest';
-import { createApp, nextTick } from 'vue';
+import { createApp, nextTick, ref } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
@@ -10,6 +10,8 @@ import { rectShape } from '@/document/shapes.js';
 import LayersList from '@/components/LayersList.vue';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
+import { ownsKey } from '@/lib/fields';
+import { useTextTool } from '@/composables/useTextTool';
 
 let app = null, host = null;
 afterEach(() => {
@@ -384,4 +386,87 @@ test('with nothing open it says so', async () => {
   await mount(({ project }) => { project.image = null; });
   expect(rows()).toHaveLength(0);
   expect(host.textContent.trim()).toBe('Layers appear while your artwork is showing.');
+});
+
+// The rows walked with the keys, as the tabs are: ↑ ↓ Home End move focus and pick as they go, past a row that's off,
+// and the rows own them (data-walk), so the view doesn't take focus for them.
+test('↓ on a focused row focuses and picks the next, ↑ the one above, Home and End the ends; Alt+↓ is left alone', async () => {
+  const { project, workspace } = await mount(({ project }) => project.addLayer('cells', 'edit'));
+  const top = project.layers[2].id;
+  pickOf(0).focus();
+  const down = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true });
+  pickOf(0).dispatchEvent(down);
+  await nextTick();
+  await nextTick();
+  expect(down.defaultPrevented).toBe(true);
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(document.activeElement).toBe(pickOf(1));
+  expect(ownsKey(pickOf(1), down)).toBe(true);
+  await key(pickOf(1), 'End');
+  await nextTick();
+  expect(workspace.pickedLayer).toBe('base');
+  expect(document.activeElement).toBe(pickOf(2));
+  await key(pickOf(2), 'ArrowUp');
+  await nextTick();
+  expect(workspace.pickedLayer).toBe('edit');
+  await key(pickOf(1), 'Home');
+  await nextTick();
+  expect(workspace.pickedLayer).toBe(top);
+  const altDown = new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true, cancelable: true });
+  pickOf(0).dispatchEvent(altDown);
+  expect(altDown.defaultPrevented).toBe(false);
+  expect(workspace.pickedLayer).toBe(top);
+});
+
+test('for an artist End stops at the row above the base, which is off', async () => {
+  const { workspace } = await mount(({ project, workspace }) => {
+    workspace.pickLayer(project.addLayer('cells', 'edit'));
+    project._sharing = { role: 'artist', heard: [] };
+  });
+  pickOf(0).focus();
+  await key(pickOf(0), 'End');
+  await nextTick();
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(document.activeElement).toBe(pickOf(1));
+  await key(pickOf(1), 'ArrowDown');
+  await nextTick();
+  expect(workspace.pickedLayer).toBe('edit');
+  expect(document.activeElement).toBe(pickOf(1));
+});
+
+// With Edit Mode's cursor placed the rows keep the keys: the cursor doesn't move, and walking off a vector row onto a
+// cells row (ANSI again, so typing's in use again) leaves focus on the row rather than handing it to typing.
+test('with the cursor placed, ↓ walks from a vector row onto a cells row, the cursor stays and focus stays on the row', async () => {
+  const textarea = document.body.appendChild(Object.assign(document.createElement('textarea'), {}));
+  textarea.dataset.textInput = '';
+  let typingApp = null;
+  try {
+    const { project, workspace } = await mount(({ project, workspace }) => {
+      const vector = project.addLayer('vector', 'edit');
+      workspace.setActiveTool('text');
+      workspace.textCursor = { col: 3, row: 2 };
+      workspace.pickLayer(vector);
+    });
+    typingApp = createApp({ setup() { useTextTool(project, workspace, ref(textarea)); return () => null; } }).use(getActivePinia()).use(i18n);
+    typingApp.mount(document.createElement('div'));
+    expect(workspace.editorTab).toBe('vector');
+    pickOf(0).focus();
+    await key(pickOf(0), 'ArrowDown');
+    await new Promise((resolve) => setTimeout(resolve, 10)); // past typing's refocus
+    expect(workspace.pickedLayer).toBe('edit');
+    expect(workspace.editorTab).toBe('output');
+    expect(document.activeElement).toBe(pickOf(1));
+    expect(workspace.textCursor).toEqual({ col: 3, row: 2 });
+    await key(pickOf(1), 'ArrowUp');
+    await key(pickOf(0), 'ArrowDown');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(document.activeElement).toBe(pickOf(1));
+    const left = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
+    pickOf(1).dispatchEvent(left); // not the rows': it's typing's still
+    expect(workspace.textCursor).toEqual({ col: 2, row: 2 });
+    expect(project.layers).toHaveLength(3);
+  } finally {
+    typingApp?.unmount();
+    textarea.remove();
+  }
 });
