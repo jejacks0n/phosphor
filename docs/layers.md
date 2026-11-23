@@ -1147,7 +1147,8 @@ the cursor, as one undo step, without leaving Edit Mode.
   **Alt+4** ROOM while you watch a room. A tab that isn't showing or is off (with nothing open, or ANSI with a vector
   layer selected) stays put, and the key does nothing. They work from SAUCE and ROOM too, but not from a text field, a
   dialog, or Edit Mode while you type, where Option's digits type their characters on a Mac (on a British Mac Option+3
-  is #). On Linux, where the browser switches its own tabs on Alt+1 to 4, they do nothing while you type.
+  is #). On Linux, where the browser switches its own tabs on Alt+1 to 4, they do nothing where they don't apply (while
+  you type, mid-stroke, with the color box open), outside a text field.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
 - **Cmd + K** (Ctrl+K on Windows and Linux): Opens the command list, to find any command by name and run it
   ([The Command List](#the-command-list)).

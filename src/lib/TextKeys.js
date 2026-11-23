@@ -47,8 +47,8 @@ const LAYER_STEPS = new Set(['BracketLeft', 'BracketRight']);
 export const MAC_TYPES_OPTION_U = true;
 export const typingKeepsAltU = (mac = isMac) => MAC_TYPES_OPTION_U && mac;
 // Alt+1–4 choose the editor's tabs, never while typing, where Option's digits type on a Mac (a British Mac's Option+3 is
-// #). On Linux the browser switches its own tabs on them: typing gives them up there, and the command table takes them and
-// does nothing (commands.js: tab.keptFromBrowser).
+// #). On Linux the browser switches its own tabs on them: typing gives them up there, and the command table takes them
+// wherever the tab rows don't, doing nothing (commands.js: tab.keptFromBrowser).
 const TAB_DIGITS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4']);
 export const keptFromBrowser = (e, linux = isLinux) => linux && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && TAB_DIGITS.has(e.code);
 const cellKey = (e, mac) => (e.code === 'KeyX' && !e.shiftKey) || (e.code === 'KeyU' && !typingKeepsAltU(mac));
