@@ -358,11 +358,11 @@ export const COMMANDS = [
   { id: 'colors.openFg', group: 'colors', keys: ['Alt+KeyF', 'Alt+KeyA'], label: words('openFg'), ...colorBox('fg') },
   { id: 'colors.openBg', group: 'colors', keys: 'Alt+KeyB', label: words('openBg'), ...colorBox('bg') },
   // X while the art is showing, unless the Text tool has it (in Edit Mode, X types); Shift+Cmd/Ctrl+X typing too. On
-  // VECTOR the shapes' Fill and Stroke trade places.
+  // VECTOR the shapes' Fill and Stroke trade places. Run by name (no key: the command list), as X outside typing.
   { id: 'colors.swap', group: 'colors', keys: [SWAP_COLORS_KEY.toUpperCase(), 'Shift+Mod+KeyX'], label: words('swapColors'),
     where: (ctx) => free(ctx) && ctx.workspace.editMode && (ctx.event.shiftKey
       ? !!ctx.project.image && !ctx.workspace.paletteLayerOpen
-      : ctx.workspace.activeTool !== 'text'),
+      : !ctx.event.key || ctx.workspace.activeTool !== 'text'),
     run: ({ workspace, view }) => (view === 'vector' ? useVectorStyle().swap() : workspace.swapColors()) },
   { id: 'colors.fgPrev', group: 'colors', label: words('stepFg'), ...colorStep('fg', -1, 'ArrowUp') },
   { id: 'colors.fgNext', group: 'colors', label: words('stepFg'), ...colorStep('fg', 1, 'ArrowDown') },

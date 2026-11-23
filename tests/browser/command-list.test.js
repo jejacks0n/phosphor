@@ -139,6 +139,20 @@ test('typing in Edit Mode, the lines and columns and the ? list are offered; Esc
   expect(workspace.shortcutsOpen).toBe(false);
 });
 
+test('with the Text tool chosen, Swap colors is offered, and Enter swaps them as X does outside typing', async () => {
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 1, row: 1 };
+  const [fg, bg] = [workspace.editFgColor, workspace.editBgColor];
+  await open();
+  expect(options().map(words)).toContain(named('colors.swap'));
+  await type('swap foreground');
+  expect(words(options()[0])).toBe(named('colors.swap'));
+  await press('Enter');
+  await vi.waitFor(() => expect([workspace.editFgColor, workspace.editBgColor]).toEqual([bg, fg]));
+});
+
 test('the tabs are offered: SAUCE chosen shows SAUCE after the list has gone, and ROOM out of a room is grayed with why', async () => {
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
   workspace.editorTab = 'output';
