@@ -92,6 +92,21 @@ test('what typing pushed past the edge is forgotten: a Backspace after a line mo
   expect(line(project, 1)).toBe('ABC.');
 });
 
+test('a line step undone brings back what typing pushed past the edge, and redone forgets it again', async () => {
+  for (const redo of [false, true]) {
+    const { project } = await blank();
+    [...'BCD'].forEach((char, i) => project.typeAt(i + 1, 0, char, WHITE));
+    project.commitEdit();
+    project.typeAt(0, 0, 'X', WHITE, { mode: 'insert' }); // D is past the edge of row 0
+    project.insertLine(2);
+    project.undo(); // the line: the memory back
+    if (redo) project.redo(); // and gone again
+    project.backspaceAt(1, 0, WHITE, { mode: 'insert' });
+    project.commitEdit();
+    expect(line(project, 0), redo ? 'redone' : 'undone').toBe(redo ? 'ABC.' : 'ABCD');
+  }
+});
+
 test('a line or column that moves nothing is no step, and what typing pushed past the edge still comes back', async () => {
   const { project } = await blank();
   [...'BCD'].forEach((char, i) => project.typeAt(i + 1, 0, char, WHITE));
