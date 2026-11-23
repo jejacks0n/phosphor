@@ -112,8 +112,9 @@ test('New asks first when there are unsaved changes (UnsavedDialog), and goes on
 test('Save asks where the first time, then writes over the same file; Save As always asks; a canceled box saves nothing', async () => {
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   project.rename('night');
-  command('save');
-  await vi.waitFor(() => expect(project.filePath).toBe('/art/night.phosphor'));
+  // Awaited, not polled: on a loaded runner a save outlasts waitFor's second, and one still running blocks the next test's.
+  await command('save');
+  expect(project.filePath).toBe('/art/night.phosphor');
   const [first] = desktop.saveProject.mock.lastCall;
   expect(first).toMatchObject({ name: 'night.phosphor', path: null, as: false });
   expect(first.bytes).toBeInstanceOf(Uint8Array);
@@ -125,8 +126,8 @@ test('Save asks where the first time, then writes over the same file; Save As al
   expect(project.isDirty).toBe(false);
 
   desktop.saveProject.mockImplementationOnce(async () => '/elsewhere/day.phosphor');
-  command('saveAs');
-  await vi.waitFor(() => expect(project.filePath).toBe('/elsewhere/day.phosphor'));
+  await command('saveAs');
+  expect(project.filePath).toBe('/elsewhere/day.phosphor');
   expect(desktop.saveProject.mock.lastCall[0]).toMatchObject({ path: '/art/night.phosphor', as: true });
   expect(project.filename).toBe('day');
 
@@ -141,7 +142,7 @@ test('a second Save while the box is open opens no second box', async () => {
   let answer;
   desktop.saveProject.mockImplementationOnce(() => new Promise((resolve) => { answer = resolve; }));
   const first = workspace.saveFile();
-  await vi.waitFor(() => expect(answer).toBeTypeOf('function'));
+  await vi.waitFor(() => expect(answer).toBeTypeOf('function'), { timeout: 10000 }); // the file is built first, slow on a loaded runner
   await workspace.saveFile({ as: true });
   expect(desktop.saveProject).toHaveBeenCalledTimes(1);
   answer('/art/once.phosphor');
