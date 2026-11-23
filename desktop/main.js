@@ -18,7 +18,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRoomService } from './roomService.js';
 import { reachableAddresses } from './addresses.js';
-import { OPENABLE, filesIn, isOpenable, isProject, recentFiles, writeWhole } from './files.js';
+import { OPENABLE, filesIn, isOpenable, projectPath, recentFiles, saveBox, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
 import { listUrl, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
@@ -293,14 +293,14 @@ function openInWindow(_entry, file) {
 // `as`, always asks, starting beside the file). The path written, or null when the box is canceled.
 async function saveProject(entry, { bytes, name, path: file, as = false } = {}) {
   if (!(bytes instanceof Uint8Array) || typeof name !== 'string') throw new Error('No project');
-  const own = typeof file === 'string' && granted.has(file) && isProject(file);
-  if (as || !own) {
+  const { box, defaultPath } = saveBox({ file, name, as, isGranted: typeof file === 'string' && granted.has(file) });
+  if (box) {
     const chosen = await dialog.showSaveDialog(entry.win, {
-      defaultPath: own ? path.join(path.dirname(file), path.basename(name)) : path.basename(name),
-      filters: [{ name: labels?.projectFiles ?? 'Phosphor', extensions: ['phosphor'] }],
+      defaultPath,
+      filters: [{ name: labels?.projectFiles ?? 'Phosphor', extensions: ['pho'] }],
     });
     if (chosen.canceled || !chosen.filePath) return null;
-    file = isProject(chosen.filePath) ? chosen.filePath : `${chosen.filePath}.phosphor`;
+    file = projectPath(chosen.filePath);
   }
   await writeWhole(file, bytes);
   remember(file);

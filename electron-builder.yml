@@ -21,6 +21,11 @@ publish: github
 # extensions no other app owns are here; the rest of what it opens is under mac and linux, where Phosphor is only offered
 # in Open With. One extension an entry: Linux writes each as a single file pattern.
 fileAssociations:
+  - ext: pho
+    name: Phosphor Project
+    role: Editor
+    rank: Owner
+    mimeType: image/x-phosphor
   - ext: phosphor
     name: Phosphor Project
     role: Editor

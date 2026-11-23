@@ -61,7 +61,7 @@ test('the menu says the drawing’s name, for the window’s title, and its proj
   project.rename('night');
   await workspace.saveFile();
   await nextTick();
-  expect(lastMenu()[2]).toEqual({ title: 'night', file: '/art/night.phosphor' });
+  expect(lastMenu()[2]).toEqual({ title: 'night', file: '/art/night.pho' });
   project.clearImage();
   await nextTick();
   expect(lastMenu()[2]).toEqual({ title: 'Phosphor', file: null });   // New: no file open
@@ -114,27 +114,27 @@ test('Save asks where the first time, then writes over the same file; Save As al
   project.rename('night');
   // Awaited, not polled: on a loaded runner a save outlasts waitFor's second, and one still running blocks the next test's.
   await command('save');
-  expect(project.filePath).toBe('/art/night.phosphor');
+  expect(project.filePath).toBe('/art/night.pho');
   const [first] = desktop.saveProject.mock.lastCall;
-  expect(first).toMatchObject({ name: 'night.phosphor', path: null, as: false });
+  expect(first).toMatchObject({ name: 'night.pho', path: null, as: false });
   expect(first.bytes).toBeInstanceOf(Uint8Array);
   expect([project.isDirty, project.savedToFile]).toEqual([false, true]);
 
   project.cols = 9;
   await workspace.saveFile();
-  expect(desktop.saveProject.mock.lastCall[0]).toMatchObject({ path: '/art/night.phosphor', as: false });
+  expect(desktop.saveProject.mock.lastCall[0]).toMatchObject({ path: '/art/night.pho', as: false });
   expect(project.isDirty).toBe(false);
 
-  desktop.saveProject.mockImplementationOnce(async () => '/elsewhere/day.phosphor');
+  desktop.saveProject.mockImplementationOnce(async () => '/elsewhere/day.pho');
   await command('saveAs');
-  expect(project.filePath).toBe('/elsewhere/day.phosphor');
-  expect(desktop.saveProject.mock.lastCall[0]).toMatchObject({ path: '/art/night.phosphor', as: true });
+  expect(project.filePath).toBe('/elsewhere/day.pho');
+  expect(desktop.saveProject.mock.lastCall[0]).toMatchObject({ path: '/art/night.pho', as: true });
   expect(project.filename).toBe('day');
 
   project.cols = 10;
   desktop.saveProject.mockImplementationOnce(async () => null);
   await workspace.saveFile({ as: true });
-  expect([project.filePath, project.isDirty]).toEqual(['/elsewhere/day.phosphor', true]);
+  expect([project.filePath, project.isDirty]).toEqual(['/elsewhere/day.pho', true]);
 });
 
 test('a second Save while the box is open opens no second box', async () => {
@@ -145,9 +145,9 @@ test('a second Save while the box is open opens no second box', async () => {
   await vi.waitFor(() => expect(answer).toBeTypeOf('function'), { timeout: 10000 }); // the file is built first, slow on a loaded runner
   await workspace.saveFile({ as: true });
   expect(desktop.saveProject).toHaveBeenCalledTimes(1);
-  answer('/art/once.phosphor');
+  answer('/art/once.pho');
   await first;
-  expect(project.filePath).toBe('/art/once.phosphor');
+  expect(project.filePath).toBe('/art/once.pho');
   await workspace.saveFile();
   expect(desktop.saveProject).toHaveBeenCalledTimes(2);
 });
@@ -159,7 +159,7 @@ test('changes made while the save box is open are still unsaved after it', async
     return `/art/${name}`;
   });
   await workspace.saveFile();
-  expect(project.filePath).toMatch(/\.phosphor$/);
+  expect(project.filePath).toMatch(/\.pho$/);
   expect(project.isDirty).toBe(true);
 });
 
@@ -177,11 +177,11 @@ test('a project opened from its file saves back there; any other document has no
   await workspace.saveFile();
   const { bytes } = desktop.saveProject.mock.lastCall[0];
 
-  await project.loadProject(Object.assign(new File([bytes], 'kept.phosphor'), { desktopPath: '/art/kept.phosphor' }));
-  expect([project.filePath, project.filename]).toEqual(['/art/kept.phosphor', 'kept']);
+  await project.loadProject(Object.assign(new File([bytes], 'kept.pho'), { desktopPath: '/art/kept.pho' }));
+  expect([project.filePath, project.filename]).toEqual(['/art/kept.pho', 'kept']);
   await loadImage(project, '/tests/fixtures/images/gradient.png');
   expect(project.filePath).toBe(null);
-  await project.loadProject(new File([bytes], 'dropped.phosphor'));   // dropped: no path known
+  await project.loadProject(new File([bytes], 'dropped.pho'));   // dropped: no path known
   expect(project.filePath).toBe(null);
 });
 
