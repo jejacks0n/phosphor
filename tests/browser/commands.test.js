@@ -3,7 +3,7 @@
 import { test, expect, vi } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import { COMMANDS, GROUPS, commandById, takeKey, toolCommands } from '@/lib/commands';
-import { keysFor } from '@/lib/keymap';
+import { keysFor, parseKey } from '@/lib/keymap';
 
 const VIEWS = ['input', 'output', 'vector'];
 const ctxOf = (project, workspace, event) => ({ project, workspace, event, view: workspace.editorTab, typing: false, uncommitted: false });
@@ -24,6 +24,13 @@ const SHARED = {
   'tool.shapes tool.vshape': 'U: Shapes in PIXEL and ANSI, the Shape tool on VECTOR',
 };
 
+// A key as what it is, so 'Alt+KeyF' and 'Alt+F' (or Shift+Mod+Z and Mod+Shift+Z) are one: its modifiers sorted, and a letter's code read as the letter.
+const same = (key) => {
+  const { mod, ctrl, alt, shift, code, key: value } = parseKey(key);
+  const part = (code?.match(/^Key([A-Z])$/)?.[1] ?? code ?? value).toUpperCase();
+  return [...[mod && 'mod', ctrl && 'ctrl', alt && 'alt', shift && 'shift'].filter(Boolean), part].join('+');
+};
+
 test('no two runnable commands share a key on a platform, but for the pairs whose views or typing keep them apart', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
@@ -31,7 +38,7 @@ test('no two runnable commands share a key on a platform, but for the pairs whos
   const runnable = [...COMMANDS.filter((c) => c.run), ...tools];
   for (const mac of [true, false]) {
     const byKey = new Map();
-    for (const c of runnable) for (const key of keysFor(c.keys ?? [], { mac })) byKey.set(key, [...(byKey.get(key) ?? []), c.id]);
+    for (const c of runnable) for (const key of keysFor(c.keys ?? [], { mac }).map(same)) byKey.set(key, [...(byKey.get(key) ?? []), c.id]);
     for (const [key, ids] of byKey) {
       if (ids.length < 2) continue;
       expect(SHARED[ids.sort().join(' ')], `${key} on ${mac ? 'a Mac' : 'Windows and Linux'}: ${ids.join(', ')}`).toBeTruthy();

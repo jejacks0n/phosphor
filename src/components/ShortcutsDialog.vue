@@ -2,142 +2,46 @@
 import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
-import { isMac, shortcut } from '@/lib/keyLabels';
+import { isMac } from '@/lib/keyLabels';
+import { COMMANDS, GROUPS, toolCommands } from '@/lib/commands';
+import { keyLabel, keysFor } from '@/lib/keymap';
 import { useProjectStore } from '@/store/ProjectStore';
-import { keyLabel, pluginTools } from '@/tools';
+import { pluginTools } from '@/tools';
 
-// The keyboard shortcuts, opened with ? (Alt+? while typing in Edit Mode). Keys are written the
-// platform's way (⌘ and ⌥ on a Mac). Keep it in step with useKeyboardShortcuts, useTextTool and
-// TextKeys when a shortcut changes. The Animation keys show only with Animate on, as they only work then.
+// The keyboard shortcuts, opened with ? (Alt+? while typing in Edit Mode), built from the command table
+// (src/lib/commands.js): a row's own keys, written the platform's way (⌘ and ⌥ on a Mac), or its `shown` words.
+// Rows of one group with the same words share a line. The Animation keys show only with Animate on, as they only
+// work then.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
-const k = shortcut;
 const project = useProjectStore();
 
-const groups = computed(() => [
-  {
-    title: t('shortcuts.groups.general'),
-    rows: [
-      [['?'], t('shortcuts.rows.thisList', { key: k('alt', '?') })],
-      [[k('mod', 'Z')], t('shortcuts.rows.undo')],
-      [[k('shift', 'mod', 'Z')], t('shortcuts.rows.redo')],
-      [[k('mod', 'S')], t('shortcuts.rows.saveProject')],
-      [[k('shift', 'mod', 'S')], t('shortcuts.rows.saveProjectAs')],
-      [[k('mod', 'E')], t('shortcuts.rows.export')],
-      [[k('mod', 'O')], t('shortcuts.rows.openFile')],
-      [['↑ ↓'], t('shortcuts.rows.dialogChoices')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.tools'),
-    rows: [
-      [['P'], t('shortcuts.rows.pencil')],
-      [['B'], t('shortcuts.rows.brush')],
-      [['E'], t('shortcuts.rows.eraser')],
-      [['G'], t('shortcuts.rows.bucket')],
-      [[k('shift', 'G')], t('shortcuts.rows.gradient')],
-      [['R'], t('shortcuts.rows.blur')],
-      [['O'], t('shortcuts.rows.dodge')],
-      [[k('shift', 'O')], t('shortcuts.rows.burn')],
-      [['U'], t('shortcuts.rows.shapes')],
-      [['I'], t('shortcuts.rows.picker')],
-      [['W'], t('shortcuts.rows.wand')],
-      [['H'], t('shortcuts.rows.hand')],
-      [['Z'], t('shortcuts.rows.zoom', { alt: k('alt') })],
-      [['T', 'K'], t('shortcuts.rows.editMode')],
-      [['F'], t('shortcuts.rows.flip')],
-      [['M'], t('shortcuts.rows.select')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.drawing'),
-    rows: [
-      [[t('shortcuts.holdKey', { key: k('alt') })], t('shortcuts.rows.holdAlt')],
-      [[t('shortcuts.holdKey', { key: k('alt', 'shift') })], t('shortcuts.rows.holdAltShift')],
-      [[t('shortcuts.holdSpace')], t('shortcuts.rows.holdSpace')],
-      [['[', ']'], t('shortcuts.rows.size')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.view'),
-    rows: [
-      [[k('mod', '+'), k('mod', '-')], t('shortcuts.rows.zoomInOut')],
-      [[k('mod', '0')], t('shortcuts.rows.zoomBack')],
-      [['Page Up', 'Page Down'], t('shortcuts.rows.scrollPage')],
-      [['Home', 'End', ...(isMac ? [k('mod', '↑'), k('mod', '↓')] : [])], t('shortcuts.rows.scrollEnds')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.colors'),
-    rows: [
-      [[k('alt', 'F'), k('alt', 'A')], t('shortcuts.rows.openFg')],
-      [[k('alt', 'B')], t('shortcuts.rows.openBg')],
-      [['X', k('shift', 'mod', 'X')], t('shortcuts.rows.swapColors')],
-      [['← ↑ → ↓'], t('shortcuts.rows.moveSwatches')],
-      [['Enter', 'Space'], t('shortcuts.rows.pickSwatch')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.editMode'),
-    rows: [
-      [['← ↑ → ↓'], t('shortcuts.rows.moveCursor')],
-      [[k('shift', '← ↑ → ↓')], t('shortcuts.rows.selectFromCursor')],
-      [['Home', 'End'], t('shortcuts.rows.homeEnd')],
-      [['Enter'], t('shortcuts.rows.nextLine')],
-      [['Backspace', 'Delete'], t('shortcuts.rows.erase')],
-      [['Insert', k('alt', 'Enter')], t('shortcuts.rows.insertOverwrite')],
-      [['F1–F12'], t('shortcuts.rows.typeFKey')],
-      [[k('ctrl', 'shift', 'F1–F12')], t('shortcuts.rows.grabFKey')],
-      [[k('alt', '←'), k('alt', '→')], t('shortcuts.rows.prevNextPalette')],
-      [[k('alt', '↑'), k('alt', '↓')], t('shortcuts.rows.stepFgPalette')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.select'),
-    rows: [
-      [[k('mod', 'A')], t('shortcuts.rows.selectAll')],
-      [[k('mod', 'C'), k('mod', 'X'), k('mod', 'V')], t('shortcuts.rows.copyCutPaste')],
-      [['← ↑ → ↓'], t('shortcuts.rows.nudge')],
-      [[k('shift', '← ↑ → ↓')], t('shortcuts.rows.growShrink')],
-      [['Delete', 'Backspace', 'E'], t('shortcuts.rows.deleteSelection')],
-      [['S', 'C'], t('shortcuts.rows.stamp')],
-      [['Esc', 'Enter'], t('shortcuts.rows.deselect')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.vector'),
-    rows: [
-      [['V'], t('shortcuts.rows.vselect')],
-      [['A'], t('shortcuts.rows.vnode')],
-      [['P'], t('shortcuts.rows.pen')],
-      [['Enter', 'Esc'], t('shortcuts.rows.penEnd')],
-      [['Backspace'], t('shortcuts.rows.penBack')],
-      [['U'], t('shortcuts.rows.vshape')],
-      [['← ↑ → ↓'], t('shortcuts.rows.vectorNudge')],
-      [['Delete', 'Backspace'], t('shortcuts.rows.vectorDelete')],
-      [['Esc'], t('shortcuts.rows.vectorEsc')],
-    ],
-  },
-  // The brushes plugins add that have a key, absent when there are none.
-  pluginTools().some(({ keys }) => keys.length) && {
-    title: t('shortcuts.pluginTools'),
-    rows: pluginTools().filter(({ keys }) => keys.length).map((tool) => [tool.keys.map(keyLabel), tool.title]),
-  },
-  project.animate && {
-    title: t('shortcuts.groups.animation'),
-    rows: [
-      [['L'], t('shortcuts.rows.playPause')],
-      [[',', '.'], t('shortcuts.rows.prevNextFrame', { keys: `${k('alt', ',')} ${k('alt', '.')}` })],
-      [['N'], t('shortcuts.rows.newFrame')],
-    ],
-  },
-  {
-    title: t('shortcuts.groups.tabs'),
-    rows: [
-      [['← →'], t('shortcuts.rows.switchTabs')],
-    ],
-  },
-].filter(Boolean));
+const shown = (row) => {
+  const words = typeof row.shown === 'function' ? row.shown() : row.shown;
+  return words ?? keysFor(row.keys ?? []).map((key) => keyLabel(key));
+};
+
+// The tools as rows: the art views' (the Tools group, plugin brushes in a group of their own) and then those only
+// VECTOR has.
+const toolRows = () => {
+  const plugin = new Set(pluginTools().map((tool) => tool.id));
+  const art = new Map(['input', 'output'].flatMap((view) => toolCommands(view, project)).map((row) => [row.id, row]));
+  const vector = toolCommands('vector', project).filter((row) => !art.has(row.id));
+  return [...art.values()].map((row) => ({ ...row, group: plugin.has(row.id.slice(5)) ? 'pluginTools' : 'tools' }))
+    .concat(vector.map((row) => ({ ...row, group: 'vector' })));
+};
+
+const groups = computed(() => {
+  const rows = [...toolRows(), ...COMMANDS];
+  return GROUPS.flatMap((group) => (group === 'vector' ? [group, 'pluginTools'] : [group])).filter((group) => group !== 'animation' || project.animate).map((group) => {
+    const lines = new Map(); // by words, so rows with the same ones (the size keys, the two zooms) are a line
+    for (const row of rows.filter((r) => r.group === group)) {
+      const does = row.label(), keys = shown(row);
+      lines.set(does, [...(lines.get(does) ?? []), ...keys]);
+    }
+    return { title: group === 'pluginTools' ? t('shortcuts.pluginTools') : t(`shortcuts.groups.${group}`), rows: [...lines] };
+  }).filter((group) => group.rows.length).map((group) => ({ ...group, rows: group.rows.map(([does, keys]) => [keys, does]) }));
+});
 </script>
 
 <template>

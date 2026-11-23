@@ -29,8 +29,8 @@ export function colorBoxKey(e) {
   return COLOR_BOX_KEYS[e.code] ?? null;
 }
 
-// The shortcuts list: ?, or Alt+? (by physical key: Option+? types ¿), which also works while
-// typing in Edit Mode, where ? types.
+// Alt+? (by physical key: Option+? types ¿) opens the shortcuts list (the command table's general.help) while
+// typing in Edit Mode, where ? types; it never types.
 const altHelp = (e) => e.altKey && e.shiftKey && e.code === 'Slash' && !e.ctrlKey && !e.metaKey;
 // The frame before or after (-1 or 1), else 0: Alt+, and Alt+. (by physical key: Option's ≤ and ≥ don't matter), which
 // also work while typing in Edit Mode, where , and . type.
@@ -42,11 +42,6 @@ export const frameStepKey = (e) => (!e.altKey || e.ctrlKey || e.metaKey || e.shi
 export const SWAP_COLORS_KEY = 'x', PLAY_KEY = 'l', ADD_FRAME_KEY = 'n';
 export const EDITOR_KEYS = [SWAP_COLORS_KEY, PLAY_KEY, ADD_FRAME_KEY].map((key) => key.toUpperCase())
   .flatMap((key) => (key === SWAP_COLORS_KEY.toUpperCase() ? [key] : [key, `Shift+${key}`]));
-
-export function helpKey(e, { typing }) {
-  if (altHelp(e)) return true;
-  return !typing && e.key === '?' && !e.altKey && !e.ctrlKey && !e.metaKey;
-}
 
 export function textKeyAction(e, { editable, animate = false }) {
   if (editable || e.metaKey || e.isComposing || e.keyCode === 229) return null; // a field, Cmd, or an IME

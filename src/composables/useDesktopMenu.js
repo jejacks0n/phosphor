@@ -3,6 +3,8 @@ import { locale, t } from '@/i18n';
 import { desktop, fileFrom } from '@/social/desktop';
 import { newerRelease } from '@/lib/semver';
 import { typesIn } from '@/lib/fields';
+import { COMMANDS } from '@/lib/commands';
+import { accelerator } from '@/lib/keymap';
 import { toast } from '@/composables/useToast';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -44,6 +46,16 @@ export async function checkForUpdates() {
 export const reloading = {
   withPluginsOff: () => { location.search = '?plugins=off'; },
 };
+
+// The menu's accelerators: each menu command's key from the command table (the first with a modifier, since a bare key
+// types), as Electron writes it. New is the menu's own: Cmd+N is the browser's, so the page has no row for it.
+export const menuAccelerators = () => ({
+  new: 'CmdOrCtrl+N',
+  ...Object.fromEntries(COMMANDS.filter((c) => c.menu).map((c) => {
+    const keys = [c.keys].flat();
+    return [c.menu, accelerator(keys.find((key) => key.includes('+')) ?? keys[0])];
+  })),
+});
 
 export function useDesktopMenu() {
   const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore(), room = useRoomStore(), social = useSocialStore();
@@ -93,7 +105,7 @@ export function useDesktopMenu() {
     const labels = Object.fromEntries(MENU_LABELS.map((key) => [key, t(`menu.${key}`)]));
     const state = { hasImage: !!project.image, canChange: !drawing.offWithOthers, inRoom: !!room.role, hosting: room.role === 'host' };
     const art = { title: project.filename || 'Phosphor', file: project.filePath ?? null };
-    desktop.setMenu(labels, state, art).catch((error) => console.warn('Could not set the menu', error));
+    desktop.setMenu(labels, state, art, menuAccelerators()).catch((error) => console.warn('Could not set the menu', error));
   });
 
   desktop.onOpenedFile((file) => {
