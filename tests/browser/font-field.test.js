@@ -13,6 +13,14 @@ const stub = new Uint8Array(2048).fill(7);
 vi.mock('@/lib/linkedFonts', () => ({
   linkedFontOf: (id) => (id === globalThis.__linkedId ? { credit: 'FROGBLOCK font by Polyducks' } : null),
 }));
+// The font store's reads the field makes (the real ones), kept so a test can wait for them. Each test file has its own
+// IndexedDB, but the files share one browser and one machine: with the others running, a read of an empty store can
+// take seconds. So a test waits for the read itself, not for a deadline.
+const reads = vi.hoisted(() => []);
+vi.mock('@/lib/userFonts', async (original) => {
+  const real = await original();
+  return { ...real, storedBitmapFont: (id) => reads[reads.push(real.storedBitmapFont(id)) - 1] };
+});
 
 let app = null, host = null;
 afterEach(() => {
@@ -74,10 +82,11 @@ test('a font that can\'t be chosen says why, and the dropdown goes back to the f
   await nextTick();
   const select = host.querySelector('select');
   select.value = 'gone';
+  const asked = reads.length;
   select.dispatchEvent(new Event('change'));
-  // The read of the browser's font store waits behind other files' writes to it (the Fonts page's tests write all the
-  // time, side by side with these): past a second, now and then. So it's waited for, not timed.
-  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent, { timeout: 5000 }).toBe('That font isn\'t in this browser anymore. Load it again.');
+  expect(reads).toHaveLength(asked + 1); // the field asked the store
+  await Promise.allSettled(reads);
+  await expect.poll(() => host.querySelector('[role="alert"]')?.textContent).toBe('That font isn\'t in this browser anymore. Load it again.');
   expect(select.value).toBe('jetbrains');
   expect(project.drawingFont).toBeNull();
   // The next choice clears it.
