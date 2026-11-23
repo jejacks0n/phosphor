@@ -66,7 +66,8 @@ mac:
     # macOS asks the person the first time the app reaches the local network, in these words.
     NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network."
     # A .pho is a PNG with the project inside: declared a kind of PNG, Finder and Quick Look preview it with the
-    # system's own PNG thumbnailer. electron-builder lists pho by extension only, so this entry binds it to the type.
+    # system's own PNG thumbnailer. electron-builder lists pho by extension only, so this entry binds it to the type;
+    # its own pho entry, by extension, stays beside this one, which is expected.
     UTExportedTypeDeclarations:
       - UTTypeIdentifier: work.phosphor.pho
         UTTypeConformsTo: [public.png, public.image]
@@ -114,8 +115,10 @@ linux:
 
 # electron-builder's own MIME file for the associations can't say a type is a kind of another, so the .deb also installs
 # build/phosphor-mime.xml: image/x-phosphor as a subclass of image/png, for the desktop's PNG thumbnailer. The two
-# declarations merge, and the package's default after-install script already runs update-mime-database. AppImage has no
-# install step, so no thumbnails there.
+# declarations merge, and the package's default after-install script already runs update-mime-database. Some file
+# managers look thumbnailers up by the exact type, so build/phosphor.thumbnailer names the PNG thumbnailer for
+# image/x-phosphor too. AppImage has no install step, so no thumbnails there.
 deb:
   fpm:
     - build/phosphor-mime.xml=/usr/share/mime/packages/phosphor-pho.xml
+    - build/phosphor.thumbnailer=/usr/share/thumbnailers/phosphor.thumbnailer

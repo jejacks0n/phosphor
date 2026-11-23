@@ -1,0 +1,7 @@
+# A .pho is a PNG with a Phosphor project inside. File managers that look thumbnailers up by a file's exact type, not
+# the image/png it's a subclass of (build/phosphor-mime.xml), find this one: the system's own PNG thumbnailer. The .deb
+# installs it (electron-builder.yml).
+[Thumbnailer Entry]
+TryExec=gdk-pixbuf-thumbnailer
+Exec=gdk-pixbuf-thumbnailer -s %s %u %o
+MimeType=image/x-phosphor;

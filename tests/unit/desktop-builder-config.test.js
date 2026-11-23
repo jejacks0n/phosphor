@@ -113,9 +113,17 @@ test('a .pho is declared a kind of PNG on macOS, Windows and Linux', () => {
   assert.ok(macro('customInstall').includes(`WriteRegStr ${thumbnails} "" "{C7657C4A-9F68-40fa-A4DF-96BC08EB3551}"`));
   assert.ok(macro('customInstall').includes('WriteRegStr SHCTX "Software\\Classes\\.pho" "PerceivedType" "image"'));
   assert.ok(macro('customUnInstall').includes(`DeleteRegKey ${thumbnails}`));
+  assert.ok(macro('customUnInstall').includes('DeleteRegValue SHCTX "Software\\Classes\\.pho" "PerceivedType"'));
 
   // Linux: the .deb installs image/x-phosphor as a subclass of image/png, beside the type electron-builder writes.
   assert.match(section(yml, 'deb'), /- build\/phosphor-mime\.xml=\/usr\/share\/mime\/packages\/phosphor-pho\.xml/);
   const xml = read('build/phosphor-mime.xml');
   assert.match(xml, /<mime-type type="image\/x-phosphor">[\s\S]*<sub-class-of type="image\/png"\/>[\s\S]*<glob pattern="\*\.pho"\/>[\s\S]*<\/mime-type>/);
+  // and a thumbnailer for the type itself, for file managers that look thumbnailers up by the exact type.
+  assert.match(section(yml, 'deb'), /- build\/phosphor\.thumbnailer=\/usr\/share\/thumbnailers\/phosphor\.thumbnailer/);
+  const thumbnailer = read('build/phosphor.thumbnailer');
+  assert.match(thumbnailer, /^\[Thumbnailer Entry\]$/m);
+  assert.match(thumbnailer, /^TryExec=gdk-pixbuf-thumbnailer$/m);
+  assert.match(thumbnailer, /^Exec=gdk-pixbuf-thumbnailer -s %s %u %o$/m);
+  assert.match(thumbnailer, /^MimeType=image\/x-phosphor;$/m);
 });
