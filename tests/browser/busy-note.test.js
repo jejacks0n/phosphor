@@ -88,9 +88,9 @@ test('opening an art file, a project and a picture say which file, and so do sav
   expect(await notesWhile(() => project.openArtFile(art, { layer: 'edit' }))).toEqual(['Opening tiny.ans…']);
 
   const downloads = vi.spyOn(URL, 'createObjectURL');
-  expect(await notesWhile(() => project.saveProject('night'))).toEqual(['Saving night.phosphor…']);
+  expect(await notesWhile(() => project.saveProject('night'))).toEqual(['Saving night.pho…']);
   const blob = downloads.mock.calls.at(-1)[0];
-  expect(await notesWhile(() => project.loadProject(new File([blob], 'night.phosphor')))).toEqual(['Opening night.phosphor…']);
+  expect(await notesWhile(() => project.loadProject(new File([blob], 'night.pho')))).toEqual(['Opening night.pho…']);
   expect(await notesWhile(() => project.exportFile('ans', { filename: 'night' }))).toEqual(['Saving night.ans…']);
   expect(await notesWhile(() => project.exportFile('png', { filename: 'night' }))).toEqual(['Saving night.png…']);
 

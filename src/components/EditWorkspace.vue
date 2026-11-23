@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
 import { desktop, fileFrom } from '@/social/desktop';
-import { isProjectFile, loadImage, pickFile, PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
+import { isProjectFile, loadImage, pickFile, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
 import { isArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { SLOT_CHARS } from '@/lib/BitmapFont';
@@ -58,7 +58,7 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
 // art file says so when it fails to open.
 const chooser = ref(null);
 const touch = useMediaQuery('(pointer: coarse)');
-const extensions = ['.svg', PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)];
+const extensions = ['.svg', PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)];
 const accept = ['image/*', ...extensions].join(',');
 watch(() => workspace.openRequest, () => (DESKTOP ? openChosen() : browse()));
 // Where the browser savesInPlace, its open picker, so a project opened keeps its handle for Save to write over.

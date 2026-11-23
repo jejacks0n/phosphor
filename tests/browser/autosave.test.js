@@ -2033,12 +2033,12 @@ test('the record keeps the extension the drawing came with, then the one it last
   expect((await readLatest(id)).record).toMatchObject({ fileExt: 'ans', editedAt, asOpened: true }); // written, but no change
   await project.saveProject();
   await pass(SAVE_AFTER_MS);
-  expect((await readLatest(id)).record.fileExt).toBe('phosphor');
+  expect((await readLatest(id)).record.fileExt).toBe('pho');
   await leave();
 
   const back = await mounted();
   expect(back.project.documentId).toBe(id);
-  expect(back.project.fileExt).toBe('phosphor');
+  expect(back.project.fileExt).toBe('pho');
 });
 
 // Its row in Pick up where you left off then reads as the project, not as one of the exports opened beside it.
@@ -2048,9 +2048,9 @@ test('an export of a drawing saved as a project keeps the project\'s name and ex
   await project.saveProject('hello-fixed');
   await project.exportFile('ans', { filename: 'hello-fixed-20261118-221300' });
   await project.exportAnimation('cast', { filename: 'hello-fixed-20261118-221301' });
-  expect({ filename: project.filename, fileExt: project.fileExt }).toEqual({ filename: 'hello-fixed', fileExt: 'phosphor' });
+  expect({ filename: project.filename, fileExt: project.fileExt }).toEqual({ filename: 'hello-fixed', fileExt: 'pho' });
   await pass(SAVE_AFTER_MS);
-  expect((await readLatest(project.documentId)).record).toMatchObject({ filename: 'hello-fixed', fileExt: 'phosphor' });
+  expect((await readLatest(project.documentId)).record).toMatchObject({ filename: 'hello-fixed', fileExt: 'pho' });
 });
 
 test('a blank canvas has no As opened: there is nothing to go back to', async () => {

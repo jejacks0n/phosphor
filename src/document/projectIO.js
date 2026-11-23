@@ -261,9 +261,9 @@ export function onLaunchedFiles(open) {
 // the save picker names (Save As, a drawing never saved, or the asking refused). Null when the picker's canceled.
 export async function projectTarget(handle, { suggestedName, description, as = false }) {
   const mode = { mode: 'readwrite' };
-  if (handle && !as && ((await handle.queryPermission(mode)) === 'granted' || (await handle.requestPermission(mode)) === 'granted')) return handle;
+  if (handle && !as && isSavedForm(handle.name) && ((await handle.queryPermission(mode)) === 'granted' || (await handle.requestPermission(mode)) === 'granted')) return handle;
   try {
-    return await globalThis.showSaveFilePicker({ suggestedName, types: [{ description, accept: { 'application/octet-stream': [PROJECT_EXTENSION] } }] });
+    return await globalThis.showSaveFilePicker({ suggestedName, types: [{ description, accept: { [PROJECT_MIME]: [PROJECT_EXTENSION] } }] });
   } catch (error) {
     if (error.name === 'AbortError') return null;
     throw error;

@@ -4,7 +4,8 @@
 import { describe, test, expect, afterEach, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { matchReference } from '../support/references.js';
-import { readProject, writeProject, gunzipped } from '@/document/projectIO.js';
+import { readProject, writeProject, gunzipped, projectChunkOf } from '@/document/projectIO.js';
+import { makeArt } from '@/document/artLayers.js';
 
 const fileFrom = async (url) => new File([await (await fetch(url)).blob()], url.slice(url.lastIndexOf('/') + 1));
 
@@ -35,7 +36,7 @@ async function save(project) {
   await project.saveProject();
   const blob = await (await fetch(await saved)).blob();
   vi.restoreAllMocks();
-  return new File([blob], 'saved.phosphor');
+  return new File([blob], 'saved.pho');
 }
 
 const snapshot = (project) => ({
@@ -120,6 +121,7 @@ describe('the old form', () => {
   afterEach(() => vi.restoreAllMocks());
   // The form's word, under the gzip a saved file has.
   const magicOf = async (blob) => {
+    if (blob.size > 8 && (await blob.slice(1, 4).text()) === 'PNG') blob = new Blob([projectChunkOf(new Uint8Array(await blob.arrayBuffer()))]); // a .pho: the project inside
     const [a, b] = new Uint8Array(await blob.slice(0, 2).arrayBuffer());
     const plain = a === 0x1f && b === 0x8b ? await gunzipped(blob, Infinity) : blob;
     return new TextDecoder().decode(await plain.slice(0, 8).arrayBuffer());
@@ -260,5 +262,58 @@ describe('a broken file', () => {
     expect(project.image).toBe(null);
     expect(project.documentId).toBe(null);
     expect(project.savedToFile).toBe(false);
+  });
+});
+
+describe('a saved project is a .pho', () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  // A PNG's pixels, as the browser reads them.
+  async function pixels(file) {
+    const bitmap = await createImageBitmap(file);
+    const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+    ctx.drawImage(bitmap, 0, 0);
+    return [...ctx.getImageData(0, 0, bitmap.width, bitmap.height).data];
+  }
+
+  test('a saved project is a PNG that opens as the same drawing', async () => {
+    const { project } = await createTestApp();
+    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+    project.typeAt(3, 3, 'Z', { fg: '#ffffff', bg: '#000000' });
+    project.commitEdit();
+    await settle(project);
+    const before = cellsKey(project);
+    const file = await save(project);
+    expect([...new Uint8Array(await file.slice(0, 8).arrayBuffer())]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
+    project.clearImage();
+    await project.loadProject(file);
+    await settle(project);
+    expect(cellsKey(project)).toEqual(before);
+    expect([project.filename, project.fileExt]).toEqual(['saved', 'pho']);
+  });
+
+  test('a .pho with no project chunk says it is not a project', async () => {
+    const { project } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 2;
+    const png = await new Promise((resolve) => canvas.toBlob(resolve));
+    const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    await project.loadProject(new File([png], 'x.pho'));
+    expect(alert).toHaveBeenCalledTimes(1);
+  });
+
+  test('a save from inside an art layer pictures the whole drawing and stays inside the art layer', async () => {
+    const { project } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+    project.typeAt(1, 1, 'X', { fg: '#00ff00' });
+    project.commitEdit();
+    const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 4, 4], art: { cols: 1, rows: 1, cells: [[0, 'A', null, '#ff0000']] } }));
+    await settle(project);
+    expect(project.enterArt(key)).toBe(true);
+    const inside = await pixels(await save(project));
+    expect(project.artInside).toBe(key);
+    expect(inside).toEqual(await pixels(await save(project)));
   });
 });
