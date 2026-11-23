@@ -8,15 +8,16 @@ test('save a project and load it back through the file input', async ({ page }) 
   await settled(page);
   const before = await store(page, 'project', (p) => JSON.stringify(p.cells.map((c) => c.char + c.fg.hex + c.bg.hex)));
 
-  const download = await saveAs(page, 'Save project (.phosphor)');
-  expect(download.suggestedFilename()).toMatch(/^gradient-\d{8}-\d{6}\.phosphor$/);
+  const download = await saveAs(page, 'Save project (.pho)');
+  expect(download.suggestedFilename()).toMatch(/^gradient-\d{8}-\d{6}\.pho$/);
   const path = await download.path();
+  expect((await (await import('node:fs/promises')).readFile(path)).subarray(1, 4).toString()).toBe('PNG'); // a .pho is a PNG
 
   page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'New project' }).click();
   await expect(zeroState(page)).toBeAttached();
   expect(await store(page, 'project', (p) => p.image)).toBe(null);
-  await imageInput(page).setInputFiles({ name: 'gradient.phosphor', mimeType: 'application/octet-stream', buffer: await (await import('node:fs/promises')).readFile(path) });
+  await imageInput(page).setInputFiles({ name: 'gradient.pho', mimeType: 'image/png', buffer: await (await import('node:fs/promises')).readFile(path) });
   await settled(page);
   expect(await store(page, 'project', (p) => JSON.stringify(p.cells.map((c) => c.char + c.fg.hex + c.bg.hex)))).toBe(before);
 });

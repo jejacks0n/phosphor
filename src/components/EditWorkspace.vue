@@ -54,7 +54,7 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
 
 // The file chooser: the start screen's button and Cmd/Ctrl+O (the workspace's openRequest) both open it, and what it
 // picks goes the way a dropped file does. A phone's picker greys out any file it can't match to the list, and it can't
-// match .phosphor (no type it knows), so on a touch screen there's no list; a file that isn't an image, a project or an
+// match .pho or .phosphor (no type it knows), so on a touch screen there's no list; a file that isn't an image, a project or an
 // art file says so when it fails to open.
 const chooser = ref(null);
 const touch = useMediaQuery('(pointer: coarse)');

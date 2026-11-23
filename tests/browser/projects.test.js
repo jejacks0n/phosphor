@@ -1,4 +1,4 @@
-// .phosphor projects in and out: every fixture (real older files in examples/, the older layouts the
+// .pho and .phosphor projects in and out: every fixture (real older files in examples/, the older layouts the
 // loader migrates, one saved by the live site) loads to the same cells as its reference; save then
 // load gives back the same document; a broken file is reported and leaves the open one alone.
 import { describe, test, expect, afterEach, onTestFinished, vi } from 'vitest';

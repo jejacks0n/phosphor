@@ -128,8 +128,8 @@ test('the notice warns when the open art is unsaved, and not otherwise, and does
   await typeAt(person, 1, 1, 'mine');
   await expect(invitation(person).getByText(UNSAVED)).toBeVisible();
 
-  const download = await saveAs(person, 'Save project (.phosphor)');
-  expect(download.suggestedFilename()).toMatch(/^photo.*\.phosphor$/);
+  const download = await saveAs(person, 'Save project (.pho)');
+  expect(download.suggestedFilename()).toMatch(/^photo.*\.pho$/);
   await expect(invitation(person).getByText(UNSAVED)).toHaveCount(0);
   await expect(invitation(person)).toBeVisible();
   await invitation(person).getByRole('button', { name: 'Accept' }).click();
@@ -367,8 +367,8 @@ test('End room says it ends for everyone, ends it for artists too, and the art s
   expect(await store(artist, 'project', (p) => [!!p.image, p._sharing, p.canUndo])).toEqual([true, null, false]);
   expect(await chars(artist, 3, 6, 6)).toBe('k');
   await expect(artist.locator('.edit-toolbar .desktop-only button.primary').nth(3)).toBeEnabled();   // an ordinary document
-  const download = await saveAs(artist, 'Save project (.phosphor)');
-  expect(download.suggestedFilename()).toMatch(/^neon harbor.*\.phosphor$/);
+  const download = await saveAs(artist, 'Save project (.pho)');
+  expect(download.suggestedFilename()).toMatch(/^neon harbor.*\.pho$/);
 });
 
 test('paused: the layer shows and takes presses, and scrolling and zoom still work', async ({ page: host, context }) => {
@@ -678,14 +678,14 @@ test('a project saved by an artist opens as an ordinary project, with no names i
   await typeAt(host, 2, 2, 'h');
   await typeAt(artist, 3, 3, 'a');
   await expect.poll(() => chars(artist, 2, 2, 2)).toBe('h');
-  const download = await saveAs(artist, 'Save project (.phosphor)');
+  const download = await saveAs(artist, 'Save project (.pho)');
   const file = await readFile(await download.path());
   const text = file.toString('latin1');
   for (const name of ['tin_owl', 'ansi-fan', ARTIST.id, member().id]) expect(text).not.toContain(name);
 
   const fresh = await (await otherBrowser(browser)).newPage();
   await fresh.goto('/');
-  await imageInput(fresh).setInputFiles({ name: 'ours.phosphor', mimeType: 'application/octet-stream', buffer: file });
+  await imageInput(fresh).setInputFiles({ name: 'ours.pho', mimeType: 'image/png', buffer: file });
   await settled(fresh);
   expect(await chars(fresh, 2, 2, 2)).toBe('h');
   expect(await chars(fresh, 3, 3, 3)).toBe('a');

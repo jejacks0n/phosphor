@@ -1,4 +1,4 @@
-// A drawing's file id (project.fileId): made with the drawing, carried by its .phosphor files and kept by opening them
+// A drawing's file id (project.fileId): made with the drawing, carried by its .pho and .phosphor files and kept by opening them
 // (autosave's restore: autosave.test.js), and never sent to a room.
 import { test, expect, vi, afterEach } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
@@ -6,7 +6,7 @@ import { goodFileId, readProject, writeProject, projectChunkOf } from '@/documen
 
 afterEach(() => vi.restoreAllMocks());
 
-// The .phosphor file saveProject downloads.
+// The .pho file saveProject downloads.
 async function saved(project) {
   const spy = vi.spyOn(URL, 'createObjectURL');
   await project.saveProject();

@@ -23,10 +23,10 @@ vi.mock('@/document/autosaveStore', { spy: true });
 
 const GRADIENT = '/tests/fixtures/images/gradient.png';
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
-const BROKEN = 'Autosave is not supported in this browser. Please save a .phosphor file to protect your work.';
+const BROKEN = 'Autosave is not supported in this browser. Please save a .pho file to protect your work.';
 const COULD_NOT_OPEN = 'Could not reopen that project.';
 const STORAGE_FULL = 'Browser storage was full. Your oldest saved version was removed to make room.';
-const STORAGE_FULL_STILL = 'Browser storage is full. This project could not be saved even after clearing old versions. Please save a .phosphor file.';
+const STORAGE_FULL_STILL = 'Browser storage is full. This project could not be saved even after clearing old versions. Please save a .pho file.';
 const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
 

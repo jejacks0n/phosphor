@@ -23,10 +23,12 @@ const fileBytes = (page, name) => page.evaluate(async (name) => {
   const handle = await (await navigator.storage.getDirectory()).getFileHandle(name);
   return Array.from(new Uint8Array(await (await handle.getFile()).arrayBuffer()));
 }, name);
-const save = (page) => page.getByRole('button', { name: 'Save project (.phosphor)' }).click();
+const save = (page) => page.getByRole('button', { name: 'Save project (.pho)' }).click();
 const saved = (page) => expect.poll(() => store(page, 'project', (p) => !p.isDirty)).toBe(true);
 
-test('a project opened with Cmd/Ctrl+O saves back over its file, asking once a page; Save As asks where', async ({ page }) => {
+// An opened .phosphor is never written over: its first Save asks where, with name.pho suggested, and the later Saves
+// write over that .pho, asking the browser's permission once a page.
+test('an old .phosphor opened with Cmd/Ctrl+O asks on its first Save, then saves over the .pho; Save As asks where', async ({ page }) => {
   await page.goto('/');
   await page.evaluate(async (base64) => {
     const writable = await (await (await navigator.storage.getDirectory()).getFileHandle('opened.phosphor', { create: true })).createWritable();
@@ -44,39 +46,39 @@ test('a project opened with Cmd/Ctrl+O saves back over its file, asking once a p
   await settled(page);
   await save(page);
   await saved(page);
-  await expect(page.locator('dialog')).toHaveCount(0); // no save dialog
-  expect(await asked(page)).toEqual({ open: 1, save: 0, permission: 1 });
-  const first = await fileBytes(page, 'opened.phosphor');
-  expect(first).not.toEqual(original);
-  expect(first.slice(0, 2)).toEqual([0x1f, 0x8b]); // a project file, gzipped as Save project writes it
+  await expect(page.locator('dialog')).toHaveCount(0); // no save dialog of the app's own: the browser's picker asked
+  expect(await asked(page)).toEqual({ open: 1, save: 1, permission: 0 });
+  expect(await fileBytes(page, 'opened.phosphor')).toEqual(original); // the old file is left as it was
+  const first = await fileBytes(page, 'as-opened.pho');
+  expect(first.slice(0, 8)).toEqual([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]); // a .pho is a PNG
 
   await page.keyboard.insertText('!');
   await settled(page);
   await save(page);
   await saved(page);
-  expect((await asked(page)).permission).toBe(1); // given for this page
-  expect(await fileBytes(page, 'opened.phosphor')).not.toEqual(first);
+  expect(await asked(page)).toEqual({ open: 1, save: 1, permission: 1 }); // the .pho written over: given for this page
+  expect(await fileBytes(page, 'as-opened.pho')).not.toEqual(first);
 
   // A reload keeps the file it's saved to; the browser asks again before the first save.
   await page.reload();
-  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('opened');
+  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('as-opened');
   await settled(page);
   await editAt(page, 2, 2);
   await page.keyboard.insertText('back');
   await settled(page);
-  const before = await fileBytes(page, 'opened.phosphor');
+  const before = await fileBytes(page, 'as-opened.pho');
   await save(page);
   await saved(page);
   expect(await asked(page)).toEqual({ open: 0, save: 0, permission: 1 });
-  expect(await fileBytes(page, 'opened.phosphor')).not.toEqual(before);
+  expect(await fileBytes(page, 'as-opened.pho')).not.toEqual(before);
 
   await page.keyboard.press('Escape');
   await page.keyboard.press('ControlOrMeta+Shift+s');
-  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('as-opened');
+  await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('as-as-opened');
   expect((await asked(page)).save).toBe(1);
 });
 
-test('a project the installed app is launched with (a file double-clicked) opens and saves back over its file', async ({ page }) => {
+test('a project the installed app is launched with (a file double-clicked) opens, and its Save writes a .pho beside it', async ({ page }) => {
   // Chromium's own launchQueue, read-only, stood in for: a page opened by a launch, its consumer called here.
   await page.addInitScript(() => Object.defineProperty(window, 'launchQueue', { value: { setConsumer: (take) => { window.launch = take; } } }));
   await page.goto('/');
@@ -96,6 +98,7 @@ test('a project the installed app is launched with (a file double-clicked) opens
   await settled(page);
   await save(page);
   await saved(page);
-  expect(await asked(page)).toEqual({ open: 0, save: 0, permission: 1 });
-  expect(await fileBytes(page, 'launched.phosphor')).not.toEqual(original);
+  expect(await asked(page)).toEqual({ open: 0, save: 1, permission: 0 });
+  expect(await fileBytes(page, 'launched.phosphor')).toEqual(original); // never written over
+  expect((await fileBytes(page, 'as-launched.pho')).slice(1, 4)).toEqual([0x50, 0x4e, 0x47]);
 });

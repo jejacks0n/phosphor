@@ -143,12 +143,12 @@ function fontFor(text, name, blocks, lines, sets, width, nine) {
 export const useProjectStore = defineStore('project', {
   state: () => ({
     image: shallowRef(null),
-    imageBuffer: null, // the image's encoded bytes, saved into .phosphor files
+    imageBuffer: null, // the image's encoded bytes, saved into .pho files
     documentId: null, // who the document is to autosave (useAutosave)
     fileId: null, // the drawing, across its saved files and autosave: what this browser keeps for it is kept under it
-    savedToFile: false, // saved to, or opened from, a .phosphor file at least once (an export can't reopen as a project)
+    savedToFile: false, // saved to, or opened from, a .pho or .phosphor file at least once (an export can't reopen as a project)
     asOpened: false, // what's open is a file as it opened, with no change since: autosave keeps it as the As opened version at the first
-    filePath: null,     // desktop: the .phosphor file it was opened from or last saved to, which Save writes over
+    filePath: null,     // desktop: the file it was opened from or last saved to, which Save writes over when it's a .pho
     fileHandle: null,   // web, where the browser has savesInPlace: the same, as the browser's handle to it (marked raw)
     imageIsWorkingCopy: false, // the image is a working-size copy (after a Bake or an Into-the-picture merge), not the one loaded
     ...settingsState(),

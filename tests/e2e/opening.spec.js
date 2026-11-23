@@ -42,9 +42,9 @@ test('two tabs: changing a setting in one leaves the other tab\'s document alone
 
 // A project named ART.PHOSPHOR (upper-case extension) opens: isProjectFile, in tests/unit/project-io.test.js.
 
-test('on a computer the file picker offers images, SVG files, .phosphor files and art files', async ({ page }) => {
+test('on a computer the file picker offers images, SVG files, .pho and .phosphor files and art files', async ({ page }) => {
   await page.goto('/');
-  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.svg,.phosphor,.ans,.utf8ans,.asc,.txt,.nfo,.diz,.xb');
+  await expect(imageInput(page)).toHaveAttribute('accept', 'image/*,.svg,.pho,.phosphor,.ans,.utf8ans,.asc,.txt,.nfo,.diz,.xb');
 });
 
 test.describe('on a phone', () => {

@@ -1,4 +1,4 @@
-// .phosphor read/write: round-trips, and reads older files (examples/) the same way the app always has.
+// Project read/write (the .phosphor form, and the .pho PNG around it): round-trips, and reads older files (examples/) the same way the app always has.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -7,7 +7,7 @@ import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
 import { indexedPng } from '../../src/lib/PngFile.js';
 import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
-test('.phosphor read/write: round-trips, and reads older files (examples/) the same way the app always has', async () => {
+test('project read/write: round-trips, and reads older files (examples/) the same way the app always has', async () => {
   assert.equal(PROJECT_EXTENSION, '.pho');
 
   const bytes = (n, seed) => Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 255).buffer;

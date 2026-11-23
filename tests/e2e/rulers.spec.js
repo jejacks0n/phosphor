@@ -149,12 +149,12 @@ test('guides come back after a reload, and with the saved file', async ({ page }
   expect(await shown(page)).toEqual(kept);
   await expect(page.locator('.guide.v')).toHaveCount(1);
 
-  const path = await (await saveAs(page, 'Save project (.phosphor)')).path();
+  const path = await (await saveAs(page, 'Save project (.pho)')).path();
   page.on('dialog', (d) => d.accept());
   await page.getByRole('button', { name: 'New project' }).click();
   await expect(zeroState(page)).toBeAttached();
   expect(await shown(page)).toEqual({ guides: [], zero: { x: 0, y: 0 } });
-  await imageInput(page).setInputFiles({ name: 'gradient.phosphor', mimeType: 'application/octet-stream', buffer: await readFile(path) });
+  await imageInput(page).setInputFiles({ name: 'gradient.pho', mimeType: 'image/png', buffer: await readFile(path) });
   await settled(page);
   expect(await shown(page)).toEqual(kept);
 });
