@@ -425,14 +425,17 @@ test('while a swatch is dragged a dashed placeholder shows where it would land, 
   expect(getComputedStyle(holder).borderTopStyle).toBe('dashed');
   expect(getComputedStyle(holder).backgroundColor).toBe('rgba(0, 0, 0, 0)');
 
-  cells()[2].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
-  await nextTick();
+  // Each over a swatch at rest: the ones the placeholder passes slide, and one sliding is no place to land.
+  const over = async (k) => {
+    await vi.waitFor(() => expect(host.querySelector('div.swatch.shifting')).toBe(null));
+    cells()[k].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+    await nextTick();
+  };
+  await over(2);
   expect(shown()).toBe('#222222 #333333 here');
-  cells()[0].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
-  await nextTick();
+  await over(0);
   expect(shown()).toBe('here #222222 #333333');
-  cells()[1].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
-  await nextTick();
+  await over(1);
   expect(shown()).toBe('#222222 here #333333');
 
   const count = emitted.length;
@@ -441,6 +444,33 @@ test('while a swatch is dragged a dashed placeholder shows where it would land, 
   expect(shown()).toBe('#111111 #222222 #333333');
   expect(emitted.length).toBe(count);
   expect(list.value).toBe('#111111 #222222 #333333');
+});
+
+test('a drop leaves the swatches the preview showed, none redrawn in another color, and swatches the placeholder passes slide', async () => {
+  await page.viewport(1200, 800);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1200));
+  const { list } = await mount('#111111 #222222 #333333 #444444');
+  gridOf(4);
+  const cells = () => [...host.querySelectorAll('div.swatches div.swatch')];
+  expect(getComputedStyle(swatches()[1]).transitionProperty).not.toMatch(/\ball\b|background/); // a color changes at once
+
+  swatches()[0].dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
+  await vi.waitFor(() => expect(host.querySelector('div.swatch.placeholder')).not.toBe(null));
+  cells()[2].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+  await nextTick();
+  expect(cells()[0].classList.contains('shifting')).toBe(true); // #222222 slides from where it was
+  // Over a swatch still sliding nothing changes: the pointer would find it on its way, not where it goes.
+  cells()[0].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+  await nextTick();
+  expect(cells()[2].classList.contains('placeholder')).toBe(true);
+
+  const shown = cells();
+  swatches()[2].dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true }));
+  await nextTick();
+  expect(list.value).toBe('#222222 #333333 #111111 #444444');
+  expect(cells().every((cell, k) => cell === shown[k])).toBe(true);
+  expect(swatches().map((s) => s.style.backgroundColor)).toEqual(['rgb(34, 34, 34)', 'rgb(51, 51, 51)', 'rgb(17, 17, 17)', 'rgb(68, 68, 68)']);
 });
 
 test('a swatch dragged near the swatches\' top or bottom, or past it, scrolls them, and the scrolling stops with the drag', async () => {
