@@ -2,12 +2,13 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { readProject, writeProject, gzipped, gunzipped, fileStem, timestamped, isProjectFile, goodFileId, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
+import { readProject, writeProject, gzipped, gunzipped, fileStem, timestamped, isProjectFile, isSavedForm, withProject, projectChunkOf, startsAsProject, goodFileId, PROJECT_EXTENSION } from '../../src/document/projectIO.js';
 import { EMPTY_BASE, withPins } from '../../src/document/baseRecords.js';
+import { indexedPng } from '../../src/lib/PngFile.js';
 import { MAX_COLS, maxRowsBeside } from '../../src/lib/Cells.js';
 
 test('.phosphor read/write: round-trips, and reads older files (examples/) the same way the app always has', async () => {
-  assert.equal(PROJECT_EXTENSION, '.phosphor');
+  assert.equal(PROJECT_EXTENSION, '.pho');
 
   const bytes = (n, seed) => Uint8Array.from({ length: n }, (_, i) => (i * 31 + seed) & 255).buffer;
   const imageBuffer = bytes(100, 1);
@@ -90,6 +91,10 @@ test('a project is a file named .phosphor, in any case: ART.PHOSPHOR opens', () 
   assert.ok(isProjectFile('ART.PHOSPHOR'));
   assert.ok(isProjectFile('art.Phosphor'));
   assert.ok(isProjectFile('live-main.phosphor'));
+  assert.ok(isProjectFile('a.PHO'));
+  assert.ok(isProjectFile('a.phosphor'));
+  assert.ok(isSavedForm('a.pho'));
+  assert.ok(!isSavedForm('a.phosphor'));
   assert.ok(!isProjectFile('art.phosphor.png'));
   assert.ok(!isProjectFile('art.ans'));
 });
@@ -280,4 +285,31 @@ test('unzipping stops past the most it may make', async () => {
   const big = await gzipped(new Blob([new Uint8Array(100_000)]));
   assert.equal((await gunzipped(big, 100_000)).size, 100_000);
   await assert.rejects(gunzipped(big, 99_999), /too big/);
+});
+
+const projectIn = async () => {
+  const project = new Uint8Array(await (await gzipped(await writeProject({ settings: { cols: 80 }, imageBuffer: new ArrayBuffer(4), paintBlob: null, editCells: new Map() }))).arrayBuffer());
+  const png = await indexedPng(1, 1, new Uint8Array([0, 0, 0, 255]));
+  return { project, png, bytes: withProject(png, project) };
+};
+
+test('a .pho is a PNG with the project after IHDR, and reads back as the same project', async () => {
+  const { project, bytes } = await projectIn();
+  assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  assert.equal(new TextDecoder().decode(bytes.subarray(37, 41)), 'phPr');
+  assert.ok(startsAsProject(bytes.subarray(0, 41)));
+  assert.deepEqual(projectChunkOf(bytes), project);
+  assert.deepEqual(await readProject(new Blob([bytes])), await readProject(new Blob([project])));
+});
+
+test('a PNG with no project, a bad CRC or a cut-off chunk is no project', async () => {
+  const { png, bytes } = await projectIn();
+  const bad = (b) => assert.rejects(readProject(new Blob([b])), { code: 'INVALID_PROJECT' });
+  await bad(png);
+  const flipped = bytes.slice();
+  flipped[45] ^= 1;
+  await bad(flipped);
+  await bad(bytes.slice(0, 41 + 20));
+  assert.ok(!startsAsProject(png.subarray(0, 41)));
+  assert.ok(!startsAsProject(bytes.subarray(0, 10)));
 });

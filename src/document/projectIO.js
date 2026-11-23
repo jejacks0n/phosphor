@@ -17,13 +17,45 @@ import { goodLayers } from './layerInfo.js';
 import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
 import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
+import { chunk, crc32 } from '../lib/PngFile.js';
 import { cleanFilterOptions } from '../plugins/filters.js';
 
-export const PROJECT_EXTENSION = '.phosphor';
-export const isProjectFile = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
+export const PROJECT_EXTENSION = '.pho', OLD_PROJECT_EXTENSION = '.phosphor', PROJECT_MIME = 'image/x-phosphor';
+export const isProjectFile = (name) => [PROJECT_EXTENSION, OLD_PROJECT_EXTENSION].some((ext) => name.toLowerCase().endsWith(ext));
+// What Save may write over: a .phosphor opened is saved as a new .pho beside it.
+export const isSavedForm = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
 const MAGIC_HEADER = 'PHOSPHOR', STACK_HEADER = 'PHOSPHR2';
 // The most a project may be unzipped: a file, or a host's project for an artist that doesn't trust it.
 export const MOST_PROJECT_BYTES = 256 * 1024 * 1024;
+
+// A .pho is a PNG whose image is the drawing, with the project in a private phPr chunk right after IHDR (the signature
+// is 8 bytes and IHDR's chunk 25, so it starts at 33 and its type is at 37).
+const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10], PROJECT_CHUNK = 'phPr', CHUNK_AT = 33;
+const isPng = (bytes) => bytes.length >= 8 && PNG_SIGNATURE.every((b, i) => bytes[i] === b);
+const typeAt = (bytes, at) => String.fromCharCode(...bytes.subarray(at, at + 4));
+
+export function withProject(png, project) {
+  const piece = chunk(PROJECT_CHUNK, project), out = new Uint8Array(png.length + piece.length);
+  out.set(png.subarray(0, CHUNK_AT));
+  out.set(piece, CHUNK_AT);
+  out.set(png.subarray(CHUNK_AT), CHUNK_AT + piece.length);
+  return out;
+}
+
+// The head of a file (its first 41 bytes) says it's a .pho.
+export const startsAsProject = (head) => head.length >= 41 && isPng(head) && typeAt(head, 37) === PROJECT_CHUNK;
+
+// The project a .pho's phPr chunk holds. It throws for a PNG with no such chunk after IHDR, a chunk past the end, or a
+// bad CRC.
+export function projectChunkOf(bytes) {
+  if (!startsAsProject(bytes.subarray(0, 41))) throw invalidProject();
+  const length = new DataView(bytes.buffer, bytes.byteOffset, bytes.length).getUint32(33);
+  const end = 41 + length;
+  if (end + 4 > bytes.length) throw invalidProject();
+  const crc = new DataView(bytes.buffer, bytes.byteOffset, bytes.length).getUint32(end);
+  if (crc32(bytes.subarray(37, end)) !== crc) throw invalidProject();
+  return bytes.slice(41, end);
+}
 
 export const gzipped = (blob) => new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();
 
@@ -96,6 +128,7 @@ export async function writeProject({ settings, imageBuffer, paintBlob, baseBlob 
 // each cells layer's above the bottom by id, { editCells, paintBuffer (or null) }.
 export async function readProject(file) {
   let buffer = await file.arrayBuffer();
+  if (isPng(new Uint8Array(buffer, 0, Math.min(8, buffer.byteLength)))) buffer = projectChunkOf(new Uint8Array(buffer)).buffer;
   const start = new Uint8Array(buffer, 0, Math.min(2, buffer.byteLength));
   if (start[0] === 0x1f && start[1] === 0x8b) { // gzip's mark: a saved file
     try {

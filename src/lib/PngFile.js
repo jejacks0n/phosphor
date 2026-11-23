@@ -7,13 +7,13 @@ const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   return n >>> 0;
 });
 
-function crc32(bytes) {
+export function crc32(bytes) {
   let crc = 0xffffffff;
   for (const byte of bytes) crc = CRC_TABLE[(crc ^ byte) & 255] ^ (crc >>> 8);
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-function chunk(type, data) {
+export function chunk(type, data) {
   const out = new Uint8Array(12 + data.length), view = new DataView(out.buffer);
   view.setUint32(0, data.length);
   out.set(Array.from(type, (c) => c.charCodeAt(0)), 4);
