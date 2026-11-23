@@ -1196,7 +1196,7 @@ the other way round. **Escape** closes it (in a field you type in, the field's o
 outside it or the **×** at the top right of the dialog. **↓** and **↑** walk the list.
 
 - **The List**: **This drawing** first (with no drawing open, **New drawings**: the palette the next drawing starts
-  with), then **Favorites** and **Library**, a search narrowing the rows by name or author, and **Get from Lospec** at the
+  with), then **Favorites** and **Library**, a search narrowing the rows by name or author, and **Search Lospec** at the
   foot. **Library** holds the palettes from Lospec that come with Phosphor; **Favorites** the ones you starred or got from
   Lospec, kept in this browser, newest first.
 - **The Details**: A palette's name and author, **Use this palette** (**In use** when its colors are the list, in the
@@ -1218,14 +1218,15 @@ outside it or the **×** at the top right of the dialog. **↓** and **↑** wal
   list (for Full color, the list kept from before). It's off for Limited count with no picture, and while the settings
   are locked. **Put back** undoes it. Any hand edit of the list, whether typed, picked, moved, imported or put back by
   its toast, ends **Put back**. Another drawing opening while the layer is open forgets it too.
-- **Get from Lospec**: A palette that isn't in the Library can be got: **Not here?** takes a palette's name
-  (`Sweetie 16`) or its lospec.com link, and **Get from Lospec** asks lospec.com for that one palette, and only when it's
-  pressed; opening the layer, browsing and using the Library ask nothing of anyone. The palette is kept under
-  Favorites, which then shows it first (one of more than 256 colors keeps its first 256, and says so). When Lospec has
-  no palette by that name, can't be reached, or answers with something that isn't a palette, the line under the field
-  says which and nothing is kept. In the browser a name Lospec doesn't have and Lospec out of reach get the same
-  message, since Lospec's answer for a missing palette is one the page isn't allowed to read; the desktop app asks
-  Lospec itself and tells them apart. Get changes nothing of the drawing, so it works while the settings are locked.
+- **Search Lospec**: A palette that isn't in the Library can be got: under **Not here? Search Lospec.**, the field takes
+  a palette's name (`Sweetie 16`) or its id (`sweetie-16`, a lospec.com link works too), and the search button asks
+  lospec.com for that one palette, and only when it's pressed; opening the layer, browsing and using the Library ask
+  nothing of anyone. The palette is kept under Favorites, which then shows it first (one of more than 256 colors keeps
+  its first 256, and says so). When Lospec has no palette by that name, can't be reached, or answers with something
+  that isn't a palette, the line under the field says which and nothing is kept. In the browser a name Lospec doesn't
+  have and Lospec out of reach get the same message, since Lospec's answer for a missing palette is one the page isn't
+  allowed to read; the desktop app asks Lospec itself and tells them apart. A search changes nothing of the drawing, so
+  it works while the settings are locked.
 - **While the Settings Are Locked** (in a room, as an artist): the editor, **Use this palette** and **Put back** are off,
   with the reason shown. A lock that comes while the layer is open turns them off.
 

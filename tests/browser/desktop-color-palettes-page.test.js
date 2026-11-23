@@ -79,7 +79,7 @@ test('in the desktop app a palette Lospec doesn\'t have says so, and Lospec out 
   await vi.waitFor(() => expect(problem()?.textContent).toBe('Lospec has no palette called sweetie-17.'));
   lospecPalette.mockResolvedValue({ failed: 'unreachable' });
   await get('sweetie 17');
-  await vi.waitFor(() => expect(problem()?.textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or link, or try again."));
+  await vi.waitFor(() => expect(problem()?.textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or id, or try again."));
   expect(favoritesLabel()).toBe('Favorites · 0');
   expect(fetch).not.toHaveBeenCalled();
 });

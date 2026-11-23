@@ -368,16 +368,16 @@
     "fullColor": "Full color shows every color as it is, so it has no list of colors.",
     "replaced": "This drawing's colors were replaced.",
     "putBack": "Put back",
-    "notHere": "Not here?",
-    "getPlaceholder": "A palette's name or lospec.com link",
-    "get": "Get from Lospec",
-    "getting": "Getting…",
+    "notHere": "Not here? Search Lospec.",
+    "getPlaceholder": "A palette's name or id",
+    "get": "Search Lospec",
+    "getting": "Searching Lospec…",
     "cut": "Kept the first 256 of its {n} colors.",
     "errors": {
       "notFound": "Lospec has no palette called {name}.",
-      "unreachable": "Couldn't get {name} from Lospec. Check its name or link, or try again.",
+      "unreachable": "Couldn't get {name} from Lospec. Check its name or id, or try again.",
       "notPalette": "That isn't a palette Phosphor can read.",
-      "noName": "Type a palette's name or paste its lospec.com link."
+      "noName": "Type a palette's name or id."
     }
   },
   "colorList": {

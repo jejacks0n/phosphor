@@ -210,3 +210,26 @@ test('with no drawing and VGA chosen, the Colors page shows VGA\'s 256 swatches,
   expect(host.querySelector('.swatches .swatch').style.backgroundColor).not.toBe('');
   close();
 });
+
+// The foot holds None only where it's offered (not the PIXEL view's foreground), and the box keeps its height either way.
+test('the foot is as tall without None as with it, so the box keeps its height between the slots', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  workspace.editorTab = 'input';
+  const footOf = async (slotName) => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const app = createApp(ColorsPage, { slotName }).use(i18n);
+    app.mount(host);
+    await nextTick();
+    const foot = host.querySelector('div.foot');
+    const out = { none: !!foot.querySelector('.swatch.none'), height: foot.getBoundingClientRect().height };
+    app.unmount();
+    host.remove();
+    return out;
+  };
+  const fg = await footOf('fg'), bg = await footOf('bg');
+  expect([fg.none, bg.none]).toEqual([false, true]);
+  expect(fg.height).toBe(bg.height);
+});

@@ -368,16 +368,16 @@
     "fullColor": "Les couleurs réelles montrent chaque couleur telle qu'elle est : elles n'ont pas de liste de couleurs.",
     "replaced": "Les couleurs de ce dessin ont été remplacées.",
     "putBack": "Remettre",
-    "notHere": "Pas ici ?",
-    "getPlaceholder": "Le nom d'une palette ou son lien lospec.com",
-    "get": "Prendre sur Lospec",
-    "getting": "Récupération…",
+    "notHere": "Pas ici ? Cherchez sur Lospec.",
+    "getPlaceholder": "Le nom ou l'identifiant d'une palette",
+    "get": "Chercher sur Lospec",
+    "getting": "Recherche sur Lospec…",
     "cut": "Les 256 premières de ses {n} couleurs ont été gardées.",
     "errors": {
       "notFound": "Lospec n'a pas de palette nommée {name}.",
-      "unreachable": "Impossible de prendre {name} sur Lospec. Vérifiez son nom ou son lien, ou réessayez.",
+      "unreachable": "Impossible de prendre {name} sur Lospec. Vérifiez son nom ou son identifiant, ou réessayez.",
       "notPalette": "Ce n'est pas une palette que Phosphor sait lire.",
-      "noName": "Tapez le nom d'une palette ou collez son lien lospec.com."
+      "noName": "Tapez le nom ou l'identifiant d'une palette."
     }
   },
   "colorList": {

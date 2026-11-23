@@ -310,6 +310,11 @@ div.color-popover div.foot {
   color: var(--text-muted);
 }
 
+/* As tall as None's swatch whether None is offered or not, so the box doesn't change height between the slots. */
+div.color-popover div.foot {
+  min-height: 16px;
+}
+
 div.head button {
   padding: 3px 8px;
   border: none;

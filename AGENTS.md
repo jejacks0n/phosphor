@@ -68,7 +68,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
 - The color layer ([docs/layers.md](docs/layers.md), The Color Layer): `src/components/ColorLayer.vue` (the box under the
   color pair, tabs Colors | Palettes), framed by `src/components/FloatingPanel.vue` (the character palette layer uses it
   too: small, floating, dialog and whole-window sizes); `ColorsPage.vue` (the picker) and `ColorPalettesPage.vue` (This
-  drawing, Favorites, Library, Get from Lospec, Use and Put back), with `ColorList.vue` (the Custom color list's editor in
+  drawing, Favorites, Library, Search Lospec, Use and Put back), with `ColorList.vue` (the Custom color list's editor in
   This drawing: swatches, the picked color, Import and Export) and `src/lib/colorList.js` (a list read, written and
   changed); `src/components/ArrowIcon.vue` draws every arrow (no arrow glyphs in templates or strings); favorites and the
   shipped set, `src/store/ColorLibraryStore.js` and `src/lib/colorPalettes.json`, written by `scripts/color-library.mjs`
@@ -91,7 +91,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   leaves them out. `desktop/` is the Electron side: `main.js` (the windows, the `app://phosphor/` origin it serves
   `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
   (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
-  `selfPass.js` (passes checked in Node), `lospec.js` (the Colors dialog's Get from Lospec: one palette asked of
+  `selfPass.js` (passes checked in Node), `lospec.js` (the Palettes page's Search Lospec: one palette asked of
   lospec.com by its slug), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
   saved and kept in Open Recent) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
   a close or quit). The page's side: `src/social/desktop.js` (the door to the preload),

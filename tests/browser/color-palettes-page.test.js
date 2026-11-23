@@ -442,15 +442,16 @@ test('Get asks nothing until pressed, then keeps the palette and chooses it', as
   library.toggle(SHIPPED.find((p) => p.name === 'Endesga 16'));
   await nextTick();
   const form = getForm();
-  expect(form.querySelector('span').textContent).toBe('Not here?');
+  expect(form.querySelector('span').textContent).toBe('Not here? Search Lospec.');
   const field = form.querySelector('input.get-name[type=text]');
-  expect(field.placeholder).toBe("A palette's name or lospec.com link");
-  expect(form.querySelector('button[type=submit]').textContent).toBe('Get from Lospec');
+  expect(field.placeholder).toBe("A palette's name or id");
+  expect(form.querySelector('button[type=submit]').getAttribute('aria-label')).toBe('Search Lospec'); // a search icon
+  expect(form.querySelector('button[type=submit] svg')).not.toBe(null);
   expect(fetch).not.toHaveBeenCalled();
   await search('endesga'); // a search that would hide what's got is cleared
   field.focus();
   await get('Lospec Five');
-  expect(form.querySelector('button[type=submit]').textContent).toBe('Getting…');
+  expect(form.querySelector('button[type=submit]').getAttribute('aria-label')).toBe('Searching Lospec…');
   await vi.waitFor(() => expect(title()).toBe('Lospec Five'));
   expect(fetch).toHaveBeenCalledTimes(1);
   expect(fetch.mock.calls[0][0]).toBe('https://lospec.com/palette-list/lospec-five.json');
@@ -471,7 +472,7 @@ test('nothing typed, or only punctuation, asks nothing and says what to type', a
   await mount();
   for (const typed of ['', '   ', '!!! ---', 'https://example.com/palette-list/sweetie-16']) {
     await get(typed);
-    expect(problem().textContent).toBe("Type a palette's name or paste its lospec.com link.");
+    expect(problem().textContent).toBe("Type a palette's name or id.");
     expect(problem().getAttribute('role')).toBe('alert');
   }
   expect(fetch).not.toHaveBeenCalled();
@@ -481,7 +482,7 @@ test('a palette Lospec doesn\'t have, Lospec out of reach and an answer that isn
   await mount();
   const cases = [
     [answer({ error: 'file not found' }, 404), 'Lospec has no palette called sweetie-17.'],
-    [() => { throw new TypeError('Failed to fetch'); }, "Couldn't get sweetie-17 from Lospec. Check its name or link, or try again."],
+    [() => { throw new TypeError('Failed to fetch'); }, "Couldn't get sweetie-17 from Lospec. Check its name or id, or try again."],
     [() => new Response('<!DOCTYPE html><title>Lospec</title>'), "That isn't a palette Phosphor can read."],
   ];
   for (const [failure, says] of cases) {
@@ -489,7 +490,7 @@ test('a palette Lospec doesn\'t have, Lospec out of reach and an answer that isn
     await get('https://lospec.com/palette-list/sweetie-17');
     await vi.waitFor(() => expect(problem()?.textContent).toBe(says));
     expect(getForm().nextElementSibling).toBe(problem()); // under the field
-    expect(getForm().querySelector('button[type=submit]').textContent).toBe('Get from Lospec');
+    expect(getForm().querySelector('button[type=submit]').getAttribute('aria-label')).toBe('Search Lospec');
     expect(getForm().querySelector('input.get-name').value).toBe('https://lospec.com/palette-list/sweetie-17'); // kept, to try again
     expect(Object.keys(listed())).toContain('Favorites · 0');
   }
@@ -503,7 +504,7 @@ test('a failure Get doesn\'t know reads as Lospec out of reach, never as a raw k
   vi.mocked(getPalette).mockRejectedValueOnce(new Error('changed'));
   await mount();
   await get('sweetie 17');
-  await vi.waitFor(() => expect(problem()?.textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or link, or try again."));
+  await vi.waitFor(() => expect(problem()?.textContent).toBe("Couldn't get sweetie-17 from Lospec. Check its name or id, or try again."));
   expect(Object.keys(listed())).toContain('Favorites · 0');
 });
 
@@ -693,6 +694,21 @@ test('two hundred colors scroll inside the details, the actions still on screen'
     expect(bottom(el)).toBeLessThanOrEqual(bottom(layer()) + 1);
   }
   expect(details().scrollHeight).toBeLessThanOrEqual(details().clientHeight + 1); // the details themselves don't scroll
+});
+
+test('a long author gives way to the palette\'s name: the name keeps its line whole, the author is cut short with all of it in its tooltip', async () => {
+  await browserPage.viewport(1300, 850); // the big size floats, its list at its narrowest
+  onTestFinished(() => browserPage.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1300));
+  await mount();
+  const name = row('Bubblegum 16').querySelector('div.name');
+  const [span, em] = name.children;
+  expect(em.textContent).toBe('🍍PineappleOnPizza🍍(Comissions Open)');
+  expect(span.scrollWidth).toBeLessThanOrEqual(span.clientWidth); // not cut
+  expect(span.getBoundingClientRect().height).toBeLessThan(20); // one line
+  expect(em.scrollWidth).toBeGreaterThan(em.clientWidth); // cut short
+  expect(em.title).toBe('🍍PineappleOnPizza🍍(Comissions Open)');
+  expect(name.getBoundingClientRect().right).toBeLessThanOrEqual(row('Bubblegum 16').getBoundingClientRect().right);
 });
 
 test('a kept palette whose slug is drawing is its own row, not This drawing', async () => {

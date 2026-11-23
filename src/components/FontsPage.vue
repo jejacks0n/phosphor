@@ -455,7 +455,7 @@ const exportPalettes = () => {
             :aria-label="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
             :title="t(filtersShown ? 'palette.fonts.foldFilters' : 'palette.fonts.showFilters')"
             @click="toggleFilters"
-        ><ArrowIcon shape="double" :turn="filtersShown ? 180 : 0"/></button>
+        ><ArrowIcon shape="double" :size="10" :turn="filtersShown ? 180 : 0"/></button>
         <input v-model="filter" type="search" :placeholder="t('palette.fonts.filterPlaceholder')" :aria-label="t('palette.fonts.filterAria')">
         <button :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         <input ref="file" type="file" :accept="FONT_FILES" hidden @change="onFile">
@@ -723,10 +723,11 @@ div.filters-head {
   height: 55px;
 }
 
-/* The double arrow beside the search, as the side panel's toggle */
+/* The double arrow beside the search, the size the typed « » it replaced was, in the middle of the row */
 div.top button.filters-toggle {
   display: flex;
   flex: none;
+  align-items: center;
   padding: 4px;
   border: none;
   background: none;
