@@ -316,7 +316,7 @@ test('the Characters note says what a vector layer converts', async () => {
   const id = project.addLayer('vector', 'edit');
   workspace.pickLayer(id);
   await mountPanel();
-  expect(sectionOf('Characters · Vector 1').textContent).toContain('Shapes and art layers on Vector 1 use these character settings when converted.');
+  expect(sectionOf('Characters · Vector 1').textContent).toContain('Controls how Vector 1 displays characters.');
 });
 
 test('Choose characters edits the picked layer', async () => {

@@ -108,7 +108,7 @@ const charsNote = computed(() => {
   const why = standIn(picked.value);
   if (why) return why;
   if (picked.value === 'base') return null;
-  return t(pickedKind.value === 'vector' ? 'panel.charsNoteVector' : 'panel.charsNote', { name: layerName(picked.value) });
+  return t('panel.charsNote', { name: layerName(picked.value) });
 });
 // The sections under Drawing, in order: the drawing's slider groups, the picked layer's Characters (every layer converts
 // something: the base its picture, a cells layer its paint, a vector layer its shapes), and only with the base picked the
