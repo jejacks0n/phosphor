@@ -11,7 +11,7 @@ flatten, bake) and expects them to mean what they mean there.
 
 She wants a photo of hers to come out as ANSI art that looks good on its own: the right style and palette, the right
 characters, smooth gradients instead of bands, then a few layers of paint, type and fills over it. Done is a PNG to
-post, an .ans that opens the same in a terminal, and a .phosphor file she can reopen next week and keep tuning.
+post, an .ans that opens the same in a terminal, and a .pho file she can reopen next week and keep tuning.
 
 ## What they bring
 
@@ -48,7 +48,7 @@ post, an .ans that opens the same in a terminal, and a .phosphor file she can re
 - Then 200 columns, rows from the shape again (about 13,000 cells for `photo.jpg`).
 - `tall.png` at 80 columns, as tall as the limits let it (up to 5,000 lines).
 - 4 layers at most: the base, two cells layers and one vector layer; 3 to 5 shapes; one art layer.
-- Exports: a .phosphor of a few hundred KB, an .ans under 100 KB.
+- Exports: a .pho of a few hundred KB, an .ans under 100 KB.
 
 ## Traits
 
@@ -69,7 +69,7 @@ script. Every section ends with Free time.
 ## Getting the picture in
 
 ### 1. Open my photo
-- Does: on the start screen, chooses `photo.jpg` with Choose a file (or drops it on the box that says "Drop an image, .phosphor, or ANSI file here").
+- Does: on the start screen, chooses `photo.jpg` with Choose a file (or drops it on the box that says "Drop an image, .pho, or ANSI file here").
 - Expects: it opens on ANSI as character art, 80 columns wide with its rows from the photo's shape, the photo filling
   the grid edge to edge (no dark strip of characters along the bottom line); LAYERS shows
   only Base, picked; the Characters section is titled "Characters · Base", with Picture · Base and Image filters
@@ -552,7 +552,7 @@ back, hide the base under it all, and export the .ans after each merge to see it
 - Rated: yes, wants a key for Export .ans
 
 ### 39. Save the project and reopen it
-- Does: presses Cmd+S, saves; starts a New project; opens the saved .phosphor with Choose a file.
+- Does: presses Cmd+S, saves; starts a New project; opens the saved .pho with Choose a file.
 - Expects: everything comes back: the picture and its sliders, the palette and Dither, each layer with its name, its
   eye, its paint and its own character settings, the vector layer's shapes with their gradients, the art layer, the
   SAUCE fields, Font name and Letter spacing among them; the display font doesn't (it's this browser's, not the

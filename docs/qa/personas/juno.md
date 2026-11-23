@@ -14,7 +14,7 @@ She wants an evening's session to run without a hitch: a room set up the way she
 behind a password, guests or not), people coming in and chatting, a regular invited to draw beside her, undo that takes
 back only her own strokes, a troll dealt with, a reload that doesn't drop anyone, the room handed to someone else and
 back, and at the end the numbers for the night and the art saved. Done is a room ended on purpose, with her art
-intact and saved as a .phosphor.
+intact and saved as a .pho.
 
 ## What they bring
 
@@ -354,7 +354,7 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
   `tin_owl` right away, and check the invitation comes again.
 - Rated: yes, wants Tab to the row's ⋯, then Enter on Back to watching
 
-**Free time:** she'd have `tin_owl` save the art as a .phosphor from their page (a project saved by an artist has no
+**Free time:** she'd have `tin_owl` save the art as a .pho from their page (a project saved by an artist has no
 names in it), press `tin_owl`'s cursor tag when it's off screen, and leave `tin_owl` invited and have them Exit (the
 invitation clears), then have them join again from the card (step 22 makes them an artist again).
 
@@ -466,7 +466,7 @@ comes back to her (a hand-over isn't a reconnect), undo a stroke she drew before
 
 ### 27. Save the night's art
 - Measured: save-art
-- Does: presses Cmd+S and saves; opens the .phosphor in a New project.
+- Does: presses Cmd+S and saves; opens the .pho in a New project.
 - Expects: the art as the room ended it, everyone's strokes in it; no names in the file; layers and settings as they
   were; nothing of the room left open. Takes `qa.memory`.
 - Probes: `again`: save twice and check the names differ; `interrupt`: reload before reopening and check "Pick up where

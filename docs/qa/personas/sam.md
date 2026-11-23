@@ -282,7 +282,7 @@ Animate off and check the .cast export goes away, and save the project and reope
 - Rated: yes, wants a key for each export
 
 ### 25. Save and reopen the project
-- Does: Cmd+S, saves; New project; opens the .phosphor.
+- Does: Cmd+S, saves; New project; opens the .pho.
 - Expects: the frames, holds, frames per second, cells that stay, the SAUCE fields and the size all come back; the
   font is this browser's.
 - Probes: `interrupt`: reload instead and check autosave brought it back; `undo-redo`: Cmd+Z after reopening does
