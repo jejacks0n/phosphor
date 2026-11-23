@@ -469,10 +469,11 @@ export const documentActions = {
     // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
     // before the system's save box comes up.
     // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside.
+    // Typed as bytes, as .phosphor's were: a browser could rename a download typed image/png to .png.
     const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
       const parts = await this.projectParts({ forFile: true });
       const project = new Uint8Array(await (await gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }))).arrayBuffer());
-      return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this.artDrawingCells()), project)], { type: 'image/png' });
+      return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this.artDrawingCells()), project)], { type: 'application/octet-stream' });
     });
     if (DESKTOP) {
       const bytes = new Uint8Array(await blob.arrayBuffer());
