@@ -470,3 +470,31 @@ test('with the cursor placed, ↓ walks from a vector row onto a cells row, the 
     textarea.remove();
   }
 });
+
+// A row clicked keeps no such hold: typing takes the keyboard back once a click picks a cells row from a vector one, as
+// it does for any button clicked.
+test('with the cursor placed, a click on a cells row from a vector one hands focus back to typing', async () => {
+  const textarea = document.body.appendChild(document.createElement('textarea'));
+  textarea.dataset.textInput = '';
+  let typingApp = null;
+  try {
+    const { project, workspace } = await mount(({ project, workspace }) => {
+      const vector = project.addLayer('vector', 'edit');
+      workspace.setActiveTool('text');
+      workspace.textCursor = { col: 3, row: 2 };
+      workspace.pickLayer(vector);
+    });
+    typingApp = createApp({ setup() { useTextTool(project, workspace, ref(textarea)); return () => null; } }).use(getActivePinia()).use(i18n);
+    typingApp.mount(document.createElement('div'));
+    window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
+    pickOf(1).focus(); // where the press puts focus
+    pickOf(1).click();
+    window.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(workspace.editorTab).toBe('output');
+    expect(document.activeElement).toBe(textarea);
+  } finally {
+    typingApp?.unmount();
+    textarea.remove();
+  }
+});
