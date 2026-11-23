@@ -141,6 +141,23 @@ test('addLayer refuses past MOST_LAYERS, without a toast', async () => {
   expect(toastMessage.value).toBe(null);
 });
 
+test('the vector layer a first shape brings comes back on redo as it was, its name and character settings kept', async () => {
+  const { project } = await blank();
+  expect(project.hasVectorLayer).toBe(false);
+  project.addShape(rectShape(2, 2, 12, 10, { fill: '#ff0000' }));
+  project.commitEdit();
+  const made = project.layers.find((layer) => layer.kind === 'vector');
+  project.renameLayer(made.id, 'Ink'); // not a step of its own
+  const chars = JSON.stringify(project.layerById(made.id).chars);
+  project.undo();
+  expect(project.hasVectorLayer).toBe(false);
+  project.seed = 'changed since'; // the bottom's seed, which a new layer copies; not a step either
+  project.redo();
+  const back = project.layers.find((layer) => layer.kind === 'vector');
+  expect([back?.id, back?.name, JSON.stringify(back?.chars)]).toEqual([made.id, 'Ink', chars]);
+  expect(project.layers.filter((layer) => layer.kind === 'vector')).toHaveLength(1);
+});
+
 test('the first shape is refused with the most layers, since the vector layer it brings would be one too many', async () => {
   const { project, workspace } = await blank();
   while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');

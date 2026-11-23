@@ -170,8 +170,18 @@ export const historyActions = {
       bytes: this._ledger.bytesOf(id) + bytesHeld(basePatch),
     });
     if (stroke._layersBefore) {
-      const layersBefore = stroke._layersBefore, entry = this.history.last, { undo: base } = entry;
-      entry.undo = () => { base(); this.layers = layersBefore; this.refreshShapes(); };
+      // The vector layer the first shape brought (refreshShapes) goes with the undo, and the redo puts that one back as it
+      // was when undone (its name, its character settings), rather than letting the shapes bring a new one.
+      const layersBefore = stroke._layersBefore, entry = this.history.last, { undo: base, redo: again } = entry;
+      let made = this.layers.find((layer) => layer.kind === 'vector' && !layersBefore.includes(layer));
+      entry.undo = () => { made = (made && this.layerById(made.id)) ?? made; base(); this.layers = layersBefore; this.refreshShapes(); };
+      entry.redo = () => {
+        if (made && !this.hasVectorLayer) {
+          const at = this.layers.findIndex((layer) => layer.id === 'base') + 1;
+          this.layers = [...this.layers.slice(0, at), made, ...this.layers.slice(at)];
+        }
+        again();
+      };
     }
     if (basePatch || records.before !== records.after) this.sendBase(basePatch, 'after');
   },
