@@ -147,7 +147,7 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
   workspace.pickLayer('edit');
   await mountPanel();
   expect(sectionOf('Characters · Layer 1')).toBeTruthy();
-  expect(sectionOf('Characters · Layer 1').textContent).toContain('Controls how paint or images on Layer 1 convert into characters.');
+  expect(sectionOf('Characters · Layer 1').textContent).toContain('Controls how Layer 1 displays characters.');
   expect(sectionOf('Picture')).toBeUndefined();
   expect(sectionOf('Image filters')).toBeUndefined();
   expect(host.querySelector('#smoothing')).toBeNull();
