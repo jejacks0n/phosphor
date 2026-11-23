@@ -426,7 +426,7 @@ it('offers only the font\'s glyphs', async () => {
     expect(glyphs().every((b) => !b.disabled)).toBe(true);
     expect(glyphs()[0].textContent).toBe('␀');
     const tabs = [...host.querySelectorAll('.sources .tabs button')].map((b) => b.textContent.trim());
-    expect(tabs[0]).toBe('Blank · 256');
+    expect(tabs[0]).toBe('All 256');
     expect(tabs).not.toContain('Unicode');
   } finally {
     app.unmount();

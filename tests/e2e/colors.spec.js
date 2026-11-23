@@ -17,7 +17,7 @@ test('Search Lospec works under the built page\'s policy: the palette is kept, u
     });
   });
   await openApp(page);
-  await page.getByRole('button', { name: 'Palettes', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage color palettes' }).click();
   const layer = page.locator('.color-layer');
   await layer.getByRole('textbox', { name: "A palette's name or id" }).fill('https://lospec.com/palette-list/sweetie-16');
   await layer.getByRole('button', { name: 'Search Lospec' }).click();

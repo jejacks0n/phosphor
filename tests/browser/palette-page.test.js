@@ -247,7 +247,7 @@ test('a font drawing\'s sources are the font', async () => {
   const tabs = () => [...host.querySelectorAll('.sources .tabs button')].map((b) => b.textContent.trim());
   await mount();
   await press(button('Edit'));
-  expect(tabs()).toEqual(['A · 256', 'In this drawing', 'Recent']);
+  expect(tabs()).toEqual(['All 256', 'In this drawing', 'Recent']);
   app.unmount();
   host.remove();
   await mount({ font: false });
@@ -293,13 +293,13 @@ test('the Unicode tab gives way to the font tab when the drawing gets a font', a
   expect(on()).toBe('Unicode');
   project.setDrawingFont(fontA());
   await nextTick();
-  expect(on()).toBe('A · 256');
+  expect(on()).toBe('All 256');
   expect(glyphs()).toHaveLength(256);
   const find = host.querySelector('.sources input');
   find.value = 'Blocks'; // a block find still works, on the font's glyphs, under the font tab
   find.dispatchEvent(new Event('input'));
   await nextTick();
-  expect(on()).toBe('A · 256');
+  expect(on()).toBe('All 256');
   expect(glyphs()).toContain('▄');
   expect(glyphs().filter((c) => '▙▚▞'.includes(c))).toEqual([]);
 });

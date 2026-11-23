@@ -331,7 +331,7 @@ test('Palettes beside Color palette opens the color layer on Palettes, whatever 
       workspace.colorBox = null;
       workspace.settingsOpen = true; // a phone's settings drawer, where the link is
       await nextTick();
-      expect(link().textContent).toBe('Palettes');
+      expect([link().textContent, link().getAttribute('aria-label')]).toEqual(['Manage', 'Manage color palettes']);
       expect(link().title).toBe('Browse color palettes');
       expect(link().hasAttribute('data-colors-toggle')).toBe(true); // a press while the layer is open doesn't close it first
       link().click();

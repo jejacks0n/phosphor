@@ -179,7 +179,7 @@ const groups = computed(() => {
   const query = filter.value.trim().toLowerCase(), shown = all.value.filter((f) => f.name.toLowerCase().includes(query));
   return [
     { key: 'inUse', label: t('palette.fonts.inUse'), rows: shown.filter((f) => f.id === inUseId.value) },
-    { key: 'yours', label: t('common.yours'), rows: shown.filter((f) => f.id !== inUseId.value && f.kind !== 'builtIn') },
+    { key: 'yours', label: t('palette.fonts.favorites'), rows: shown.filter((f) => f.id !== inUseId.value && f.kind !== 'builtIn') },
     { key: 'builtIn', label: t('common.builtIn'), rows: shown.filter((f) => f.id !== inUseId.value && f.kind === 'builtIn') },
   ].filter((g) => g.rows.length);
 });
@@ -399,7 +399,14 @@ const onFile = (event) => {
   if (file) run(async () => { chosenId.value = (await loadFile(file)).id; });
 };
 const apply = () => run(() => choose(chosen.value.id, held.value?.sauce ? { sauceFontName: held.value.sauce } : undefined)); // a library font's SAUCE name, as from the library
-const forget = () => run(() => remove(chosen.value.id));
+// Out of Favorites: the browser's copy forgotten. A library font's row is chosen in its place, as ☆ Favorite shows it.
+const forget = () => {
+  const entry = held.value;
+  return run(async () => {
+    await remove(chosen.value.id);
+    if (entry) chosenId.value = entry.id;
+  });
+};
 // The next or previous font on screen, in the list's order, the library rows shown last (the layer passes its arrow
 // keys here). A library row chosen is where it steps from, though its font in Yours is current too.
 const step = (delta) => { // a folded group's rows are skipped
@@ -530,15 +537,18 @@ const exportPalettes = () => {
             <button :disabled="!count" @click="moreOpen = false; exportPalettes()">{{ t('palette.fonts.exportPalettes') }}</button>
             <button v-if="isInUse" @click="moreOpen = false; workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
             <button v-if="bitmap && font?.blocks" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="moreOpen = false; setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
-            <button v-if="isStored" :title="t('palette.fonts.removeTitle')" @click="moreOpen = false; forget()">{{ t('palette.fonts.remove') }}</button>
+            <button v-if="isStored && !held" :title="t('palette.fonts.removeTitle')" @click="moreOpen = false; forget()">{{ t('palette.fonts.remove') }}</button>
           </span>
         </span>
       </div>
-      <div v-if="!isInUse" class="actions">
-        <button class="ghost" :disabled="hostsFont || !!roomOff" :title="roomOff ?? undefined" :data-off-reason="roomOff ? '' : undefined" @click="apply">{{ t('palette.fonts.use') }}</button>
-      </div>
-      <template v-if="bitmap && font">
-        <div v-if="widths.length" class="width-row">
+      <!-- Use this font and the star, with Display width on their line -->
+      <div v-if="!isInUse || (isStored && held) || (bitmap && font && widths.length)" class="use-row">
+        <div v-if="!isInUse || (isStored && held)" class="actions">
+          <button v-if="!isInUse" class="ghost use" :disabled="hostsFont || !!roomOff" :title="roomOff ?? undefined" :data-off-reason="roomOff ? '' : undefined" @click="apply">{{ t('palette.fonts.use') }}</button>
+          <!-- a library font in Favorites: the star takes it out (one of your own files has Remove in the … menu) -->
+          <button v-if="isStored && held" class="ghost star" aria-pressed="true" @click="forget"><span aria-hidden="true">★</span> {{ t('palette.fonts.favorite') }}</button>
+        </div>
+        <div v-if="bitmap && font && widths.length" class="width-row">
           <span class="width-label">{{ t('palette.fonts.width') }}</span>
           <ToggleGroup
               class="width-switch"
@@ -550,6 +560,8 @@ const exportPalettes = () => {
           />
           <span v-if="widthNow < 8" class="width-note">{{ t('palette.fonts.widthNarrowNote', { width: widthNow }) }}</span>
         </div>
+      </div>
+      <template v-if="bitmap && font">
         <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
           <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
             {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
@@ -622,8 +634,8 @@ const exportPalettes = () => {
           <button class="ghost" :title="t('palette.fonts.loadTitle')" @click="fileInput.click()">{{ t('palette.fonts.load') }}</button>
         </template>
         <template v-else>
-          <button class="ghost primary" :disabled="fetching" @click="useFromLibrary">{{ t('palette.fonts.use') }}</button>
-          <button class="ghost" :disabled="fetching" @click="keepFromLibrary">{{ t('palette.fonts.addToYours') }}</button>
+          <button class="ghost use" :disabled="fetching" @click="useFromLibrary">{{ t('palette.fonts.use') }}</button>
+          <button class="ghost star" aria-pressed="false" :disabled="fetching" @click="keepFromLibrary"><span aria-hidden="true">☆</span> {{ t('palette.fonts.favorite') }}</button>
         </template>
       </div>
       <div class="chips tag-chips">
@@ -840,7 +852,16 @@ div.sections button[role='tab'].on {
   box-shadow: inset 0 -2px var(--accent);
 }
 
+div.use-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline; /* the switch level with the buttons when a narrow font's note wraps under it */
+  gap: 8px 16px;
+}
+
+/* It takes the rest of the line, so a narrow font's note wraps under the switch rather than the switch under the buttons. */
 div.width-row {
+  flex: 1 1 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -989,5 +1010,9 @@ dl.origin a {
 canvas.big {
   margin: 8px 12px;
   zoom: 2;
+}
+
+button.star[aria-pressed='true'] span { /* as the color palettes' star */
+  color: var(--accent);
 }
 </style>

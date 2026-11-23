@@ -20,7 +20,7 @@ test('a missing block’s tile is outlined in the warning color', async () => {
   app.mount(host);
   await nextTick();
   const tile = (name) => [...host.querySelectorAll('button.tile')].find((el) => el.querySelector('.name').textContent === name);
-  const danger = getComputedStyle(host.querySelector('.note.warn')).color; // var(--danger)
+  const danger = getComputedStyle(tile('Lower').querySelector('.slot')).color; // var(--danger), as its "none" is
   expect(getComputedStyle(tile('Lower')).borderTopColor).toBe(danger);
   expect(getComputedStyle(tile('Full')).borderTopColor).not.toBe(danger);
 });
@@ -32,5 +32,5 @@ test('picked, a missing block\u2019s tile keeps its warning outline', async () =
   await nextTick();
   const lower = [...host.querySelectorAll('button.tile')].find((el) => el.querySelector('.name').textContent === 'Lower');
   expect(lower.classList.contains('picked')).toBe(true);
-  expect(getComputedStyle(lower).borderTopColor).toBe(getComputedStyle(host.querySelector('.note.warn')).color);
+  expect(getComputedStyle(lower).borderTopColor).toBe(getComputedStyle(lower.querySelector('.slot')).color); // var(--danger)
 });

@@ -8,7 +8,7 @@ const LIST = ['#ffffff', '#aa5601', '#e03020', '#000000', '#4a4a4a'];
 test('Color list with Contrast moved: each swatch shows and types its own color', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Color palette' }).selectOption('palette');
-  await page.getByRole('button', { name: 'Palettes', exact: true }).click(); // the layer opens on the list's editor
+  await page.getByRole('button', { name: 'Manage color palettes' }).click(); // the layer opens on the list's editor
   const hex = page.locator('.color-layer').getByRole('textbox', { name: 'Hex of the picked color' });
   await hex.fill(LIST.join(' '));
   await hex.press('Enter');

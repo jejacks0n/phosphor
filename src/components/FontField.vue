@@ -70,6 +70,7 @@ const onSize = (event) => {
           class="text"
           data-palette-toggle
           :title="t('font.manageTitle')"
+          :aria-label="t('font.manageAria')"
           @mousedown.prevent
           @click="manage"
       >{{ t('font.manage') }}</button>

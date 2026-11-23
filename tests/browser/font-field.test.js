@@ -43,7 +43,7 @@ async function mount({ drawing = true, tab } = {}) {
   return { project, workspace };
 }
 const labels = () => [...host.querySelectorAll('button')].map((b) => b.textContent.trim());
-const manage = () => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Manage fonts');
+const manage = () => host.querySelector('button[aria-label="Manage fonts"]'); // it reads Manage
 
 test('the Font field chooses; Manage fonts opens the Fonts page', async () => {
   const { workspace } = await mount({ tab: 'input' });

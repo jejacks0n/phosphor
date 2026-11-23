@@ -282,7 +282,9 @@ test('◂ and ▸ move the picked color and keep it picked; a repeated color mov
 
 test('+ adds a copy of the picked color after the last and picks it; Remove takes the picked one out; one color always stays and 256 is the most', async () => {
   const { list } = await mount('#000000');
-  expect(host.querySelector('button.remove').disabled).toBe(true);
+  const remove = host.querySelector('button.remove');
+  expect([remove.textContent.trim(), remove.getAttribute('aria-label'), !!remove.querySelector('svg')]).toEqual(['', 'Remove', true]); // a trash can
+  expect(remove.disabled).toBe(true);
   await press(host.querySelector('button.add'));
   expect(list.value).toBe('#000000 #000000');
   expect(pressed()).toBe(1);
@@ -412,6 +414,10 @@ test('with a mouse a swatch dragged onto another moves there and stays picked', 
   expect(pressed()).toBe(2);
 });
 
+// Motion runs on frames, and with many test files at once on software compositing a frame can be most of a second late:
+// a wait for a slide to end, or a drag to scroll, has longer than a second.
+const MOTION = { timeout: 5000 };
+
 test('while a swatch is dragged a dashed placeholder shows where it would land, and a drag let go outside writes nothing', async () => {
   await page.viewport(1200, 800);
   onTestFinished(() => page.viewport(414, 896));
@@ -427,7 +433,7 @@ test('while a swatch is dragged a dashed placeholder shows where it would land, 
 
   // Each over a swatch at rest: the ones the placeholder passes slide, and one sliding is no place to land.
   const over = async (k) => {
-    await vi.waitFor(() => expect(host.querySelector('div.swatch.shifting')).toBe(null));
+    await vi.waitFor(() => expect(host.querySelector('div.swatch.shifting')).toBe(null), MOTION);
     cells()[k].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
     await nextTick();
   };
@@ -492,7 +498,7 @@ test('a swatch dragged near the swatches\' top or bottom, or past it, scrolls th
 
   swatches()[0].dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
   pointer(r.bottom - 4);
-  await vi.waitFor(() => expect(box.scrollTop).toBeGreaterThan(40));
+  await vi.waitFor(() => expect(box.scrollTop).toBeGreaterThan(40), MOTION);
   pointer(r.top + r.height / 2); // the middle holds still
   await frames();
   const held = box.scrollTop;
@@ -502,7 +508,7 @@ test('a swatch dragged near the swatches\' top or bottom, or past it, scrolls th
   await frames();
   expect(box.scrollTop).toBe(held);
   pointer(r.top - 30); // above them scrolls up
-  await vi.waitFor(() => expect(box.scrollTop).toBeLessThan(held));
+  await vi.waitFor(() => expect(box.scrollTop).toBeLessThan(held), MOTION);
 
   pointer(r.bottom - 4);
   await frames();

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { blocksOf, droppedSlot, BLOCKS } from '@/lib/BitmapFont';
+import { droppedSlot } from '@/lib/BitmapFont';
 import { TRASH } from '@/components/icons';
 import { PIECES, lineStylesOf, nextId } from '@/lib/FontLines';
 
@@ -22,25 +22,16 @@ const lines = computed(() => props.font.lines ?? { hide: [], styles: [] });
 const all = computed(() => lineStylesOf(props.font));
 const stock = computed(() => all.value.filter((s) => s.stock));
 const own = computed(() => all.value.filter((s) => !s.stock));
-const refused = ref(null); // { n, block } or { n, piece }: a slot last clicked for a piece that a block, or another piece of the style, has
+const refused = ref(null); // { n, piece }: a slot last clicked for a piece that another piece of the style has
 watch(() => props.picked, () => { refused.value = null; });
 
-const blockName = (key) => t(`palette.fonts.blockName.${key}`);
 const sample = (s) => [...SAMPLE].map((c) => (PIECES.includes(c) ? s.chars[PIECES.indexOf(c)] ?? ' ' : c)).join('');
 const problemAt = (s, piece) => s.problems.find((p) => p.piece === piece);
-const shares = (s, p) => t('palette.fonts.lineSharesBlock', { piece: PIECES[p.piece], n: s.slots[p.piece], block: blockName(p.block) });
-// What stops a style being offered under Draw with, or that it is.
-const status = (s) => {
-  const block = s.problems.find((p) => p.reason === 'block');
-  if (block) return shares(s, block);
-  const missing = s.problems.length;
-  return missing ? t('palette.fonts.lineToGo') : t('palette.fonts.lineOffered');
-};
 const isPicked = (s, piece) => props.picked?.style === s.id && props.picked.piece === piece;
 // Only a refused slot says anything under the styles.
 const note = computed(() => {
   const no = refused.value;
-  return no && (no.block ? t('palette.fonts.lineBlockSlot', { n: no.n, block: blockName(no.block) }) : t('palette.fonts.lineSlotTaken', { n: no.n, piece: PIECES[no.piece] }));
+  return no && t('palette.fonts.lineSlotTaken', { n: no.n, piece: PIECES[no.piece] });
 });
 
 const change = (styles, hide = lines.value.hide) => emit('change', { hide, styles });
@@ -62,14 +53,12 @@ const add = () => {
   emit('pick', { style: id, piece: 0 });
 };
 
-// A slot clicked on the sheet: the picked piece's, unless a block is drawn from it or another piece of the style has it
-// (two styles may share one); then the next unset piece is picked. One dragged onto a tile is that piece's (pick), and
+// A slot clicked on the sheet: the picked piece's, unless another piece of the style has it (two styles may share one,
+// and a block's slot may be a piece); then the next unset piece is picked. One dragged onto a tile is that piece's (pick), and
 // leaves the pick as it was.
 const slot = (n, pick = props.picked) => {
   const style = lines.value.styles.find((s) => s.id === pick?.style);
   if (props.disabled || !style) return;
-  const block = blocksOf(props.font).indexOf(n);
-  if (block >= 0) return void (refused.value = { n, block: BLOCKS[block].key });
   const piece = pick.piece, other = style.slots.findIndex((s, i) => s === n && i !== piece);
   if (other >= 0) return void (refused.value = { n, piece: other });
   const slots = style.slots.map((s, i) => (i === piece ? n : s));
@@ -94,7 +83,6 @@ const drop = (event, style, piece) => {
     <div v-for="s in stock" :key="s.id" class="stock">
       <span class="name">{{ t(`tools.drawWith.${s.id}`) }}</span>
       <span class="sample" :style="{ fontFamily: family }">{{ sample(s) }}</span>
-      <span v-if="!s.hidden && s.problems.length" class="status warn">{{ status(s) }}</span>
       <button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="toggleHide(s.id)">{{ t(s.hidden ? 'palette.fonts.show' : 'palette.fonts.hide') }}</button>
     </div>
     <div v-for="s in own" :key="s.id" class="card">
@@ -110,7 +98,7 @@ const drop = (event, style, piece) => {
             :class="{ missing: problemAt(s, i), picked: isPicked(s, i), over: over === `${s.id}:${i}` }"
             :aria-pressed="isPicked(s, i)"
             :disabled="disabled"
-            :title="disabled ? reason : problemAt(s, i)?.reason === 'block' ? shares(s, problemAt(s, i)) : undefined"
+            :title="disabled ? reason : undefined"
             :data-off-reason="disabled ? '' : undefined"
             @click="emit('pick', isPicked(s, i) ? null : { style: s.id, piece: i })"
             @dragover.prevent="over = `${s.id}:${i}`"
@@ -122,7 +110,7 @@ const drop = (event, style, piece) => {
           <span class="slot">{{ s.slots[i] ?? '—' }}</span>
         </button>
       </div>
-      <span class="status">{{ status(s) }}</span>
+      <span v-if="s.problems.length" class="status">{{ t('palette.fonts.lineToGo') }}</span>
     </div>
     <div><button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="add">{{ t('palette.fonts.newLineStyle') }}</button></div>
     <p v-if="note" class="note warn">{{ note }}</p>
@@ -186,19 +174,38 @@ div.top-row input {
   font-size: 13px;
 }
 
-div.tiles { /* equal columns across the card, as a palette's slots are; a short last row keeps their width */
+div.tiles { /* the eleven pieces in one row of equal columns across the card, as a palette's slots are */
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+  grid-template-columns: repeat(11, minmax(0, 1fr));
   gap: 4px;
+}
+
+div.tiles button.tile { /* narrow: the glyph over its piece and slot */
+  justify-content: stretch;
+  justify-items: center;
+  column-gap: 3px;
+  row-gap: 2px;
+  min-width: 0;
+  padding: 4px 2px;
+  font-size: 10px;
+}
+
+div.tiles button.tile span.glyph {
+  grid-row: auto;
+  grid-column: 1 / -1;
+}
+
+div.tiles button.tile span.name {
+  justify-self: end;
+}
+
+div.tiles button.tile span.slot {
+  justify-self: start;
 }
 
 span.status {
   font-size: 12px;
   color: var(--text-muted);
-}
-
-span.status.warn {
-  color: var(--danger);
 }
 
 button.ghost:disabled,

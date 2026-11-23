@@ -165,10 +165,10 @@ The Transforms, Adjustments and Image filters in the sidebar change the picture 
 The settings on the left come in sections, each following a layer:
 
 - **Drawing** (all layers): **Dimensions**, **Art style** (ANSI, Color ASCII, Monochrome ASCII), **Font**, and
-  **Color palette** with its **Color count** (Limited count) and a **Palettes** link beside the label, shown whatever the palette is set to. These belong to the whole
+  **Color palette** with its **Color count** (Limited count) and a **Manage** link beside the label, shown whatever the palette is set to. These belong to the whole
   drawing, whichever layer is selected. **Palettes** opens the color layer on its **Palettes** page (see
   [The Color Layer](#the-color-layer)), where the Custom color list is edited and the palettes are browsed; the column
-  holds nothing more of them. It follows the rules of **Manage fonts**: the settings drawer shuts on a phone, from
+  holds nothing more of them. It follows the rules of the Font field's **Manage**: the settings drawer shuts on a phone, from
   SAUCE it shows ANSI first, and with no drawing open it opens over the start screen, so the palette chosen is the one
   the next drawing starts with. It's off while the settings are locked.
 - **Transforms**: **Colorize** (with its color), **Hue shift** and **Invert**.

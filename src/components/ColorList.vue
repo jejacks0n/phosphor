@@ -7,6 +7,7 @@ import { closeToast, toast } from '@/composables/useToast';
 import { downloadBlob, fileStem } from '@/document/projectIO';
 import { MOST_COLORS, firstColors, hexFile, listColors, moved, sameColors, withColor, withCopy, without, writeList } from '@/lib/colorList';
 import ArrowIcon from '@/components/ArrowIcon.vue';
+import { TRASH } from '@/components/icons';
 
 // The Custom color list's editor, in This drawing's details on the color layer's Palettes page: the list as swatches, one of them picked, and under them the picked
 // color's chip (the system color picker), its hex, arrows to move it and Remove. It writes the setting only when
@@ -262,7 +263,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
       >
       <button type="button" class="earlier" :aria-label="t('colorList.earlier')" :title="t('colorList.earlier')" :disabled="disabled || picked <= 0" @click="move(picked - 1)"><ArrowIcon shape="triangle" :turn="180"/></button>
       <button type="button" class="later" :aria-label="t('colorList.later')" :title="t('colorList.later')" :disabled="disabled || picked >= colors.length - 1" @click="move(picked + 1)"><ArrowIcon shape="triangle"/></button>
-      <button type="button" class="remove text" :disabled="disabled || colors.length <= 1" @click="remove">{{ t('colorList.remove') }}</button>
+      <button type="button" class="remove" :aria-label="t('colorList.remove')" :title="t('colorList.remove')" :disabled="disabled || colors.length <= 1" @click="remove" v-html="TRASH"/>
     </div>
     <input ref="file" type="file" class="hex-file" accept=".hex,.txt,text/plain" hidden :disabled="disabled" @change="onFile">
   </div>
@@ -371,7 +372,8 @@ div.picked input#palette {
 }
 
 button.earlier,
-button.later {
+button.later,
+button.remove {
   display: flex;
   align-items: center;
   flex: none;
@@ -388,8 +390,10 @@ button.later {
     flex-basis: calc(100% - 38px); /* beside the chip (34px and the gap) */
   }
   button.earlier,
-  button.later {
+  button.later,
+  button.remove {
     width: 44px;
+    justify-content: center;
   }
   div.picked button.remove {
     margin-left: auto;
@@ -400,7 +404,12 @@ button.later {
 }
 
 button.remove {
-  flex: none;
   margin-left: 4px;
+}
+
+button.remove :deep(svg) { /* a trash can */
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 </style>
