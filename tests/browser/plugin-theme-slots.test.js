@@ -49,9 +49,10 @@ test('words on the accent are the text-on-accent slot\'s color, and a tooltip\'s
   const count = document.body.appendChild(Object.assign(document.createElement('span'), { className: 'unread' }));
   const tip = document.body.appendChild(Object.assign(document.createElement('span'), { className: 'value-tooltip' }));
   try {
-    expect([getComputedStyle(count).color, getComputedStyle(tip).backgroundColor]).toEqual(['rgb(255, 255, 255)', 'rgb(0, 0, 0)']);
+    const shown = () => [getComputedStyle(count).color, getComputedStyle(tip).backgroundColor, getComputedStyle(tip).color];
+    expect(shown()).toEqual(['rgb(255, 255, 255)', 'rgb(0, 0, 0)', 'rgb(255, 255, 255)']);
     themed({ 'text-on-accent': '#102030', tooltip: '#f0e0d0' });
-    expect([getComputedStyle(count).color, getComputedStyle(tip).backgroundColor]).toEqual(['rgb(16, 32, 48)', 'rgb(240, 224, 208)']);
+    expect(shown()).toEqual(['rgb(16, 32, 48)', 'rgb(240, 224, 208)', 'rgb(16, 32, 48)']); // a slider's bubble: its words go with its ground
   } finally {
     count.remove();
     tip.remove();
