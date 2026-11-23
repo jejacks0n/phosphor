@@ -274,7 +274,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;
     if (takeKey(e, ctx, ['colors.openFg', 'colors.openBg', 'colors.swap', 'colors.fgPrev', 'colors.fgNext', 'colors.bgPrev', 'colors.bgNext',
-      'characters.setPrev', 'characters.setNext', 'edit.altArrowsElsewhere'])) return;
+      'colors.takeUnder', 'colors.takeUnderWithChar', 'characters.setPrev', 'characters.setNext', 'edit.flipCell', 'edit.altArrowsElsewhere'])) return;
     if (_handleToolSwap(e)) return;
     if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;

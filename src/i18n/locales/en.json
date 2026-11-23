@@ -1494,7 +1494,9 @@
       "notInRoom": "Not in a room",
       "notHost": "Only the host can do this",
       "inRoom": "Leave the room first",
-      "notSharing": "Only while drawing together in a room"
+      "notSharing": "Only while drawing together in a room",
+      "noCell": "Point at a cell in the art first",
+      "ansiOnly": "Only in the ANSI art style"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1592,7 +1594,12 @@
       "newFrame": "Add a new frame matching current frame type (hold to add multiple)",
       "switchTabs": "With a tab focused: switch tabs",
       "commandList": "Find a command and run it",
-      "layerAboveBelow": "Select the layer above or below"
+      "layerAboveBelow": "Select the layer above or below",
+      "takeUnder": "Take the colors of the cell under the pointer, or in Edit Mode the cursor's (PIXEL: the pixel's, as the foreground)",
+      "takeUnderMac": "Take the colors of the cell under the pointer, not yet in Edit Mode on a Mac, where it types ü (PIXEL: the pixel's, as the foreground)",
+      "takeUnderWithChar": "Take the colors and the character of the cell under the pointer, or in Edit Mode the cursor's (PIXEL: the pixel's color, as the background)",
+      "takeUnderWithCharMac": "Take the colors and the character of the cell under the pointer, not yet in Edit Mode on a Mac (PIXEL: the pixel's color, as the background)",
+      "flipCell": "Swap the cursor cell's colors (ANSI art style)"
     }
   },
   "social": {

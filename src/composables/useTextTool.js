@@ -37,6 +37,17 @@ export function lineStep(project, workspace, type, delta) {
   return step;
 }
 
+// Alt+X (the command table's): the cursor's cell flipped as the Flip tool flips one, refused where it refuses (a hidden
+// layer, no cells layer), a wide character's trail flipping its lead; one undo step that ends a run of typing.
+export function flipAtCursor(project, workspace) {
+  project.commitPending();
+  if (refusesHidden({ project, workspace }) || refusedNoCells(project)) return;
+  sayBaseOnEveryFrame(project);
+  const { col, row } = snapCursor(project.cells, project.cols, workspace.textCursor, 0);
+  project.flipCell(col, row);
+  project.commitEdit();
+}
+
 // A paste: typed from the cursor (typeLines), one undo step of its own.
 export function typeText(project, workspace, text) {
   project.commitPending();

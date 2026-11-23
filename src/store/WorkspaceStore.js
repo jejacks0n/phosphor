@@ -64,6 +64,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isShiftPressed: false,
     isAltPressed: false,     // Option on a Mac: Vector select scales from the middle
     pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
+    pointerCell: null,     // { col, row, y } of the cell a mouse or pen is over in the art (y: its grid pixel row), for Alt+U
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
     lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there if it's in view

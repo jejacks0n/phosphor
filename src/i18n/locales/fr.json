@@ -1494,7 +1494,9 @@
       "notInRoom": "Pas dans une salle",
       "notHost": "Réservé à l’hôte",
       "inRoom": "Quittez d’abord la salle",
-      "notSharing": "Seulement en dessinant ensemble dans une salle"
+      "notSharing": "Seulement en dessinant ensemble dans une salle",
+      "noCell": "Pointez d’abord une cellule du dessin",
+      "ansiOnly": "Uniquement avec le style ANSI"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1592,7 +1594,12 @@
       "newFrame": "Ajouter une nouvelle image du même type que l'image actuelle (maintenir pour en ajouter plusieurs)",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet",
       "commandList": "Trouver une commande et la lancer",
-      "layerAboveBelow": "Sélectionner le calque au-dessus ou en dessous"
+      "layerAboveBelow": "Sélectionner le calque au-dessus ou en dessous",
+      "takeUnder": "Prendre les couleurs de la cellule sous le pointeur, ou en Mode Édition celles du curseur (PIXEL : celle du pixel, en premier plan)",
+      "takeUnderMac": "Prendre les couleurs de la cellule sous le pointeur, pas encore en Mode Édition sur un Mac, où la touche tape ü (PIXEL : celle du pixel, en premier plan)",
+      "takeUnderWithChar": "Prendre les couleurs et le caractère de la cellule sous le pointeur, ou en Mode Édition ceux du curseur (PIXEL : la couleur du pixel, en arrière-plan)",
+      "takeUnderWithCharMac": "Prendre les couleurs et le caractère de la cellule sous le pointeur, pas encore en Mode Édition sur un Mac (PIXEL : la couleur du pixel, en arrière-plan)",
+      "flipCell": "Intervertir les couleurs de la cellule du curseur (style ANSI)"
     }
   },
   "social": {

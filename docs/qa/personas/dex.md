@@ -165,11 +165,14 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 
 ### 8. Pick a color off the art
 - Does: presses I and clicks a cell; turns the FG and BG toggles on and off; then, with the Pencil, holds Alt and clicks
-  a cell, and Alt+Shift for the background.
+  a cell, and Alt+Shift for the background. Then, with the mouse over a cell and the Pencil, Alt+U, and Shift+Alt+U over
+  another; in Edit Mode, Alt+U on the cursor's cell (on a Mac Option+U starts ü there for now, so Cmd+K), and Alt+X.
 - Expects: with both lit it sets both colors from the cell; the status bar shows the pick and where each color came
-  from; letting Alt go brings the Pencil back.
+  from; letting Alt go brings the Pencil back. Alt+U sets both colors from the cell under the mouse, Shift+Alt+U its
+  character too (the one Fill and Shapes draw with), and nothing with the mouse off the art; Alt+X swaps the cursor
+  cell's colors as Swap cell FG/BG does, types nothing, and is one undo step.
 - Probes: `out-of-order`: pick from an empty cell of the grown canvas; `interrupt`: let Alt go in the middle of a drag.
-- Rated: yes, wants I, or a key that picks the colors under the Edit Mode cursor
+- Rated: yes, wants Alt+U
 
 ### 9. Recolor a block
 - Does: presses M, selects a block of text with Shift and the arrows from a corner, presses Set FG, then Set BG.

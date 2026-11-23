@@ -4,6 +4,7 @@ import { wholeTile } from '@/document/PaintLayer.js';
 import { hashCell } from '@/document/changes.js';
 import { cellKey, parseKey, mergeEntry, tintedEntry, shownEntry, isFrozen, isPaintBlock, ownIndexes } from '@/document/editCells.js';
 import { isShapeKey } from '@/document/shapes.js';
+import { snapCursor } from '@/document/wideChars.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { TILE } from '@/document/History.js';
@@ -117,6 +118,16 @@ export function pickedFrom(project, col, row) {
   const ids = cellsUnder(project), entries = ids.map((id) => project.cellsOf(id).get(cellKey(col, row))).filter(Boolean);
   const from = (y, attr) => (ids.some((id) => !!project.paintOf(id)?.colorAt(col, y)) || entries.some((entry) => entry[attr] !== undefined) ? 'edit' : 'base');
   return { fgFrom: from(2 * row + 1, 'fg'), bgFrom: from(2 * row, 'bg'), ownBg: entries.some((entry) => entry.bg) };
+}
+
+// The Picker's read of a cell in the ANSI view (and Alt+U's): a wide character's trail reads its lead, and Color ASCII
+// never shows a generated background, so only an edit cell's is real (null else). { col, row, char, fg, bg, fgIndex,
+// bgIndex, fgFrom, bgFrom }, fgFrom and bgFrom for the status bar.
+export function pickedCell(project, at) {
+  const { col, row } = snapCursor(project.cells, project.cols, at, 0);
+  const under = project.underlyingAt(col, row), { fgFrom, bgFrom, ownBg } = pickedFrom(project, col, row);
+  const bg = project.renderStyle === 'colorAscii' && !ownBg ? null : under.bg;
+  return { col, row, char: under.char, fg: under.fg, bg, fgFrom, bgFrom, ...pickedIndexes(project, col, row) };
 }
 
 // The 256-color indexes a picked cell's colors show as where a lower index shares the color (16, 231), for the color

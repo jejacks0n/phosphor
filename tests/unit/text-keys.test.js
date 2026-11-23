@@ -1,7 +1,7 @@
 // The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { colorBoxKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
+import { colorBoxKey, textKeyAction, moveCursor, typedText, MAC_TYPES_OPTION_U } from '../../src/lib/TextKeys.js';
 import { shiftRow } from '../../src/document/editCells.js';
 
 test("The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode", async () => {
@@ -114,4 +114,22 @@ test('Alt+] and Alt+[ never type (the layer above and below, typing too); with S
   assert.deepEqual(textKeyAction(ev('[', 'BracketLeft', { ctrlKey: true }), { editable: false }), { type: 'char', char: '[' }); // AltGr
   assert.deepEqual(textKeyAction(ev('˜', 'KeyN', { shiftKey: true }), { editable: false }), { type: 'char', char: '˜' });
   assert.deepEqual(textKeyAction(ev('◊', 'KeyV', { shiftKey: true }), { editable: false }), { type: 'char', char: '◊' });
+});
+
+test('Alt+X never types (the cursor cell flipped); Alt+U and Shift+Alt+U take the cell\'s colors off a Mac, and type on one for now', () => {
+  const ev = (key, code, mods = {}) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...mods });
+  for (const mac of [true, false]) {
+    const k = (e) => textKeyAction(e, { editable: false, mac });
+    assert.equal(k(ev(mac ? '≈' : 'x', 'KeyX')), null, `Alt+X, mac ${mac}`);
+    assert.deepEqual(k(ev('˛', 'KeyX', { shiftKey: true })), { type: 'char', char: '˛' }); // Shift+Alt+X types
+    assert.deepEqual(k(ev('ú', 'KeyU', { ctrlKey: true })), { type: 'char', char: 'ú' }); // AltGr types
+    assert.deepEqual(k(ev('≈', 'KeyX', { ctrlKey: true })), { type: 'char', char: '≈' });
+  }
+  const off = (e) => textKeyAction(e, { editable: false, mac: false });
+  assert.equal(off(ev('u', 'KeyU')), null);
+  assert.equal(off(ev('U', 'KeyU', { shiftKey: true })), null);
+  // A Mac's Option+U is the umlaut's dead key, and Shift+Option+U types ¨: left to typing (MAC_TYPES_OPTION_U).
+  const mac = (e) => textKeyAction(e, { editable: false, mac: true });
+  assert.equal(mac(ev('Dead', 'KeyU')), null); // the textarea starts ü itself
+  assert.deepEqual(mac(ev('¨', 'KeyU', { shiftKey: true })), MAC_TYPES_OPTION_U ? { type: 'char', char: '¨' } : null);
 });
