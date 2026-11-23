@@ -70,7 +70,7 @@ function readOption(raw, field) {
   const option = Object.fromEntries(['id', 'kind', 'name', 'min', 'max', 'step', 'default', 'choices'].map((key) => [key, raw[key]]));
   if (typeof option.id !== 'string' || !OPTION_ID.test(option.id) || !text(option.name)) throw shape(field);
   const { id, kind, name, min, max, step, default: value } = option;
-  if (!Object.hasOwn(OPTION_FIELDS, kind)) throw shape(field);
+  if (typeof kind !== 'string' || !Object.hasOwn(OPTION_FIELDS, kind)) throw shape(field); // the text itself: an object that reads as a kind's name isn't one
   onlyKnown(keys, ['id', 'kind', 'name', 'default', ...OPTION_FIELDS[kind]], field);
   if (kind === 'slider') {
     if (![min, max, step, value].every(num) || !(min < max) || !(step > 0) || value < min || value > max) throw shape(field);

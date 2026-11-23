@@ -85,6 +85,13 @@ describe('readScript', () => {
     expect(() => read({ id })).toThrow(shape('solvers[0].id'));
     expect(() => read({ options: [{ id, kind: 'checkbox', name: 'A', default: true }] })).toThrow(shape('solvers[0].options[0]'));
   });
+
+  // A kind is looked up among the kinds by name, which would take anything that turns into one: only the text itself is a kind.
+  it('refuses a kind that is an object or a list that reads as a kind\'s name', () => {
+    for (const kind of [{ toString: () => 'choice' }, ['choice'], { toString: () => 'checkbox' }, ['slider']]) {
+      expect(() => read({ options: [{ id: 'a', kind, name: 'A', choices: ['x'], default: 0 }] })).toThrow(shape('solvers[0].options[0]'));
+    }
+  });
 });
 
 const ICON = '<svg viewBox="0 0 16 16"><path d="M1 1L15 15"/></svg>';
