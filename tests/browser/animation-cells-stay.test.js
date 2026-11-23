@@ -243,6 +243,18 @@ test('with Frames after, what the frames after drew shows in one cool tint, the 
   expect(project.shownCells[i(1)].char).not.toBe('D');
 });
 
+test('on the first frame, Frames after shows the frame after: there\'s nothing before it, but the frames after are there', async () => {
+  const { project, workspace } = await animated();
+  project.addFrame('blank');
+  type(project, 1, 1, 'D');
+  project.showFrame(0);
+  workspace.ghostFramesAfter = 1;
+  await project.buildGhost();
+  expect(project.ghostFrames.map(({ at }) => at)).toEqual([1]);
+  expect(project.shownCells[cellIndex(1, 1, project.cols)].char).toBe('D');
+  expect(project.cells[cellIndex(1, 1, project.cols)].char).not.toBe('D'); // only on screen
+});
+
 test('the ghost reads the frame showing\'s paint back once however many frames it shows: slow on a phone, and done for every frame a scrubber passes', async () => {
   const { project, workspace } = await animated();
   workspace.cellsStay = true;

@@ -624,7 +624,7 @@ export const animationActions = {
   // The frames near the one showing that have pictures to ghost (ghostFrame), as many as the Ghost box asks for, built
   // for shownCells: ghostFrames.
   async buildGhost() {
-    if (!this.animate || !this.frame || this.currentFrame.kind !== 'blank') return;
+    if (!this.animate || this.currentFrame.kind !== 'blank') return; // on frame 0 there's nothing before, but the frames after are there
     const { before, after } = this.ghostReach, near = [];
     for (let at = -1; at >= -before && this.frame + at >= 0; at--) {
       near.push(at);
@@ -648,7 +648,7 @@ export const animationActions = {
     this.ghostFrames = markRaw(ghosts);
   },
 
-  // The open stroke went over these pixels ({ x, y }), whether or not that changed them. Frame 0 has no ghost.
+  // The open stroke went over these pixels ({ x, y }), whether or not that changed them. Frame 0 inherits nothing.
   noteDrawn(pixels) {
     if (!this.frame || !this._stroke) return;
     const drawn = (this._stroke.drawn ??= new Set());
@@ -680,7 +680,7 @@ export const animationActions = {
   // is slow on a phone) is worked out once for all the frames near it.
   pictureCells(i = this.frame - 1, shared = {}) {
     const picture = new Set(), source = this.frames[i];
-    if (!this.frame || this.currentFrame.kind !== 'blank' || !source || i === this.frame) return picture;
+    if (this.currentFrame.kind !== 'blank' || !source || i === this.frame) return picture;
     const after = i > this.frame, { cols } = this, rows = charRowsOf(this.rows);
     let changes = source.changes;
     if (!after) for (let at = i + 1; at <= this.frame; at++) changes = carriedInto(changes, this.frames[at]);

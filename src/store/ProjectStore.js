@@ -332,7 +332,7 @@ export const useProjectStore = defineStore('project', {
       const workspace = useWorkspaceStore(), { cells } = this;
       if (workspace.playing && workspace.played) return workspace.played.cells;
       if (this._artInside) return insideCells(this, this._artInside, cells);
-      if (!this.animate || !workspace.ghost || !this.frame || this.currentFrame?.kind !== 'blank') return cells;
+      if (!this.animate || !workspace.ghost || this.currentFrame?.kind !== 'blank') return cells; // frame 0 too: it has frames after
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
       const strength = this.ghostStrength, pictures = this.ghostPictures;
       if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
