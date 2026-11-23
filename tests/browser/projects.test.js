@@ -7,6 +7,7 @@ import { matchReference } from '../support/references.js';
 import { readProject, writeProject, gunzipped, projectChunkOf } from '@/document/projectIO.js';
 import { setDisplayFont } from '@/lib/displayFonts.js';
 import { makeArt } from '@/document/artLayers.js';
+import { t } from '@/i18n';
 
 const fileFrom = async (url) => new File([await (await fetch(url)).blob()], url.slice(url.lastIndexOf('/') + 1));
 
@@ -306,6 +307,7 @@ describe('a saved project is a .pho', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     await project.loadProject(new File([png], 'x.pho'));
     expect(alert).toHaveBeenCalledTimes(1);
+    expect(alert.mock.calls[0][0]).toContain(t('document.invalidProject'));
   });
 
   test('a save from inside an art layer pictures the whole drawing, with what was drawn inside it, and stays inside the art layer', async () => {
