@@ -133,12 +133,13 @@ async function rename(layer) {
   list.value.querySelector('input')?.select();
 }
 // The command list's Rename (workspace.renameRequest): the row's box, here, in the list that shows it. Taken by a list
-// mounted after the ask too (a narrow screen's panel, opened by it).
+// mounted after the ask too (a narrow screen's panel, opened by it); one for no row here is let go, so it can't open a
+// box later.
 watch(() => workspace.renameRequest, (id) => {
-  const layer = id && showing.value && layers.value.find((row) => row.id === id);
-  if (!layer) return;
+  if (!id) return;
   workspace.renameRequest = null;
-  rename(layer);
+  const layer = showing.value && layers.value.find((row) => row.id === id);
+  if (layer) rename(layer);
 }, { immediate: true, flush: 'post' });
 // Enter and Escape put focus back on the row; leaving the box (the blur Enter's own unmounting brings, too) doesn't.
 function keep() {

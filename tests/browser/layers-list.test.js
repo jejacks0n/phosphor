@@ -285,7 +285,11 @@ test('a rename asked by the command list opens the row\'s box, in a list mounted
   workspace.renameRequest = 'edit';
   await nextTick();
   await nextTick();
-  expect(input()).not.toBeNull();
+  expect(input()).not.toBeNull();  await key(input(), 'Escape');
+  workspace.renameRequest = 'vector';   // no row for it: let go, so no box opens later
+  await nextTick();
+  expect(workspace.renameRequest).toBe(null);
+  expect(input()).toBeNull();
 });
 
 test('a click on the picked row\'s name renames it; on another row it only picks', async () => {
