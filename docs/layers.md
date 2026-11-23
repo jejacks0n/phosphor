@@ -355,7 +355,7 @@ ones above. Its cells keep their characters and colors exactly, where an art lay
 
 ## Opening ANSI and Text Files
 
-Drop a `.ans`, `.utf8ans`, `.xb`, `.asc`, `.txt`, `.nfo` or `.diz` file on the start screen, or pick one with **Choose a
+Drop a `.ans`, `.utf8ans`, `.xb`, `.bin`, `.asc`, `.txt`, `.nfo` or `.diz` file on the start screen, or pick one with **Choose a
 file**, and Phosphor asks what you'd like to do with the art, then opens it as a new document:
 
 - **Edit artwork**: The art goes on a drawing layer, over a plain black base, as if you'd drawn it. Every cell is a
@@ -389,6 +389,14 @@ Either way:
   the limits, and what you had open stays open. A file with no art in it doesn't open either. Either way the message
   comes first: Phosphor reads the file before it asks how to open it, or whether to leave unsaved work.
 - **XBin Files**: An `.xb` opens with its cells, its font and its palette. A palette that's exactly the 16 classic colors opens as CGA, and any other opens as a **Custom** color list. A file with no font opens with no bitmap font of its own. Added to a drawing with no bitmap font, a cell in the font's first slot (`␀`) comes in as a space, as classic CP437 shows it. A file that uses 512 characters is refused, with a message saying so, and so is one that's cut short or isn't XBin. Drawing with it, and saving one back, are in [Bitmap Fonts](characters.md#bitmap-fonts) and [Saving .xb](characters.md#saving-xb).
+- **BinaryText Files**: A `.bin` is a character and its colors for each cell, with no escape codes, in CP437 and the 16
+  classic colors, so it opens on CGA, in the font a `.ans` would open in. Its width comes from its SAUCE record,
+  and its height is as many lines as the file holds (a last line cut short is filled with spaces). Bright backgrounds
+  are bright when the record says iCE colors; otherwise that bit is blink, which isn't shown. Since `.bin` is used for
+  every kind of file, Phosphor opens one only when its SAUCE record says it's BinaryText, or, with no record, when it's
+  a whole number of 160-column lines, the width BinaryText has without one; then a message says it had no SAUCE record
+  and was read as BinaryText 160 columns wide (with bright backgrounds off). Any other `.bin` is refused: "*name* isn't
+  a BinaryText file." A `.bin` that's really an XBin opens as one. Phosphor opens `.bin` files but doesn't save them.
 - **Animated Files**: An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
 An `.svg` file opens on VECTOR as shapes instead ([Importing SVG](vector.md#importing-svg)).

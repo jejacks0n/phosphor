@@ -464,6 +464,7 @@ export const useWorkspaceStore = defineStore('workspace', {
           return void toast(error.userMessage);
         }
         if (art.notUtf8) toast(t('document.notUtf8', { name: file.name }));
+        if (art.binNoSauce) toast(t('document.binNoSauce', { name: file.name }));
       }
       this.artDrop = { file, at, ...(picture && { picture }), ...(art && { art }) };
     },

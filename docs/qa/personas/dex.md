@@ -379,7 +379,7 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Rated: yes
 
 **Free time:** he'd try Flatten's Draw on top, open `past-the-edge.ans` with Draw on top and fix its second row,
-try the `.xb` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut
+try the `.xb`, `.bin` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut
 list.
 
 ## Known

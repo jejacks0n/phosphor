@@ -11,6 +11,7 @@ import { registerBitmapFont, addBitmapFont, loadFonts, removeFont, storedBitmapF
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { useFontActions } from '@/composables/useFontActions.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
+import { Sauce } from '@/lib/Sauce.js';
 import { forgetLibrary } from '@/lib/fontLibrary.js';
 import { closeToast, toastMessage } from '@/composables/useToast.js';
 import { settingsFromStranger } from '@/store/settings.js';
@@ -585,6 +586,15 @@ test('opening an .ans whose SAUCE names Amiga Topaz 1+ opens in that font', asyn
   expect(workspace.userFonts.some((f) => f.name === 'TopazPlus a500')).toBe(true);
   expect(project.canUndo).toBe(false);
   expect(fetches).toHaveLength(2);
+});
+
+test('a BinaryText whose SAUCE names Amiga Topaz 1+ opens in that font, as an .ans does', async () => {
+  const project = await blank();
+  stubSauceLibrary();
+  const bin = new Sauce({}, { dataType: 5, fileType: 1, width: 0, height: 0, flags: 0, fontName: 'Amiga Topaz 1+' }).appendTo(Uint8Array.of(65, 7, 66, 7));
+  await project.openArtFile(new File([bin], 'art.bin'));
+  expect(project.drawingFont.name).toBe('TopazPlus a500');
+  expect([project.cols, project.rows]).toEqual([2, 2]);
 });
 
 test('opening an .ans whose SAUCE says IBM VGA opens as before', async () => {

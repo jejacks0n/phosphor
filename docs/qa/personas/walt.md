@@ -24,7 +24,8 @@ never a lost hour of work, whatever the browser does.
   lines), .asc files from `acid-50a`, .txt from
   `impure88`, the XBins (`acid-55a/ACID-55.XB`, and those beside the other packs), and the formats he'd try even though Phosphor may not open them: `.sue`
   (`acid-55a/WE-WILL.SUE`), `.tnd` (`blocktronics_blocktober/_Pumpkin_by_TCF.tnd`), `.nfo` and `.diz`. When the folder
-  is missing, those steps are skipped with a note.
+  is missing, those steps are skipped with a note. A BinaryText (`.bin`) is `tests/fixtures/ansi/binarytext.bin`, with
+  any `.bin` from the packs.
 - To drop a file: a headless browser can't drag from the desktop, so send the drop to the start screen or the
   canvas with the file in it, as `tests/e2e/art-files.spec.js` does (a DataTransfer holding the file).
 - Habits: saves often, reloads to check things stuck, keeps two tabs open, uses Back and Forward, leaves the app
@@ -297,9 +298,12 @@ long file (time the reload), and press Back from a fresh start screen.
 
 ### 23. Try the formats it may not open
 - Does: drops `.sue`, `.tnd`, `.nfo` and `.diz` files on the start screen one at a time, then chooses one with
-  Choose a file.
+  Choose a file. Then the `.bin` files: the BinaryText fixture, a 160-column one with no SAUCE made in the snippet (two
+  rows of `█` in yellow on blue, 640 bytes), and a PNG renamed `photo.bin` (one whose size isn't a whole number of 320 bytes, nor one byte more).
 - Expects: each either opens, or is refused with a message saying why; nothing at all, or the wrong art, is a finding
-  (the README's Files).
+  (the README's Files). The fixture opens 8 wide on CGA, `BIN TEXT` in eight colors over a row on bright backgrounds,
+  with its SAUCE title "Bin"; the one with no record opens 160 wide, with a message saying it had no SAUCE record and
+  was read as BinaryText 160 columns wide; `photo.bin` is refused: "photo.bin isn't a BinaryText file."
 - Probes: `back-out`: Cancel any question it asks; `again`: drop the same file twice.
 - Rated: yes, wants Cmd+O
 

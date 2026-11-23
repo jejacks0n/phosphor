@@ -1204,7 +1204,7 @@
   },
   "actions": {
     "replacesUnsaved": "Remplace les modifications non enregistrées de ce dessin. Il reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
-    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .pho et .phosphor, les fichiers SVG et les fichiers texte (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
+    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .pho et .phosphor, les fichiers SVG et les fichiers d'art (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
     "saveProject": "Enregistrer le projet (.pho)",
     "exportAns": "Exporter en .ans",
     "exportUtf8ans": "Exporter en .utf8ans",
@@ -1433,6 +1433,8 @@
     "artTooBig": "Ce fichier fait {cols} × {rows}. Phosphor ouvre au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
     "xbin512": "{name} utilise 512 caractères, que Phosphor ne sait pas encore dessiner.",
     "xbinBroken": "{name} est tronqué ou n'est pas un fichier XBin.",
+    "notBinaryText": "{name} n'est pas un fichier BinaryText.",
+    "binNoSauce": "{name} n'a pas d'enregistrement SAUCE : il a été lu en BinaryText de 160 colonnes.",
     "artEmpty": "Ce fichier ne contient aucun dessin.",
     "notUtf8": "{name} n'est pas en UTF-8 : il a été lu en CP437, comme un fichier .ans."
   },

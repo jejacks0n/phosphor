@@ -1,5 +1,6 @@
 // XBin files (16colo.rs, ansilove, Moebius): a header, an optional palette and 8×N font, then the cells,
 // optionally run-length compressed. A cell is a character byte (a slot of the file's font) and an attribute.
+// BinaryText (.bin) is the cells alone, uncompressed, in CP437 and the 16 colors.
 import { CP437 } from './Cp437.js';
 import { fitFont, fontId, fontName, slotChars, slotOf } from './BitmapFont.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
@@ -19,22 +20,40 @@ const hex = (r, g, b) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '
 
 export const isXBin = (bytes) => MAGIC.every((b, i) => bytes[i] === b);
 
+// The data stops where the record or its comments start; a 0x1A is no end here (it's a character byte like any other,
+// an XBin's header has one, and a font's bytes may).
+const dataOf = (bytes, sauce) => bytes.subarray(0, sauce ? bytes.length - 128 - (sauce.comments.length ? 5 + 64 * sauce.comments.length : 0) : bytes.length);
+const checkSize = (cols, rows) => {
+  if (cols > MAX_COLS || rows > MAX_LINES || cols * rows > MAX_CELLS) {
+    fail(t('document.artTooBig', { cols, rows, maxCols: MAX_COLS, maxLines: formatNumber(MAX_LINES), maxCells: formatNumber(MAX_CELLS) }));
+  }
+};
+
+// A cell from its character byte and attribute: the foreground the low four bits, the background the high four with
+// iCE colors (bright backgrounds), else the three under the blink bit. indexes: the colors are the 16, so each keeps its
+// ANSI index.
+const cellsOf = (chars, attrs, palette, ice, indexes, table = CP437) => chars.map((byte, n) => {
+  const fgIndex = attrs[n] & 15, bgIndex = ice ? attrs[n] >> 4 : (attrs[n] >> 4) & 7;
+  return {
+    char: table[byte], fg: palette[fgIndex], bg: palette[bgIndex],
+    ...(indexes && { fgIndex: ANSI_OF_DOS[fgIndex], bgIndex: ANSI_OF_DOS[bgIndex] }),
+  };
+});
+const DOS_CGA = ANSI_OF_DOS.map((i) => PALETTES.cga[i].hex);
+
 // knownBlocks(fontId): the blocks saved for a font, if any; else they're found from its pixels.
 export function readXBin(bytes, name, knownBlocks = () => undefined) {
   const sauce = readSauce(bytes);
-  // The data stops where the record or its comments start; a 0x1A is no end here (the header has one, and a font's bytes may).
-  const data = bytes.subarray(0, sauce ? bytes.length - 128 - (sauce.comments.length ? 5 + 64 * sauce.comments.length : 0) : bytes.length);
+  const data = dataOf(bytes, sauce);
   const broken = () => fail(t('document.xbinBroken', { name }));
   if (data.length < 11 || !isXBin(data)) broken();
   const cols = data[5] | (data[6] << 8), rows = data[7] | (data[8] << 8), size = data[9], flags = data[10];
   if (!cols || !rows) broken();
-  if (cols > MAX_COLS || rows > MAX_LINES || cols * rows > MAX_CELLS) {
-    fail(t('document.artTooBig', { cols, rows, maxCols: MAX_COLS, maxLines: formatNumber(MAX_LINES), maxCells: formatNumber(MAX_CELLS) }));
-  }
+  checkSize(cols, rows);
   if (flags & CHARS512) fail(t('document.xbin512', { name }));
 
   let at = 11;
-  let palette = ANSI_OF_DOS.map((i) => PALETTES.cga[i].hex);
+  let palette = DOS_CGA;
   if (flags & PALETTE) {
     if (data.length < at + 48) broken();
     palette = Array.from({ length: 16 }, (_, i) => hex(...[0, 1, 2].map((k) => {
@@ -79,15 +98,31 @@ export function readXBin(bytes, name, knownBlocks = () => undefined) {
   const blocks = font && knownBlocks(fontId(font));
   if (blocks) font = { ...font, blocks };
   const table = font ? slotChars(font) : CP437; // a font's slots, its blocks where it keeps them
-  const custom = (flags & PALETTE) !== 0;
-  const cells = chars.map((byte, n) => {
-    const fgIndex = attrs[n] & 15, bgIndex = flags & NON_BLINK ? attrs[n] >> 4 : (attrs[n] >> 4) & 7;
-    return {
-      char: table[byte], fg: palette[fgIndex], bg: palette[bgIndex],
-      ...(!custom && { fgIndex: ANSI_OF_DOS[fgIndex], bgIndex: ANSI_OF_DOS[bgIndex] }),
-    };
-  });
+  const cells = cellsOf(chars, attrs, palette, (flags & NON_BLINK) !== 0, !(flags & PALETTE), table);
   return { cols, rows, cells, sauce, palette, font, xbin: true, notUtf8: false };
+}
+
+// A .bin is BinaryText only by its SAUCE record (data type 5, the width in its file type, halved; 0 is 160). With no
+// record it's taken for one 160 columns wide, the width BinaryText has with none, only when its data is whole rows of
+// that, as a screen saved whole is (said with binNoSauce, iCE colors off); any other .bin is some other kind of file,
+// and so is one whose record is another type's. The rows run to the end of the data, a last row cut short filled with
+// spaces. The record's own size fields mean nothing here, so the grid's size takes their place, for an export to write.
+const BIN_COLS = 160, BLANK = 0x07;
+export function readBinaryText(bytes, name) {
+  const found = readSauce(bytes);
+  const notBin = () => fail(t('document.notBinaryText', { name }));
+  if (found && found.dataType !== 5) notBin();
+  const data = dataOf(bytes, found);
+  const cols = found?.fileType ? found.fileType * 2 : BIN_COLS, total = data.length >> 1; // an odd last byte (an EOF) is no cell
+  if (!found && (!total || total % BIN_COLS)) notBin();
+  if (!total) fail(t('document.artEmpty'));
+  const rows = Math.ceil(total / cols);
+  checkSize(cols, rows);
+  const chars = new Uint8Array(cols * rows).fill(32), attrs = new Uint8Array(cols * rows).fill(BLANK);
+  for (let n = 0; n < total; n++) { chars[n] = data[n * 2]; attrs[n] = data[n * 2 + 1]; }
+  const cells = cellsOf(Array.from(chars), attrs, DOS_CGA, !!found?.iceColors, true);
+  const sauce = found && { ...found, width: cols, height: rows };
+  return { cols, rows, cells, sauce, palette: DOS_CGA, font: null, xbin: false, notUtf8: false, binNoSauce: !found };
 }
 
 // One row's cells as runs: at each cell the longest of both-same (3), char-same (1), attr-same (2), else a plain run (0).
