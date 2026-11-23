@@ -572,7 +572,6 @@ const exportPalettes = () => {
             @change="setPart(section, $event)"
             @removed="removed"
         />
-        <div class="note">{{ t('palette.fonts.sheetNote') }}</div>
         <div class="grid sheet" :class="{ picking: picked && !inRoom }" :style="styleOf(chosen)" @mouseleave="hovered = null">
           <span
               v-for="(c, i) in chars"

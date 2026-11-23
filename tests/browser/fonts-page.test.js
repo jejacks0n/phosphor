@@ -665,18 +665,20 @@ test('the Lines section adds a style slot by slot', async () => {
   const { project } = await mount({ font: cp437Font });
   await press(sectionTab('Lines'));
   expect(sectionTab('Lines').getAttribute('aria-selected')).toBe('true');
+  expect(host.querySelector('.edit-side').textContent).not.toContain('All 256 slots'); // no line over the sheet
   await press(button('+ New line style'));
   expect(host.querySelector('.lines .card input').value).toBe('Line 1');
+  expect(host.querySelector('.lines p.note')).toBeNull(); // a piece picked says nothing under the styles
   for (let n = 1; n <= 11; n++) await press(slotCell(n));
   expect(project.drawingFont.lines.styles[0].slots).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   expect(host.querySelector('.lines .card').textContent).toContain('Offered under Draw with');
   expect(sectionTab('Lines').textContent.replace(/\s+/g, ' ').trim()).toBe('Lines 1');
 });
 
-test('a style missing pieces says how many are left', async () => {
+test('a style missing pieces says every piece is needed', async () => {
   await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, ...Array(9).fill(null)] }] } } });
   await press(sectionTab('Lines'));
-  expect(host.querySelector('.lines .card').textContent).toContain('9 pieces to go before Draw with offers it');
+  expect(host.querySelector('.lines .card .status').textContent).toBe('All line sections are required to be able to draw with it. Select characters below to define this style.');
   expect(lineTiles()[2].classList.contains('missing')).toBe(true);
 });
 
