@@ -248,7 +248,7 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
   stay his.
 - Probes: `back-out`: drop it and press Cancel; `extremes`: drop it near the right edge and check what runs past is cut
   off; `out-of-order`: drop an `.xb` from the packs and expect the same Add question; on Add its cells land, and his drawing's font and palette stay his.
-- Rated: yes, wants a key to add a file to the drawing
+- Rated: yes, wants Cmd+O, then Enter on Add to this drawing (Open asks, over a drawing)
 
 ### 17. Move it into place by keys
 - Does: moves the floating logo with the arrow keys, sets it down with Enter.
@@ -295,7 +295,7 @@ look at what covers what, and check what Merge down's tooltip says.
   original characters."); the name he typed becomes the document's name; it saves within the `file` budget.
 - Probes: `back-out`: open the dialog, press Escape, and check focus lands where his keys still work; `again`: export
   twice; `extremes`: type `€` and `漢` in a cell first and check the list.
-- Rated: yes, wants a key for Export .ans
+- Rated: yes, wants Cmd+K, then `exp ans` and Enter
 
 ### 22. The terminal shows what I see
 - Does: plays the export in the headless terminal (cp437) and compares it with the screen.
@@ -344,7 +344,7 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   it give way, a `▄` among them converting as it did), and in PIXEL a soft stroke's edge over the black is soft, with
   no dashes or bands, and a second soft stroke over the white the first one left stays white, with no dark rim; Undo brings the characters back, and in ANSI the same stroke tints the characters and keeps them. `again`: in PIXEL, the Eraser over both halves of a `█` on
   the base leaves a pinned black space, which the ANSI view shows as a space.
-- Rated: yes, wants a key to pick the base
+- Rated: yes, wants Cmd+K, then `pick base` and Enter
 
 ### 26. Merge my layer into the base
 - Does: picks Layer 1, presses Merge down, chooses Keep crisp cells.
@@ -365,13 +365,13 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   the black and its second its ░▒▓█, not half-blocks ([Paint and Characters](../../layers.md#paint-and-characters)).
 - Probes: `undo-redo`: flatten, undo, redo; `again`: flatten twice; `extremes`: hide a layer first and read what the
   dialog says ("The hidden layer will also be removed.").
-- Rated: yes, wants a key for Flatten
+- Rated: yes, wants Cmd+K, then `flatten` and Enter
 
 ### 28. Export it again and check
 - Does: exports .ans, plays it in the terminal and reopens it in Phosphor.
 - Expects: the terminal and the reopen match the screen, as in steps 22 and 23.
 - Probes: `again`: export twice and compare the two files' bytes (they should be the same).
-- Rated: yes, wants a key for Export .ans
+- Rated: yes, wants Cmd+K, then `exp ans` and Enter
 
 ### 29. Find the middle of my logo
 - Does: with the Hand, turns on Rulers, drags zero to the logo's middle character, drags a guide to each side and

@@ -18,7 +18,6 @@ import ToggleGroup from '@/components/ToggleGroup.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import VectorOptions from '@/components/VectorOptions.vue';
 import { shortcut } from '@/lib/keyLabels';
-import { snapsLate } from '@/lib/CharResolver';
 import { isUniform } from '@/lib/ImageProcessor';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 import { refusedHidden } from '@/store/project/shared.js';
@@ -26,6 +25,7 @@ import { sameChars } from '@/document/layerInfo.js';
 import { useLayerName } from '@/composables/useLayerName';
 import { asking as merging, mergeBusy, useMergeDown } from '@/composables/useMergeDown';
 import { busyWhile } from '@/composables/useBusy';
+import { artLayerOff, bakeOff as bakeWhy, flattenOff as flattenWhy, reasonWords } from '@/lib/offReasons';
 import { showFontSetup } from '@/composables/useFontSetup';
 
 const { t } = useI18n();
@@ -33,7 +33,7 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const drawing = useDrawingStore();
 const layerName = useLayerName();
-const { below, offFor, hasAny, mergeDown } = useMergeDown();
+const { below, offFor, hasAny, mergeDown, mergePicked } = useMergeDown();
 
 // A control that's off for a reason: the reason in its title, and what it is still its name for screen readers.
 const off = (reason, name) => (reason ? { disabled: true, title: reason, 'aria-label': name, 'data-off-reason': '' } : {});
@@ -58,10 +58,7 @@ const mergeOn = computed(() => {
   return hasAny(picked.value);
 });
 const mergeTitle = computed(() => (onVector.value && vectorSelection.value.length ? t(below(picked.value)?.kind === 'vector' ? 'toolbar.mergeShapesOntoVectorTitle' : 'toolbar.mergeShapesTitle') : t('toolbar.mergeDownTitle', { name: layerName(picked.value) })));
-function mergeHere() {
-  if (!onVector.value || !vectorSelection.value.length) return mergeDown(picked.value);
-  if (project.mergeShapes(vectorSelection.value)) workspace.vectorSelected = []; // or refused: still selected
-}
+const mergeHere = () => mergePicked(workspace);
 const warnedSub = (sub, warning = mergeWarning()) => (drawing.othersHere ? t('toolbar.mergeDialog.warnedSub', { warning, sub }) : sub);
 
 // The toolbar offers the tools that work in the current view (editorTab is 'input' or 'output' while editing), a slot
@@ -334,34 +331,27 @@ const mergeChoices = computed(() => {
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between
 // colors are gone) or keep full color (a few cells near palette boundaries can tip). Other
-// palettes bake exactly either way, and so do CGA and VGA dithered or resolved (they snap on the grid then).
-const baking = ref(null); // the palette's name while the dialog is open
-const bakingFinal = ref(false); // others are drawing, and it can't be undone: it asks first
-function bake() {
-  const palette = !snapsLate(project.processParams) && { cga: 'CGA', vga: 'VGA' }[project.quantize];
-  if (palette) baking.value = palette;
-  else if (drawing.othersHere) bakingFinal.value = true;
-  else project.bake();
-}
+// palettes bake exactly either way, and so do CGA and VGA dithered or resolved (they snap on the grid then). Others
+// drawing, it can't be undone: it asks first. The asking is the workspace's (workspace.bake), so the command list's Bake
+// asks the same.
 const BAKE_CHOICE = computed(() => [{ id: 'bake', title: t('toolbar.bake'), text: t('toolbar.bakeDialog.choiceText') }]);
 function chooseBakeFinal() {
-  bakingFinal.value = false;
+  workspace.bakingFinal = false;
   project.bake();
 }
 const bakeChoices = computed(() => [
-  { id: 'full', title: t('toolbar.bakeDialog.keepFullTitle'), text: t('toolbar.bakeDialog.keepFullText', { palette: baking.value }) },
-  { id: 'lock', title: t('toolbar.bakeDialog.lockPaletteTitle', { palette: baking.value }), text: t('toolbar.bakeDialog.lockPaletteText', { palette: baking.value }) },
+  { id: 'full', title: t('toolbar.bakeDialog.keepFullTitle'), text: t('toolbar.bakeDialog.keepFullText', { palette: workspace.baking }) },
+  { id: 'lock', title: t('toolbar.bakeDialog.lockPaletteTitle', { palette: workspace.baking }), text: t('toolbar.bakeDialog.lockPaletteText', { palette: workspace.baking }) },
 ]);
 function chooseBake(id) {
-  baking.value = null;
+  workspace.baking = null;
   project.bake({ lockPalette: id === 'lock' });
 }
 
 // Flatten asks where the drawing goes: the edit layer (the default) or the base, worded as opening an .ans file asks.
 // Off with frames (the picture is under every one), inside an art layer, and for artists; others drawing, it warns.
-const flattening = ref(false);
-const bakeOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.canBake ? null : t('toolbar.bakeNothing')), t('toolbar.bake'));
-const flattenOff = () => off(insideOff.value ?? drawing.hostOnly ?? (project.hasFrames ? t('toolbar.flattenOneFrame') : null), t('toolbar.flatten'));
+const bakeOff = () => off(reasonWords(bakeWhy(project, drawing)), t('toolbar.bake'));
+const flattenOff = () => off(reasonWords(flattenWhy(project, drawing)), t('toolbar.flatten'));
 // The hidden layers Flatten removes, which its dialog says first.
 const hiddenCount = computed(() => project.layers.filter((layer, at) => at && layer.hidden).length);
 const flattenSub = computed(() => [t('toolbar.flattenDialog.sub'), hiddenCount.value ? t('toolbar.flattenDialog.hidden', { n: hiddenCount.value }, hiddenCount.value) : null].filter(Boolean).join(' '));
@@ -370,7 +360,7 @@ const flattenChoices = computed(() => [
   { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
 ]);
 function chooseFlatten(layer) {
-  flattening.value = false;
+  workspace.flattening = false;
   project.flattenDrawing({ layer });
 }
 
@@ -383,10 +373,7 @@ const selectionHasEdits = computed(() => {
 // Make art layer: the Select tool's selection or the Magic Wand's, with something drawn in it.
 const artReady = computed(() => !artOff.value && (workspace.activeTool === 'wand' ? project.hasEdits : selectionHasEdits.value)); // the wand's cells are checked when it's made
 // In a room it goes on the vector layer above the one in use: with none, it's off, as adding one is a stack change.
-const artOff = computed(() => {
-  const above = project.layers[project.layers.findIndex((layer) => layer.id === project.editId) + 1];
-  return project._sharing && above?.kind !== 'vector' ? t('vector.artLayerNeedsVectorAbove', { name: layerName(project.editId) }) : null;
-});
+const artOff = computed(() => reasonWords(artLayerOff(project)));
 
 // Rotate turns only pixels: not while the selection has characters on its layers.
 const selectionHasCharacters = computed(() => {
@@ -415,20 +402,20 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       @cancel="merging = null"
   />
   <ChoiceDialog
-      v-if="baking"
-      :title="t('toolbar.bakeDialog.titlePalette', { palette: baking })"
+      v-if="workspace.baking"
+      :title="t('toolbar.bakeDialog.titlePalette', { palette: workspace.baking })"
       :sub="warnedSub(t('toolbar.bakeDialog.subPalette'), bakeWarning())"
       :choices="bakeChoices"
       @choose="chooseBake"
-      @cancel="baking = null"
+      @cancel="workspace.baking = null"
   />
   <ChoiceDialog
-      v-if="bakingFinal"
+      v-if="workspace.bakingFinal"
       :title="t('toolbar.bakeDialog.title')"
       :sub="bakeWarning()"
       :choices="BAKE_CHOICE"
       @choose="chooseBakeFinal"
-      @cancel="bakingFinal = false"
+      @cancel="workspace.bakingFinal = false"
   />
   <ChoiceDialog
       v-if="clearing"
@@ -439,12 +426,12 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       @cancel="clearing = null"
   />
   <ChoiceDialog
-      v-if="flattening"
+      v-if="workspace.flattening"
       :title="t('toolbar.flattenDialog.title')"
       :sub="warnedSub(flattenSub, t('toolbar.flattenDialog.warning'))"
       :choices="flattenChoices"
       @choose="chooseFlatten"
-      @cancel="flattening = false"
+      @cancel="workspace.flattening = false"
   />
   <article ref="toolbar" class="edit-toolbar" :class="{ 'actions-folded': actionsFolded }">
     <div class="toolbar-row primary-row">
@@ -562,14 +549,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
 
         <button
             :title="t('toolbar.bakeTitle')"
-            @click="bake"
+            @click="workspace.bake()"
             class="primary"
             :disabled="!project.canBake"
             v-bind="bakeOff()"
         ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg></button>
         <button
             :title="t('toolbar.flattenTitle')"
-            @click="flattening = true"
+            @click="workspace.flattening = true"
             class="primary"
             :disabled="!project.canFlatten"
             v-bind="flattenOff()"
@@ -605,11 +592,11 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
             </svg>
             {{ t('toolbar.redo') }}
           </button>
-          <button @click="bake" :disabled="!project.canBake" v-bind="bakeOff()">
+          <button @click="workspace.bake()" :disabled="!project.canBake" v-bind="bakeOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M320 64C346 152 464 216 464 376C464 480 400 568 320 568C240 568 176 480 176 376C176 304 214 254 248 214C254 274 280 308 312 318C292 230 296 136 320 64zM320 480C362 480 392 446 392 404C392 356 356 330 340 288C318 324 280 344 280 400C280 446 292 480 320 480z"/></svg>
             {{ t('toolbar.bake') }}
           </button>
-          <button @click="flattening = true" :disabled="!project.canFlatten" v-bind="flattenOff()">
+          <button @click="workspace.flattening = true" :disabled="!project.canFlatten" v-bind="flattenOff()">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640">
               <path d="M296.5 69.2C311.4 62.3 328.6 62.3 343.5 69.2L562.1 170.2C570.6 174.1 576 182.6 576 192C576 201.4 570.6 209.9 562.1 213.8L343.5 314.8C328.6 321.7 311.4 321.7 296.5 314.8L77.9 213.8C69.4 209.8 64 201.3 64 192C64 182.7 69.4 174.1 77.9 170.2L296.5 69.2zM112.1 282.4L276.4 358.3C304.1 371.1 336 371.1 363.7 358.3L528 282.4L562.1 298.2C570.6 302.1 576 310.6 576 320C576 329.4 570.6 337.9 562.1 341.8L343.5 442.8C328.6 449.7 311.4 449.7 296.5 442.8L77.9 341.8C69.4 337.8 64 329.3 64 320C64 310.7 69.4 302.1 77.9 298.2L112 282.4zM77.9 426.2L112 410.4L276.3 486.3C304 499.1 335.9 499.1 363.6 486.3L527.9 410.4L562 426.2C570.5 430.1 575.9 438.6 575.9 448C575.9 457.4 570.5 465.9 562 469.8L343.4 570.8C328.5 577.7 311.3 577.7 296.4 570.8L77.9 469.8C69.4 465.8 64 457.3 64 448C64 438.7 69.4 430.1 77.9 426.2z"/>
             </svg>

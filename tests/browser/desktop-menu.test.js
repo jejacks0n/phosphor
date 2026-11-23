@@ -8,6 +8,7 @@ import { useFakeDesktop, resetDesktop } from '@/social/desktop';
 import { MENU_LABELS, checkForUpdates, reloading, useDesktopMenu } from '@/composables/useDesktopMenu';
 import { toastMessage } from '@/composables/useToast';
 import { useRoomStore } from '@/store/RoomStore';
+import { useSocialStore } from '@/store/SocialStore';
 import { createTestApp, loadImage } from '../support/app.js';
 
 let project, workspace, desktop, scope, command, opened;
@@ -113,6 +114,34 @@ test('commands open what they name, and Undo from the menu is the drawing’s ou
   expect(typed).toHaveBeenCalledWith('undo');
   expect(undo).toHaveBeenCalledTimes(1);
   field.remove();
+});
+
+// The Room menu's items run the command table's room rows (rooms.*), as they ran before they moved there.
+test('the Room menu starts, joins, copies the address of and leaves or ends a room, as before', async () => {
+  const room = useRoomStore(), social = useSocialStore();
+  workspace.sidePanelTab = 'layers';
+  social.desktopName = null;
+  command('hostRoom');   // without a name: the page that asks for it first
+  expect([workspace.sidePanelTab, social.page]).toEqual(['social', 'lobby']);
+  social.desktopName = 'tin-owl';
+  command('hostRoom');
+  expect(social.page).toBe('start-room');
+  command('joinRoom');
+  expect(social.page).toBe('lobby');
+
+  room.role = 'host';
+  const copy = vi.spyOn(room, 'copyLink').mockResolvedValue(true);
+  await command('copyAddress');
+  expect(copy).toHaveBeenCalled();
+  expect(toastMessage.value).toBe('Room address copied.');
+  const ask = vi.spyOn(room, 'askToEnd').mockResolvedValue(true), end = vi.spyOn(room, 'endRoom').mockImplementation(() => {});
+  await command('leaveRoom');   // a host's is End Room, asked first
+  expect([ask.mock.calls.length, end.mock.calls.length]).toEqual([1, 1]);
+  room.role = 'watch';
+  const leave = vi.spyOn(room, 'leave').mockImplementation(() => {});
+  await command('leaveRoom');
+  expect([leave.mock.calls.length, ask.mock.calls.length]).toEqual([1, 1]);
+  room.role = null;
 });
 
 test('New asks first when there are unsaved changes (UnsavedDialog), and goes on once told to', async () => {

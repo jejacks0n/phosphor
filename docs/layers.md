@@ -1307,12 +1307,28 @@ don't need a key or a trip to their button. In the desktop app it's also **Help 
   and **Escape** closes the box. The box closes before the command runs, so one that opens a dialog (Export, Versions)
   opens it on its own, and focus goes back where it was, Edit Mode's cursor too.
 - **What's in it**: Every command the app has a key for, each with its key at the right so you can learn it, and the
-  ones that have none: **New project**, **Versions**, **Export…** and each format on its own (**Export .ans**,
-  **Export .png**, **Export .gif**…, which open Export on that format), **Layers**, **Social**, **Plugins…**,
-  **Reload plugins** (each plugin you picked from a file or folder, read again) and **Reload with Plugins Off**. The
-  tools of the tab showing are there too, and inserting and deleting lines and columns at Edit Mode's cursor. A command that doesn't apply where you are (zooming on the start screen) isn't listed.
-- **Grayed Rows**: A command that can't run now shows grayed with the reason, such as **No drawing open**, and Enter
-  does nothing on it.
+  ones that have none, each doing what its button does (and asking what its button asks):
+  - **File and panels**: **New project**, **Versions**, **Export…** and each format on its own (**Export .ans**,
+    **Export .png**, **Export .gif**…, which open Export on that format), **Layers**, **Social**, **Plugins…**,
+    **Reload plugins** (each plugin you picked from a file or folder, read again) and **Reload with Plugins Off**.
+  - **The drawing**: **Bake**, **Flatten**, **Merge down** (into the base it asks how, **Blend into source image**
+    among the choices), **Dimensions** (the cursor in the field, its number picked), **Animate** (on or off) and
+    **Manage fonts**.
+  - **Layers**, on the picked one: **Layer: Rename**, **Layer: Duplicate**, **Layer: Delete**, **Layer: Hide** or
+    **Layer: Show**, and **Layer: Pick the base**; and **Make art layer** from the selection.
+  - **VECTOR**, on the selected shapes: **Selected shapes: Forward**, **Back**, **To front** and **To back** (the top or
+    bottom of their own vector layer), and **Duplicate** (copies on top, selected, as a paste puts them, leaving the
+    clipboard as it was).
+  - **Rooms**: **Start a room**, **Join a Room…**, **Copy link** (**Copy address** in the desktop app), **Settings and
+    stats**, **End room** (asked first), **Leave Room** and **Show others' cursors**.
+  - **Tool options**: each tool's checkboxes, toggles and choices in the tab showing, with the tool's name first
+    (**Magic Wand: Contiguous**, **Shapes: Ellipse**, **Magic Wand: Match BG**). Running one chooses the tool and sets
+    the option, as the options row does.
+
+  The tools of the tab showing are there too, and inserting and deleting lines and columns at Edit Mode's cursor. A
+  command that doesn't apply where you are (zooming on the start screen, VECTOR's on PIXEL) isn't listed.
+- **Grayed Rows**: A command that can't run now shows grayed with the reason its button gives, such as **No drawing
+  open**, **Not on the base layer** or **Only the host can do this**, and Enter does nothing on it.
 - **Where It Opens**: From anywhere but another dialog, the color box or the character palette, while you type in Edit
   Mode or in a field too. On a Mac it's **Cmd**+K only, as **Ctrl+K** in a text field deletes to the end of the line.
   The commands you ran last are kept in this browser.

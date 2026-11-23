@@ -8,14 +8,13 @@ import EndRoomDialog from './EndRoomDialog.vue';
 import HostRoomPage from './HostRoomPage.vue';
 
 // The host's tools in the chat panel's header: End room (which asks first), and the room menu: Copy link and
-// Settings and stats (the room's dashboard, in a box, where the welcome is edited too). Escape puts focus back on the
-// menu's button.
+// Settings and stats (the room's dashboard, in a box, where the welcome is edited too; room.statsOpen, so the command
+// list opens it too). Escape puts focus back on the menu's button.
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no link: Copy copies the first address others join at
 const room = useRoomStore();
 const { t } = useI18n();
 
 const root = useTemplateRef('root');
-const stats = ref(false);    // Settings and stats open
 const ending = ref(false);   // End room asking
 watch(() => room.askingEnd, (asking) => { if (asking) ending.value = false; });   // Back asks the same question: one is enough
 const copied = ref(false);
@@ -24,7 +23,7 @@ onBeforeUnmount(() => clearTimeout(copiedTimer));
 
 const trigger = () => root.value.querySelector('.dropdown-trigger');
 async function closeStats() {
-  stats.value = false;
+  room.statsOpen = false;
   await nextTick();
   trigger().focus();
 }
@@ -43,12 +42,12 @@ async function copyLink() {
     <DropdownMenu :label="t('social.menu.label')">
       <template #trigger><span aria-hidden="true">⋯</span></template>
       <button @click="copyLink">{{ DESKTOP ? t('social.desktop.copyAddress') : t('common.copyLink') }}</button>
-      <button @click="stats = true">{{ t('social.menu.settingsAndStats') }}</button>
+      <button @click="room.statsOpen = true">{{ t('social.menu.settingsAndStats') }}</button>
     </DropdownMenu>
     <button class="danger end" @click="ending = true">{{ t('social.host.endRoom') }}</button>
     <EndRoomDialog v-if="ending" @end="room.endRoom()" @cancel="ending = false" />
 
-    <ModalDialog v-if="stats" wide closable :label="t('social.menu.settingsAndStats')" @cancel="closeStats">
+    <ModalDialog v-if="room.statsOpen" wide closable :label="t('social.menu.settingsAndStats')" @cancel="closeStats">
       <div class="people-forms">
         <HostRoomPage />
       </div>

@@ -640,12 +640,22 @@ export const vectorActions = {
   },
 
   // Each shape moves in the stacking order to just above the nearest shape it overlaps above it (forward), or
-  // just beneath the nearest beneath it (back); one with none there stays. Every other pair keeps its order:
-  // the shapes are numbered again from the bottom, and those whose number changed are the step.
+  // just beneath the nearest beneath it (back); one with none there stays. To the top of its own vector layer (toFront)
+  // or its bottom (toBack), keeping their own order. Every other pair keeps its order: the shapes are numbered again from
+  // the bottom, and those whose number changed are the step.
   restackShapes(keys, direction) {
-    const order = stacked(this.shapes).map(([key]) => key), layerOf = (key) => this.shapes.get(key).layer ?? 'vector';
+    let order = stacked(this.shapes).map(([key]) => key);
+    const layerOf = (key) => this.shapes.get(key).layer ?? 'vector';
     const moving = new Set(keys), up = direction === 'forward', sequence = up ? [...order].reverse() : [...order];
-    for (const key of sequence) {
+    if (direction === 'toFront' || direction === 'toBack') {
+      // Each layer's shapes in the places they hold now, the moving ones first or last among them.
+      for (const layer of new Set(keys.filter((key) => this.shapes.has(key)).map(layerOf))) {
+        const mine = order.filter((key) => layerOf(key) === layer), still = mine.filter((key) => !moving.has(key)), going = mine.filter((key) => moving.has(key));
+        const next = direction === 'toFront' ? [...still, ...going] : [...going, ...still];
+        let i = 0;
+        order = order.map((key) => (layerOf(key) === layer ? next[i++] : key));
+      }
+    } else for (const key of sequence) {
       if (!moving.has(key)) continue;
       const at = order.indexOf(key), bounds = shapeBounds(this.shapes.get(key), this.pixelAspect);
       for (let i = at + (up ? 1 : -1); i >= 0 && i < order.length; i += up ? 1 : -1) {

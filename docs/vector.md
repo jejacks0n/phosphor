@@ -220,6 +220,7 @@ Use the [Node tool](#node-a) (or Vector select or the Shape tool, for one select
 With Vector select, the options row has **Copy**, **Cut**, and **Paste**, and with shapes selected:
 
 - **Forward / Back**: Move the shapes just above the nearest shape they overlap on their own vector layer, or just beneath it. Every other shape keeps its place. Between two vector layers, the layers' order in LAYERS decides which shape is over which.
+  The command list (Cmd+K) also has **Selected shapes: To front** and **To back**, which move them to the top or bottom of their own vector layer in one step, and **Duplicate**, copies on top as a paste puts them, leaving the clipboard as it was.
 - **Join**: Combines two or more shapes into one compound shape: the bottom one as they show (on the lowest vector layer, when they're on several), with its colors, place, and layer, and every outline of the rest. An outline inside another becomes a cutout hole, so a circle and a smaller circle inside it make a ring.
 - **Separate**: Splits a compound shape back into independent outlines, each a shape of its own in the same colors.
 - **Add**: Merges two or more closed shapes into a single outline covering their combined area.

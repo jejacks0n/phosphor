@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, reactive, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -201,6 +201,15 @@ const wide = useMediaQuery(desktopQuery);
 watch(() => workspace.settingsOpen, (open) => {
   if (open && !wide.value) panel.value?.querySelector(FOCUSABLE)?.focus();
 }, { flush: 'post' }); // once App has taken the drawer's inert off
+// The command list's canvas size: the cursor in Dimensions, its number picked to type over (on a narrow screen, in the
+// drawer, opened first).
+watch(() => workspace.dimensionsRequest, async () => {
+  if (!wide.value && !workspace.settingsOpen) workspace.toggleSettings();
+  await nextTick();
+  const field = panel.value?.querySelector('#cols');
+  field?.focus();
+  field?.select();
+}, { flush: 'post' });
 function onKeyDown(event) {
   if (event.key !== 'Escape' || event.defaultPrevented || wide.value || !workspace.settingsOpen || ownsKey(event.target, event)) return;
   event.preventDefault();

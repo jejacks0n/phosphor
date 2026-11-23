@@ -469,7 +469,10 @@
     "hiddenMergeToast": "Rendez le calque visible pour le fusionner",
     "noCellsLayer": "Ajoutez un calque de dessin avant de dessiner.",
     "notInRoom": "L'ajout d'une image à un calque n'est pas encore pris en charge dans les salons partagés.",
-    "charsHostOnly": "Seul l'hôte modifie les réglages de caractères dans un salon."
+    "charsHostOnly": "Seul l'hôte modifie les réglages de caractères dans un salon.",
+    "show": "Afficher",
+    "hide": "Masquer",
+    "pickBase": "Choisir la base"
   },
   "tools": {
     "pluginTitle": "{name} ({plugin})",
@@ -1467,13 +1470,24 @@
       "bgNext": "Couleur d’arrière-plan : suivante dans la palette",
       "sizeDown": "Réduire la taille de l’outil",
       "sizeUp": "Agrandir la taille de l’outil",
-      "reloadPlugins": "Recharger les plugins"
+      "reloadPlugins": "Recharger les plugins",
+      "layer": "Calque : {action}",
+      "shapes": "Formes sélectionnées : {action}",
+      "option": "{tool} : {option}",
+      "optionChoice": "{tool} : {option} {choice}"
     },
     "reasons": {
       "noDrawing": "Aucun dessin ouvert",
       "noCursor": "Placez d’abord le curseur en Mode Édition",
       "noLinkedPlugins": "Aucun plugin n’a été choisi depuis un fichier ou un dossier",
-      "notAnimated": "Activez Animer, avec plus d’une image"
+      "notAnimated": "Activez Animer, avec plus d’une image",
+      "baseLayer": "Pas sur le calque de base",
+      "nothingToMerge": "Rien à fusionner sur ce calque",
+      "noShapes": "Sélectionnez d’abord des formes",
+      "notInRoom": "Pas dans une salle",
+      "notHost": "Réservé à l’hôte",
+      "inRoom": "Quittez d’abord la salle",
+      "notSharing": "Seulement en dessinant ensemble dans une salle"
     },
     "groups": {
       "vector": "VECTOR",
@@ -2155,7 +2169,9 @@
     "sharp": "Vif",
     "sharpTitle": "Point vif : supprime les poignées pour créer un coin net",
     "deletePointTitle": "Supprimer l'arrêt de couleur ou le point sélectionné",
-    "pointsHint": "Faites glisser des points, poignées ou arrêts de couleur. Cliquez sur le contour pour ajouter un point. Appuyez sur Échap ou cliquez sur le canevas vide pour terminer"
+    "pointsHint": "Faites glisser des points, poignées ou arrêts de couleur. Cliquez sur le contour pour ajouter un point. Appuyez sur Échap ou cliquez sur le canevas vide pour terminer",
+    "toFront": "Au premier plan",
+    "toBack": "À l’arrière-plan"
   },
   "rulers": {
     "zeroOnColumn": "0 sur la colonne {n}",

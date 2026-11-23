@@ -171,7 +171,8 @@ test('every row with a run has words in en.json and fr.json, and its available i
           expect(te(said.path, 'en') && te(said.path, 'fr'), `${c.id}: ${said.path}`).toBe(true);
         }
         const reason = c.available?.(ctx) ?? true;
-        if (reason !== true) expect(te(reason, 'en') && te(reason, 'fr'), `${c.id}: ${reason}`).toBe(true);
+        const [key] = [reason].flat(); // a key, or [key, values]
+        if (reason !== true) expect(te(key, 'en') && te(key, 'fr'), `${c.id}: ${key}`).toBe(true);
       }
     }
     // The reasons a room gives (New project and Versions), which a drawing alone never shows.
