@@ -291,25 +291,46 @@ const GLSL_TYPES = { slider: 'float', checkbox: 'bool', choice: 'int', color: 'v
 // first, then letters, digits and single underscores, so the name is always GLSL's (no hyphen, no reserved __).
 const optUniform = (id) => `opt_${id}`;
 
-// A plugin filter's pass (the body of its vec3 filter()) in a program of its own, after the prelude docs/plugins.md
-// describes: pixel(d), the color d processed pixels away as the pass before left it (the edge's past the border), uv,
-// uResolution, luma() and an opt_ uniform for each option.
-const filterSource = (pass, options) => `precision highp float;
-uniform sampler2D uImage; uniform vec2 uResolution; varying vec2 vTexCoord;
+// A plugin filter's pass is GLSL ES 3.00, as a plugin solver's shader is (ShapeMatcher), so an author learns one
+// language, and a loop may run as far as an option says (GLSL ES 1.00, which the main shader above is written in, wants a
+// constant there). A program is all of one version, so a filter's has a vertex shader of its own: the main one, in 3.00's words.
+const FILTER_VERTEX_SHADER = `#version 300 es
+in vec2 position;
+in vec2 texCoord;
+out vec2 vTexCoord;
+uniform bool uFlipY;
+void main() {
+    gl_Position = vec4(position, 0, 1);
+    vTexCoord = vec2(texCoord.x, uFlipY ? 1.0 - texCoord.y : texCoord.y);
+}
+`;
+
+// A plugin filter's pass (the body of a function that returns the pixel's new color) in a program of its own, after the
+// prelude docs/plugins.md describes: pixel(d), the color d processed pixels away as the pass before left it (the edge's
+// past the border), uv, uResolution, luma() and an opt_ uniform for each option. #line: the compiler's log counts the
+// author's lines. (The function can't be called filter: GLSL ES 3.00 keeps that word.)
+const filterSource = (pass, options) => `#version 300 es
+precision highp float;
+precision highp int;
+uniform sampler2D uImage; uniform vec2 uResolution; in vec2 vTexCoord; out vec4 outColor;
 vec2 uv;
-vec3 pixel(vec2 d) { vec2 h = 0.5 / uResolution; return texture2D(uImage, clamp(uv + d / uResolution, h, 1.0 - h)).rgb; }
+vec3 pixel(vec2 d) { vec2 h = 0.5 / uResolution; return texture(uImage, clamp(uv + d / uResolution, h, 1.0 - h)).rgb; }
 float luma(vec3 c) { return dot(c, ${LUMA}); }
 ${options.map((option) => `uniform ${GLSL_TYPES[option.kind]} ${optUniform(option.id)};`).join('\n')}
-vec3 filter() {
+vec3 filtered() {
+#line 1
 ${pass}
 }
-void main() { uv = vTexCoord; gl_FragColor = vec4(clamp(filter(), 0.0, 1.0), texture2D(uImage, uv).a); }
+void main() { uv = vTexCoord; outColor = vec4(clamp(filtered(), 0.0, 1.0), texture(uImage, uv).a); }
 `;
 
 export default class WebGLProcessor {
   constructor() {
     this.canvas = document.createElement('canvas');
-    this.gl = this.canvas.getContext('webgl', { preserveDrawingBuffer: true });
+    // WebGL 2, which a plugin filter's GLSL ES 3.00 needs; the main shader (GLSL ES 1.00) runs in it as it does in
+    // WebGL 1. A browser with only WebGL 1 still gets the picture: a plugin filter there doesn't build, and says so.
+    const options = { preserveDrawingBuffer: true };
+    this.gl = this.canvas.getContext('webgl2', options) ?? this.canvas.getContext('webgl', options);
     if (!this.gl) throw new Error('WebGL not supported');
 
     this.program = this.#createProgram(VERTEX_SHADER, FRAGMENT_SHADER);
@@ -460,7 +481,7 @@ export default class WebGLProcessor {
         used.add(key);
         if (!this.filterPrograms.has(key)) {
           try {
-            this.filterPrograms.set(key, this.#createProgram(VERTEX_SHADER, filterSource(pass, filter.options)));
+            this.filterPrograms.set(key, this.#createProgram(FILTER_VERTEX_SHADER, filterSource(pass, filter.options)));
           } catch (error) {
             if (this.gl.isContextLost()) break;
             this.filterPrograms.set(key, null);

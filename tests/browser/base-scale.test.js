@@ -238,7 +238,7 @@ test('redrawing the base doesn\'t make the next render upload the picture again'
   project.render(); await settle(project);
   project.brightness = 151; // redraws the base (the cache misses on a setting)
   await settle(project);
-  const upload = vi.spyOn(WebGLRenderingContext.prototype, 'texImage2D');
+  const upload = vi.spyOn(WebGL2RenderingContext.prototype, 'texImage2D'); // the picture's processor's (WebGLProcessor)
   project.brightness = 152;
   await settle(project);
   const uploads = upload.mock.calls.filter((args) => args.includes(project.image)).length;

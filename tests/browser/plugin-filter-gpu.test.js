@@ -125,6 +125,30 @@ test('options reach the shader as opt_ uniforms: a slider, a checkbox, a choice 
   expect(within(at({ amount: 0.5, on: false, pick: 2, tint_color: '#ff8000' }), [128, 128, 128, 255], 1)).toEqual([]);
 });
 
+// A pass is GLSL ES 3.00, as a solver's shader is: a loop may run as far as an option says (GLSL ES 1.00 wants a
+// constant there, so a blur by its radius didn't build), and there are whole numbers to work with.
+test('a pass is GLSL ES 3.00: a loop runs to an option\'s value, and integers work', () => {
+  registerScript('jane.fx', 'h1', { filters: [{ id: 'blur' }, { id: 'check' }] }); // a failure is heard of a registered filter
+  const heard = [];
+  listen((ref, why) => heard.push(why.log ?? why));
+  const options = [{ id: 'radius', kind: 'slider', name: 'Radius', min: 0, max: 8, step: 1, default: 0 }];
+  const blur = `int r = int(opt_radius);
+    vec3 sum = vec3(0.0);
+    for (int x = -r; x <= r; x++) sum += pixel(vec2(float(x), 0.0));
+    return sum / float(2 * r + 1);`;
+  const image = picture(), none = run(image, { pluginFilters: [] });
+  const out = run(image, { pluginFilters: [filter('blur', [blur], { options, values: { radius: 2 } })] });
+  expect(heard).toEqual([]); // it built
+  // A pixel is the mean of the five across it in its row (the edge's past the border), to a rounding.
+  const row = 2, mean = (x, c) => [-2, -1, 0, 1, 2].reduce((sum, d) => sum + none[(row * W + Math.min(W - 1, Math.max(0, x + d))) * 4 + c], 0) / 5;
+  for (const x of [0, 1, 7, 15]) for (const c of [0, 1, 2]) expect(Math.abs(out[(row * W + x) * 4 + c] - mean(x, c)), `${x},${c}`).toBeLessThanOrEqual(1);
+  // An integer remainder and a bit test, which GLSL ES 1.00 has neither of: a checkerboard by the pixel's place.
+  const check = 'ivec2 at = ivec2(uv * uResolution); return ((at.x + at.y) % 2 == 0) == ((at.x & 1) == (at.y & 1)) ? vec3(1.0) : vec3(0.0);';
+  const white = run(image, { pluginFilters: [filter('check', [check])] });
+  expect(heard).toEqual([]);
+  for (let i = 0; i < white.length; i += 4) expect(white.slice(i, i + 3)).toEqual([255, 255, 255]);
+});
+
 test('a pass that doesn\'t build is skipped and said once, until a new script', () => {
   const ref = solverRef('jane.fx', 'broken');
   registerScript('jane.fx', 'h1', { filters: [{ id: 'broken' }] });
