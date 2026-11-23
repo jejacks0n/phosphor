@@ -4,8 +4,10 @@ import { readManifest } from '@/plugins/manifest';
 import { usePluginStore } from '@/store/PluginStore';
 import { solverRef } from '@/plugins/solvers';
 
-export async function onPlugin(parts, { pluginId = 'phosphor.outlines', hash = 'h' } = {}) {
-  const plugins = usePluginStore();
+// pinia: the test's own (createTestApp's), as a store asked for after an await may be a test's that finished late
+// (docs/testing.md).
+export async function onPlugin(parts, { pluginId = 'phosphor.outlines', hash = 'h', pinia } = {}) {
+  const plugins = usePluginStore(pinia);
   await plugins.install(readManifest(JSON.stringify({ ...midnight, id: pluginId })));
   plugins.useScript(pluginId, hash, parts);
   return Object.fromEntries(Object.entries(parts).map(([kind, defs]) => [kind, defs.map((def) => solverRef(pluginId, def.id))]));

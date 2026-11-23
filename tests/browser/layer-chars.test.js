@@ -770,9 +770,9 @@ const OUTLINES = readScript({ default: { solvers: [{
 }] } }).solvers[0];
 
 test('a layer on a plugin solver: params carry it while it is registered and on; a stand-in reason otherwise', async () => {
-  const { project } = await blank();
-  const plugins = usePluginStore();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const plugins = usePluginStore(pinia);
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('edit', { charChoice: ref });
   project.commitLayerChars();
   expect(project.layerParams.get('edit')).toMatchObject({ charMode: 'shape', solver: ref, wantedSolver: ref, standIn: null, solverOptions: { threshold: 40, thin: false, look: 0 } });
@@ -790,8 +790,8 @@ test('a layer on a plugin solver: params carry it while it is registered and on;
 });
 
 test('a plugin solver chosen for the other style does not count', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('edit', { charChoiceAscii: ref });
   expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: null, standIn: null });
   project.renderStyle = 'ascii';
@@ -799,8 +799,8 @@ test('a plugin solver chosen for the other style does not count', async () => {
 });
 
 test('options are one undo step each, kept per solver ref, and survive a save and an open', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('edit', { charChoice: ref });
   project.commitLayerChars();
   const steps = project.history.version;
@@ -823,8 +823,8 @@ test('options are one undo step each, kept per solver ref, and survive a save an
 });
 
 test('nudges to two options a moment apart are two undo steps; nudges to one are one', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('edit', { charChoice: ref });
   project.commitLayerChars();
   const steps = project.history.version;
@@ -847,8 +847,8 @@ test('nudges to two options a moment apart are two undo steps; nudges to one are
 });
 
 test('options of an older or newer version fall back to their defaults', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('edit', { charChoice: ref, solverOptions: { [ref]: { threshold: 900, thin: 'yes', look: 7, gone: 1 } } });
   expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 40, thin: false, look: 0 });
   project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 10, look: 2 } } });
@@ -856,9 +856,9 @@ test('options of an older or newer version fall back to their defaults', async (
 });
 
 test('pluginSolverLayers names the layers on a plugin solver, stand-ins included', async () => {
-  const { project } = await blank();
-  const plugins = usePluginStore();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const plugins = usePluginStore(pinia);
+  const ref = await onSolver(OUTLINES, { pinia });
   expect(project.pluginSolverLayers).toEqual([]);
   project.setLayerChars('edit', { charChoice: ref });
   project.setLayerChars('base', { charChoice: ref });
@@ -868,8 +868,8 @@ test('pluginSolverLayers names the layers on a plugin solver, stand-ins included
 });
 
 test('in a room a plugin choice stands in as room', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('edit', { charChoice: ref });
   expect(project.layerParams.get('edit').solver).toBe(ref);
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
@@ -878,8 +878,8 @@ test('in a room a plugin choice stands in as room', async () => {
 });
 
 test('options kept per solver are cut to what a file holds, the layer\'s own solver first, and the file still opens', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
   project.setLayerChars('edit', { charChoice: ref, solverOptions: { ...many, [ref]: { threshold: 70 } } });
   project.commitLayerChars();
@@ -902,8 +902,8 @@ test('as host, a setting changed can be kept for a reload: the ledger clones', a
 });
 
 test('the base\'s options are replaced by a write, not merged: a dropped ref is gone and the total stays under the cap', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('base', { charChoice: ref, solverOptions: { 'plugin:p/old': { a: 1 }, [ref]: { threshold: 5 } } });
   project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 6 } } });
   expect(project.solverOptions).toEqual({ [ref]: { threshold: 6 } });
@@ -915,8 +915,8 @@ test('the base\'s options are replaced by a write, not merged: a dropped ref is 
 });
 
 test('a file saved at the defaults opens at the defaults; a new picture and a blank canvas keep the plugin solver\'s options with the choice', async () => {
-  const { project } = await blank();
-  const ref = await onSolver(OUTLINES);
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
   project.setLayerChars('base', { charChoice: ref });
   const plain = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
   const changed = () => project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 10 } } });
