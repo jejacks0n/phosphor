@@ -180,7 +180,7 @@ export const useProjectStore = defineStore('project', {
     _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
 
     filename: null,
-    fileExt: null, // the extension of the file it came from or last went to (phosphor, ans, png), for the start screen's list
+    fileExt: null, // the extension of the file it came from or last went to (pho, ans, png), for the start screen's list
     cells: shallowRef([]),          // what the ANSI view shows and exports (renderedCells + edit cells + paint)
     composedCells: shallowRef([]),  // the same before the wide-character layout (what partial updates rebuild from)
     lowerCells: shallowRef([]),     // the lower group's alone (renderedCells + its cells layer), which the upper layers are laid over
