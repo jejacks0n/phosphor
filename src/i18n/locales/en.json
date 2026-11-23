@@ -146,7 +146,6 @@
       "effects": "Image filters"
     },
     "charsNote": "Controls how {name} displays characters.",
-    "charsNoteVector": "Shapes and art layers on {name} use these character settings when converted.",
     "effectsNoImage": "Image filters require an image. Open an image or use Bake to turn the canvas into an image.",
     "pluginChip": "Plugin",
     "filter": {

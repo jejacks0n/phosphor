@@ -146,7 +146,6 @@
       "effects": "Filtres d'image"
     },
     "charsNote": "Contrôle la façon dont {name} affiche les caractères.",
-    "charsNoteVector": "Les formes et calques d'art sur {name} utilisent ces réglages de caractères lors de la conversion.",
     "effectsNoImage": "Les filtres d'image nécessitent une image. Ouvrez une image ou utilisez Figer pour convertir le canevas en image.",
     "pluginChip": "Plugin",
     "filter": {
