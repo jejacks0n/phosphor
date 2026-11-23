@@ -400,7 +400,7 @@ ghost shows while playing (it doesn't).
 - Rated: yes, wants Tab to Color palette then the arrows
 
 **Free time:** she'd press Enter or Space expecting play as in Flash, look for a loop range or ping-pong, step with
-Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every frame change.
+Alt+`,` while typing in Edit Mode (it types; Escape first), and Bake with the sliders moved to see every frame change.
 
 ## Getting it out
 

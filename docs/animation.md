@@ -336,6 +336,6 @@ These work with Animate on, outside an art layer, and not while you're typing:
 - **L**: Play or pause.
 - **,** and **.**: Step back or forward a frame, wrapping around the ends.
 - **N**: Add a frame after the one showing, of the same kind. Hold it to add several.
-- **Alt+,** and **Alt+.** (Option on a Mac): Step too, and work while you're typing, where `,` and `.` type. The cursor stays where it is, so you can type on one frame, step, and go on typing on the next.
+- **Alt+,** and **Alt+.** (Option on a Mac): Step too. Not while you're typing in Edit Mode, where they type (≤ and ≥ on a Mac): press **Escape** first, step, then **T** or **K** to go on typing where the cursor was.
 
 In the Keys panel, **Delete** or **Backspace** deletes the selected keys while the panel has focus, and **Escape** puts back keys you're dragging.

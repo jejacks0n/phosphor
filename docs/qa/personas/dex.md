@@ -25,13 +25,13 @@ again unchanged.
 - To drop a file on an open drawing: a headless browser can't drag from the desktop, so send the drop to the canvas
   with the file in it, as `tests/e2e/art-files.spec.js` does (a DataTransfer holding the file), at the cell he'd drop
   it on.
-- Habits: Moebius's keys (F1 to F10 for characters, Alt+F, Alt+B, Alt+arrows for colors, C or S to stamp, Escape to
+- Habits: Moebius's keys (F1 to F10 for characters, Alt+F, Alt+B, Ctrl+arrows for colors, Alt+arrows for lines and columns, C or S to stamp, Escape to
   set a block down); tries a shortcut before looking for a button; holds arrow keys down; mashes Cmd+Z.
 - A desktop with a full keyboard; a mouse only when he must.
 
 ## What they lean on
 
-- Edit Mode and its keys, the character palettes (F1 to F12, Ctrl+Shift+F-key, Alt+← and Alt+→), the color keys
+- Edit Mode and its keys, the character palettes (F1 to F12, Ctrl+Shift+F-key, Ctrl+, and Ctrl+.), lines and columns (Alt+arrows), the color keys
   ([Layers](../../layers.md#tool-keys), [Color keys](../../layers.md#color-keys)).
 - The Pencil's Half-block, the Eyedropper, the Select tool, Shift and the arrows, Stamp, the Magic Wand, Set FG and
   Set BG ([The Select tool](../../layers.md#the-select-tool), [The Magic Wand](../../layers.md#the-magic-wand)).
@@ -129,15 +129,15 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Rated: yes, wants T
 
 ### 5. Draw with CP437 from the character palettes
-- Does: in Edit Mode, types F1 to F12, switches palettes with Alt+→ and Alt+←, puts the character under the cursor on a
+- Does: in Edit Mode, types F1 to F12, switches palettes with Ctrl+. and Ctrl+,, puts the character under the cursor on a
   slot with Ctrl+Shift+F5, and opens Character palettes to pick `╬` from CP437 onto a slot.
 - Expects: each F-key types its slot's character; the strip under the tools shows each slot; Character palettes opens
   with CP437, Unicode, In this drawing and Recent; a character CP437 lacks is marked ("isn't in CP437"); a built-in
   palette edited makes his own copy and says so.
 - Probes: `back-out`: open Character palettes and press Escape; check focus comes back so his keys work;
-  `extremes`: put an emoji on a slot and type it in the last column ("Two-column characters cannot fit in the last column."); `again`: Alt+→ through every palette and round;
+  `extremes`: put an emoji on a slot and type it in the last column ("Two-column characters cannot fit in the last column."); `again`: Ctrl+. through every palette and round;
   on a Mac, the shortcut list says he may need to hold Fn, and where in System Settings to change that.
-- Rated: yes, wants F1–F12 and Alt+→
+- Rated: yes, wants F1–F12 and Ctrl+.
 
 ### 6. Draw half blocks
 - Does: presses P, sets Draw with to Half-block from the keys (Tab to it, Enter, ↓ to Half-block, Enter), and draws a
@@ -151,14 +151,15 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Rated: yes, wants P, then a key for Draw with
 
 ### 7. Set my colors from the keys
-- Does: presses Alt+F, arrows to a color, Enter; Alt+B, arrows, Space, Escape; X to swap; in Edit Mode, Alt+↑ and
-  Alt+↓ to step the foreground, with Shift for the background.
+- Does: presses Alt+F, arrows to a color, Enter; Alt+B, arrows, Space, Escape; X to swap; Ctrl+↑ and Ctrl+↓
+  (Ctrl+Option on a Mac) to step the foreground and Ctrl+← and Ctrl+→ the background, with the Pencil and then in Edit
+  Mode.
 - Expects: the color box opens on the current color, the arrows move between swatches, Enter picks and closes, Space
   picks and stays, Escape closes; with CGA every swatch paints its CGA color; X swaps (in Edit Mode it types, so he uses
   Shift+Cmd+X there).
 - Probes: `back-out`: open the box and press Escape, then check where focus is and that tool keys work; `speed`: hold
-  Alt+↓ for two seconds; `extremes`: with Saturation at 0, open the box again: the colors that aren't gray show under
-  a "no" sign, say why when hovered, can't be picked, and the arrows and Alt+↓ go past them to the grays; the
+  Ctrl+↓ for two seconds; `extremes`: with Saturation at 0, open the box again: the colors that aren't gray show under
+  a "no" sign, say why when hovered, can't be picked, and the arrows and Ctrl+↓ go past them to the grays; the
   Recent row under the grid does the same.
 - Rated: yes, wants Alt+F, then Enter
 
@@ -378,6 +379,18 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Expects: the two guides read the same number with opposite signs, and nothing marks the drawing unsaved.
 - Probes: `extremes`: a 300-column drawing zoomed out.
 - Rated: yes
+
+### 30. Make room in the middle of my art
+- Does: in Edit Mode, puts the cursor in the middle of a drawn block and presses Alt+↑ twice, Alt+→ once, then Alt+↓
+  and Alt+← (Option on a Mac), on a layer and then with the base picked; then picks the Pencil and presses Alt+←.
+- Expects: Alt+↑ puts a line in at the cursor and the lines below move down, the last one off the bottom; Alt+↓ takes
+  the cursor's line out and the ones below move up; Alt+→ and Alt+← do the same for a column; only the picked layer
+  moves, its paint with it, the canvas keeps its size, and the cursor stays put; each press is one undo step
+  ([Typing Text Directly](../../characters.md#typing-text-directly)). With the Pencil, Alt+← does nothing and the page
+  stays.
+- Probes: `undo-redo`: undo the four, redo them; `speed`: hold Alt+↑ for a second (a line a repeat); `extremes`: a
+  column through a two-column character (it moves, or goes, whole).
+- Rated: yes, wants Alt+↑ (Moebius's)
 
 **Free time:** he'd try Flatten's Draw on top, open `past-the-edge.ans` with Draw on top and fix its second row,
 try the `.xb`, `.bin` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut

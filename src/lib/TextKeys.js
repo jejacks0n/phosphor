@@ -6,7 +6,9 @@
  *        | { type: 'newline' } | { type: 'backspace' } | { type: 'delete' }
  *        | { type: 'toggleInsert' } (Insert, or Alt+Enter: the next typing mode)
  *        | { type: 'slot', index } (F1–F12) | { type: 'grab', index } (Ctrl+Shift+F1–F12)
- *        | { type: 'palette', delta } (Alt+←/→) | { type: 'color', slot, delta } (Alt+↑/↓, Shift for bg)
+ *        | { type: 'line', delta } (Moebius's Alt+↑ puts a line in at the cursor: 1, Alt+↓ takes it out: -1)
+ *        | { type: 'column', delta } (Alt+→ and Alt+← the same for a column)
+ * The color steps (Ctrl+arrows) and the character set's (Ctrl+, and Ctrl+.) are the command table's: null here.
  */
 import { graphemes, usableChar } from './CharWidth.js';
 
@@ -32,9 +34,8 @@ export function colorBoxKey(e) {
 // Alt+? (by physical key: Option+? types ¿) opens the shortcuts list (the command table's general.help) while
 // typing in Edit Mode, where ? types; it never types.
 const altHelp = (e) => e.altKey && e.shiftKey && e.code === 'Slash' && !e.ctrlKey && !e.metaKey;
-// The frame before or after (-1 or 1), else 0: Alt+, and Alt+. (by physical key: Option's ≤ and ≥ don't matter), which
-// also work while typing in Edit Mode, where , and . type.
-export const frameStepKey = (e) => (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey ? 0 : ({ Comma: -1, Period: 1 })[e.code] ?? 0);
+// Moebius's lines and columns, by Alt+arrow.
+const LINES = { ArrowUp: ['line', 1], ArrowDown: ['line', -1], ArrowRight: ['column', 1], ArrowLeft: ['column', -1] };
 
 // The letters the editor's own keys take before any tool's (useKeyboardShortcuts): X swaps the colors (Shift+X is
 // left to the tools), and with Animate on, L plays and pauses and N adds a frame, with Shift or without. EDITOR_KEYS are
@@ -43,9 +44,9 @@ export const SWAP_COLORS_KEY = 'x', PLAY_KEY = 'l', ADD_FRAME_KEY = 'n';
 export const EDITOR_KEYS = [SWAP_COLORS_KEY, PLAY_KEY, ADD_FRAME_KEY].map((key) => key.toUpperCase())
   .flatMap((key) => (key === SWAP_COLORS_KEY.toUpperCase() ? [key] : [key, `Shift+${key}`]));
 
-export function textKeyAction(e, { editable, animate = false }) {
+export function textKeyAction(e, { editable }) {
   if (editable || e.metaKey || e.isComposing || e.keyCode === 229) return null; // a field, Cmd, or an IME
-  if (colorBoxKey(e) || altHelp(e) || (animate && frameStepKey(e))) return null; // the color box, the shortcuts list or (with frames) a frame step, never types
+  if (colorBoxKey(e) || altHelp(e)) return null; // the color box and the shortcuts list never type
   // AltGr (Windows/Linux) arrives as Ctrl+Alt and produces characters such as @ or €: those type.
   if (e.ctrlKey && e.altKey) return single(e.key) ? { type: 'char', char: e.key } : null;
   if (e.ctrlKey) {
@@ -54,8 +55,7 @@ export function textKeyAction(e, { editable, animate = false }) {
     return index >= 0 ? { type: 'grab', index } : null;
   }
   if (e.altKey) {
-    if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') return { type: 'palette', delta: e.key === 'ArrowLeft' ? -1 : 1 };
-    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') return { type: 'color', slot: e.shiftKey ? 'bg' : 'fg', delta: e.key === 'ArrowUp' ? -1 : 1 };
+    if (LINES[e.key]) return e.shiftKey ? null : { type: LINES[e.key][0], delta: LINES[e.key][1] };
     // The Insert key's work for a keyboard that has none (a MacBook's): Alt+Enter types nothing on any layout, where
     // an Alt+letter is a character or an accent someone types (Option+I starts ê).
     if (e.key === 'Enter') return { type: 'toggleInsert' };

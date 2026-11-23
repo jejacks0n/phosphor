@@ -22,6 +22,9 @@ test('every id is unique, and every group is one of the ? list\'s', () => {
 const SHARED = {
   'tool.pen tool.pencil': 'P: the Pencil in PIXEL and ANSI, the Pen on VECTOR',
   'tool.shapes tool.vshape': 'U: Shapes in PIXEL and ANSI, the Shape tool on VECTOR',
+  // The column rows' keys are Edit Mode's typing (useTextTool), never takeKey's; elsewhere Alt+← and Alt+→ do nothing.
+  'edit.altArrowsElsewhere edit.deleteColumn': 'Alt+←: a column out while typing, nothing elsewhere',
+  'edit.altArrowsElsewhere edit.insertColumn': 'Alt+→: a column in while typing, nothing elsewhere',
 };
 
 // A key as what it is, so 'Alt+KeyF' and 'Alt+F' (or Shift+Mod+Z and Mod+Shift+Z) are one: its modifiers sorted, and a letter's code read as the letter.
@@ -119,4 +122,35 @@ test('a key whose where doesn\'t hold isn\'t taken: X while typing, ] with a too
   workspace.setActiveTool('pencil');
   const grow = keydown({ code: 'BracketRight', key: ']' });
   expect(takeKey(grow, ctxOf(project, workspace, grow), ['drawing.sizeUp', 'drawing.sizeDown'])).toBe(false);
+});
+
+// Moebius's Ctrl+arrows for the color steps; a Mac keeps Ctrl+arrows for Spaces, so there they take Option too. Ctrl+Alt
+// is never bound off a Mac, where it's AltGr and types.
+test('the color steps are Ctrl+arrows, Ctrl+Option+arrows on a Mac; no key off a Mac is Ctrl+Alt', () => {
+  const keys = (id, mac) => keysFor(commandById(id).keys, { mac });
+  for (const [id, arrow] of [['colors.fgPrev', 'ArrowUp'], ['colors.fgNext', 'ArrowDown'], ['colors.bgPrev', 'ArrowLeft'], ['colors.bgNext', 'ArrowRight']]) {
+    expect(keys(id, true), id).toEqual([`Ctrl+Alt+${arrow}`]);
+    expect(keys(id, false), id).toEqual([`Ctrl+${arrow}`]);
+  }
+  for (const c of COMMANDS) for (const key of keysFor(c.keys ?? [], { mac: false })) {
+    const { mod, ctrl, alt } = parseKey(key);
+    expect((mod || ctrl) && alt, `${c.id}: ${key}`).toBe(false);
+  }
+});
+
+test('an Alt chord that runs lets the Alt-held eyedropper go first; one that runs nothing leaves it held', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('pencil');
+  workspace.holdTool('picker', 'alt');
+  const back = keydown({ code: 'ArrowLeft', key: 'ArrowLeft', altKey: true });
+  expect(takeKey(back, ctxOf(project, workspace, back), ['edit.altArrowsElsewhere'])).toBe(true);
+  expect(back.defaultPrevented).toBe(true);
+  expect(workspace.activeTool).toBe('picker'); // Alt+← outside Edit Mode: taken, nothing more
+  const box = keydown({ code: 'KeyF', key: 'ƒ', altKey: true });
+  expect(takeKey(box, ctxOf(project, workspace, box), ['colors.openFg'])).toBe(true);
+  expect(workspace.heldTool).toBe(null);
+  expect(workspace.activeTool).toBe('pencil');
+  expect(workspace.colorBox).toBe('fg');
 });

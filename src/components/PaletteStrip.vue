@@ -4,6 +4,8 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { typeAtCursor } from '@/composables/useTextTool';
+import { commandById } from '@/lib/commands';
+import { keyLabel, keysFor } from '@/lib/keymap';
 
 // The Text tool's F-key strip: the active palette's 12 glyphs (tap one to type it, which is how
 // touch screens use F-keys), and the palette controls on the right. No palette name, so the strip
@@ -12,6 +14,7 @@ const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
+const keyOf = (id) => keyLabel(keysFor(commandById(id).keys)[0]); // the character set's steps (Ctrl+, and Ctrl+.)
 
 const toggle = () => {
   if (!workspace.paletteLayerOpen) workspace.paletteLayerPage = 'palettes';
@@ -44,7 +47,7 @@ const use = (glyph) => {
     </div>
     <div class="spacer"></div>
     <!-- Clicks don't take focus, so a following Space/Enter types instead of re-pressing the button. -->
-    <button class="nav" :title="t('palette.strip.prevTitle', { key: 'Alt+←' })" :aria-label="t('palette.strip.prevAria')" @mousedown.prevent @click="palettes.flip(-1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2v12L3 8z"/></svg></button>
+    <button class="nav" :title="t('palette.strip.prevTitle', { key: keyOf('characters.setPrev') })" :aria-label="t('palette.strip.prevAria')" @mousedown.prevent @click="palettes.flip(-1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M11 2v12L3 8z"/></svg></button>
     <button
         class="nav"
         :class="{ on: workspace.paletteLayerOpen }"
@@ -54,7 +57,7 @@ const use = (glyph) => {
         @mousedown.prevent
         @click="toggle"
     ><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" aria-hidden="true"><rect x="144" y="42" width="60" height="60" rx="8"/><rect x="226" y="42" width="60" height="60" rx="8"/><rect x="308" y="42" width="60" height="60" rx="8"/><rect x="144" y="154" width="60" height="60" rx="8"/><rect x="226" y="154" width="60" height="60" rx="8"/><rect x="308" y="154" width="60" height="60" rx="8"/><rect x="144" y="266" width="60" height="60" rx="8"/><rect x="226" y="266" width="60" height="60" rx="8"/><rect x="308" y="266" width="60" height="60" rx="8"/><rect x="144" y="377" width="60" height="60" rx="8"/><rect x="226" y="377" width="60" height="60" rx="8"/><rect x="308" y="377" width="60" height="60" rx="8"/></svg></button>
-    <button class="nav" :title="t('palette.strip.nextTitle', { key: 'Alt+→' })" :aria-label="t('palette.strip.nextAria')" @mousedown.prevent @click="palettes.flip(1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
+    <button class="nav" :title="t('palette.strip.nextTitle', { key: keyOf('characters.setNext') })" :aria-label="t('palette.strip.nextAria')" @mousedown.prevent @click="palettes.flip(1)"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 2v12l8-6z"/></svg></button>
   </div>
 </template>
 
