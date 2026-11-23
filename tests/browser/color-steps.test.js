@@ -177,3 +177,30 @@ test('the line and column rows run at the cursor (the command list\'s), and say 
   commandById('edit.deleteLine').run(ctx);
   expect(project.editCellAt(0, 0)?.char).toBe('A');
 });
+
+// Review, fix round 1: with the cursor placed, a checkbox reached with Tab or a button in an open dialog has focus, so
+// Edit Mode's typing leaves Alt+← alone (useTextTool's own test); the hidden row takes it then, or Back would close the
+// drawing. Neither owns Option+← on a Mac, so the Mac takes it too.
+test('with the cursor placed, Alt+← on a focused checkbox or a dialog\'s button is taken and moves nothing', async () => {
+  const { project, workspace } = await mount();
+  project.typeAt(1, 0, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 0, row: 0 };
+  const dialog = Object.assign(document.createElement('dialog'), { open: true });
+  dialog.append(document.createElement('button'));
+  const checkbox = Object.assign(document.createElement('input'), { type: 'checkbox' });
+  document.body.append(checkbox, dialog);
+  try {
+    for (const el of [checkbox, dialog.firstElementChild]) {
+      el.focus();
+      const e = new KeyboardEvent('keydown', { code: 'ArrowLeft', key: 'ArrowLeft', altKey: true, bubbles: true, cancelable: true });
+      el.dispatchEvent(e);
+      expect(e.defaultPrevented, el.tagName).toBe(true);
+      expect(project.editCellAt(1, 0)?.char, el.tagName).toBe('A'); // no column taken out
+    }
+  } finally {
+    checkbox.remove();
+    dialog.remove();
+  }
+});
