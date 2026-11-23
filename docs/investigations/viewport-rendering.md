@@ -105,7 +105,7 @@ to about 2x on the noisy rows (GC, machine load). Read the numbers as magnitudes
 | Undo the fill / redo it | 43 / 34 | 41 / 66 | 150 to 330 / 170 to 260 | 329 / 526 |
 | Merge down (whole layer) | 50 | 176 | 300 to 527 | 439 |
 | JS heap after those edits | 68 MB | 118 MB | 684 to 892 MB | 810 MB |
-| Save (layer PNGs + .phosphor) | 3 (18 KB) | 10 (66 KB) | 39 to 44 (335 KB) | 8 (97 KB) |
+| Save (layer PNGs + project) | 3 (18 KB) | 10 (66 KB) | 39 to 44 (335 KB) | 8 (97 KB) |
 | Load it back | 69 | 57 | 265 to 419 | 498 |
 | Export .utf8ans | 54 (1.6 MB) | 119 (3.6 MB) | 999 to 1,047 (28.8 MB) | 1,279 (35.9 MB) |
 

@@ -45,7 +45,7 @@ Guides and origin markers automatically snap to character cell edges and cell ce
 
 ## Saved Settings
 
-Your guides and origin positions are saved automatically in your browser for each drawing. They return when you reload the page, open the drawing again from your recent work, restore a version, or reopen its saved `.phosphor` project file (every save of a drawing carries the same id).
+Your guides and origin positions are saved automatically in your browser for each drawing. They return when you reload the page, open the drawing again from your recent work, restore a version, or reopen its saved `.pho` project file (every save of a drawing carries the same id).
 
 - Guides and origin positions are never included in exported files or sent to shared rooms.
 - Moving a guide or origin does not count as an artwork edit (it does not mark the drawing as unsaved or create an undo step).
