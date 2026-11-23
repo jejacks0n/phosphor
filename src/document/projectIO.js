@@ -1,7 +1,11 @@
 /**
- * Getting things in and out of the app: decoding images, the .phosphor project format, and saving files.
+ * Getting things in and out of the app: decoding images, the project format, and saving files.
  *
- * .phosphor layout: 'PHOSPHOR' (8 bytes), three little-endian uint32 lengths, then the settings
+ * Save writes a .pho: a PNG of the drawing with the project in a private phPr chunk right after IHDR (withProject
+ * puts it there, projectChunkOf reads it back, and a .png holding one opens as the project). An older .phosphor is
+ * the project alone, and still opens. The project itself, in either file, is the layout below.
+ *
+ * Project layout: 'PHOSPHOR' (8 bytes), three little-endian uint32 lengths, then the settings
  * JSON, the source image bytes, and the paint layer PNG (empty when there's no paint).
  *
  * A drawing whose layers don't fit that form (legacySlots) is written in the stack form: 'PHOSPHR2', the same three
@@ -233,7 +237,7 @@ export function timestamped(stem, now = new Date()) {
   return `${stem.replace(/-\d{8}-\d{6}$/, '')}-${date}-${time}`;
 }
 
-// Saving in place, in the web build where the browser has the File System Access API (Chromium): a .phosphor file
+// Saving in place, in the web build where the browser has the File System Access API (Chromium): a .pho file
 // opened or saved keeps its handle (the project's fileHandle) and Save writes over it, as the desktop app writes over
 // its path. A function, so tests can give the page the API. Elsewhere Save is a download.
 export const savesInPlace = () => import.meta.env.VITE_DESKTOP !== '1' && typeof globalThis.showSaveFilePicker === 'function';

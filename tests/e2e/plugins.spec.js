@@ -134,7 +134,7 @@ test('a drawing on Outlines opened without the plugin shows By shape and says so
   await installOutlines(page, { from: 'zip' });
   await charChoice(page).selectOption({ label: 'Outlines' });
   await expect.poll(() => middleColumn(page)).toContain('-');
-  const file = await readFile(await (await saveAs(page, 'Save project (.phosphor)')).path());
+  const file = await readFile(await (await saveAs(page, 'Save project (.pho)')).path());
   await charChoice(page).selectOption('shape');
   await expect.poll(() => middleColumn(page)).not.toContain('-');
   await settled(page);
@@ -142,7 +142,7 @@ test('a drawing on Outlines opened without the plugin shows By shape and says so
 
   const other = await (await otherBrowser(browser)).newPage();
   await other.goto('/');
-  await imageInput(other).setInputFiles({ name: 'square.phosphor', mimeType: 'application/octet-stream', buffer: file });
+  await imageInput(other).setInputFiles({ name: 'square.pho', mimeType: 'image/png', buffer: file });
   await settled(other);
   await pickLayer(other, 'Base');
   await expect(other.locator('aside.control-panel').getByText("outlines isn't installed. Showing By shape.")).toBeVisible();

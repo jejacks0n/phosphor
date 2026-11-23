@@ -1203,8 +1203,8 @@
   },
   "actions": {
     "replacesUnsaved": "Remplace les modifications non enregistrées de ce dessin. Il reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
-    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .phosphor, les fichiers SVG et les fichiers texte (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
-    "saveProject": "Enregistrer le projet (.phosphor)",
+    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .pho et .phosphor, les fichiers SVG et les fichiers texte (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
+    "saveProject": "Enregistrer le projet (.pho)",
     "exportAns": "Exporter en .ans",
     "exportUtf8ans": "Exporter en .utf8ans",
     "exportAnimatedAns": "Exporter en .ans animé",
@@ -1273,8 +1273,8 @@
     "newTitle": "Commencer un nouveau projet ?",
     "sub": "Ce dessin a des modifications que vous n'avez pas enregistrées.",
     "saveFirst": "Enregistrer le projet d'abord",
-    "saveFirstOpen": "Enregistrer ce dessin dans un fichier .phosphor, puis ouvrir {name}.",
-    "saveFirstNew": "Enregistrer ce dessin dans un fichier .phosphor, puis commencer le nouveau projet.",
+    "saveFirstOpen": "Enregistrer ce dessin dans un fichier .pho, puis ouvrir {name}.",
+    "saveFirstNew": "Enregistrer ce dessin dans un fichier .pho, puis commencer le nouveau projet.",
     "openWithout": "Ouvrir sans enregistrer",
     "newWithout": "Commencer sans enregistrer",
     "withoutText": "Ce dessin reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
@@ -1400,7 +1400,7 @@
   },
   "versions": {
     "title": "Versions",
-    "sub": "Phosphor enregistre automatiquement jusqu'à 20 versions dans votre navigateur (environ toutes les 5 minutes). Effacer les données de navigation les supprime. Enregistrez un fichier .phosphor pour conserver votre travail de façon permanente.",
+    "sub": "Phosphor enregistre automatiquement jusqu'à 20 versions dans votre navigateur (environ toutes les 5 minutes). Effacer les données de navigation les supprime. Enregistrez un fichier .pho pour conserver votre travail de façon permanente.",
     "beforeRestore": "Avant restauration",
     "asOpened": "À l'ouverture",
     "empty": "Aucun instantané enregistré pour l'instant.",
@@ -1410,9 +1410,9 @@
     "mb": "{n} Mo"
   },
   "autosave": {
-    "failing": "La sauvegarde automatique n'est pas prise en charge dans ce navigateur. Veuillez enregistrer un fichier .phosphor pour protéger votre travail.",
+    "failing": "La sauvegarde automatique n'est pas prise en charge dans ce navigateur. Veuillez enregistrer un fichier .pho pour protéger votre travail.",
     "evictedOldest": "L'espace de stockage du navigateur était plein. Votre version enregistrée la plus ancienne a été supprimée pour faire de la place.",
-    "stillFull": "L'espace de stockage du navigateur est plein. Ce projet n'a pas pu être enregistré même après avoir libéré les anciennes versions. Veuillez enregistrer un fichier .phosphor.",
+    "stillFull": "L'espace de stockage du navigateur est plein. Ce projet n'a pas pu être enregistré même après avoir libéré les anciennes versions. Veuillez enregistrer un fichier .pho.",
     "openFailed": "Impossible de rouvrir ce projet."
   },
   "busy": {
@@ -1422,7 +1422,7 @@
     "opening": "Ouverture de {name}…",
     "saving": "Enregistrement de {name}…",
     "framesLost": "Impossible de lire les images d'animation de ce fichier, il a donc été ouvert comme image fixe. L'enregistrer le remplacera en tant qu'image fixe.",
-    "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .phosphor.",
+    "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .pho ou .phosphor.",
     "decodeImageFailed": "Impossible de décoder l'image.",
     "blankFailed": "Impossible de créer un canevas vierge.",
     "invalidProject": "Fichier de projet Phosphor non valide.",

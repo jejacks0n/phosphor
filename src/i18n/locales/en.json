@@ -1203,8 +1203,8 @@
   },
   "actions": {
     "replacesUnsaved": "Replaces this drawing's unsaved changes. It stays in this browser, under Pick up where you left off.",
-    "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .phosphor projects, SVGs, and text files (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
-    "saveProject": "Save project (.phosphor)",
+    "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .pho and .phosphor projects, SVGs, and text files (.ans, .utf8ans, .asc, .txt, .nfo, .diz).",
+    "saveProject": "Save project (.pho)",
     "exportAns": "Export .ans",
     "exportUtf8ans": "Export .utf8ans",
     "exportAnimatedAns": "Export animated .ans",
@@ -1273,8 +1273,8 @@
     "newTitle": "Start a new project?",
     "sub": "This drawing has changes you haven't saved.",
     "saveFirst": "Save project first",
-    "saveFirstOpen": "Save this drawing as a .phosphor file, then open {name}.",
-    "saveFirstNew": "Save this drawing as a .phosphor file, then start the new project.",
+    "saveFirstOpen": "Save this drawing as a .pho file, then open {name}.",
+    "saveFirstNew": "Save this drawing as a .pho file, then start the new project.",
     "openWithout": "Open without saving",
     "newWithout": "Start without saving",
     "withoutText": "This drawing stays in this browser, under Pick up where you left off.",
@@ -1400,7 +1400,7 @@
   },
   "versions": {
     "title": "Versions",
-    "sub": "Phosphor automatically saves up to 20 versions in your browser (about every 5 minutes). Clearing browser data deletes them. Save a .phosphor file to keep your work permanently.",
+    "sub": "Phosphor automatically saves up to 20 versions in your browser (about every 5 minutes). Clearing browser data deletes them. Save a .pho file to keep your work permanently.",
     "beforeRestore": "Before restore",
     "asOpened": "As opened",
     "empty": "No snapshots saved yet.",
@@ -1410,9 +1410,9 @@
     "mb": "{n} MB"
   },
   "autosave": {
-    "failing": "Autosave is not supported in this browser. Please save a .phosphor file to protect your work.",
+    "failing": "Autosave is not supported in this browser. Please save a .pho file to protect your work.",
     "evictedOldest": "Browser storage was full. Your oldest saved version was removed to make room.",
-    "stillFull": "Browser storage is full. This project could not be saved even after clearing old versions. Please save a .phosphor file.",
+    "stillFull": "Browser storage is full. This project could not be saved even after clearing old versions. Please save a .pho file.",
     "openFailed": "Could not reopen that project."
   },
   "busy": {
@@ -1422,7 +1422,7 @@
     "opening": "Opening {name}…",
     "saving": "Saving {name}…",
     "framesLost": "Could not read animation frames from this file, so it opened as a still image. Saving will replace it as a still image.",
-    "openImageFailed": "Could not open “{name}”. Make sure it is a supported image or .phosphor file.",
+    "openImageFailed": "Could not open “{name}”. Make sure it is a supported image, .pho, or .phosphor file.",
     "decodeImageFailed": "Could not decode image.",
     "blankFailed": "Could not create a blank canvas.",
     "invalidProject": "Invalid Phosphor project file.",

@@ -21,7 +21,7 @@ const { t } = useI18n();
 const project = useProjectStore();
 
 const FORMAT_META = {
-  phosphor: { action: 'save', busy: 'saving' },
+  phosphor: { action: 'save', busy: 'saving', ext: 'pho' },
   ans: { action: 'export', busy: 'exporting' },
   ansimation: { action: 'export', busy: 'exporting', ext: 'ans', animated: true },
   utf8ansimation: { action: 'export', busy: 'exporting', ext: 'utf8ans', animated: true },

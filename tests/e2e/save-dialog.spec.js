@@ -10,12 +10,13 @@ test('Cmd+S opens it with the name ready to type over; a new name renames the do
   await page.keyboard.press('ControlOrMeta+s');
   await expect(dialog(page)).toHaveAccessibleName('Save project');
   await expect(nameField(page)).toBeFocused();
+  await expect(dialog(page).locator('span.ext')).toHaveText('.pho');
   await expect(nameField(page)).toHaveValue(/^gradient-\d{8}-\d{6}$/);
   expect(await nameField(page).evaluate((el) => [el.selectionStart, el.selectionEnd])).toEqual([0, 24]);
 
-  await page.keyboard.type('my art.phosphor'); // a typed extension isn't doubled
+  await page.keyboard.type('my art.pho'); // a typed extension isn't doubled
   const [download] = await Promise.all([page.waitForEvent('download'), page.keyboard.press('Enter')]);
-  expect(download.suggestedFilename()).toBe('my art.phosphor');
+  expect(download.suggestedFilename()).toBe('my art.pho');
   await expect(dialog(page)).toBeHidden();
   expect(await store(page, 'project', (p) => p.filename)).toBe('my art');
 
@@ -28,7 +29,7 @@ test('Escape, Cancel and the backdrop close it without saving; an empty name can
   await openApp(page);
   let downloads = 0;
   page.on('download', () => downloads++);
-  const open = () => page.getByRole('button', { name: 'Save project (.phosphor)' }).click();
+  const open = () => page.getByRole('button', { name: 'Save project (.pho)' }).click();
 
   await open();
   await page.keyboard.press('Escape');

@@ -71,7 +71,7 @@ test('never saved to a file: leaving asks; saved once and written: it does not',
   await expect.poll(() => dialogs).toEqual(['beforeunload']);
   expect(page.isClosed()).toBe(false);
 
-  await saveAs(page, 'Save project (.phosphor)');
+  await saveAs(page, 'Save project (.pho)');
   await editAt(page, 3, 4);
   await page.keyboard.insertText('and more');
   await expect.poll(() => store(page, 'project', (p) => p.isDirty && !p._stroke)).toBe(true);
@@ -98,7 +98,7 @@ test('a refresh brings back your work', async ({ page }) => {
 
 test('a stroke right after a save comes back from a reload, unsaved, even one that comes before its write was due', async ({ page }) => {
   await openApp(page);
-  await saveAs(page, 'Save project (.phosphor)');
+  await saveAs(page, 'Save project (.pho)');
   await expect.poll(async () => (await record(page))?.savedToFile).toBe(true);
   await page.getByRole('button', { name: 'Brush' }).click();
   await drag(page, await cellPoint(page, 4, 5, 0), await cellPoint(page, 14, 5, 0));

@@ -2,7 +2,7 @@
  * Autosave's storage, in IndexedDB. Each document has a latest state and up to KEEP_VERSIONS older
  * versions; the images are stored apart, once each however many of them use one.
  *
- * `rest` is the .phosphor bytes with an empty image. It and the images are stored as Blobs, which load
+ * `rest` is the project's bytes (the inner form of a .pho) with an empty image. It and the images are stored as Blobs, which load
  * lazily, so reading a row doesn't read its bytes and a version shares its latest state's. Callers pass
  * and get ArrayBuffers. The rows also carry the sizes of their `rest` and image (restSize, imageSize),
  * so sizes are counted without reading bytes. Where the browser won't store a Blob (Safari's private

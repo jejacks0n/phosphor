@@ -1,4 +1,4 @@
-// The document as a whole: a new image or blank canvas, opening and saving .phosphor projects,
+// The document as a whole: a new image or blank canvas, opening and saving .pho projects (and opening older .phosphor ones),
 // exporting .ans, .utf8ans and .png, the filename, and what counts as saved.
 import { t } from '@/i18n';
 import { EMPTY_BASE } from '@/document/baseRecords.js';
@@ -498,7 +498,7 @@ export const documentActions = {
     return true;
   },
 
-  // What a .phosphor file holds besides the image, all of it as of the call (a canvas is copied when
+  // What a .pho file holds besides the image, all of it as of the call (a canvas is copied when
   // toBlob is called), since a room's changes go on while the blobs are made. Inside an art layer, the drawing
   // is the one kept aside (enterArt).
   // Layers that fit the old form (legacySlots) are written in it: its cells layer's cells and paint as the edit layer's,
