@@ -164,7 +164,7 @@ test('a missing solver keeps its option and the note says By shape stands in', a
   const host = await mount(ControlPanel);
   const note = () => host.querySelector('fieldset.characters p.note').textContent;
   const select = host.querySelector('#charChoice');
-  expect(note()).toBe('Controls how paint or images on Layer 1 convert into characters.');
+  expect(note()).toBe('Controls how Layer 1 displays characters.');
   expect(host.querySelector('.solver-options')).not.toBe(null);
 
   plugins.dropScript('phosphor.outlines');

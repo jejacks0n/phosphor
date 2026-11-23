@@ -248,6 +248,10 @@ test('a font drawing\'s sources are the font', async () => {
   await mount();
   await press(button('Edit'));
   expect(tabs()).toEqual(['All 256', 'In this drawing', 'Recent']);
+  host.style.setProperty('--surface-3', '#333'); // the rule's color (no global.css here)
+  const ruled = [...host.querySelectorAll('.sources .tabs, .sources .tabs *')].filter((el) => getComputedStyle(el).borderBottomStyle === 'solid' && el.tagName !== 'INPUT');
+  const find = host.querySelector('.sources .tabs input').getBoundingClientRect();
+  expect(ruled.map((el) => el.getBoundingClientRect().right <= find.left)).toEqual([true]); // the tabs' rule stops short of the find field
   app.unmount();
   host.remove();
   await mount({ font: false });

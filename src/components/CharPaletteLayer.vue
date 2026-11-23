@@ -443,10 +443,12 @@ onBeforeUnmount(() => {
 
         <div class="sources">
           <div class="tabs">
-            <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ font ? t('palette.layer.fontTab') : t('palette.layer.tabs.cp437') }}</button>
-            <button v-if="!font" :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">{{ t('palette.layer.tabs.unicode') }}</button>
-            <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">{{ t('palette.layer.tabs.inDrawing') }}</button>
-            <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">{{ t('palette.layer.tabs.recent') }}</button>
+            <div class="tab-row"><!-- the rule is under the tabs only, not the find field's own border -->
+              <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ font ? t('palette.layer.fontTab') : t('palette.layer.tabs.cp437') }}</button>
+              <button v-if="!font" :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">{{ t('palette.layer.tabs.unicode') }}</button>
+              <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">{{ t('palette.layer.tabs.inDrawing') }}</button>
+              <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">{{ t('palette.layer.tabs.recent') }}</button>
+            </div>
             <input v-model="find" :placeholder="t('palette.layer.findPlaceholder')" :aria-label="t('palette.layer.findAria')">
           </div>
           <div class="pane">
@@ -648,6 +650,13 @@ div.sources {
 div.sources div.tabs {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+
+div.sources div.tab-row {
+  display: flex;
+  flex: 1;
+  align-self: stretch;
   border-bottom: 1px solid var(--surface-3);
 }
 
@@ -689,7 +698,6 @@ div.sources div.tabs button.on {
 }
 
 div.sources div.tabs input {
-  margin-left: auto;
   width: 240px;
   padding: 3px 8px;
   border: 1px solid var(--border);
