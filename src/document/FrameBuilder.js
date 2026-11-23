@@ -66,7 +66,7 @@ export default class FrameBuilder {
     this.#renderer.useFont(font);
     const shown = layers.filter((layer, at) => !at || !layer.hidden), hideBase = !!layers[0]?.hidden;
     this.#layers = layers;
-    this.#lower = lowerGroup(shown, baseChars);
+    this.#lower = lowerGroup(layers, baseChars, (id) => !layers.find((layer) => layer.id === id).hidden);
     this.#plain = shown.length === layers.length && !this.#lower.upper.length && (this.#lower.cells ?? 'edit') === 'edit';
     const every = lowerGroup(layers, baseChars);
     this.#every = shown.length < layers.length || hideBase || every.upper.length

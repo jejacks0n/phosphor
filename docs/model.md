@@ -244,7 +244,10 @@ circle's soft edge over an opened file's red box lines mixed into black on every
 olive and black stripes by turns. A vector layer right on the base draws its shapes into the converter's input, so
 there each cell a shape takes holds the pin's look in place of its two pixels (each half the background and foreground
 mixed by the glyph's ink in it), before the color settings, as the pixels would be; Merge down and Bake press them
-into the base over that look, so nothing changes. The lower
+into the base over that look, so nothing changes. Right on the base means in the whole stack, eyes aside: the lower
+group is the whole stack's, and a hidden layer is only left out of it (`lowerGroup`'s `shows`). A vector layer
+right on the base draws at the base's scale and one above at the paint's, so a cells layer hidden under a vector layer
+that moved it onto the base would redraw its strokes at another scale, as other characters. The lower
 group's own paint converts over the picture the same way. Under By shape (and plugin solvers, R12), which matches finer samples of the picture
 (4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
 (`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
@@ -257,7 +260,8 @@ shapes, and the PIXEL view, which shows a grid pixel of paint as its block's ave
 merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
 another step, dither error, By shape's finer samples, a plugin solver's neighbors, R12), which R3 freezes.
 
-- Lives in: `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
+- Lives in: `lowerGroup` (`src/document/layerInfo.js`), with its `shows` from `ProjectStore.lowerGroup` and
+  `FrameBuilder.prepare`; `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
   for `#paintOver`'s convert path, with `pictureUnder` for the lower group; the look under a character of someone's own
   comes from `composeUpper`'s reader (`#lowerPx`), and `#fineUnder` steps aside there; on the bottom, `ShapeLayer`'s
   `#looks` (in `#draw` and `pressed`, turned on by `lookUnder` in ANSI), which draws a cell again when its pin changes
@@ -265,7 +269,10 @@ another step, dither error, By shape's finer samples, a plugin solver's neighbor
   tracks the stored pixels under the same way.
 - Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
   shape and in ANSI; the report's file; a soft edge over pinned blocks, on a layer above or on the base, then Merge
-  down; a pin changed alone under a shape, and its undo; the report `projects/vector-edge-over-pins.phosphor`); `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
+  down; a pin changed alone under a shape, and its undo; the report `projects/vector-edge-over-pins.phosphor`; the report
+  `projects/vector-strokes-ascii.phosphor`, a cells layer hidden under a vector layer); `tests/unit/layer-info.test.js ›
+  lowerGroup: a hidden layer is left out of its part …`; `tests/browser/layer-hide.test.js › a cells layer with no paint
+  hides and shows …`; `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
   merges down with nothing frozen) and `› R3: the report (as saved) …` (a shape merged into an upper By shape layer,
   nothing frozen); `tests/browser/layer-chars.test.js › R7: By shape on a picture added as a layer …` (the same
   characters on its own layer as in the lower group).

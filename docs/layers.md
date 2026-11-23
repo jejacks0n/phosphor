@@ -112,6 +112,9 @@ Click the **eye icon** next to any layer to hide or show it:
   everything above it.
 - **Nothing Is Lost**: Hiding isn't an undo step, and it doesn't change what's drawn on the layer. Show it again and
   it's all there. Whether a layer is hidden is saved with the drawing.
+- **Other Layers Convert as They Did**: Hiding a layer doesn't change how the layers above it are turned into
+  characters. A vector layer's strokes over a hidden layer are drawn as they were while it showed; only a soft or
+  see-through edge can come out differently, as it's turned into characters over what now shows under it.
 - **The Palette**: A hidden layer still counts toward the **Limited count** palette. Its colors are picked from every
   layer, hidden ones and a hidden base's picture too, so showing or hiding a layer never changes the colors. In an
   animation, the palette for the whole movie counts every layer of every frame the same way.

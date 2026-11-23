@@ -114,6 +114,14 @@ test('lowerGroup: the bottom, the vector layers on it and the next cells layer; 
   assert.deepEqual(lowerGroup([L('base', 'cells'), L('vector', 'vector')], CHARS), { vectors: ['vector'], cells: null, upper: [] });
 });
 
+test('lowerGroup: a hidden layer is left out of its part, and moves no other layer between the group and upper (R7)', () => {
+  const L = (id, kind) => ({ id, kind }), stack = [L('base', 'cells'), L('edit', 'cells'), L('vector', 'vector'), L('L1', 'cells')];
+  assert.deepEqual(lowerGroup(stack, CHARS, (id) => id !== 'edit'), { vectors: [], cells: null, upper: ['vector', 'L1'] });
+  assert.deepEqual(lowerGroup(stack, CHARS, (id) => id !== 'vector'), { vectors: [], cells: 'edit', upper: ['L1'] });
+  const onBase = [L('base', 'cells'), L('vector', 'vector'), L('edit', 'cells'), L('L1', 'cells')];
+  assert.deepEqual(lowerGroup(onBase, CHARS, (id) => id !== 'vector' && id !== 'edit'), { vectors: [], cells: null, upper: ['L1'] });
+});
+
 // Character settings as a layer carries them (settings.js CHAR_KEYS): the bottom's are the document's own.
 const CHARS = { chars: '░▒▓', charsAscii: ' .:', seed: 's', charChoice: 'random', charChoiceAscii: 'weight', solids: 25, patternLight: 100 };
 const withChars = (each, chars = CHARS) => ({ ...each, chars });
