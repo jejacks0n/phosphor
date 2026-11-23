@@ -284,7 +284,10 @@ describe('a saved project is a .pho', () => {
     project.commitEdit();
     await settle(project);
     const before = cellsKey(project);
+    const types = [], objectUrl = URL.createObjectURL;
+    vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { types.push(blob.type); return objectUrl(blob); });
     const file = await save(project);
+    expect(types).toEqual(['application/octet-stream']); // downloaded as bytes, so no browser renames it .png
     expect([...new Uint8Array(await file.slice(0, 8).arrayBuffer())]).toEqual([137, 80, 78, 71, 13, 10, 26, 10]);
     project.clearImage();
     await project.loadProject(file);
