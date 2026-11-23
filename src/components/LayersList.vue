@@ -80,15 +80,17 @@ watch(() => workspace.deleteLayerAsk, async (now, was) => {
   if (!document.activeElement || document.activeElement === document.body) backToRow(workspace.pickedLayer);
 }, { flush: 'sync' });
 
-// ↑ ↓ Home End walk the rows, picking as they go, as the tabs do, past a row that's off. The rows own them (data-walk,
-// ownsKey), so the view doesn't take focus for them, and they stop here, so a focused row never moves Edit Mode's cursor
-// or nudges a selection. With a modifier they're someone else's (Alt+↑ puts a line in at the cursor).
+// ↑ ↓ Home End walk the rows, picking as they go, as the tabs do, past a row that's off; ← and → do nothing. The rows own
+// them (data-walk, ownsKey), so the view doesn't take focus for them, and they stop here, so a focused row never moves
+// Edit Mode's cursor or nudges a selection. With a modifier they're someone else's (Alt+↑ puts a line in at the cursor).
+const WALKED = new Set(['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End']);
 function walk(layer, e) {
-  const rows = layers.value, here = rows.findIndex((row) => row.id === layer.id);
-  const [from, by] = { ArrowUp: [here, -1], ArrowDown: [here, 1], Home: [-1, 1], End: [rows.length, -1] }[e.key] ?? [];
-  if (!by || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  if (!WALKED.has(e.key) || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
   e.preventDefault();
   e.stopPropagation();
+  const rows = layers.value, here = rows.findIndex((row) => row.id === layer.id);
+  const [from, by] = { ArrowUp: [here, -1], ArrowDown: [here, 1], Home: [-1, 1], End: [rows.length, -1] }[e.key] ?? [];
+  if (!by) return; // ← and →
   for (let at = from + by; rows[at]; at += by) {
     if (rows[at].off) continue;
     workspace.pickLayer(rows[at].id);
