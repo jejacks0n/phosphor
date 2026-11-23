@@ -3,7 +3,7 @@
 // off its default, so only those are kept, with the filter's name, which a drawing whose filter isn't there shows it by.
 import { isSolverRef, optionValues, pluginOfSolver, solverRef } from './solvers.js';
 import { ID, OPTION_ID } from './script.js';
-import { goodPluginId } from './manifest.js';
+import { goodPluginId, plainText } from './manifest.js';
 
 const MOST_ENTRIES = 64, MOST_VALUES = 12, MOST_NAME = 40;
 const HEX = /^#[0-9a-f]{6}$/;
@@ -28,14 +28,14 @@ export function filterEntry(def, name, values) {
 
 // A stranger's filterOptions (a file's, a host's) as one a drawing can hold: an entry kept whole only when its key is a ref
 // of the shape solverRef makes (plugin:<pluginId>/<id>, each as its reader allows),
-// its name text of at most 40 characters (counted as a script's are), and its values at most 12 option ids each a finite
+// its name plain text of at most 40 characters (counted and held as a script's are), and its values at most 12 option ids each a finite
 // number, a boolean or a lowercase '#rrggbb'; at most 64 entries. Anything else is dropped, and what isn't an object is none.
 export function cleanFilterOptions(raw) {
   const kept = {};
   if (!plain(raw)) return kept;
   for (const [ref, entry] of Object.entries(raw)) {
     if (Object.keys(kept).length >= MOST_ENTRIES) break;
-    if (!goodPluginRef(ref) || !plain(entry) || typeof entry.name !== 'string' || [...entry.name].length > MOST_NAME || !goodPluginValues(entry.values)) continue;
+    if (!goodPluginRef(ref) || !plain(entry) || !plainText(entry.name) || [...entry.name].length > MOST_NAME || !goodPluginValues(entry.values)) continue;
     kept[ref] = { name: entry.name, values: { ...entry.values } };
   }
   return kept;

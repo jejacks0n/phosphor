@@ -26,7 +26,7 @@ describe('readScript', () => {
     [{ options: [{ id: 'a-b', kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'],
     [{ options: [{ id: 'a__b', kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'], // GLSL reserves __
     [{ options: [{ id: `a${'b'.repeat(32)}`, kind: 'checkbox', name: 'A', default: true }] }, 'solvers[0].options[0]'],
-    [{ id: 'Bad Id' }, 'solvers[0].id'], [{ shader: { solve: 3 } }, 'solvers[0].shader'],
+    [{ id: 'Bad Id' }, 'solvers[0].id'], [{ id: '-lines' }, 'solvers[0].id'], [{ name: 'Out\tlines' }, 'solvers[0].name'], [{ shader: { solve: 3 } }, 'solvers[0].shader'],
   ])('refuses %o at %s', (change, field) => expect(() => read(change)).toThrow(shape(field)));
 
   it('reads a color option, its default lowercased', () => {
@@ -90,7 +90,7 @@ describe('readScript', () => {
 const ICON = '<svg viewBox="0 0 16 16"><path d="M1 1L15 15"/></svg>';
 const BRUSH = { id: 'smear', name: 'Smear', icon: ICON, key: 'j', size: 'width', options: [{ id: 'width', kind: 'slider', name: 'Width', min: 1, max: 9, step: 1, default: 3 }], move: () => {} };
 const SHAPE = { id: 'star', name: 'Star', icon: ICON, outline: () => [] };
-const FILTER = { id: 'glow', name: 'Glow', passes: ['void main() {}'] };
+const FILTER = { id: 'glow', name: 'Glow', options: [{ id: 'on', kind: 'checkbox', name: 'On', default: false }], passes: ['void main() {}'] };
 const readOf = (kind, item) => readScript({ default: { [kind]: [item] } });
 
 describe('readScript: brushes, shapes and filters', () => {
@@ -114,7 +114,23 @@ describe('readScript: brushes, shapes and filters', () => {
     ['filters', { ...FILTER, passes: [] }, 'filters[0].passes'], ['filters', { ...FILTER, passes: ['a', 'b', 'c', 'd', 'e'] }, 'filters[0].passes'],
     ['filters', { ...FILTER, passes: ['x'.repeat(64 * 1024 + 1)] }, 'filters[0].passes[0]'],
     ['filters', { ...FILTER, passes: ['a', 'b', 3] }, 'filters[0].passes[2]'],
+    // A filter runs only while an option is off its default: with none it never would.
+    ['filters', { ...FILTER, options: [] }, 'filters[0].options'], ['filters', { ...FILTER, options: undefined }, 'filters[0].options'],
+    // An id begins and ends with a letter or a digit.
+    ['filters', { ...FILTER, id: '---' }, 'filters[0].id'], ['brushes', { ...BRUSH, id: '-smear' }, 'brushes[0].id'], ['shapes', { ...SHAPE, id: 'star-' }, 'shapes[0].id'],
+    // A name is plain text: no line break, control character or mark that turns its direction.
+    ['brushes', { ...BRUSH, name: 'Smear\nOfficial' }, 'brushes[0].name'], ['shapes', { ...SHAPE, name: 'Star\u202Egnp' }, 'shapes[0].name'],
+    ['filters', { ...FILTER, name: 'Glow\u0007' }, 'filters[0].name'],
+    ['brushes', { ...BRUSH, options: [{ id: 'width', kind: 'slider', name: 'Wid\u2028th', min: 1, max: 9, step: 1, default: 3 }] }, 'brushes[0].options[0]'],
+    ['brushes', { ...BRUSH, size: undefined, options: [{ id: 'mode', kind: 'choice', name: 'Mode', choices: ['Soft', 'Hard\u200E'], default: 0 }] }, 'brushes[0].options[0]'],
   ])('refuses %s %#', (kind, item, field) => expect(() => readOf(kind, item)).toThrow(shape(field)));
+
+  it('takes an id with hyphens inside, 40 characters at most, and a name in any script', () => {
+    expect(readOf('brushes', { ...BRUSH, id: 'soft-smear-2' }).brushes[0].id).toBe('soft-smear-2');
+    expect(readOf('brushes', { ...BRUSH, id: 'a'.repeat(40) }).brushes[0].id).toHaveLength(40);
+    expect(() => readOf('brushes', { ...BRUSH, id: 'a'.repeat(41) })).toThrow(shape('brushes[0].id'));
+    expect(readOf('brushes', { ...BRUSH, name: 'Étaler 👩\u200D🎨' }).brushes[0].name).toBe('Étaler 👩\u200D🎨');
+  });
 
   it('refuses nine brushes and a repeated brush id', () => {
     const nine = Array.from({ length: 9 }, (_, i) => ({ ...BRUSH, id: `b${i}` }));

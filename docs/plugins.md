@@ -174,14 +174,14 @@ The fields:
 | Field | What it is | Rules |
 |---|---|---|
 | `phosphor` | The manifest's format. | `1`. A higher number is refused: "This plugin was made for a newer Phosphor." |
-| `id` | Who made it and what it is: `author.name`. The same id installed again replaces the plugin. | Lowercase letters, digits and hyphens on each side of one dot; 64 characters at most. |
+| `id` | Who made it and what it is: `author.name`. The same id installed again replaces the plugin. | Lowercase letters, digits and hyphens on each side of one dot, each side beginning and ending with a letter or a digit; 64 characters at most. |
 | `name` | The plugin's name, as the dialog shows it. | Required; 60 characters at most. |
 | `version` | Its version, in [semver](https://semver.org) (`1.0.0`, `1.1.0-beta`). | Required, without a `v`. |
 | `author` | Who made it. | Required; 60 characters at most. |
 | `description` | A line about it. | Optional; 300 characters at most. |
 | `homepage` | Where to read about it, linked from the dialog. | Optional; `https://` only; 200 characters at most. |
 | `license` | Its license, for example `MIT`. | Optional; 40 characters at most. |
-| `preview` | Up to three short lines shown as text on the art band of its Marketplace card. | Optional; 3 lines at most (split on a new line), 24 characters each, no control characters. Shown as text, never as markup. |
+| `preview` | Up to three short lines shown as text on the art band of its Marketplace card. | Optional; 3 lines at most (split on a new line), 24 characters each, each line plain text (below). Shown as text, never as markup. |
 | `themes` | The themes it adds. | At most 20. A plugin has themes, a script, or both; with neither it's refused ("This plugin adds nothing this Phosphor can use."). |
 | `script` | The script that adds solvers, brushes, shapes and filters ([Writing a script](#writing-a-script)). | Optional; a relative path to a `.js` or `.mjs` file inside the plugin's folder (or .zip), going up (`..`), `.` and empty folders (`a//b.js`) not allowed; 1 MB at most. |
 
@@ -189,7 +189,7 @@ Each theme:
 
 | Field | What it is | Rules |
 |---|---|---|
-| `id` | The theme's own name in the plugin. | Lowercase letters, digits and hyphens; 40 characters at most; one of its kind in the plugin. |
+| `id` | The theme's own name in the plugin. | Lowercase letters, digits and hyphens, beginning and ending with a letter or a digit; 40 characters at most; one of its kind in the plugin. |
 | `name` | The theme's name, as the select shows it. | Required; 40 characters at most. |
 | `base` | `dark` or `light`: Phosphor's own theme under it, which gives every color it doesn't set, and the theme Phosphor goes to when this one isn't there. | `dark` or `light`. |
 | `colors` | The colors it sets. | Each key is one of the color slots below; each value a hex color: `#rgb`, `#rrggbb` or `#rrggbbaa`. |
@@ -225,6 +225,11 @@ Not slots: the backdrops behind dialogs, what's drawn over the art to show on an
 dashes, the dark rings around a guide and another person's cursor), the black behind a Marketplace preview and a room's
 picture, the logo and the fonts.
 
+A plugin's words (`name`, `author`, `description`, `license`, a theme's `name`, and in a script every `name` and
+choice) are plain text on one line, in any language: no line breaks, no control characters, and none of the marks that
+turn text's direction around (U+200E, U+200F, U+061C, U+202A to U+202E, U+2066 to U+2069). A word that has one refuses
+the plugin, naming the field.
+
 A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
 doesn't know are left out, except that a manifest from a format newer than Phosphor's is refused. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
 markup, and never translated.
@@ -250,8 +255,9 @@ export default {
 | `shapes` | A shape for the Shape tool, drawn from its outline. | The Shape tool's row on VECTOR, after Polygon. | JavaScript ([Writing a shape](#writing-a-shape)). |
 | `filters` | An effect on the picture. | A group of its own in the settings column, after Image filters. | GLSL only ([Writing a filter](#writing-a-filter)). |
 
-A script holds 8 of each kind at most. Each has an `id` (lowercase letters, digits and hyphens, 40 characters at most,
-one of its kind in the script: a brush and a shape may share one) and a `name` (40 characters at most). Everything is
+A script holds 8 of each kind at most. Each has an `id` (lowercase letters, digits and hyphens, beginning and ending
+with a letter or a digit, 40 characters at most, one of its kind in the script: a brush and a shape may share one) and a
+`name` (plain text, 40 characters at most). Everything is
 read once, when the script is loaded, and anything that isn't the shape refuses the plugin, naming the field ("The
 plugin's script has a problem at “brushes[0].icon”."). A plugin's words are shown as you wrote them, as text, and never
 translated.
@@ -639,7 +645,9 @@ export default {
 };
 ```
 
-`id`, `name` and `options` are as a brush's. `passes` is required: 1 to 4 strings, each 64 KB at most.
+`id`, `name` and `options` are as a brush's, but a filter needs at least one option: it runs only while one is off its
+default ([When a filter runs](#when-a-filter-runs)), so with none it never would, and it's refused ("The plugin's script
+has a problem at “filters[0].options”."). `passes` is required: 1 to 4 strings, each 64 KB at most.
 
 ### When a filter runs
 

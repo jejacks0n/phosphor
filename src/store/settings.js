@@ -4,7 +4,7 @@ import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
 import { SAUCE_WIDTHS, charCount } from '@/lib/Sauce.js';
 import { t } from '@/i18n/index.js';
-import { cleanFilterOptions } from '@/plugins/filters.js';
+import { cleanFilterOptions, goodPluginRef } from '@/plugins/filters.js';
 
 // A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
 const MOST_LIST = 16 * 1024;
@@ -112,9 +112,9 @@ const HEX_COLOR = /^#[0-9a-f]{6}$/i;
 const asNumber = (value) => (typeof value === 'string' && value.trim() ? Number(value) : value);
 const plain = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
 const MOST_OPTIONS = MOST_TEXT * 4; // bytes of JSON
-const PLUGIN_REF = /^plugin:[^/]+\/.+$/;
 
-// A solverOptions value as one a document can hold: only what's well formed kept (a ref's object of finite numbers,
+// A solverOptions value as one a document can hold: only what's well formed kept (a ref as a plugin's part has one,
+// plugins/filters.js goodPluginRef, and its object of finite numbers,
 // booleans and lowercase '#rrggbb' colors), as much as fits MOST_OPTIONS, the ref named first so it's the one that stays when not all do. null for a
 // value that isn't an object at all. Run on what's read from a file or a host, and on what's written, so nothing the app
 // writes is more than it will read.
@@ -124,7 +124,7 @@ export function cleanOptions(value, first = null) {
   const kept = {};
   let size = 2;
   for (const ref of refs) {
-    if (!PLUGIN_REF.test(ref) || !plain(value[ref])) continue;
+    if (!goodPluginRef(ref) || !plain(value[ref])) continue;
     const own = Object.fromEntries(Object.entries(value[ref]).filter(([, each]) => typeof each === 'boolean' || (typeof each === 'string' && HEX_COLOR.test(each) && each === each.toLowerCase()) || (typeof each === 'number' && Number.isFinite(each))));
     const bytes = JSON.stringify([ref, own]).length;
     if (size + bytes > MOST_OPTIONS) continue;

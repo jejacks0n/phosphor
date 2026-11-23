@@ -46,8 +46,15 @@ describe('cleanFilterOptions', () => {
 
   it('drops a ref of the wrong shape: a plugin id or an id the readers wouldn\'t take, or one too long', () => {
     for (const bad of ['plugin:/x', 'plugin:jane/x', 'plugin:jane.fx/', 'plugin:jane.fx/Up', 'plugin:jane.fx/a/b', 'plugin:Jane.fx/x',
+      'plugin:-jane.fx/x', 'plugin:jane.fx-/x', 'plugin:jane.fx/-x', 'plugin:jane.fx/x-', 'plugin:---.---/---',
       `plugin:jane.fx/${'a'.repeat(41)}`, `plugin:${'a'.repeat(62)}.fx/x`]) {
       expect(cleanFilterOptions({ [bad]: good }), bad).toEqual({});
+    }
+  });
+
+  it('drops an entry whose name isn\'t plain text: a line break, a control character, a mark that turns its direction', () => {
+    for (const name of ['Glow\nOfficial', 'Glow\u0007', 'Glow\u202Egnp', 'Glow\u2028']) {
+      expect(cleanFilterOptions({ [ref]: { ...good, name } }), JSON.stringify(name)).toEqual({});
     }
   });
 
