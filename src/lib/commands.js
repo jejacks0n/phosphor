@@ -37,7 +37,7 @@ import { usePluginStore } from '@/store/PluginStore';
 import { EXPORT_FORMATS } from '@/document/projectIO';
 import { canExportVideo } from '@/lib/VideoFile';
 import { recentCommands } from '@/lib/recentCommands';
-import { addOff, artLayerOff, bakeOff, flattenOff, pausedOff, reasonWords } from '@/lib/offReasons';
+import { addOff, artLayerEmpty, artLayerOff, bakeOff, dimensionsOff, flattenOff, pausedOff, reasonWords } from '@/lib/offReasons';
 import { useMergeDown } from '@/composables/useMergeDown';
 import { duplicateShapes } from '@/composables/vectorClipboard.js';
 import { toast } from '@/composables/useToast';
@@ -315,9 +315,9 @@ export const COMMANDS = [
       return ok(merge.offWhy(workspace.pickedLayer) ?? (merge.hasAny(workspace.pickedLayer) ? null : 'shortcuts.reasons.nothingToMerge'));
     },
     run: ({ workspace }) => useMergeDown().mergePicked(workspace) },
-  // Dimensions, as the settings lock it (only the host's in a room, and not inside an art layer).
+  // Dimensions, as the settings and the field lock it.
   { id: 'drawing.canvasSize', group: 'drawingCommands', label: said('settings.cols.label'),
-    available: (ctx) => ok(drawn(ctx) !== true ? drawn(ctx) : useDrawingStore().mayDraw ? 'social.drawing.onlyHost' : ctx.project.artInside ? 'art.settingsOff' : null),
+    available: (ctx) => ok(drawn(ctx) !== true ? drawn(ctx) : dimensionsOff(ctx.project, useDrawingStore())),
     run: ({ workspace }) => { workspace.dimensionsRequest++; } },
   // The Animate switch (EditTabs): turned on as it allows, off always.
   { id: 'drawing.animate', group: 'drawingCommands', label: said('tabs.animate'),
@@ -336,7 +336,8 @@ export const COMMANDS = [
   // The layers': LAYERS' ⋯ menu's on the picked row, and the selection's Make art layer.
   { id: 'layer.makeArt', group: 'layers', label: said('art.make'), where: (ctx) => art(ctx) && ART.includes(ctx.view),
     available: ({ project, workspace }) => ok(artLayerOff(project)
-      ?? (workspace.selection || (workspace.activeTool === 'wand' && workspace.wand) ? null : ['toolbar.selection.selectFirstTitle', { action: t('art.make') }])),
+      ?? (workspace.selection || (workspace.activeTool === 'wand' && workspace.wand) ? null : ['toolbar.selection.selectFirstTitle', { action: t('art.make') }])
+      ?? artLayerEmpty(project, workspace)),
     run: ({ project }) => project.makeArtLayer() },
   { id: 'layer.rename', group: 'layers', label: layerWords('layers.rename'), where: onPick, available: () => ok(pausedOff(useDrawingStore())),
     run: ({ workspace }) => {

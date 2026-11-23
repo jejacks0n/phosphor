@@ -573,6 +573,11 @@ export function lockedAmong(project, keys, by = project._by) {
 // The same for anyone else inside any art layer, which what goes to the room as the project (a whole-layer step, a new
 // grid) would step out of it.
 export function anyoneInside(project) {
+  const why = anyoneInsideWhy(project);
+  return why && t(...why);
+}
+// The same as offReasons.js's reasons are: [key, values], or null (the command list's Dimensions).
+export function anyoneInsideWhy(project) {
   const holder = holderOf(project, Object.values(project._locks).map(({ key }) => key), project._by);
-  return holder && t('art.someoneInside', { name: nameOf(project, holder) });
+  return holder ? ['art.someoneInside', { name: nameOf(project, holder) }] : null;
 }

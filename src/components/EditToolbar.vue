@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onUpdated, ref, useTemplateRef, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onUpdated, ref, useTemplateRef, watch } from 'vue';
 import { useElementSize, useMediaQuery, useMutationObserver, useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -25,7 +25,7 @@ import { sameChars } from '@/document/layerInfo.js';
 import { useLayerName } from '@/composables/useLayerName';
 import { asking as merging, mergeBusy, useMergeDown } from '@/composables/useMergeDown';
 import { busyWhile } from '@/composables/useBusy';
-import { artLayerOff, bakeOff as bakeWhy, flattenOff as flattenWhy, reasonWords } from '@/lib/offReasons';
+import { artLayerEmpty, artLayerOff, bakeOff as bakeWhy, flattenOff as flattenWhy, reasonWords } from '@/lib/offReasons';
 import { showFontSetup } from '@/composables/useFontSetup';
 
 const { t } = useI18n();
@@ -359,6 +359,9 @@ const flattenChoices = computed(() => [
   { id: 'edit', title: t('actions.artEdit'), text: t('actions.artEditText') },
   { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
 ]);
+// The questions are the workspace's (so the command list asks them too), but they go with the toolbar, as they did
+// when they were its own: one open as the drawing closes doesn't come back with the next.
+onBeforeUnmount(() => Object.assign(workspace, { baking: null, bakingFinal: false, flattening: false }));
 function chooseFlatten(layer) {
   workspace.flattening = false;
   project.flattenDrawing({ layer });
@@ -371,7 +374,10 @@ const selectionHasEdits = computed(() => {
 });
 
 // Make art layer: the Select tool's selection or the Magic Wand's, with something drawn in it.
-const artReady = computed(() => !artOff.value && (workspace.activeTool === 'wand' ? project.hasEdits : selectionHasEdits.value)); // the wand's cells are checked when it's made
+const artReady = computed(() => {
+  void project.editCells; void project.hasPaint; void project.historyVersion; // re-check after edits
+  return !artOff.value && !artLayerEmpty(project, workspace);
+});
 // In a room it goes on the vector layer above the one in use: with none, it's off, as adding one is a stack change.
 const artOff = computed(() => reasonWords(artLayerOff(project)));
 
