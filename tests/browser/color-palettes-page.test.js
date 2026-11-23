@@ -151,6 +151,33 @@ test('choosing a row shows its palette and uses nothing; Up and Down walk the ro
   expect([project.quantize, project.palette]).toEqual(['cga', '']);
 });
 
+test('Favorites and Library fold on their titles, as the Fonts page\'s groups do: This drawing never folds, the arrows skip a folded group, the folds are kept, and a palette got opens Favorites', async () => {
+  const fetch = stubFetch(answer({ name: 'Lospec Five', author: 'Someone', colors: ['000000', '111111', '222222', '333333', 'FFFFFF'] }));
+  await mount();
+  library.toggle(SWEETIE);
+  await nextTick();
+  const heads = () => [...page().querySelectorAll('div.group button.group-head')];
+  const head = (label) => heads().find((b) => b.querySelector('span.label').textContent.startsWith(label));
+  expect(heads().map((b) => b.getAttribute('aria-expanded'))).toEqual(['true', 'true']); // This drawing's title is a label
+  expect(head('Favorites').querySelector('svg.chevron')).not.toBe(null);
+  await press(head('Library'));
+  expect(head('Library').getAttribute('aria-expanded')).toBe('false');
+  expect(listed()).toEqual({ 'This drawing': ['CGA (16 colors)'], 'Favorites · 1': ['Sweetie 16'], 'Library · 29': [] });
+  layer().focus();
+  await key('ArrowDown');
+  await key('ArrowDown'); // the Library's rows are folded away: Sweetie 16 under Favorites is the last
+  expect(title()).toBe('Sweetie 16');
+  expect(row('Sweetie 16', 'Favorites').classList.contains('current')).toBe(true);
+  await press(head('Favorites'));
+  expect(listed()).toEqual({ 'This drawing': ['CGA (16 colors)'], 'Favorites · 1': [], 'Library · 29': [] });
+  expect(JSON.parse(localStorage.getItem('phosphor.paletteGroups'))).toEqual(['library', 'favorites']);
+  await get('Lospec Five'); // shown where it's kept
+  await vi.waitFor(() => expect(title()).toBe('Lospec Five'));
+  expect(fetch).toHaveBeenCalledTimes(1);
+  expect(listed()['Favorites · 2']).toEqual(['Lospec Five', 'Sweetie 16']);
+  expect(head('Library').getAttribute('aria-expanded')).toBe('false');
+});
+
 test('a favorite from the Library is two rows: Down from its Library row goes on down the Library', async () => {
   await mount();
   library.toggle(SWEETIE);

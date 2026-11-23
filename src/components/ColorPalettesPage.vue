@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useLocalStorage } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
 import { SHIPPED, useColorLibraryStore } from '@/store/ColorLibraryStore';
 import { useSettingsLock } from '@/composables/useSettingsLock';
@@ -47,11 +48,16 @@ const matching = (list) => {
   const words = search.value.trim().toLowerCase();
   return list.filter(({ name, author }) => [name, author].some((field) => field.toLowerCase().includes(words)));
 };
-// The rows in the list's order, each with its group and its place on screen. A favorite from the Library is two rows,
-// so the arrow keys step from the group it was chosen in.
+// Favorites and Library fold on their titles, as the Fonts page's groups do (This drawing, like In use there, never
+// folds), and stay folded in this browser.
+const folds = useLocalStorage('phosphor.paletteGroups', []);
+const open = (key) => key === 'drawing' || !folds.value.includes(key);
+const fold = (key) => { folds.value = open(key) ? [...folds.value, key] : folds.value.filter((k) => k !== key); };
+// The rows in the list's order, each with its group and its place on screen; a folded group has none. A favorite from
+// the Library is two rows, so the arrow keys step from the group it was chosen in.
 const groups = computed(() => {
   let at = 0;
-  const rowsOf = (group, list) => list.map((palette) => ({ id: palette.slug, group, palette, at: at++ }));
+  const rowsOf = (group, list) => (open(group) ? list.map((palette) => ({ id: palette.slug, group, palette, at: at++ })) : []);
   return [
     { key: 'drawing', label: t(project.image ? 'colorPalettes.thisDrawing' : 'colorPalettes.newDrawings'), rows: [{ id: DRAWING, group: 'drawing', at: at++ }] },
     { key: 'favorites', label: t('colorPalettes.favorites', { n: library.kept.length }), rows: rowsOf('favorites', matching(library.kept)) },
@@ -59,7 +65,7 @@ const groups = computed(() => {
   ];
 });
 const rows = computed(() => groups.value.flatMap((g) => g.rows));
-const nothingMatches = computed(() => !!search.value.trim() && rows.value.length === 1);
+const nothingMatches = computed(() => !!search.value.trim() && !matching(library.kept).length && !matching(SHIPPED).length);
 
 const chosen = ref(DRAWING); // DRAWING or a palette's slug
 const chosenIn = ref('drawing'); // the group it was chosen in
@@ -146,6 +152,7 @@ async function get() {
     cut.value = got.of ? { slug, of: got.of } : null;
     typed.value = '';
     search.value = ''; // so it shows
+    folds.value = folds.value.filter((k) => k !== 'favorites');
     choose({ id: got.slug, group: 'favorites' });
     await nextTick();
     page.value?.querySelector('div.list > div.row.current')?.scrollIntoView({ block: 'nearest' });
@@ -168,8 +175,14 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
       </div>
       <div class="list">
         <template v-for="g in groups" :key="g.key">
-          <div class="group"><span class="label">{{ g.label }}</span></div>
-          <p v-if="g.key === 'favorites' && !library.kept.length" class="empty">{{ t('colorPalettes.favoritesEmpty') }}</p>
+          <div v-if="g.key === 'drawing'" class="group"><span class="label">{{ g.label }}</span></div>
+          <div v-else class="group">
+            <button class="group-head" :aria-expanded="open(g.key)" @click="fold(g.key)">
+              <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+              <span class="label">{{ g.label }}</span>
+            </button>
+          </div>
+          <p v-if="g.key === 'favorites' && open(g.key) && !library.kept.length" class="empty">{{ t('colorPalettes.favoritesEmpty') }}</p>
           <div v-for="r in g.rows" :key="r.id" class="row" :class="{ current: r.id === chosen && g.key === chosenIn }" @click="choose(r)">
             <template v-if="r.palette">
               <div class="name"><span>{{ r.palette.name }}</span><em :title="r.palette.author || undefined">{{ r.palette.author }}</em></div>
