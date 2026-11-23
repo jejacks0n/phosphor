@@ -1,5 +1,5 @@
-// Undo and redo bring back every state exactly: a seeded fuzz of random edits (typing, paint, erase,
-// selections, merges, Bake, sliders, settings, Dimensions) undone and redone step by step, plus the cases it
+// Undo and redo bring back every state exactly: a seeded fuzz of random edits (typing, paint, erase, selections,
+// merges, Bake, sliders, settings, Dimensions, lines and columns) undone and redone step by step, plus the cases it
 // found: Bake and Merge into the image racing other changes, slider steps surviving a grid resize,
 // and a removed pin no longer showing its character; and the keys that undo and redo.
 import { test, expect, beforeAll } from 'vitest';
@@ -232,9 +232,9 @@ function makeActions(project, workspace, r, opts) {
       project.addSvg(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><rect x="${x}" y="${y}" width="12" height="8" fill="#ff0000"/>`
         + `<path d="M${x} ${y}h20v20h-20zM${x + 5} ${y + 5}h5v5h-5z" fill-rule="evenodd" stroke="#00ff00" stroke-linejoin="bevel"/></svg>`);
     },
-    restackShape: () => {
+    restackShape: () => { // a step, or to the front or back (ordered so a seed that once went forward still goes that way)
       const key = pick([...project.shapes.keys()]);
-      if (key) project.restackShapes([key], pick(['forward', 'back']));
+      if (key) project.restackShapes([key], pick(['forward', 'toFront', 'back', 'toBack']));
     },
     pen: () => { // a point at a time, some smooth, then closed, left open, ended by a commit, or taken back to none
       const x = int(project.cols - 10), y = int(project.rows - 10), n = 1 + int(5);
@@ -245,6 +245,18 @@ function makeActions(project, workspace, r, opts) {
       else if (end === 1) project.finishPen({ closed: false });
       else if (end === 2) project.commitPending();
       else while (project._stroke?.pen) project.penBack();
+    },
+    line: () => { // Edit Mode's Alt+arrows on the layer in use (the base too): a line or column put in or taken out
+      const row = int(rows()), col = int(project.cols);
+      let between = null;
+      if (r() < 0.4) { // first Insert typing at the row's last cell and then near it, pushing it past the edge, which the layer remembers
+        project.commitPending();
+        for (let k = 0; k < 2 + int(2); k++) project.typeAt(project.cols - 1 - (k && int(3)), row, pick(CHARS), { fg: pick(COLORS) }, { mode: 'insert' });
+        between = docState(project, workspace); // the typing run, a step of its own once the line step ends it
+      }
+      const at = r() < 0.5 ? { row, col } : { row: int(rows()), col: int(project.cols) };
+      pick([() => project.insertLine(at.row), () => project.deleteLine(at.row), () => project.insertColumn(at.col), () => project.deleteColumn(at.col)])();
+      return { between };
     },
     reset: () => (r() < 0.5 ? project.resetSliders() : project.resetGroup(pick(['transform', 'adjust', 'effects']))),
     resize: () => { // Dimensions: a canvas resize (something's drawn), the lock on or off, now and then past MAX_LAYER_DIM
@@ -287,7 +299,8 @@ function pickOf(project, workspace, state) {
 
 // The stack of expected states, kept in step with the history. An open typing run is on the stack
 // (provisionally) but not yet in the history; it becomes a step when committed, if it changed anything.
-// between: the document's state between an action's two steps (a paste, then its moves), when it has two.
+// between: the document's state between an action's two steps (a paste, then its moves; typing, then a line step), when
+// it has two.
 function account(stack, s, d, project, acc, between, t) {
   const nowOpen = !!project._stroke?.typing;
   if (acc.open && !nowOpen) { // the run was committed by this step
@@ -303,7 +316,7 @@ function account(stack, s, d, project, acc, between, t) {
     return d > 1 ? `depth ${d}` : null;
   }
   if (nowOpen && acc.open && d === 0) { stack[stack.length - 1] = s; return null; }
-  if (d === 2 && between) stack.push(between, s);
+  if (d === 2 && between) stack.push({ pick: s.pick, ...between }, s); // the pick the action ran on (a pickBase after it changes s's)
   else if (d === 1) stack.push(s);
   else if (d === 0) stack[stack.length - 1] = s; // a no-op (or a float run replacing its step)
   else return `depth changed by ${d}`;
@@ -327,7 +340,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   const t = trackDepth(project);
   const r = rng(seed);
   const actions = makeActions(project, workspace, r, { async });
-  const names = only ?? Object.keys(actions).filter((name) => name !== 'pickBase' && name !== 'resize'); // the base picked: the layers fuzz's; Dimensions: its own (a new action would change every seed's run)
+  const names = only ?? Object.keys(actions).filter((name) => !['pickBase', 'resize', 'line'].includes(name)); // the base picked: the layers fuzz's; Dimensions and lines: their own (a new action would change every seed's run)
   const stack = [await snap(project, workspace, { forceRender })];
   const log = [];
   const acc = { open: false };
@@ -399,7 +412,7 @@ function diffCells(a, b) {
 // the typing's: layers 19; a shape edit once the only cells layer was deleted, no step at all: sync 20; a typing run
 // that changed nothing, ended by a paste, counted as a step: bake+merge 1; a resample's undo putting back the canvases
 // it was made with, not the ones a canvas resize since had drawn them onto: Dimensions 12); VITE_FUZZ_SEEDS=n runs
-// seeds 1..n (30 takes about eight minutes), VITE_FUZZ_ONLY=6,23 just those.
+// seeds 1..n (30 takes about nine minutes), VITE_FUZZ_ONLY=6,23 just those.
 beforeAll(() => loadBooleans());
 const FUZZ_SEEDS = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0);
 const ONLY_SEEDS = import.meta.env?.VITE_FUZZ_ONLY?.split(',').map(Number);
@@ -440,6 +453,16 @@ test('fuzz: Dimensions among typing, paint, shapes, selections, layers and merge
   const failures = [];
   const only = ['resize', 'resize', 'resize', 'type', 'typingRun', 'paint', 'erasePaint', 'eraseBase', 'move', 'copyPaste', 'pasteFloat', 'addShape', 'moveShape', 'pen', 'mergeShapes', 'mergeDown', 'clearEdit', 'slider', 'addLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer', 'makeArtLayer'];
   for (const seed of seeds([1, 2, 3, 4, 12])) {
+    const f = await fuzz(seed, { async: false, steps: 20, only });
+    if (f) failures.push(f);
+  }
+  expect(failures).toEqual([]);
+}, 300_000);
+
+test('fuzz: lines and columns among typing, paint, selections and layers, the base picked too', async () => {
+  const failures = [];
+  const only = ['line', 'line', 'line', 'type', 'typingRun', 'paint', 'erasePaint', 'eraseBase', 'flip', 'move', 'del', 'copyPaste', 'pasteFloat', 'clearEdit', 'addLayer', 'pickLayer', 'pickBase', 'pickBase', 'deleteLayer', 'duplicateLayer', 'mergeDown', 'makeArtLayer'];
+  for (const seed of seeds([1, 2, 3, 4, 5])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
   }
