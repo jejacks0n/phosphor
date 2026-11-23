@@ -60,6 +60,29 @@ test('an odd-height bitmap font is its own height; an even one and a TrueType fo
   for (let s = 0.5; s <= 4; s += 0.01) assert.equal(cellGeometry(8, s, false, vga).ch, Math.round((16 * s) / 2) * 2);
 });
 
+test('a cell\'s width follows its rounded height by the font\'s shape, so a zoom scales a cell both ways at once', () => {
+  // An 8×8 bitmap font (8 px, as the display sizes one), an 8×16, an odd 8×11, a narrow 4×16 and JetBrains Mono: through
+  // a zoom from 50% to 400% at dpr 1, a cell never gets wider or narrower on a step its height holds, and keeps its
+  // font's shape to within a device pixel. (The width rounded on its own changed twice as often as an 8×8's even height.)
+  const cases = [
+    [8, { size: 8, lineHeight: 1, bitmap: true, height: 8 }],
+    [8, { size: 16, lineHeight: 1, bitmap: true, height: 16 }],
+    [8, { size: 11, lineHeight: 1, bitmap: true, height: 11 }],
+    [4, { size: 16, lineHeight: 1, bitmap: true, height: 16 }],
+    [10.2, jetbrains],
+  ];
+  for (const [advance, font] of cases) {
+    let was = null;
+    for (let s = 0.5; s <= 4; s += 0.005) {
+      const now = cellGeometry(advance, s, false, font);
+      if (was && now.cw !== was.cw) assert.notEqual(now.ch, was.ch, `${advance}×${font.size} at ${s.toFixed(3)}: wider without taller`);
+      assert.ok(Math.abs(now.cw - now.ch * advance / (font.size * font.lineHeight)) <= 0.5);
+      was = now;
+    }
+  }
+  assert.deepEqual(cellGeometry(8, 1.25, false, cases[0][1]), { cw: 10, ch: 10, cellWidth: 8, lineHeight: 8 }); // square stays square
+});
+
 test('a capped cell rounds its height down, so a window of lines stays under the largest side', () => {
   // JetBrains Mono's 20.4 px line (named), a 16 px TrueType spec and an 8×11 bitmap font (the odd branch), in
   // windows 40 columns wide and 500 to 5000 lines tall at dpr 2: every one stays at or under 16384 device px. 513 lines
