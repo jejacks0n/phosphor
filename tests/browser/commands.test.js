@@ -174,6 +174,8 @@ test('every row with a run has words in en.json and fr.json, and its available i
         if (reason !== true) expect(te(reason, 'en') && te(reason, 'fr'), `${c.id}: ${reason}`).toBe(true);
       }
     }
+    // The reasons a room gives (New project and Versions), which a drawing alone never shows.
+    for (const reason of ['social.drawing.onlyHost', 'social.drawing.notWithOthers']) expect(te(reason, 'en') && te(reason, 'fr'), reason).toBe(true);
   } finally {
     await setLocale('en', { persist: false });
   }

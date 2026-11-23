@@ -301,7 +301,7 @@ export function takeKey(event, ctx, ids, { mac = isMac } = {}) {
   for (const id of ids) {
     const prefix = id.endsWith('*') ? id.slice(0, -1) : null;
     const command = pool.find((c) => c.run && !c.fixed && (prefix ? c.id.startsWith(prefix) : c.id === id)
-      && keysFor(c.keys).some((key) => keyMatches(event, key, c.strictMod, mac)) && (!c.where || c.where(ctx)));
+      && keysFor(c.keys ?? []).some((key) => keyMatches(event, key, c.strictMod, mac)) && (!c.where || c.where(ctx)));
     if (!command) continue;
     event.preventDefault();
     if (command.hidden || (event.repeat && command.once) || (command.available?.(ctx) ?? true) !== true) return true;
