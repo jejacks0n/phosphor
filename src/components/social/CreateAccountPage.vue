@@ -3,9 +3,10 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useSocialStore } from '@/store/SocialStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
-import { usernameProblem } from '@/social/names';
+import { EMAIL_MAX, PASSWORD_MAX, usernameProblem } from '@/social/names';
 import { mountTurnstile } from '@/social/turnstile';
 import UsernameField from './UsernameField.vue';
+import FieldCount from '@/components/FieldCount.vue';
 
 const social = useSocialStore();
 const workspace = useWorkspaceStore();
@@ -38,8 +39,18 @@ async function create() {
     <p class="intro">{{ t('social.auth.createIntro') }}</p>
     <form @submit.prevent="ready && create()">
       <UsernameField v-model="username" :help="t('social.auth.usernameHelp')" />
-      <label>{{ t('social.auth.emailLabel') }} <input v-model="email" type="email" autocomplete="email" required></label>
-      <label>{{ t('social.auth.passwordLabel') }} <input v-model="password" type="password" autocomplete="new-password" minlength="10" required aria-describedby="create-password-help"></label>
+      <div class="counted">
+        <label>{{ t('social.auth.emailLabel') }}
+          <input v-model="email" type="email" autocomplete="email" :maxlength="EMAIL_MAX" required aria-describedby="create-email-count">
+        </label>
+        <FieldCount id="create-email-count" :count="email.length" :most="EMAIL_MAX" />
+      </div>
+      <div class="counted">
+        <label>{{ t('social.auth.passwordLabel') }}
+          <input v-model="password" type="password" autocomplete="new-password" minlength="10" :maxlength="PASSWORD_MAX" required aria-describedby="create-password-count create-password-help">
+        </label>
+        <FieldCount id="create-password-count" :count="password.length" :most="PASSWORD_MAX" />
+      </div>
       <p id="create-password-help" class="help">{{ t('social.auth.passwordHelp') }}</p>
       <div ref="widget" class="turnstile"></div>
       <label class="terms">

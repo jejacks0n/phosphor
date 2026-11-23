@@ -119,10 +119,14 @@ up.
   even `test1`) and three words joined by hyphens (a guest's nickname) are reserved, and the field says so as you
   type.
 - **Email**: not one at Phosphor's own domains (Discord and GitHub may use one they've verified).
-- **Password**: at least 10 characters, and not one found in known data breaches.
+- **Password**: 10 to 128 characters, and not one found in known data breaches.
 - **A quick check** that you're a person, not a script.
 - **The terms**: that you're 13 or older and agree to the **Terms**, **Privacy Policy** and **Community Guidelines**
   (each opens over the app).
+
+The username, email and password each count what you've typed against the most they take (`10 / 24`), as SAUCE's
+fields do, and stop there: 24 for a username, 254 for an email, 128 for a password. The same fields on **Pick your
+username**, **Set a new password** and **Account** count the same way.
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat or start a room.
 

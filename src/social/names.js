@@ -77,6 +77,9 @@ function isReserved(name) {
 }
 
 export const USERNAME_MAX = 24;
+// The most the API takes for a password, and for an email the most an address can be (the API sets none of its own).
+export const PASSWORD_MAX = 128;
+export const EMAIL_MAX = 254;
 
 export function usernameProblem(name) {
   if (name.length < 3 || name.length > USERNAME_MAX) return 'length';
