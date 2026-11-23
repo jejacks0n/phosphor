@@ -19,6 +19,13 @@ and 500,000 cells. Three fixes came with that. The pipeline uploads and processe
 more than the GPU draws (a long picture used to come out black). A blank canvas's picture is sized
 within that too. Undo keeps steps up to 256 MB of pixels.
 
+**Then (issue #231):** whole-drawing edits at the limit (100 x 5,000, 500,000 cells), measured with
+`bench/fills.bench.js`. A fill of a whole layer went from about 1.3 s to 0.45 to 0.6 s in PIXEL and
+from 2.9 to 0.9 s with Cells; Merge down from 11 to 16 s to about 3 s; Into the image from 5.6 to 1.7 s.
+Edits over half a second say so ("Filling…", "Merging…"). What's left in them is the cells
+themselves: half a million entries in Maps of string keys (the edit cells, the base's pins) and an
+object a cell, which is stage 3 below.
+
 **Measured** means a number from the benchmark on this machine. **Estimate** means judgment.
 Sizes are given as *cols x lines*; `rows` in the code counts pixel rows, two per line
 (`charRowsOf`, `src/lib/Cells.js:15`).

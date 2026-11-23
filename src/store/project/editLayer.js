@@ -14,7 +14,7 @@ import { cellWidth } from '@/lib/CharWidth.js';
 import { fitFont } from '@/lib/BitmapFont.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, refusedHidden, refusedNoCells, takePins, ownColored } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, readsOf, refusedHidden, refusedNoCells, takePins, ownColored } from '@/store/project/shared.js';
 
 // A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
 // the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
@@ -485,7 +485,8 @@ function baseBlock(project, col, row) {
 function writeOnBottom(project, list) {
   const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([, value]) => value != null));
   const blanks = overwritesAll(project.cells, project.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
-  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...colored(project, col, row, project.completeAt(col, row, own(attrs))) })));
+  const reads = readsOf(project); // the looks, all read before any is written
+  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...colored(reads, col, row, reads.completeAt(col, row, own(attrs))) })));
 }
 
 // Monochrome ASCII's look of a base cell is its character alone (reading.js baseLook), so a cell written there with no

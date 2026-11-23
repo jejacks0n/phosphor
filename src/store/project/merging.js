@@ -20,7 +20,7 @@ import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { findUniform, processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putSettings, putStack, refusedHidden, stackState } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putSettings, putStack, readsOf, refusedHidden, stackState } from '@/store/project/shared.js';
 import { layerChars, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { placedShapes } from '@/document/followers.js';
 import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
@@ -108,11 +108,11 @@ function onBase(project, id, rect) {
   const level = levelCells(project, id), shownChar = (col, row) => level[cellIndex(col, row, project.cols)]?.char;
   const painted = (col, row) => !!(paint?.colorAt(col, 2 * row) || paint?.colorAt(col, 2 * row + 1));
   const merged = [];   // { col, row, top, bottom, char }: the entries, under the paint
-  const kept = new Map();
+  const kept = new Map(), reads = readsOf(project); // read, not written, till they're all merged
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (col >= project.cols || row >= rows || !inRect(col, row)) kept.set(key, entry);
-    else if (shownEntry(entry, project.renderStyle)) merged.push(project.mergeCellOf(col, row, entry, shownChar(col, row), paint)); // a paint block outside ANSI is its paint, which comes down as pixels
+    else if (shownEntry(entry, project.renderStyle)) merged.push(reads.mergeCellOf(col, row, entry, shownChar(col, row), paint)); // a paint block outside ANSI is its paint, which comes down as pixels
   }
   if (rect && !merged.length && !paint?.hasPaintIn(rect)) return false; // nothing drawn inside: no empty undo step
   const paintedPins = [...project.baseRecords.pins.keys()].map(parseKey)
@@ -227,11 +227,11 @@ function unlike(project, state, under, indexes, was) {
 function frozenCells(project, id, indexes, level = indexes.length && levelCells(project, id, indexes)) {
   const frozen = new Map();
   if (!indexes.length) return frozen;
-  const params = project.processParams, cols = project.cols;
-  const as = (stored, target) => (target && project.renderer.effective(target, params).hex.toLowerCase() === target.toLowerCase() ? target : stored);
+  const reads = readsOf(project), params = reads.processParams, cols = reads.cols; // nothing changes till they're all read
+  const as = (stored, target) => (target && reads.renderer.effective(target, params).hex.toLowerCase() === target.toLowerCase() ? target : stored);
   const batch = { indexes, levels: new Map() };
   for (const i of indexes) {
-    const col = i % cols, row = (i - col) / cols, shown = level[i], look = project.storedLookAt(col, row, { through: id, shown, batch });
+    const col = i % cols, row = (i - col) / cols, shown = level[i], look = reads.storedLookAt(col, row, { through: id, shown, batch });
     frozen.set(cellKey(col, row), { ...look, fg: as(look.fg, shown.fg?.hex), ...(look.bg !== undefined && { bg: as(look.bg, shown.bg?.hex) }) });
   }
   return frozen;
@@ -248,7 +248,7 @@ function onCells(project, id, under, rect) {
   const cells = project.cellsOf(id), paint = project.paintOf(id), rows = charRowsOf(project.rows), { cols } = project;
   const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
   const next = new Map(project.cellsOf(under)), kept = new Map(), erased = [], blocks = [], backs = [];
-  const underPaint = project.paintOf(under);
+  const underPaint = project.paintOf(under), reads = readsOf(project); // the looks under, read before any's written
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (!inRect(col, row)) kept.set(key, entry);
@@ -269,7 +269,7 @@ function onCells(project, id, under, rect) {
       }
       blocks.push(row * cols + col);
     } else {
-      next.set(key, project.completeAt(col, row, entry, id));
+      next.set(key, reads.completeAt(col, row, entry, id));
       if (!isFrozen(entry)) erased.push(...halvesOf(col, row)); // a frozen cell's paint under it comes down with it
     }
   }
@@ -678,22 +678,23 @@ export const mergingActions = {
       if (!covered.size) return; // nothing drawn (in the rect): no empty undo step
       const ctx = ctx2d(canvas), level = levelCells(this, id);
       const exactPixels = [], pictureCells = [], pins = [], unpins = [];
+      const reads = readsOf(this); // the cells read, none written, till the picture's made
       for (const [key, { col, row }] of covered) {
-        const entry = this.editCellAt(col, row);
-        const pin = this.baseRecords.pins.get(key);
+        const entry = reads.editCellAt(col, row);
+        const pin = reads.baseRecords.pins.get(key);
         // A frozen cell's pin is its look; its paint under it stays out (as onBase keeps it out). docs/model.md R3. A paint
         // block outside ANSI is its paint (R1): the converter's, into the picture.
-        const kind = isFrozen(entry) ? 'exact' : mergeKind({ char: shownEntry(entry, this.renderStyle)?.char ?? pin, renderStyle: this.renderStyle, inPicture: inPicture(col, row) });
+        const kind = isFrozen(entry) ? 'exact' : mergeKind({ char: shownEntry(entry, reads.renderStyle)?.char ?? pin, renderStyle: reads.renderStyle, inPicture: inPicture(col, row) });
         let top, bottom, folded = false, kept = [];
         const paintOver = (half, y) => (isFrozen(entry) || folded ? half : over(half, paintAt(col, y)));
         if (kind === 'exact') {
-          const merged = this.mergeCellOf(col, row, entry, level[cellIndex(col, row, this.cols)]?.char);
+          const merged = reads.mergeCellOf(col, row, entry, level[cellIndex(col, row, reads.cols)]?.char);
           ({ top, bottom, folded = false, kept } = merged);
           // its indexes as onBase keeps them, where no paint is over that half
           const fgIndex = paintAt(col, 2 * row + 1).a ? undefined : merged.fgIndex, bgIndex = paintAt(col, 2 * row).a ? undefined : merged.bgIndex;
-          if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, this.cols)]?.char ?? pin, fgIndex, bgIndex });
+          if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, reads.cols)]?.char ?? pin, fgIndex, bgIndex });
         } else {
-          const cell = entry ? mergeEntry(this.baseCellAt(col, row), entry) : this.baseCellAt(col, row);
+          const cell = entry ? mergeEntry(reads.baseCellAt(col, row), entry) : reads.baseCellAt(col, row);
           [top, bottom] = kind === 'picture' ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
             : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
           if (kind === 'picture-pinned') pins.push({ col, row, char: '▄' });
