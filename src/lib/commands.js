@@ -163,11 +163,12 @@ const stepChoice = (mark, by) => (ctx) => {
   setOptionValue(workspace, option, choices[next].value);
 };
 
-// ] and [ grow and shrink the tool's Size a whole step (on VECTOR, a polygon's Sides), as in Photoshop. Not with Shift,
-// which is the hardness's even where ] carries it.
+// ] and [ grow and shrink the tool's Size a whole step (on VECTOR, a polygon's Sides), as in Photoshop. Not with Shift
+// on the bracket keys, which is the hardness's even where ] carries it; a layout that types [ or ] with Shift on
+// another key keeps them.
 const sized = (by) => ({
   title: said(`shortcuts.commands.${by < 0 ? 'sizeDown' : 'sizeUp'}`),
-  where: (ctx) => optionKey('size')(ctx) && !ctx.event.shiftKey,
+  where: (ctx) => optionKey('size')(ctx) && !(ctx.event.shiftKey && /^Bracket/.test(ctx.event.code)),
   run: (ctx) => {
     const option = markedOption('size', ctx);
     setSlider(ctx.workspace, option, optionValue(ctx.workspace, option) + by);
