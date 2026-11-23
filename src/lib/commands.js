@@ -21,7 +21,7 @@
 // A row with a run and no keys is the command list's alone (New project, Export .ans), and the ? list leaves it out.
 // ctx = { project, workspace, event, view: workspace.editorTab, typing: Edit Mode's typing, uncommitted: focus is in a
 // field holding typing it hasn't committed (its own undo has it), linux: a test's stand-in for the platform (isLinux) }.
-import { nextTick } from 'vue';
+import { markRaw, nextTick } from 'vue';
 import { t, te } from '@/i18n/index.js';
 import { isMac, shortcut } from '@/lib/keyLabels';
 import { keyLabel, keysFor, matches } from '@/lib/keymap';
@@ -281,6 +281,26 @@ const tabRow = (id, n, label, ids) => ({
     workspace.editorTab = workspace.shownTabs(project, useRoomStore()).find((shown) => ids.includes(shown.id)).id;
   },
 });
+// Alt+T: the side panel on SOCIAL, with focus kept to come back to; in a room the cursor in the chat box (a guest's "Sign
+// in to chat", someone without a box the tab), out of one on the lobby's first control. In the box, Alt+T goes back, as
+// its Escape does (ChatFoot): the one field it works in, typing or not, as typing doesn't take a field's keys.
+const CHAT_BOX = 'aside.chat footer textarea';
+const inChatBox = ({ event }) => !!event.target?.matches?.(CHAT_BOX);
+const toChat = {
+  where: (ctx) => (inChatBox(ctx) || (!ctx.typing && free(ctx))) && overNothing(ctx) && !ctx.workspace.isPainting,
+  run: async (ctx) => {
+    const { workspace } = ctx;
+    if (inChatBox(ctx)) return workspace.leaveChat();
+    const from = document.activeElement;
+    workspace.chatReturn = from ? markRaw(from) : null;
+    workspace.showSocial();
+    await nextTick();
+    if (document.querySelector('dialog[open]')) return; // SOCIAL's first question, say: the dialog has focus
+    (document.querySelector(`${CHAT_BOX}, aside.chat footer button.sign-in`)
+      ?? document.querySelector('.side-panel section.lobby :is(button, input, select, textarea, a[href]):not(:disabled)')
+      ?? document.querySelector('.side-panel [role=tab][aria-selected=true]'))?.focus();
+  },
+};
 const outOfRoom = () => (useRoomStore().role ? 'shortcuts.reasons.inRoom' : true);
 const ARROWS = '← ↑ → ↓'; // the four, shown as one
 const shiftArrows = () => [shortcut('shift', ARROWS)];
@@ -415,7 +435,7 @@ export const COMMANDS = [
   // Panels, by the words of their tabs and buttons.
   { id: 'panels.layers', group: 'panels', label: said('sidePanel.layers'),
     run: ({ workspace }) => { workspace.toggleSidePanel(true); workspace.sidePanelTab = 'layers'; } },
-  { id: 'panels.social', group: 'panels', label: said('sidePanel.social'), run: ({ workspace }) => workspace.showSocial() },
+  { id: 'panels.social', group: 'panels', keys: 'Alt+KeyT', once: true, label: words('social'), title: said('sidePanel.social'), ...toChat },
   { id: 'panels.plugins', group: 'panels', label: said('menu.plugins'), run: ({ workspace }) => { workspace.pluginsOpen = true; } },
   // Each plugin picked from a file or folder read again, as each one's Reload in Plugins.
   { id: 'panels.reloadPlugins', group: 'panels', label: said('shortcuts.commands.reloadPlugins'),

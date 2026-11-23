@@ -1600,6 +1600,7 @@
       "tabSauce": "Afficher l'onglet SAUCE",
       "tabRoom": "Afficher l'onglet SALLE, en regardant une salle",
       "tabsKeptFromBrowser": "Sous Linux, rien là où les touches des onglets ne servent pas, pour que le navigateur ne change pas d'onglet",
+      "social": "Afficher Social, dans une salle avec le curseur dans le chat ; depuis le chat, revenir où vous étiez (Échap aussi)",
       "commandList": "Trouver une commande et la lancer",
       "layerAboveBelow": "Sélectionner le calque au-dessus ou en dessous",
       "takeUnder": "Prendre les couleurs de la cellule sous le pointeur, ou en Mode Édition celles du curseur (PIXEL : celle du pixel, en premier plan)",

@@ -133,9 +133,10 @@ script. Every section ends with Free time.
 - Rated: yes, wants Cmd+O (Cmd+N for a blank canvas)
 
 ### 2. Come into SOCIAL as myself
-- Does: fakes the server for her page (What they bring), then opens the Social tab. As a guest she presses Sign in to
+- Does: fakes the server for her page (What they bring), then opens the Social tab with Alt+T from the art (Option+T
+  on a Mac). As a guest she presses Sign in to
   socialize and signs in with her email and a password; signed in, she reads the top of the lobby.
-- Expects: a guest sees a guest nickname with a guest tag, Sign in to socialize, "No account? Create one", and no Start
+- Expects: Alt+T shows Social with focus on its first control; a guest sees a guest nickname with a guest tag, Sign in to socialize, "No account? Create one", and no Start
   a room; once signed in (or from the start, signed in) the top shows `ansi-fan` after its cell, with Edit account and
   Sign out, and Start a room sits under Public rooms; In the lobby lists her, marked (you)
   ([Members and guests](../../social.md#members-and-guests)).
@@ -143,7 +144,7 @@ script. Every section ends with Free time.
   open, and the lobby shows; `back-out`: open Sign in and close it with × and with Escape, and check where focus lands;
   `interrupt`: reload with the lobby showing and check she's still signed in; `free`: press Create one to see what a
   new account asks, then close it.
-- Rated: yes, wants a key to reach the side panel's Social tab (Tab-walking is the path today)
+- Rated: yes, wants Alt+T
 
 ### 3. Check my art fits a room
 - Does: presses Add layer to add a second cells layer and Add vector layer, opens Start a room and looks at Go live;
@@ -224,16 +225,21 @@ and drag the panel wider.
 - Rated: yes, wants a key to open N here (Tab, then Enter, is the path today)
 
 ### 8. Say hello
-- Does: types a hello in the chat box and presses Enter; has `tin_owl` answer.
-- Expects: her message shows with her name, a host tag and a time, and reaches every watcher; Shift+Enter makes a new
+- Does: from the art, presses Alt+T (Option+T on a Mac) to put the cursor in the chat box, types a hello and presses
+  Enter, then Esc to go back to her art; has `tin_owl` answer.
+- Expects: Alt+T lands in the box with nothing typed in it (no †), and Esc puts focus back on the art, where her next
+  key (P) is a tool's again; her message shows with her name, a host tag and a time, and reaches every watcher; Shift+Enter makes a new
   line and the box grows to 5 lines, then scrolls; Send is gray with nothing to send; her own message plays no tone,
   and `tin_owl`'s answer plays one only if she's back on her art (focus out of the chat), and the speaker beside the
   side panel's fold button turns that off and on ([Chat](../../social.md#chat)).
 - Probes: `extremes`: a 300-character message with emoji (the 301st character can't be typed), then the full room: 9
   more members join (12 watchers) and each says a line, and she times her own message reaching a watcher against
   `response`, then the nine leave (their pages closed), so later steps aren't refused as "Room is full"; `speed`: send five messages as fast as she can ("Please wait a moment before sending another message." after
-  three, with her text kept), and have three watchers answer at once while she draws: one tone, not three.
-- Rated: yes, wants a key to put the cursor in the chat box
+  three, with her text kept), and have three watchers answer at once while she draws: one tone, not three; `back-out`:
+  with Edit Mode's cursor placed, press Alt+T (it's typing's: on a Mac it types † at the cursor, and the chat stays
+  where it is), then Esc and Alt+T again (the box); on a phone's width, Esc in the box shuts the panel and is back on
+  the art in one press.
+- Rated: yes, wants Alt+T, then Esc
 
 ### 9. Change the welcome while live
 - Does: opens Settings and stats, changes the welcome message, presses Save; looks at a watcher's page.

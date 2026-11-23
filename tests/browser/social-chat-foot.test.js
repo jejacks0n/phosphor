@@ -1,5 +1,5 @@
 // The chat panel's foot (ChatFoot.vue) says what you can do from who you are, and nothing while the
-// pass is being swapped (a rename, a renewal, signing in) and who you are isn't known.
+// pass is being swapped (a rename, a renewal, signing in) and who you are isn't known; Escape in its box goes back out.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -7,6 +7,7 @@ import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { silencedWords, dayAndTime } from '@/social/chat';
 import ChatFoot from '@/components/social/ChatFoot.vue';
 
@@ -89,4 +90,29 @@ test('when the silence ends the box is back within a minute, with what was typed
   await nextTick();
   expect(host.querySelector('textarea').value).toBe('half a thought');
   expect(host.querySelector('p.silenced')).toBe(null);
+});
+
+test('Escape in the box goes back where Alt+T came from (not an IME\'s), and a send finishing after it leaves focus there', async () => {
+  const social = await mount();
+  social.claims = claims({});
+  await nextTick();
+  const workspace = useWorkspaceStore(), box = host.querySelector('textarea');
+  const back = document.createElement('button');
+  host.append(back);
+  workspace.chatReturn = back;
+  let said;
+  vi.spyOn(useRoomStore(), 'say').mockReturnValue(new Promise((resolve) => { said = resolve; }));
+  box.focus();
+  box.value = 'hi';
+  box.dispatchEvent(new Event('input'));
+  box.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }));
+  const composing = new KeyboardEvent('keydown', { key: 'Escape', isComposing: true, bubbles: true, cancelable: true });
+  box.dispatchEvent(composing);
+  expect([composing.defaultPrevented, document.activeElement]).toEqual([false, box]);
+  const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+  box.dispatchEvent(esc);
+  expect([esc.defaultPrevented, document.activeElement, workspace.chatReturn]).toEqual([true, back, null]);
+  said(true);
+  await vi.waitFor(() => expect(box.value).toBe(''));
+  expect(document.activeElement).toBe(back);
 });

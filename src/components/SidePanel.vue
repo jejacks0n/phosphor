@@ -62,7 +62,7 @@ watch(wide, () => { workspace.sidePanelOpen = false; });   // narrowed again, it
 
 // On a narrow screen Escape shuts it (one in a dialog over it is the dialog's), as a tap on the art beside it does.
 function shut(event) {
-  if (wide.value || event.target.closest('dialog')) return;
+  if (wide.value || event.defaultPrevented || event.target.closest('dialog')) return;   // the chat box's own (ChatFoot) shut it already
   event.preventDefault();
   toggleSidePanel(workspace, false);
 }

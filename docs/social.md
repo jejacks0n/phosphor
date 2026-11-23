@@ -344,6 +344,10 @@ an unconfirmed member sees **Confirm your email to chat**.
 - **Sending**: **Enter** sends and **Shift+Enter** starts a new line. A message is up to 300 characters, and you can
   send about one a second (three at once, then one a second). Too fast says "Please wait a moment before sending
   another message." and keeps what you typed.
+- **By key**: **Alt+T** (**Option+T** on a Mac) opens the side panel on CHAT and puts the cursor in the message box (a
+  guest gets **Sign in to chat** focused); out of a room it shows Social, focused on its first control. In the box,
+  **Esc** or **Alt+T** again puts focus back where it came from (the art, if that's gone), and on a narrow screen shuts
+  the panel too, in the same press. It doesn't work while typing in Edit Mode, where Option+T types †: press Esc first.
 - **Your name** sits on the message box, with a **…** menu for **Edit account** and **Sign out**.
 - **Earlier messages** load as you scroll up (**Scroll up for earlier messages**), and **You joined** marks where you
   came in.
@@ -374,7 +378,7 @@ The side panel stays open as you move between tabs, so you can work on your own 
   opens it on CHAT. A reload in a room shows it as it was: folded or open, on CHAT or LAYERS.
 - **Toasts**: What the chat panel says about the drawing also shows as a toast while the chat isn't showing.
 - **Narrow screens**: The panel comes in over the art from the right, leaving a strip of the art showing, and starts
-  shut. The unfold button at the right end of the tab bar opens it, with the count of what was said beside it, and the fold button, Escape or
+  shut. The unfold button at the right end of the tab bar opens it, with the count of what was said beside it (or **Alt+T**), and the fold button, Escape or
   a touch on the strip of art shuts it (and draws nothing). Opening it closes the settings (☰), and opening those shuts it. Its edge doesn't
   drag. Going into a room shuts it, so you see the art, and the unfold button counts what's said.
 

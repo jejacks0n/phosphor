@@ -1600,6 +1600,7 @@
       "tabSauce": "Show the SAUCE tab",
       "tabRoom": "Show the ROOM tab, while watching a room",
       "tabsKeptFromBrowser": "On Linux, nothing where the tab keys don't apply, so the browser doesn't switch its tabs",
+      "social": "Show Social, in a room with the cursor in the chat box; from the box, back where you were (Esc too)",
       "commandList": "Find a command and run it",
       "layerAboveBelow": "Select the layer above or below",
       "takeUnder": "Take the colors of the cell under the pointer, or in Edit Mode the cursor's (PIXEL: the pixel's, as the foreground)",
