@@ -8,7 +8,7 @@ import { usePaletteStore } from '@/store/PaletteStore';
 import { UNICODE_BLOCKS, fitsGrid, parseFind } from '@/lib/charPalettes';
 import { CP437, cp437Byte, isCp437 } from '@/lib/Cp437';
 import { cellWidth } from '@/lib/CharWidth';
-import { slotChars, slotOf } from '@/lib/BitmapFont';
+import { SLOT_CHARS, slotChars, slotOf } from '@/lib/BitmapFont';
 import { ownsKey } from '@/lib/fields';
 import { toast } from '@/composables/useToast';
 import { writePaletteFile, readPaletteFile, paletteFileName } from '@/lib/PaletteFile';
@@ -141,7 +141,7 @@ const assign = (index, char, advance = true) => {
   else aimHint();
 };
 const pickGlyph = (char) => {
-  if (!char) return;
+  if (!char || !fits(char)) return;
   if (!editing.value) startEditing();
   assign(target.value, char);
 };
@@ -230,9 +230,18 @@ const onDrop = (event, index) => {
   }
 };
 
+// A font slot whose own character a block took (Blocks, on the Fonts page) has a private-use stand-in in the sheet.
+const tookFrom = (char) => {
+  const n = char.codePointAt(0) - 0xE000, font = project.drawingFont;
+  if (!font || n < 0 || n > 255) return null;
+  const from = slotOf(SLOT_CHARS[n], font);
+  return from === null ? null : { n, char: SLOT_CHARS[n], from };
+};
 const info = computed(() => {
   const char = hoveredChar.value;
   if (!char) return t('palette.layer.hoverDefault');
+  const took = tookFrom(char);
+  if (took) return [t('palette.fonts.slot', { n: took.n, char }), t('palette.layer.infoBlockTook', took)].join(' · ');
   const byte = cp437Byte(char);
   const slot = current.value.glyphs.indexOf(char);
   const parts = [
@@ -451,11 +460,12 @@ onBeforeUnmount(() => {
                   :key="i + char"
                   class="g"
                   :class="{ inset: char && current.glyphs.includes(char), utf: char && !isCp437(char) && !project.drawingFont, bad: char && !fits(char) }"
-                  :disabled="!char || !fits(char)"
+                  :disabled="!char"
+                  :aria-disabled="char && !fits(char) ? 'true' : undefined"
                   :draggable="!!char && fits(char)"
                   @mouseenter="onGlyphHover(char)"
                   @dragstart="onDragStart($event, `glyph:${char}`)"
-                  @pointerdown="pressGlyph($event, i, char)"
+                  @pointerdown="char && fits(char) && pressGlyph($event, i, char)"
                   @pointerup="release"
                   @pointerleave="release"
                   @pointercancel="release"

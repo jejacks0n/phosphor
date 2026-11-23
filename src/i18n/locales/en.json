@@ -883,6 +883,7 @@
       "infoWide": "2 cells wide",
       "infoOnSlot": "already assigned to F{slot}",
       "infoDoesntFit": "does not fit in one cell",
+      "infoBlockTook": "{char} is drawn from slot {from}, so this slot has no character of its own",
       "forFont": "For {name}",
       "anyFont": "Any font",
       "untie": "Use with any font",
