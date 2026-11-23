@@ -21,6 +21,14 @@ describe('pluginShaderSource', () => {
     expect(src).toMatch(/uniform int opt_set;/);
   });
 
+  it('has Solids as the JavaScript gets it and look.gray as gray(), for both passes', () => {
+    for (const pass of ['solve', 'refine']) {
+      const src = pluginShaderSource(def, pass, { glyphs: 3, reach: 1 });
+      expect(src).toMatch(/uniform float uSolids;/);
+      expect(src).toMatch(/float gray\(vec3 c\) \{ return 0\.2126 \* c\.r \+ 0\.7152 \* c\.g \+ 0\.0722 \* c\.b; \}/);
+    }
+  });
+
   it('only pass 2 gets charAt', () => {
     expect(pluginShaderSource(def, 'solve', { glyphs: 3, reach: 1 })).not.toMatch(/charAt/);
     expect(pluginShaderSource(def, 'refine', { glyphs: 3, reach: 1 })).toMatch(/int charAt\(ivec2 d\)/);

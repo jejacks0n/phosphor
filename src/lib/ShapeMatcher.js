@@ -259,10 +259,13 @@ void main() {
 const PLUGIN = `
 uniform ivec2 uGrid;        // the grid's columns and lines
 uniform ivec2 uSampleFirst; // uSamples' first cell
+uniform float uSolids;      // Solids as the JavaScript's look.solids has it (0 to 1); uTolerance is By shape's own, made from it
 #define paletteCount uColors
 ivec2 cellAt() { return uFirst + local() - uSampleFirst; }
 ${BY_SHAPE}
 float glyphMask(int g, int i) { return texelFetch(uMasks, ivec2(i, g), 0).r; }
+// A color's brightness, 0 to 255: the JavaScript's look.gray, its weights in its order.
+float gray(vec3 c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
 
 // Sample i of the cell d away (within reach), the edge cell's past the border, its nudge in it.
 vec3 sampleAt(ivec2 d, int i) {
@@ -539,13 +542,15 @@ export default class ShapeMatcher {
     gl.uniform1i(u('uColors'), matcher.palette?.length ?? 0);
     gl.uniform1f(u('uLight'), matcher.light);
     gl.uniform1f(u('uTolerance'), matcher.shape.tolerance ?? 0);
+    gl.uniform1f(u('uSolids'), matcher.solids);
     gl.uniform1i(u('uGlyphs'), matcher.glyphs.filter((g) => !g.own).length);
     gl.uniform1i(u('uStyle'), STYLES.indexOf(matcher.style));
     gl.uniform2i(u('uGrid'), cols, lines);
     for (const { id, kind } of matcher.def.options) {
       const value = matcher.options[id];
       if (kind === 'slider') gl.uniform1f(u(`opt_${id}`), value);
-      else if (kind === 'color') gl.uniform3f(u(`opt_${id}`), parseInt(value.slice(1, 3), 16) / 255, parseInt(value.slice(3, 5), 16) / 255, parseInt(value.slice(5), 16) / 255);
+      // A color is 0 to 255 a channel, as every color in a solver's shader is (sampleAt, paletteColor, put).
+      else if (kind === 'color') gl.uniform3f(u(`opt_${id}`), parseInt(value.slice(1, 3), 16), parseInt(value.slice(3, 5), 16), parseInt(value.slice(5), 16));
       else gl.uniform1i(u(`opt_${id}`), kind === 'checkbox' ? Number(value) : value);
     }
     for (const [name, unit] of Object.entries({ uSamples: 0, uPalette: 1, uMasks: 2, uPicks: 3 })) gl.uniform1i(u(name), unit);

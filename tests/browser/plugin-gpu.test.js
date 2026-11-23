@@ -115,20 +115,46 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     }
   });
 
-  test('a color option is a vec3 in the shader and { r, g, b } in the JavaScript, and they agree', async () => {
+  // 0 to 255 a channel in the shader, as its samples, the palette's colors and put's are: no scale to change between.
+  test('a color option is a vec3 of 0 to 255 in the shader and { r, g, b } in the JavaScript, and they agree', async () => {
     const def = solver({
       options: [{ id: 'tint', kind: 'color', name: 'Tint', default: '#ff8000' }],
       solve(cell, look) {
         const t = look.options.tint, a = cell.sample(0, 0, 0)[0];
         return { char: '/', fg: rgb(t.r, a, 0), bg: rgb(0, t.g, t.b) };
       },
-      shader: { solve: 'put(opt_tint * 255.0 * vec3(1.0, 0.0, 0.0) + vec3(0.0, sampleAt(ivec2(0, 0), 0).r, 0.0), vec3(0.0, opt_tint.g * 255.0, opt_tint.b * 255.0), 4);' },
+      shader: { solve: 'put(vec3(opt_tint.r, sampleAt(ivec2(0, 0), 0).r, 0.0), vec3(0.0, opt_tint.g, opt_tint.b), 4);' },
     });
     const samples = samplesOf(6, 4), gpu = ShapeMatcher.shared();
     for (const tint of ['#ff8000', '#123456']) {
       const matcher = await matcherOf(def, { options: { tint } });
-      expect(key(gpu.resolve(samples, 6, 4, matcher).cells)).toEqual(key(resolvePlugin(samples, 6, 4, matcher).cells));
+      const cells = gpu.resolve(samples, 6, 4, matcher).cells;
+      expect(key(cells)).toEqual(key(resolvePlugin(samples, 6, 4, matcher).cells));
+      expect([cells[0].fg.r, cells[0].bg.g, cells[0].bg.b]).toEqual([1, 3, 5].map((at) => parseInt(tint.slice(at, at + 2), 16))); // the color itself, not black
     }
+  });
+
+  // What look hands the JavaScript, the shader has under a name of its own: Solids and Pattern light as the same numbers
+  // (uTolerance, By shape's own, isn't Solids), the style by its place in ansi, colorAscii, ascii, and look.gray as gray().
+  test('uSolids, uLight and uStyle are look.solids, look.light and look.style, and gray() is look.gray', async () => {
+    const STYLE = ['ansi', 'colorAscii', 'ascii'];
+    const def = solver({
+      solve(cell, look) {
+        const bright = Math.floor(look.gray(cell.sample(0, 0, 0)) / 16) * 16;
+        return { char: ['/', '\\', '█'][STYLE.indexOf(look.style)], fg: rgb(look.solids * 200, look.light * 100, bright), bg: rgb(bright, 0, 0) };
+      },
+      shader: { solve: `float bright = floor(gray(sampleAt(ivec2(0, 0), 0)) / 16.0) * 16.0;
+        put(vec3(uSolids * 200.0, uLight * 100.0, bright), vec3(bright, 0.0, 0.0), uStyle == 0 ? 4 : uStyle == 1 ? 5 : 2);` },
+    });
+    const samples = samplesOf(6, 4), gpu = ShapeMatcher.shared();
+    for (const renderStyle of STYLE) {
+      const matcher = await matcherOf(def, { renderStyle });
+      const cells = gpu.resolve(samples, 6, 4, matcher).cells;
+      expect(key(cells), renderStyle).toEqual(key(resolvePlugin(samples, 6, 4, matcher).cells));
+      expect(cells[0].char, renderStyle).toBe(['/', '\\', '█'][STYLE.indexOf(renderStyle)]);
+    }
+    const [cell] = gpu.resolve(samples, 6, 4, await matcherOf(def)).cells; // matcherOf: Solids 25%, Pattern light 100%
+    expect([cell.fg.r, cell.fg.g]).toEqual([50, 100]);
   });
 
   test('an area\'s GPU resolve equals the whole grid\'s over the grown area, in bands or not', async () => {
