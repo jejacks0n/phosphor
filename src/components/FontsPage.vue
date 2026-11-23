@@ -284,13 +284,19 @@ const readout = (n) => {
 };
 
 // Every listed bitmap font registered with the page, so its sample and sheet draw in its own glyphs. (TrueType fonts
-// are registered as they're loaded.) Again when a font's blocks change: its face is keyed by them.
-const faceSignature = (f) => (f.id === drawnId.value ? fontKey(drawn.value) : f.blocks ? encodeBlocks(f.blocks) : '');
+// are registered as they're loaded.) Again when a font's blocks or width change: its face is keyed by them. A row's
+// face is at the width its size says (the library's rows draw theirs at it too), and a pass a later one overtook
+// (a width chosen while it registered) leaves the rows to that one.
+const widthOf = (f) => f.cellWidth ?? f.width ?? f.ownWidth ?? 8;
+const faceSignature = (f) => `${f.id === drawnId.value ? fontKey(drawn.value) : f.blocks ? encodeBlocks(f.blocks) : ''}:${widthOf(f)}`;
+let facesPass = 0;
 watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => `${f.id}:${faceSignature(f)}`).join(' '), async () => {
+  const pass = ++facesPass;
   for (const f of all.value.filter((font) => font.kind === 'bitmap')) {
     try {
-      const font = await bitmapOf(f);
+      const font = { ...(await bitmapOf(f)), cellWidth: widthOf(f) };
       await registerBitmapFont(font);
+      if (pass !== facesPass) return;
       keys.value[f.id] = fontKey(font);
       samples.value[f.id] = sampleOf(font);
     } catch {
@@ -544,17 +550,17 @@ const exportPalettes = () => {
         <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
       </div>
       <template v-if="bitmap && font">
-        <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
-          <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
-            {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
-          </button>
-        </div>
         <div v-if="widths.length" class="width-row">
           <span class="width-label">{{ t('palette.fonts.width') }}</span>
           <ToggleGroup
               class="width-switch"
               single
               :model-value="widthLit"
+        <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
+          <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
+            {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
+          </button>
+        </div>
               :options="widthOptions"
               :label="t('palette.fonts.width')"
               @update:model-value="setWidth(+Object.keys($event).find((k) => $event[k]))"
@@ -692,12 +698,14 @@ div.filters-head {
   height: 55px;
 }
 
-/* The double arrow beside the search, the size the typed « » it replaced was, in the middle of the row */
+/* The double arrow beside the search, the size the typed « » it replaced was, in the middle of the row: a wide button,
+   pulled into the row's padding and gap, so it's easy to hit and the arrow sits close to the edge and the search. */
 div.top button.filters-toggle {
   display: flex;
   flex: none;
   align-items: center;
-  padding: 4px;
+  margin: 0 -10px 0 -12px;
+  padding: 0 8px;
   border: none;
   background: none;
   box-shadow: none;
