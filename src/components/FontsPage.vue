@@ -1,6 +1,6 @@
 <script setup>
 import { ref, shallowRef, computed, watch, useTemplateRef, nextTick, toRaw, onMounted } from 'vue';
-import { useLocalStorage, useEventListener } from '@vueuse/core';
+import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -25,6 +25,8 @@ import CloseButton from '@/components/CloseButton.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
 import { loadLibrary, libraryEntryOf, libraryFile, licenseUrl, searchLibrary, shapeOf, tagCounts, tagsOf, tellUsUrl } from '@/lib/fontLibrary';
 import ArrowIcon from '@/components/ArrowIcon.vue';
+import GlyphZoom from '@/components/GlyphZoom.vue';
+import { useGlyphZoom } from '@/composables/useGlyphZoom';
 
 // The palette layer's Fonts page: the font in use, yours and the built-in ones on the left, each sampled in its own glyphs;
 // on the right the chosen one with its actions and its 256 slots (a TrueType font has a sample instead). Choosing a
@@ -343,39 +345,11 @@ const setSlot = (n) => {
   const blocks = blocksOf(font.value), next = withBlock(blocks, picked.value, n);
   if (next.some((s, i) => s !== blocks[i])) setBlocks(next);
 };
-// A slot clicked (no block picked to set): its glyph large over the sheet, for a closer look. It's in the top layer, so
-// the sheet's scrolling can't cut it. Another click, Escape, a press elsewhere or a scroll puts it away.
-const zoom = ref(null); // { n, char, family, size, left, top }
-const zoomEl = useTemplateRef('zoomEl');
-const closeZoom = () => { zoom.value = null; };
-const showZoom = async (event, n, char, f) => {
-  if (zoom.value?.n === n) return closeZoom();
-  const cell = event.currentTarget.getBoundingClientRect();
-  const size = f.height * Math.max(2, Math.round(96 / f.height)); // about 96px, a whole number of times the font's size
-  zoom.value = { n, char: char === '␀' ? ' ' : char, family: styleOf(f).fontFamily, size, left: 0, top: 0 };
-  await nextTick();
-  const el = zoomEl.value;
-  el.showPopover();
-  const { offsetWidth: w, offsetHeight: h } = el;
-  const above = cell.top - h - 6;
-  zoom.value.left = Math.min(Math.max(8, cell.left + cell.width / 2 - w / 2), innerWidth - w - 8);
-  zoom.value.top = above >= 8 ? above : cell.bottom + 6;
-  el.focus({ preventScroll: true });
-};
-// A long press shows the slot large whatever a click would do (set a block's or a line piece's slot), and the click
-// that ends it lands nowhere.
-let pressTimer = 0, longPressed = false;
-const pressSlot = (event, open) => {
-  clearTimeout(pressTimer);
-  longPressed = false;
-  const target = event.currentTarget;
-  pressTimer = setTimeout(() => {
-    longPressed = true;
-    open({ currentTarget: target });
-  }, 500);
-};
-const releaseSlot = () => clearTimeout(pressTimer);
-const pressedLong = (n) => longPressed && zoom.value?.n === n;
+// A slot clicked (no block picked to set): its glyph large over the sheet, for a closer look (GlyphZoom). Another click,
+// Escape, a press elsewhere or a scroll puts it away. A long press shows it whatever a click would do (set a block's or
+// a line piece's slot), and the click that ends it lands nowhere.
+const { zoom, show, close: closeZoom, press: pressSlot, release: releaseSlot, pressedLong } = useGlyphZoom('span.cell');
+const showZoom = (event, n, char, f) => show(event, n, char, styleOf(f).fontFamily, f.height);
 const chosenZoom = (event, n) => (zoom.value?.n === n ? null : showZoom(event, n, chars.value[n], chosen.value));
 const clickSlot = (event, n) => {
   if (pressedLong(n)) return;
@@ -384,9 +358,6 @@ const clickSlot = (event, n) => {
 const libFace = computed(() => libEntry.value && preview.value && { kind: 'bitmap', height: libEntry.value.height, family: preview.value.family });
 const zoomOut = () => { closeZoom(); emit('acted'); };
 watch([chosenId, () => libEntry.value?.id, picked, section], closeZoom);
-useEventListener(document, 'pointerdown', (e) => { if (zoom.value && !e.target.closest?.('span.cell, .glyph-zoom')) closeZoom(); }, true);
-useEventListener(window, 'scroll', closeZoom, { capture: true, passive: true });
-useEventListener(window, 'resize', closeZoom);
 const sections = computed(() => [
   { key: 'blocks', label: t('palette.fonts.blocks') },
   { key: 'lines', label: t('palette.fonts.lines'), count: font.value?.lines?.styles.length ?? 0 },
@@ -663,20 +634,7 @@ const exportPalettes = () => {
         </template>
       </dl>
     </div>
-    <div
-        v-if="zoom"
-        ref="zoomEl"
-        popover="manual"
-        class="glyph-zoom"
-        role="dialog"
-        tabindex="-1"
-        :aria-label="t('palette.fonts.slot', { n: zoom.n, char: zoom.char })"
-        :style="{ left: `${zoom.left}px`, top: `${zoom.top}px` }"
-        @keydown.esc.stop="zoomOut"
-    >
-      <div class="glyph" :style="{ fontFamily: zoom.family, fontSize: `${zoom.size}px` }">{{ zoom.char }}</div>
-      <div class="caption">{{ t('palette.fonts.slot', { n: zoom.n, char: zoom.char }) }}</div>
-    </div>
+    <GlyphZoom v-if="zoom" :key="zoom.n" :char="zoom.char" :family="zoom.family" :size="zoom.size" :cell="zoom.cell" :label="t('palette.fonts.slot', { n: zoom.n, char: zoom.char })" @close="zoomOut"/>
   </div>
 </template>
 
@@ -945,34 +903,6 @@ span.cell.picked {
 
 div.grid.sheet:not(.picking) span.cell {
   cursor: zoom-in;
-}
-
-/* A slot's glyph large (showZoom), placed over the slot clicked. */
-div.glyph-zoom {
-  position: fixed;
-  inset: auto;
-  margin: 0;
-  padding: 8px;
-  border: 1px solid var(--accent);
-  border-radius: 6px;
-  background: var(--surface-1);
-  color: var(--text);
-  box-shadow: 0 6px 20px rgb(0 0 0 / 0.4);
-  outline: none;
-}
-
-div.glyph-zoom div.glyph {
-  min-width: 1ch;
-  line-height: 1;
-  text-align: center;
-  white-space: pre;
-}
-
-div.glyph-zoom div.caption {
-  margin-top: 6px;
-  color: var(--text-muted);
-  font-size: 11px;
-  text-align: center;
 }
 
 span.cell:hover {

@@ -1,5 +1,6 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount, useTemplateRef, nextTick } from 'vue';
+import { useLocalStorage } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -15,6 +16,8 @@ import { downloadBlob } from '@/document/projectIO';
 import FontsPage from '@/components/FontsPage.vue';
 import FloatingPanel from '@/components/FloatingPanel.vue';
 import ArrowIcon from '@/components/ArrowIcon.vue';
+import GlyphZoom from '@/components/GlyphZoom.vue';
+import { useGlyphZoom } from '@/composables/useGlyphZoom';
 
 // The character palette layer: one element in two sizes. Compact, it's the list of palettes (each
 // shown as its 12 glyphs) for choosing one; Edit grows the same element into the editor, with the
@@ -41,7 +44,6 @@ const hint = ref({ text: '', warn: false });
 const hoveredChar = ref(null);
 const tieOpen = ref(false);         // the editor head's tie menu
 const moreOpen = ref(false);        // the editor head's … menu: Duplicate and Export
-const unloadedOpen = ref(false);    // the For fonts not loaded group, unfolded
 const importer = useTemplateRef('importer');
 const onFonts = computed(() => workspace.paletteLayerPage === 'fonts');
 const fontsPage = useTemplateRef('fontsPage');
@@ -61,8 +63,13 @@ const groups = computed(() => [
   { key: 'yours', label: t('common.yours'), rows: palettes.general.filter(matches) },
   palettes.unloaded.length && { key: 'unloaded', label: t('palette.layer.unloaded', { n: palettes.unloaded.length }), rows: palettes.unloaded.filter(matches) },
 ].filter(Boolean));
-// The rows on screen, in order (the folded group's only while it's open).
-const visible = computed(() => groups.value.flatMap(g => (g.key === 'unloaded' && !unloadedOpen.value ? [] : g.rows)));
+// Every group folds on its title, as the Fonts page's do, and stays folded in this browser; For fonts not loaded starts
+// folded. A fold only tidies the list: Built-in's Hide is what takes the built-ins off the strip.
+const folds = useLocalStorage('phosphor.charPaletteGroups', ['unloaded']);
+const open = (key) => !folds.value.includes(key);
+const fold = (key) => { folds.value = open(key) ? [...folds.value, key] : folds.value.filter((k) => k !== key); };
+// The rows on screen, in order (a folded group has none).
+const visible = computed(() => groups.value.flatMap(g => (open(g.key) ? g.rows : [])));
 
 // Whether a glyph can go in a cell: one or two columns wide, as a terminal lays it out; with a drawing font, one it holds.
 const fits = (char) => fitsGrid(char) && (!project.drawingFont || slotOf(char, project.drawingFont) !== null);
@@ -96,6 +103,15 @@ const allPane = computed(() => {
   if (tab.value === 'recent') return { note: t('palette.layer.notes.recent'), chars: palettes.recentChars };
   return { chars: [...CP437].map((c, i) => (i === 0 ? '' : c)) };
 });
+// The glyphs drawn as the Fonts page's sheet draws a font's slots: a bitmap font at its size, twice it when it's too small
+// to read, else 16px; a long press shows one large (a click picks it).
+const paneHeight = computed(() => project.drawingFont?.height ?? 16);
+const paneSize = computed(() => `${paneHeight.value < 12 ? 2 * paneHeight.value : paneHeight.value}px`);
+const { zoom, show, close: closeZoom, press, release, pressedLong } = useGlyphZoom('button.g');
+const pressGlyph = (event, i, char) => press(event, (e) => zoom.value?.n !== i && show(e, i, char, 'var(--display-font-family)', paneHeight.value));
+const zoomLabel = (char) => (project.drawingFont ? t('palette.fonts.slot', { n: slotOf(char, project.drawingFont), char }) : `${code(char)} ${char}`);
+const zoomOut = () => { closeZoom(); keepKeys(); };
+watch(() => pane.value.chars, closeZoom);
 const sourceTab = computed(() => (findResult.value?.kind === 'block' && !font.value ? 'unicode' : tab.value));
 
 const setHint = (text = '', warn = false) => { hint.value = { text, warn }; };
@@ -331,8 +347,10 @@ onBeforeUnmount(() => {
         <div class="list">
           <template v-for="g in groups" :key="g.key">
             <div class="group">
-              <button v-if="g.key === 'unloaded'" class="label fold" :aria-expanded="unloadedOpen" @click="unloadedOpen = !unloadedOpen"><ArrowIcon :turn="unloadedOpen ? 90 : 0" :size="12"/>{{ g.label }}</button>
-              <span v-else class="label">{{ g.label }}</span>
+              <button class="group-head" :aria-expanded="open(g.key)" @click="fold(g.key)">
+                <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
+                <span class="label">{{ g.label }}</span>
+              </button>
               <span v-if="g.key === 'builtin' && font" class="actions">
                 <button class="new" :title="t(palettes.builtinsHidden ? 'palette.layer.showBuiltinsTitle' : 'palette.layer.hideBuiltinsTitle', { name: font.name })" @click="hideBuiltins(!palettes.builtinsHidden)">{{ palettes.builtinsHidden ? t('palette.layer.showBuiltins') : t('palette.layer.hideBuiltins') }}</button>
               </span>
@@ -344,7 +362,7 @@ onBeforeUnmount(() => {
                 <button class="new" @click="createPalette(g.key === 'tied')">{{ t('palette.layer.newBtn') }}</button>
               </span>
             </div>
-            <template v-if="g.key !== 'unloaded' || unloadedOpen">
+            <template v-if="open(g.key)">
               <div
                   v-for="p in g.rows"
                   :key="p.id"
@@ -429,7 +447,7 @@ onBeforeUnmount(() => {
             <div v-if="pane.blocks" class="blocks">
               <button v-for="b in pane.blocks" :key="b.index" :class="{ on: b.index === pane.block }" @click="block = b.index">{{ b.name }}</button>
             </div>
-            <div class="grid">
+            <div class="grid" :style="{ fontSize: paneSize, '--display-font-size': paneSize }">
               <button
                   v-for="(char, i) in pane.chars"
                   :key="i + char"
@@ -439,9 +457,15 @@ onBeforeUnmount(() => {
                   :draggable="!!char && fits(char)"
                   @mouseenter="onGlyphHover(char)"
                   @dragstart="onDragStart($event, `glyph:${char}`)"
-                  @click="pickGlyph(char)"
+                  @pointerdown="pressGlyph($event, i, char)"
+                  @pointerup="release"
+                  @pointerleave="release"
+                  @pointercancel="release"
+                  @contextmenu.prevent
+                  @click="pressedLong(i) || pickGlyph(char)"
               ><span class="glyph-cell">{{ char || ' ' }}</span></button>
             </div>
+            <GlyphZoom v-if="zoom" :key="zoom.n" :char="zoom.char" :family="zoom.family" :size="zoom.size" :cell="zoom.cell" :label="zoomLabel(zoom.char)" @close="zoomOut"/>
           </div>
           <div class="legend"><span class="l1">{{ t('palette.layer.legendInPalette') }}</span><span v-if="!font" class="l2">{{ t('palette.layer.legendNotCp437') }}</span><span class="l3">{{ t('palette.layer.legendDoesntFit') }}</span></div>
           <div class="info">{{ info }}</div>
@@ -476,20 +500,6 @@ button.new:hover:not(:disabled) {
 button.new:disabled {
   opacity: 0.4;
   cursor: default;
-}
-
-button.fold {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
 }
 
 div.glyphs {
@@ -660,7 +670,7 @@ div.pane {
   flex: 1;
   min-height: 96px;
   max-height: 280px;
-  overflow-y: auto;
+  overflow: auto; /* across too, on a phone: 16 glyphs to a row */
   padding: 6px;
   border: 1px solid var(--surface-3);
   border-radius: 4px;
@@ -692,8 +702,17 @@ div.blocks button.on {
   border-color: var(--accent);
 }
 
+/* 16 to a row, as the Fonts page's sheet: a glyph never narrower than 28px or a little more than itself. */
+div.pane div.grid {
+  grid-template-columns: repeat(16, minmax(max(28px, 1.25em), 1fr));
+  line-height: 1;
+}
+
 button.g {
+  -webkit-touch-callout: none; /* a long press is a closer look, not the phone's menu */
+  user-select: none;
   display: flex;
+  font-size: inherit; /* the grid's: its glyph is the sheet's size */
   align-items: center;
   justify-content: center;
   aspect-ratio: 1;
