@@ -312,7 +312,7 @@ test('on a narrow screen it\'s shut until « opens it over the art, leaving a st
   expect(workspace.sidePanelOpen).toBe(false);
   workspace.toggleSidePanel();
   await nextTick();
-  host.querySelector('.scrim').click();
+  host.querySelector('.scrim').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true }));   // a press on the art beside it
   await nextTick();
   expect([workspace.sidePanelOpen, panel().getBoundingClientRect().width]).toEqual([false, 0]);
 

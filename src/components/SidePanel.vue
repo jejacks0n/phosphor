@@ -138,7 +138,7 @@ function key(e) {
 </script>
 
 <template>
-  <div v-if="!wide && shown" class="scrim" @click="toggleSidePanel(workspace, false)"></div>
+  <div v-if="!wide && shown" class="scrim" @pointerdown.prevent="toggleSidePanel(workspace, false)" @touchstart.prevent></div>
   <div ref="panel" class="side-panel" :class="{ folded: !shown, overlay: !wide }" :style="shown ? { width: wide ? `${width}px` : `min(${width}px, calc(100vw - ${STRIP}px))` } : null" @keydown.esc="shut">
     <div
         v-if="shown && wide"
@@ -205,7 +205,8 @@ div.side-panel.folded {   /* folded away: no width at all, EditTabs' « brings i
   display: none;
 }
 /* A narrow screen's: over the art from the right, as the settings drawer comes from the left, with a strip of the art
-   left showing; a tap on it (the scrim over it) shuts the panel. */
+   left showing; a press on it (the scrim over it) shuts the panel, a swipe as a tap, and nothing under it sees it:
+   its touches canceled, no mouse events or click land on the art once it has gone. */
 div.side-panel.overlay {
   position: fixed;
   z-index: 2001;   /* over the art's own layers (the overlays and cursors are 1001) */

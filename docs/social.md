@@ -375,7 +375,7 @@ The side panel stays open as you move between tabs, so you can work on your own 
 - **Toasts**: What the chat panel says about the drawing also shows as a toast while the chat isn't showing.
 - **Narrow screens**: The panel comes in over the art from the right, leaving a strip of the art showing, and starts
   shut. The unfold button at the right end of the tab bar opens it, with the count of what was said beside it, and the fold button, Escape or
-  a tap on the strip of art shuts it. Opening it closes the settings (☰), and opening those shuts it. Its edge doesn't
+  a touch on the strip of art shuts it (and draws nothing). Opening it closes the settings (☰), and opening those shuts it. Its edge doesn't
   drag. Going into a room shuts it, so you see the art, and the unfold button counts what's said.
 
 ---
