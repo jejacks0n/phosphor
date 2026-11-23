@@ -50,7 +50,9 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   Actions call each other through `this` (they're all one store), so the files don't import each
   other. A new action goes in its area's file; `tests/browser/store-actions.test.js` lists every
   action, so update it with the new name.
-- `src/store/WorkspaceStore.js`: the editor around the document: the tool, colors, selection, views.
+- `src/store/WorkspaceStore.js`: the editor around the document: the tool, colors, selection, views. Of those, the
+  person's own choices (the colors, what the picker picks, the tool on each tab, the tools' options) are listed in
+  `src/store/kept.js`, each kept in localStorage under its key, with what it may hold; a new one goes there.
 - `src/composables/useAutosave.js`: writes the document to the browser as you work and brings it back,
   with `src/document/autosaveRules.js` (when, and what goes) and `src/document/autosaveStore.js` (the
   IndexedDB storage).
