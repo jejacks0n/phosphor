@@ -142,3 +142,21 @@ test('a held key switches once', async () => {
   press('tab.sauce', { repeat: true });
   expect(workspace.editorTab).toBe('output');
 });
+
+test('on Linux the keys are taken wherever the tabs don\'t apply, mid-stroke and with the color box open, and do nothing', async () => {
+  const { project, workspace } = await mount('output');
+  const ids = ['tab.picture', 'tab.ansi', 'tab.sauce', 'tab.room', 'tab.keptFromBrowser'];
+  const tryKey = (linux) => {
+    const e = new KeyboardEvent('keydown', { code: 'Digit3', key: '3', altKey: true, cancelable: true });
+    return [takeKey(e, { project, workspace, event: e, view: 'output', typing: false, uncommitted: false, linux }, ids), e.defaultPrevented];
+  };
+  workspace.isPainting = true;
+  expect(tryKey(true)).toEqual([true, true]);
+  expect(tryKey(false)).toEqual([false, false]);
+  workspace.isPainting = false;
+  workspace.colorBox = 'fg';
+  expect(tryKey(true)).toEqual([true, true]);
+  expect(tryKey(false)).toEqual([false, false]);
+  expect(workspace.editorTab).toBe('output');
+  workspace.colorBox = null;
+});

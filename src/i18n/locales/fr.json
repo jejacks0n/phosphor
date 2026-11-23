@@ -1599,7 +1599,7 @@
       "tabAnsi": "Afficher l'onglet ANSI (ou ASCII)",
       "tabSauce": "Afficher l'onglet SAUCE",
       "tabRoom": "Afficher l'onglet SALLE, en regardant une salle",
-      "tabsKeptFromBrowser": "Rien en tapant sous Linux, pour que le navigateur ne change pas d'onglet",
+      "tabsKeptFromBrowser": "Sous Linux, rien là où les touches des onglets ne servent pas, pour que le navigateur ne change pas d'onglet",
       "commandList": "Trouver une commande et la lancer",
       "layerAboveBelow": "Sélectionner le calque au-dessus ou en dessous",
       "takeUnder": "Prendre les couleurs de la cellule sous le pointeur, ou en Mode Édition celles du curseur (PIXEL : celle du pixel, en premier plan)",

@@ -407,9 +407,10 @@ export const COMMANDS = [
   tabRow('tab.ansi', 2, 'tabAnsi', ['output']),
   tabRow('tab.sauce', 3, 'tabSauce', ['sauce']),
   tabRow('tab.room', 4, 'tabRoom', ['room']),
-  // Typing on Linux, where the browser would switch its own tabs: taken, and nothing (TextKeys.js gives them up).
+  // On Linux, where the browser would switch its own tabs, the four wherever the rows above don't take them (typing,
+  // mid-stroke, with the color box open): taken, and nothing. Typing gives them up there (TextKeys.js).
   { id: 'tab.keptFromBrowser', group: 'tabs', keys: TAB_KEYS, label: words('tabsKeptFromBrowser'), hidden: true,
-    where: (ctx) => ctx.typing && keptFromBrowser(ctx.event, ctx.linux) && free(ctx), run: () => {} },
+    where: (ctx) => keptFromBrowser(ctx.event, ctx.linux) && free(ctx), run: () => {} },
 
   // Panels, by the words of their tabs and buttons.
   { id: 'panels.layers', group: 'panels', label: said('sidePanel.layers'),

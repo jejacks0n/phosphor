@@ -115,3 +115,18 @@ test('typing in Edit Mode, the lines and columns and the ? list are offered; Esc
   await vi.waitFor(() => expect(workspace.commandListOpen).toBe(false));
   expect(workspace.shortcutsOpen).toBe(false);
 });
+
+test('the tabs are offered: SAUCE chosen shows SAUCE after the list has gone, and ROOM out of a room is grayed with why', async () => {
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  workspace.editorTab = 'output';
+  await open();
+  await type('show the');
+  const row = (id) => options().find((o) => words(o) === named(id));
+  expect(row('tab.room').getAttribute('aria-disabled')).toBe('true');
+  expect(row('tab.room').textContent).toContain('Only while watching a room');
+  await type('sauce tab');
+  expect(words(options()[0])).toBe(named('tab.sauce'));
+  await press('Enter');
+  await vi.waitFor(() => expect(workspace.editorTab).toBe('sauce'));
+  expect(workspace.commandListOpen).toBe(false);
+});
