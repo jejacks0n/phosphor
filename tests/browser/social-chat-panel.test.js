@@ -205,24 +205,23 @@ test('a watcher\'s panel has no people list and no room menu; the host\'s has bo
   expect(host.querySelector('.room-menu')).not.toBe(null);
 });
 
-test('the room menu has no End room: that\'s on the SOCIAL tab', async () => {
+test('the room menu is one gear button that opens Settings and stats, beside End room; no Copy link', async () => {
   await mount('host', 0);
-  host.querySelector('.room-menu .dropdown-trigger').click();
-  await vi.waitFor(() => expect(host.querySelector('.dropdown-content')).not.toBe(null));
-  expect([...host.querySelectorAll('.dropdown-content button')].map((b) => b.textContent)).toEqual(['Copy link', 'Settings and stats']);
+  const buttons = [...host.querySelectorAll('.room-menu button')];
+  expect(buttons.map((b) => b.textContent.trim() || b.getAttribute('aria-label'))).toEqual(['Settings and stats', 'End room']);
+  expect(buttons[0].querySelector('svg')).not.toBe(null); // an icon
+  expect(host.querySelector('.room-menu .dropdown-trigger')).toBe(null);
 });
 
-test('Settings and stats has the ×, which closes it and puts focus back on the menu', async () => {
+test('Settings and stats has the ×, which closes it and puts focus back on the gear', async () => {
   await mount('host', 0);
-  const trigger = host.querySelector('.room-menu .dropdown-trigger');
-  trigger.click();
-  await vi.waitFor(() => expect(host.querySelector('.dropdown-content')).not.toBe(null));
-  [...host.querySelectorAll('.dropdown-content button')].find((b) => b.textContent === 'Settings and stats').click();
+  const gear = host.querySelector('.room-menu button[aria-label="Settings and stats"]');
+  gear.click();
   const stats = () => document.querySelector('dialog[aria-label="Settings and stats"]');
   await vi.waitFor(() => expect(stats()).not.toBe(null));
   stats().querySelector(':scope > .head > button.close').click(); // with no keyboard, the only way out but Back
   await vi.waitFor(() => expect(stats()).toBe(null));
-  expect(document.activeElement).toBe(trigger);
+  expect(document.activeElement).toBe(gear);
 });
 
 // Report, on a message: for a confirmed member, on other people's messages that show.

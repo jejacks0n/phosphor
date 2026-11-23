@@ -46,7 +46,7 @@ intact and saved as a .pho.
 - The lobby, signing in, Start a room and Set up your room ([The lobby](../../social.md#the-lobby),
   [Members and guests](../../social.md#members-and-guests), [Starting a room](../../social.md#starting-a-room)).
 - The chat panel: N here, each person's ⋯ (Make artist, Back to watching, Make host, Remove from room, Quiet mute,
-  Block from your rooms), Delete on a message, the room menu (Copy link, Settings and stats) and End room
+  Block from your rooms), Delete on a message, the gear (Settings and stats, with Copy link inside) and End room
   ([Hosting](../../social.md#hosting), [Chat](../../social.md#chat)).
 - Drawing together and handing over ([Drawing together](../../social.md#drawing-together),
   [When the host changes](../../social.md#when-the-host-changes)); shapes and art layers in a room
@@ -185,7 +185,7 @@ lobby, and look at Who's here.
 - Rated: yes, wants Tab between the fields
 
 ### 5. Go live behind a password first
-- Does: picks Unlisted (link only), types a password, presses Go live; opens Settings and stats from the room menu;
+- Does: picks Unlisted (link only), types a password, presses Go live; opens Settings and stats from the gear;
   has `tin_owl` follow the room's link, type a wrong password, then the right one; then ends the room from Settings and
   stats (End room, then End room in the question).
 - Expects: the Lobby card box goes for a link-only room; Settings and stats says "Share the room link and password with the people you want to invite.", and Room settings says nothing of what was set at the start (no "Set when the room started");
@@ -202,7 +202,7 @@ lobby, and look at Who's here.
   it (`social.fakeServer(juno, { me, room })`: the newer routes answer first), and `tin_owl`'s page too; then Start a
   room again, the public room of step 4 (check what the form kept), Go live.
 - Expects: the box closes and she's back on her art; the side panel's Social tab is now CHAT, with End room in its
-  header beside the room menu; the address carries `?room=abcdefghij`; she draws as usual
+  header beside the gear; the address carries `?room=abcdefghij`; she draws as usual
   ([Starting a room](../../social.md#starting-a-room)).
 - Probes: `again`: press Go live twice quickly and check one room starts (one `POST /api/rooms`); `interrupt`: switch to
   PIXEL, SAUCE and back, and check the address and CHAT follow.

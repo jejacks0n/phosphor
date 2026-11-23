@@ -413,9 +413,8 @@ export async function openLobby(page) {
   if (await open.isVisible()) await open.click();
   await page.locator('.side-panel').getByRole('tab', { name: 'Social' }).click();
 }
-// The host's Settings and stats, from the room menu in the chat's header.
+// The host's Settings and stats, from the gear in the chat's header.
 export async function openStats(host) {
-  await host.getByRole('button', { name: 'Room', exact: true }).click();
   await host.getByRole('button', { name: 'Settings and stats' }).click();
 }
 // A number in the host's Settings and stats, by its label ("Here now"): the locator of its value.
