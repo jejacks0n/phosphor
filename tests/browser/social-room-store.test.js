@@ -582,7 +582,7 @@ test('A watcher\'s room, art and the host\'s view come from the channel; leave c
   await expect.poll(() => room.hostView, PATIENT).toEqual({ col: 1, row: 0, cols: 1, rows: 1, zoom: 1 });
   expect(room.status).toBe('live');
   expect(room.room).toEqual({ name: 'Night shift', welcome: 'Hi', host: 'ansi-fan', hostSub: 'u_9' });
-  expect(room.art).toEqual(art);
+  await expect.poll(() => room.art, PATIENT).toEqual(art); // the art goes on the next frame, the view at once
 
   room.setTracking(false);
   expect(room.tracking).toBe(false);
