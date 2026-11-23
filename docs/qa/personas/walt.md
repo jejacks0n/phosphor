@@ -117,12 +117,15 @@ script. Every section ends with Free time.
 ### 5. Match a color and fix a cell's colors
 - Does: with the Eyedropper (I), picks the colors of the cell next to his fix; then sets them on the fixed cell (Edit
   Mode retyping the character, or Set FG and Set BG on a one-cell selection: with Select and nothing selected, a tap on
-  the cell selects it, and Set FG and Set BG are first on the row).
+  the cell selects it, and Set FG and Set BG are first on the row). Then the same from the keys in Edit Mode: the cursor
+  on the cell next to the fix, Alt+U (on a Mac, where Option+U starts ü while typing, Cmd+K and `take colors`), the
+  cursor back on the fix, retypes; on a cell whose two colors are the wrong way round, Alt+X.
 - Expects: the pick sets both colors; the status bar shows each color and where it came from; the recolor is one undo
-  step and changes only that cell.
+  step and changes only that cell. Alt+U sets both colors from the cursor's cell and types nothing; Alt+X swaps the
+  cursor cell's colors, types no ≈ on a Mac, and one Cmd+Z swaps them back.
 - Probes: `out-of-order`: Set FG with no selection (it's there but off, its tip says to select cells first, and the
   row says "Tap or drag to select, or:"); `undo-redo`: undo the recolor, then the one-cell selection.
-- Rated: yes, wants I, or a key that picks the colors under the Edit Mode cursor
+- Rated: yes, wants T, then Alt+U (on a Mac, Cmd+K for now)
 
 ### 6. Save the project
 - Does: presses Cmd+S, keeps the offered name, saves; times it.

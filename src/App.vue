@@ -116,7 +116,7 @@ watch(() => project.shapes, (shapes) => {
 watch(() => [project.cols, project.rows], () => {
   workspace.selection = null;
   workspace.wand = null;
-  workspace.lastPick = null;
+  workspace.lastPick = workspace.pointerCell = null;
   const cursor = workspace.textCursor;
   if (cursor) {
     workspace.textCursor = {

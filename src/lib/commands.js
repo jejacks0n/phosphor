@@ -26,11 +26,12 @@ import { t, te } from '@/i18n/index.js';
 import { isMac, shortcut } from '@/lib/keyLabels';
 import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { ownsKey } from '@/lib/fields';
-import { ADD_FRAME_KEY, DRAW_WITH_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
+import { ADD_FRAME_KEY, DRAW_WITH_KEY, PLAY_KEY, SWAP_COLORS_KEY, typingKeepsAltU } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { usePlayback } from '@/composables/usePlayback';
 import { stepColor } from '@/composables/colorSteps';
-import { lineStep, typingNow, typingTakesKeys } from '@/composables/useTextTool';
+import { flipAtCursor, lineStep, typingNow, typingTakesKeys } from '@/composables/useTextTool';
+import { pickedCell } from '@/store/project/reading.js';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -106,6 +107,28 @@ const charSet = (delta) => ({
   title: said(`palette.strip.${delta < 0 ? 'prev' : 'next'}Aria`),
   where: (ctx) => free(ctx) && !!ctx.project.image && ctx.view === 'output' && !!getTool(ctx.workspace.activeTool).palette && shut(ctx),
   run: () => usePaletteStore().flip(delta),
+});
+
+// Alt+U and Shift+Alt+U: the colors of the cell at Edit Mode's cursor, or else of the one under the pointer, set as the
+// Picker sets them (and with Shift the character too); in PIXEL, where a pixel has one color, the pixel's as the
+// foreground, with Shift the background. Typing too, but not on a Mac for now, where Option+U is the umlaut's dead key
+// (TextKeys.js's MAC_TYPES_OPTION_U): the command list has them there.
+const cellToTake = ({ workspace }) => (typingNow(workspace) ? workspace.textCursor : workspace.pointerCell);
+const takeUnder = (withChar) => ({
+  where: (ctx) => art(ctx) && ART.includes(ctx.view) && free(ctx) && shut(ctx) && !ctx.workspace.isPainting
+    && !(ctx.typing && typingKeepsAltU()),
+  available: (ctx) => (cellToTake(ctx) ? true : 'shortcuts.reasons.noCell'),
+  run: (ctx) => {
+    const { project, workspace } = ctx, cell = cellToTake(ctx);
+    if (ctx.view === 'input') workspace.pickColor(withChar ? 'bg' : 'fg', project.rawColorAt(cell.col, cell.y));
+    else {
+      const picked = pickedCell(project, cell);
+      workspace.pickColor('fg', picked.fg, picked.fgIndex);
+      workspace.pickColor('bg', picked.bg, picked.bgIndex);
+      if (withChar) workspace.activeChar = picked.char;
+    }
+    workspace.endPick(); // the old and new colors into the recent colors
+  },
 });
 
 // Lines and columns: their keys are Edit Mode's (useTextTool, through textKeyAction), so the rows are fixed; the command
@@ -306,6 +329,9 @@ export const COMMANDS = [
   { id: 'colors.fgNext', group: 'colors', label: words('stepFg'), ...colorStep('fg', 1, 'ArrowDown') },
   { id: 'colors.bgPrev', group: 'colors', label: words('stepBg'), ...colorStep('bg', -1, 'ArrowLeft') },
   { id: 'colors.bgNext', group: 'colors', label: words('stepBg'), ...colorStep('bg', 1, 'ArrowRight') },
+  { id: 'colors.takeUnder', group: 'colors', keys: 'Alt+KeyU', label: words(typingKeepsAltU() ? 'takeUnderMac' : 'takeUnder'), ...takeUnder(false) },
+  { id: 'colors.takeUnderWithChar', group: 'colors', keys: 'Shift+Alt+KeyU', label: words(typingKeepsAltU() ? 'takeUnderWithCharMac' : 'takeUnderWithChar'),
+    ...takeUnder(true) },
   fixed('colors.moveSwatches', 'colors', words('moveSwatches'), { shown: [ARROWS] }),
   fixed('colors.pickSwatch', 'colors', words('pickSwatch'), { shown: ['Enter', 'Space'] }),
 
@@ -324,6 +350,11 @@ export const COMMANDS = [
   lines('edit.deleteLine', 'deleteLine', 'Alt+ArrowDown', 'line', -1),
   lines('edit.insertColumn', 'insertColumn', 'Alt+ArrowRight', 'column', 1),
   lines('edit.deleteColumn', 'deleteColumn', 'Alt+ArrowLeft', 'column', -1),
+  // Alt+X: the cursor's cell flipped as the Flip tool flips it (Option+X's ≈ gives way), in the ANSI art style alone.
+  { id: 'edit.flipCell', group: 'editMode', keys: 'Alt+KeyX', label: words('flipCell'), once: true,
+    where: (ctx) => art(ctx) && typingNow(ctx.workspace) && free(ctx) && shut(ctx),
+    available: ({ project }) => (project.renderStyle === 'ansi' ? true : 'shortcuts.reasons.ansiOnly'),
+    run: ({ project, workspace }) => flipAtCursor(project, workspace) },
   // Alt+← and Alt+→ anywhere else the art shows: nothing, so Windows and Linux don't go Back or Forward out of the editor.
   { id: 'edit.altArrowsElsewhere', group: 'editMode', keys: ['Alt+ArrowLeft', 'Alt+ArrowRight'], label: words('altArrowsElsewhere'), hidden: true,
     where: backKept, run: () => {} },

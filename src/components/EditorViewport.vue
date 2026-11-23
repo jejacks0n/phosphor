@@ -14,12 +14,11 @@ import { charRowsOf, cellAt } from '@/lib/Cells';
 import { squarePixels, squareCells } from '@/lib/Brushes';
 import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
-import { snapCursor } from '@/document/wideChars';
 import { isArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { isControl, ownsKey } from '@/lib/fields';
 import { withShape } from '@/document/shapes.js';
-import { pickedFrom, pickedIndexes } from '@/store/project/reading.js';
+import { pickedCell } from '@/store/project/reading.js';
 import { gridAt } from '@/lib/CellCanvas';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
@@ -118,15 +117,10 @@ function pickAt(pos, event) {
   }
   const at = cellAt(pos.x, pos.y, projectStore.cols, projectStore.rows);
   if (!at) return;
-  const cell = snapCursor(projectStore.cells, projectStore.cols, at, 0); // a wide character's trail: its lead's colors
-  const under = projectStore.underlyingAt(cell.col, cell.row);
-  const { fgFrom, bgFrom, ownBg } = pickedFrom(projectStore, cell.col, cell.row);
-  // Color ASCII never shows a generated background: only an edit cell's is real.
-  const bg = projectStore.renderStyle === 'colorAscii' && !ownBg ? null : under.bg;
+  const { col, row, fg, bg, fgFrom, bgFrom, fgIndex, bgIndex } = pickedCell(projectStore, at); // a 16 or 231 is picked as itself
   // For the status bar: what this pick read, and which layer each color came from.
-  workspaceStore.lastPick = { col: cell.col, row: cell.row, fg: under.fg, bg, fgFrom, bgFrom };
-  const { fgIndex, bgIndex } = pickedIndexes(projectStore, cell.col, cell.row); // a 16 or 231 is picked as itself
-  if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', under.fg, fgIndex);
+  workspaceStore.lastPick = { col, row, fg, bg, fgFrom, bgFrom };
+  if (mode === 'fg' || mode === 'both') workspaceStore.pickColor('fg', fg, fgIndex);
   if (mode === 'bg' || mode === 'both') workspaceStore.pickColor('bg', bg, bgIndex);
 }
 
@@ -248,6 +242,11 @@ const overArt = computed(() => {
 });
 watch(() => drawingStore.paused, (paused) => { if (paused) commitPaint(); }, { flush: 'sync' });
 watch(hoverCell, (cell) => { if (projectStore._sharing) drawingStore.pointAt(cell); });
+// The cell a mouse or pen is over, for Alt+U (commands.js), with the grid pixel row the PIXEL view reads; null off the art.
+// Kept as hoverCell is, so a scroll or zoom under a still pointer moves it too, and a finger sets none.
+watch(() => hoverCell.value && { ...hoverCell.value, y: Math.floor(gridAt(mousePos.value, props.unit).y) }, (cell) => {
+  workspaceStore.pointerCell = cell;
+});
 // The view goes out when it moves with the pointer still (a wheel, a scrollbar, a zoom, the window), and when drawing
 // begins again after a pause, since the host forgot where everyone was while they were away. Someone may be following.
 watch(() => [workspaceStore.sharedView, drawingStore.mayDraw, drawingStore.paused], () => drawingStore.viewMoved());
@@ -377,6 +376,7 @@ onMounted(() => {
 onBeforeUnmount(() => {
   commitPaint();
   drawingStore.pointAt(null);   // off the art: another tab has no one's pointer on it
+  workspaceStore.pointerCell = null;
   window.removeEventListener('keydown', focusForScroll, true);
   const el = rootRef.value;
   if (el) {

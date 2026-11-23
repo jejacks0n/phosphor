@@ -980,7 +980,8 @@ nothing until you select cells. With the wand they come at the end of its row, o
 
 **Swap cell FG/BG** (**F**, ANSI view) acts on the selected layer. On a drawing layer it swaps a cell's colors or the
 paint there; on a cell with neither, the swap goes on that layer as paint, the colors it showed swapped. On the base it
-swaps the two halves of each cell's base colors.
+swaps the two halves of each cell's base colors. In Edit Mode, **Alt+X** (Option+X) does the same to the cell under
+the cursor, as one undo step, without leaving Edit Mode.
 
 ---
 
@@ -1240,6 +1241,12 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   list, the color layer's **Palettes** page edits it ([The Color Layer](#the-color-layer)).
 - **Shift+Cmd+X** (Shift+Ctrl+X): Swap the foreground and background. Plain **X** swaps them too, except in Edit Mode,
   where it types.
+- **Alt+U** (Option+U): Take the colors of the cell under the pointer, as the **Eyedropper** with both toggles lit
+  does, in the PIXEL and ANSI views with any tool; in Edit Mode, the cell under the cursor. **Shift+Alt+U** takes its
+  character too, for the tools that draw with one. In the PIXEL view a pixel has one color: **Alt+U** takes it as the
+  foreground and **Shift+Alt+U** as the background. With the pointer off the art they do nothing. On a Mac they don't
+  work while you type in Edit Mode, for now, since Option+U starts an umlaut (ü) there: the command list (**Cmd+K**)
+  has them ([Typing Text Directly](characters.md#typing-text-directly)).
 
 ### The Color Layer
 
