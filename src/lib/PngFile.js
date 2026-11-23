@@ -1,6 +1,7 @@
 // PNG export: an indexed PNG written here when the picture has 256 colors or fewer (1, 2, 4 or 8 bits a pixel, so
 // a hard-edged drawing stays small), else the browser's own full-color one.
 import { canvasPng, ctx2d } from './Canvas.js';
+import CellCanvas, { MAX_BACKING_AREA } from './CellCanvas.js';
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
@@ -63,4 +64,36 @@ export async function pngBlob(width, height, rgba) {
   const canvas = Object.assign(document.createElement('canvas'), { width, height });
   ctx2d(canvas).putImageData(new ImageData(new Uint8ClampedArray(rgba), width, height), 0, 0);
   return canvasPng(canvas);
+}
+
+// Past this many pixels a picture holds only the top lines that fit.
+// ponytail: a cap for the page's memory (the pixels are held whole, as RGBA); stream the encode if anyone needs more.
+export const MAX_PREVIEW_PIXELS = 32_000_000;
+
+// The cells (cols wide, lines tall) as a PNG's bytes, hard-edged at one pixel per font pixel as Export › PNG makes it.
+// Drawn in bands of lines, so no canvas passes MAX_BACKING_AREA and what's drawn is full size, then stitched.
+export async function cellsPng(cols, lines, cells) {
+  const view = new CellCanvas(document.createElement('canvas'));
+  try {
+    view.smooth = false;
+    view.resize(cols, 1, 1);
+    const { width, height: lineHeight } = view.canvas;
+    const kept = Math.min(lines, Math.floor(MAX_PREVIEW_PIXELS / (width * lineHeight)));
+    const band = Math.max(1, Math.floor(MAX_BACKING_AREA / (width * lineHeight)));
+    const rgba = new Uint8ClampedArray(width * kept * lineHeight * 4);
+    const copy = document.createElement('canvas');
+    for (let row = 0; row < kept; row += band) {
+      const rows = Math.min(band, kept - row);
+      view.resize(cols, rows, 1);
+      view.draw(cells, { cols, rows: lines, row });
+      copy.width = width;
+      copy.height = rows * lineHeight;
+      const ctx = ctx2d(copy);
+      ctx.drawImage(view.canvas, 0, 0); // the drawing buffer's only there straight after the draw
+      rgba.set(ctx.getImageData(0, 0, width, copy.height).data, row * lineHeight * width * 4);
+    }
+    return new Uint8Array(await (await pngBlob(width, kept * lineHeight, rgba)).arrayBuffer());
+  } finally {
+    view.destroy();
+  }
 }
