@@ -423,8 +423,12 @@ export const renderingActions = {
     return changed;
   },
 
-  // Every cell again from the output as it is: a full render's cells, without the pipeline.
+  // Every cell again from the output as it is: a full render's cells, without the pipeline. An output of another size is
+  // one the grid has left before its render (a size undone, then a layer step under it, at once): that render, queued
+  // with the grid's change, makes every cell.
   rebuildCells() {
+    const output = this.renderer.outputCanvas;
+    if (output && (output.width !== this.cols || output.height !== this.rows)) return void this.render();
     this.activePalette = this.renderer.palette;
     this.renderedCells = this.renderer.cellsFromOutput(this.processParams);
     this.applyEditCells();

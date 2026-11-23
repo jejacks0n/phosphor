@@ -587,6 +587,27 @@ test('a canvas resize (with edits) is a step, and undo goes on past it to Merge 
   for (const k of ['editCells', 'pins', 'sliders', 'image', 'full']) expect(s[k], k).toBe(s0[k]);
 });
 
+test('a shrink undone and the step under it (a layer added, a stroke) undone at once, before the render follows the grid', async () => {
+  for (const step of ['addLayer', 'paint']) {
+    const { project, workspace } = await createTestApp();
+    await drawnDocument(project, workspace, { cols: 40, rows: 40 });
+    await settle(project);
+    const s0 = await snap(project, workspace);
+    if (step === 'addLayer') project.addLayer('cells', workspace.pickedLayer);
+    else { project.paintStroke([{ x: 3, y: 3, alpha: 1 }, { x: 4, y: 3, alpha: 1 }], '#ff00ff'); project.commitEdit(); }
+    await settle(project);
+    project.setAspectLock(true);
+    project.updateCols(30); // a canvas resize to 30 by 30 (something's drawn)
+    await settle(project);
+    expect([project.cols, project.rows], step).toEqual([30, 30]);
+    project.undo(); // the size: 40 by 40 again, the render to come
+    project.undo(); // then the step under it, the output still 30 by 30
+    await settle(project);
+    const s = await snap(project, workspace);
+    for (const k of ['layers', 'editCells', 'paint', 'grid', 'full']) expect(s[k], `${step}: ${k}`).toBe(s0[k]);
+  }
+});
+
 test('a slider move survives a grid resize on an undrawn picture (undo still has it)', async () => {
   const { project } = await createTestApp();
   const { loadImage } = await import('../support/app.js');
