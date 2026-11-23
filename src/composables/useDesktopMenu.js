@@ -3,7 +3,7 @@ import { locale, t } from '@/i18n';
 import { desktop, fileFrom } from '@/social/desktop';
 import { newerRelease } from '@/lib/semver';
 import { typesIn } from '@/lib/fields';
-import { COMMANDS } from '@/lib/commands';
+import { COMMANDS, commandContext, reloading, runCommand } from '@/lib/commands';
 import { accelerator, keysFor, parseKey } from '@/lib/keymap';
 import { toast } from '@/composables/useToast';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -21,7 +21,7 @@ export const MENU_LABELS = [
   'edit', 'undo', 'redo', 'cut', 'copy', 'paste', 'selectAll',
   'room', 'hostRoom', 'joinRoom', 'copyAddress', 'leaveRoom', 'endRoom',
   'view', 'actualSize', 'zoomIn', 'zoomOut', 'fullScreen', 'window',
-  'help', 'shortcuts', 'github', 'releaseNotes', 'reportIssue', 'troubleshooting', 'devTools',
+  'help', 'commandList', 'shortcuts', 'github', 'releaseNotes', 'reportIssue', 'troubleshooting', 'devTools',
   'about', 'checkUpdates', 'plugins', 'startPluginsOff', 'services', 'hide', 'hideOthers', 'showAll',
   'openableFiles', 'projectFiles', 'leaveQuit', 'leaveClose', 'leaveDetail', 'leave', 'stay',
 ];
@@ -41,17 +41,20 @@ export async function checkForUpdates() {
   if (confirm(t('updates.available', { version: next.tag.slice(1), current: found.version }))) window.open(next.url, '_blank');
 }
 
-// The window loaded again with ?plugins=off (docs/plugins.md), asked first with unsaved work as any reload is. An object,
-// so a test can stand in for the navigation.
-export const reloading = {
-  withPluginsOff: () => { location.search = '?plugins=off'; },
+export { reloading };
+
+// The menu's commands that are the command table's, run by id as the command list runs them (where it holds and it's
+// available), so the menu, the keys and the list share one run.
+const TABLE = {
+  new: 'file.new', open: 'file.open', save: 'file.save', saveAs: 'file.saveAs', export: 'file.export', versions: 'file.versions',
+  shortcuts: 'general.help', commandList: 'ui.commandList', plugins: 'panels.plugins', pluginsOff: 'panels.pluginsOff',
 };
 
 // The menu's accelerators: each menu command's key from the command table (the first with Cmd, Ctrl or Alt, since a bare key
 // types; Keyboard Shortcuts has none, as a menu key would stop ¿ typing on a Mac), as Electron writes it. New is the menu's own: Cmd+N is the browser's, so the page has no row for it.
 export const menuAccelerators = () => ({
   new: 'CmdOrCtrl+N',
-  ...Object.fromEntries(COMMANDS.filter((c) => c.menu).map((c) => {
+  ...Object.fromEntries(COMMANDS.filter((c) => c.menu && c.keys).map((c) => {
     const keys = keysFor(c.keys);
     return [c.menu, accelerator(keys.find((key) => { const k = parseKey(key); return k.mod || k.ctrl || k.alt; }) ?? keys[0])];
   })),
@@ -68,19 +71,11 @@ export function useDesktopMenu() {
   };
 
   const commands = {
-    new: () => workspace.newProject(),
-    open: () => workspace.openRequest++,
-    save: () => workspace.saveFile(),
-    saveAs: () => workspace.saveFile({ as: true }),
-    export: () => { if (project.image) workspace.exportModal = true; },
-    versions: () => { if (project.image && !drawing.offWithOthers) workspace.versionsOpen = true; },
+    ...Object.fromEntries(Object.entries(TABLE).map(([name, id]) => [name, () => runCommand(id, commandContext(project, workspace))])),
     undo: () => undoOrRedo('undo'),
     redo: () => undoOrRedo('redo'),
     about: () => { workspace.showAboutModal = true; },
-    shortcuts: () => { workspace.shortcutsOpen = true; },
     checkUpdates: checkForUpdates,
-    plugins: () => { workspace.pluginsOpen = true; },
-    pluginsOff: () => reloading.withPluginsOff(),
     hostRoom: () => {
       workspace.showSocial();
       if (social.desktopName) social.page = 'start-room';   // without a name, the page that asks for it first

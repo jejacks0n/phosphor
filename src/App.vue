@@ -18,6 +18,7 @@ import { setGlyphRasterizer, rasterizeCoverage, useBitmapCoverage } from '@/lib/
 import { bitmapOf, setDisplayFont } from '@/lib/displayFonts';
 import { loadFonts } from '@/lib/userFonts';
 import { charRowsOf } from '@/lib/Cells';
+import { chooseCommand } from '@/lib/commands';
 
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import SidePanel from '@/components/SidePanel.vue';
@@ -33,6 +34,7 @@ import DeleteLayerDialog from '@/components/DeleteLayerDialog.vue';
 import ExportModal from '@/components/ExportModal.vue';
 import VersionsDialog from '@/components/VersionsDialog.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
+import CommandList from '@/components/CommandList.vue';
 import AppToast from '@/components/AppToast.vue';
 import BusyNote from '@/components/BusyNote.vue';
 
@@ -42,7 +44,7 @@ const workspace = useWorkspaceStore();
 const room = useRoomStore();
 const { image } = storeToRefs(project);
 const wide = useMediaQuery(desktopQuery);   // a narrow screen's settings are a drawer
-const { activeTool, isPainting, isCtrlPressed, isAltPressed, isMiddleClick, showAboutModal, pluginsOpen, saveDialog, exportModal, shortcutsOpen, legalPage, versionsOpen } = storeToRefs(workspace);
+const { activeTool, isPainting, isCtrlPressed, isAltPressed, isMiddleClick, showAboutModal, pluginsOpen, saveDialog, exportModal, shortcutsOpen, commandListOpen, legalPage, versionsOpen } = storeToRefs(workspace);
 
 useTheme();
 
@@ -174,6 +176,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <ExportModal v-if="exportModal" @close="exportModal = false"/>
     <VersionsDialog v-if="versionsOpen && !drawing.offWithOthers" :flush="autosave.flush" :restore-version="autosave.restoreVersion" @close="versionsOpen = false"/>
     <ShortcutsDialog v-if="shortcutsOpen" @close="shortcutsOpen = false"/>
+    <CommandList v-if="commandListOpen" @close="chooseCommand($event, project, workspace)"/>
     <LegalDialog v-if="legalPage" :page="legalPage" @open="legalPage = $event" @close="legalPage = null"/>
     <BusyNote/>
     <AppToast/>

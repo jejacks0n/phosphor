@@ -122,6 +122,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     showAboutModal: false,
     pluginsOpen: false,      // the Plugins dialog (PluginsDialog)
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
+    commandListOpen: false,  // the command list (CommandList), Cmd+K
     legalPage: null,         // the Terms, Privacy Policy or Community Guidelines while one's open (LegalDialog): 'terms' | 'privacy' | 'guidelines'
     colorBox: null,          // the color box (ColorLayer) while it's open, for this slot: 'fg' | 'bg'
     colorLayerPage: 'colors', // the color layer's page: 'colors' | 'palettes'
@@ -129,7 +130,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     saveDialog: null,        // the save dialog's format while it's open: 'phosphor' | 'png' and the animated formats (SaveDialog)
     unsavedAsk: null,        // { name, go, stay?, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
     deleteLayerAsk: null,    // { id } while DeleteLayerDialog asks, in a room, before the layer with the id is deleted for everyone; going: asked, till it's gone
-    exportModal: false,      // the export modal (ExportModal) open
+    exportModal: false,      // the export modal (ExportModal) open: true, or the id of the format it opens on (the command list's Export .ans)
 
     // Scroll state persistence
     inputScrollX: null,

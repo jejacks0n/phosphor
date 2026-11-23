@@ -47,6 +47,11 @@ test('the list is the command table: its groups in order, and every row with key
     expect(lines.has(words), row.id).toBe(true);
     if (!row.shown) for (const key of keysFor(row.keys)) expect(lines.get(words), row.id).toContain(label(key));
   }
+  // A row with no key (the command list's alone: New project, Export .ans) has no line.
+  const keyless = COMMANDS.filter((c) => c.run && !c.keys && !c.shown);
+  expect(keyless.length).toBeGreaterThan(5);
+  for (const row of keyless) expect(lines.has(row.label()), row.id).toBe(false);
+  expect(lines.get(commandById('ui.commandList').label())).toBe(label(keysFor(commandById('ui.commandList').keys)[0]));
   // A hidden row (Alt+← and Alt+→ outside Edit Mode, taken so the browser doesn't go Back) has no line.
   expect(lines.has(commandById('edit.altArrowsElsewhere').label())).toBe(false);
 });

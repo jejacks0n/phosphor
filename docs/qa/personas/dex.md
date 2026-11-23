@@ -31,7 +31,7 @@ again unchanged.
 
 ## What they lean on
 
-- Edit Mode and its keys, the character palettes (F1 to F12, Ctrl+Shift+F-key, Ctrl+, and Ctrl+.), lines and columns (Alt+arrows), the color keys
+- Edit Mode and its keys, the character palettes (F1 to F12, Ctrl+Shift+F-key, Ctrl+, and Ctrl+.), lines and columns (Alt+arrows), the command list (Cmd+K), the color keys
   ([Layers](../../layers.md#tool-keys), [Color keys](../../layers.md#color-keys)).
 - The Pencil's Half-block, the Eyedropper, the Select tool, Shift and the arrows, Stamp, the Magic Wand, Set FG and
   Set BG ([The Select tool](../../layers.md#the-select-tool), [The Magic Wand](../../layers.md#the-magic-wand)).
@@ -391,6 +391,16 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Probes: `undo-redo`: undo the four, redo them; `speed`: hold Alt+↑ for a second (a line a repeat); `extremes`: a
   column through a two-column character (it moves, or goes, whole).
 - Rated: yes, wants Alt+↑ (Moebius's)
+
+### 31. Export without the mouse
+- Does: while typing in Edit Mode, presses Cmd+K (Ctrl+K), types `exp ans` and Enter, exports; then Cmd+K again, types
+  `ins line` and Enter; then Cmd+K, Escape, and types on ([The Command List](../../layers.md#the-command-list)).
+- Expects: the box opens over the art with focus in its field; Export opens on .ans once the box has gone; Insert a line
+  at the cursor puts a line in where the cursor is, as Alt+↑ does; Escape closes the box and typing goes on at the
+  cursor. Each row shows its key.
+- Probes: `out-of-order`: Cmd+K with no drawing open (Export… is greyed, saying why, and Enter does nothing);
+  `undo-redo`: undo the line.
+- Rated: yes, wants every command by name
 
 **Free time:** he'd try Flatten's Draw on top, open `past-the-edge.ans` with Draw on top and fix its second row,
 try the `.xb`, `.bin` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut

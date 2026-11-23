@@ -26,6 +26,20 @@ import { cleanFilterOptions } from '../plugins/filters.js';
 
 export const PROJECT_EXTENSION = '.pho', OLD_PROJECT_EXTENSION = '.phosphor', PROJECT_MIME = 'image/x-phosphor';
 export const isProjectFile = (name) => [PROJECT_EXTENSION, OLD_PROJECT_EXTENSION].some((ext) => name.toLowerCase().endsWith(ext));
+// The formats Export offers (ExportModal, and the command list's row for each), in its order: the stills, then those an
+// animation makes.
+export const EXPORT_FORMATS = [
+  { id: 'ans',             ext: 'ans',      group: 'still' },
+  { id: 'utf8ans',         ext: 'utf8ans',  group: 'still' },
+  { id: 'xb',              ext: 'xb',       group: 'still' },
+  { id: 'png',             ext: 'png',      group: 'still' },
+  { id: 'gif',             ext: 'gif',      group: 'animated', animated: true },
+  { id: 'mp4',             ext: 'mp4',      group: 'animated', animated: true },
+  { id: 'ansimation',      ext: 'ans',      group: 'animated', animated: true },
+  { id: 'utf8ansimation',  ext: 'utf8ans',  group: 'animated', animated: true },
+  { id: 'cast',            ext: 'cast',     group: 'animated', animated: true },
+];
+
 // What Save may write over: a .phosphor opened is saved as a new .pho beside it.
 export const isSavedForm = (name) => name.toLowerCase().endsWith(PROJECT_EXTENSION);
 const MAGIC_HEADER = 'PHOSPHOR', STACK_HEADER = 'PHOSPHR2';

@@ -10,7 +10,8 @@ import { pluginTools } from '@/tools';
 
 // The keyboard shortcuts, opened with ? (Alt+? while typing in Edit Mode), built from the command table
 // (src/lib/commands.js): a row's own keys, written the platform's way (⌘ and ⌥ on a Mac), or its `shown` words.
-// Rows of one group with the same words share a line; a hidden row (a key taken only to keep it from the browser) has none. The Animation keys show only with Animate on, as they only
+// Rows of one group with the same words share a line; a hidden row (a key taken only to keep it from the browser) has none,
+// nor a row with no key (the command list's alone). The Animation keys show only with Animate on, as they only
 // work then.
 const emit = defineEmits(['close']);
 const { t } = useI18n();
@@ -37,6 +38,7 @@ const groups = computed(() => {
     const lines = new Map(); // by words, so rows with the same ones (the size keys, the two zooms) are a line
     for (const row of rows.filter((r) => r.group === group && !r.hidden)) {
       const does = row.label(), keys = shown(row);
+      if (!keys.length) continue;
       lines.set(does, [...(lines.get(does) ?? []), ...keys]);
     }
     return { title: group === 'pluginTools' ? t('shortcuts.pluginTools') : t(`shortcuts.groups.${group}`), rows: [...lines] };

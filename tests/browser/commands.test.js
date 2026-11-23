@@ -1,8 +1,9 @@
 // The command table: every keyboard command's id, keys, words and group, where its key is the app's and what it runs.
 // The keys useKeyboardShortcuts claimed by hand before are rows here, and takeKey claims them.
 import { test, expect, vi } from 'vitest';
+import { setLocale, te } from '@/i18n';
 import { createTestApp } from '../support/app.js';
-import { COMMANDS, GROUPS, commandById, takeKey, toolCommands } from '@/lib/commands';
+import { COMMANDS, GROUPS, commandById, commandContext, listedCommands, runCommand, takeKey, toolCommands } from '@/lib/commands';
 import { keysFor, parseKey } from '@/lib/keymap';
 
 const VIEWS = ['input', 'output', 'vector'];
@@ -153,4 +154,71 @@ test('an Alt chord that runs lets the Alt-held eyedropper go first; one that run
   expect(workspace.heldTool).toBe(null);
   expect(workspace.activeTool).toBe('pencil');
   expect(workspace.colorBox).toBe('fg');
+});
+
+// Every row the command list can run says what it does in English and French, and why it can't run when it can't.
+test('every row with a run has words in en.json and fr.json, and its available is true or a reason with words in both', async () => {
+  const { project, workspace } = await createTestApp();
+  await setLocale('fr', { persist: false });
+  try {
+    const states = [() => {}, () => project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 })];
+    for (const state of states) {
+      await state();
+      const ctx = commandContext(project, workspace);
+      for (const c of COMMANDS.filter((row) => row.run)) {
+        for (const said of [c.label, c.title].filter(Boolean)) {
+          expect(said.path, c.id).toBeTruthy();
+          expect(te(said.path, 'en') && te(said.path, 'fr'), `${c.id}: ${said.path}`).toBe(true);
+        }
+        const reason = c.available?.(ctx) ?? true;
+        if (reason !== true) expect(te(reason, 'en') && te(reason, 'fr'), `${c.id}: ${reason}`).toBe(true);
+      }
+    }
+  } finally {
+    await setLocale('en', { persist: false });
+  }
+});
+
+// Cmd+K on a Mac, Ctrl+K elsewhere, and only that: a Mac's Ctrl+K is a text field's (kill to the end of the line).
+test('the command list opens on Mod+K strictly: Cmd only on a Mac, Ctrl only elsewhere, typing or in a field too', async () => {
+  const { project, workspace } = await createTestApp();
+  const field = document.body.appendChild(document.createElement('input'));
+  try {
+    for (const [mac, held, opens] of [[true, { metaKey: true }, true], [true, { ctrlKey: true }, false], [false, { ctrlKey: true }, true], [false, { metaKey: true }, false]]) {
+      workspace.commandListOpen = false;
+      const e = new KeyboardEvent('keydown', { code: 'KeyK', key: 'k', cancelable: true, ...held });
+      Object.defineProperty(e, 'target', { value: field });
+      expect(takeKey(e, ctxOf(project, workspace, e), ['ui.commandList'], { mac }), `${mac} ${JSON.stringify(held)}`).toBe(opens);
+      expect(workspace.commandListOpen).toBe(opens);
+    }
+    // The running platform's own key, as the page gets it.
+    workspace.commandListOpen = false;
+    const [key] = keysFor(commandById('ui.commandList').keys);
+    const { mod } = parseKey(key);
+    const own = keydown({ code: 'KeyK', key: 'k', [navigator.platform.includes('Mac') ? 'metaKey' : 'ctrlKey']: mod });
+    expect(takeKey(own, ctxOf(project, workspace, own), ['ui.commandList'])).toBe(true);
+    expect(workspace.commandListOpen).toBe(true);
+    // Not over a dialog: the color box is open.
+    workspace.commandListOpen = false;
+    workspace.colorBox = 'fg';
+    expect(takeKey(own, ctxOf(project, workspace, own), ['ui.commandList'])).toBe(false);
+  } finally {
+    field.remove();
+  }
+});
+
+test('the list holds the rows that can run in this view, never a hidden one; a run by id checks where and available', async () => {
+  const { project, workspace } = await createTestApp();
+  const ctx = commandContext(project, workspace);
+  const ids = listedCommands(ctx).map(({ id }) => id);
+  expect(ids).toContain('file.open');
+  expect(ids).toContain('file.export.ans');
+  expect(ids).not.toContain('edit.altArrowsElsewhere');
+  expect(runCommand('file.export', ctx)).toBe(undefined); // no drawing
+  expect(workspace.exportModal).toBe(false);
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  runCommand('file.export.png', commandContext(project, workspace));
+  expect(workspace.exportModal).toBe('png');
+  workspace.exportModal = false;
+  expect(commandById('file.export.gif').available(commandContext(project, workspace))).not.toBe(true); // not animated
 });
