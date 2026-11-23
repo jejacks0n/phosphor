@@ -10,7 +10,7 @@
 import { toRaw } from 'vue';
 import { defineStore } from 'pinia';
 import { t } from '@/i18n';
-import { readManifest, ManifestError } from '@/plugins/manifest';
+import { readManifest, keptManifest, ManifestError } from '@/plugins/manifest';
 import { themeRef, pluginOfTheme, pluginsOff } from '@/plugins/themes';
 import { solverFor, filterFor, pluginOfSolver, allOf, registerScript, unregisterScript, onSolverFailure, onSolverFault, onShaderOff, onFilterFailure, registeredHash } from '@/plugins/solvers';
 import { readPackage, folderStamp } from '@/plugins/package';
@@ -211,7 +211,7 @@ export const usePluginStore = defineStore('plugins', {
       const usable = [];
       for (const record of records) {
         try {
-          usable.push({ ...record, manifest: readManifest(JSON.stringify({ ...record.manifest, script: record.manifest.script || undefined })) });
+          usable.push({ ...record, manifest: readManifest(JSON.stringify({ ...keptManifest(record.manifest), script: record.manifest.script || undefined })) });
         } catch { /* written by a later Phosphor, or by hand: left out */ }
       }
       this.plugins = usable.sort(byName);
