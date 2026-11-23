@@ -1311,7 +1311,7 @@ don't need a key or a trip to their button. In the desktop app it's also **Help 
   **Export .png**, **Export .gif**…, which open Export on that format), **Layers**, **Social**, **Plugins…**,
   **Reload plugins** (each plugin you picked from a file or folder, read again) and **Reload with Plugins Off**. The
   tools of the tab showing are there too, and inserting and deleting lines and columns at Edit Mode's cursor. A command that doesn't apply where you are (zooming on the start screen) isn't listed.
-- **Greyed Rows**: A command that can't run now shows greyed with the reason, such as **No drawing open**, and Enter
+- **Grayed Rows**: A command that can't run now shows grayed with the reason, such as **No drawing open**, and Enter
   does nothing on it.
 - **Where It Opens**: From anywhere but another dialog, the color box or the character palette, while you type in Edit
   Mode or in a field too. On a Mac it's **Cmd**+K only, as **Ctrl+K** in a text field deletes to the end of the line.
