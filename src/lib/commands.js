@@ -29,7 +29,7 @@ import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { usePlayback } from '@/composables/usePlayback';
 import { stepColor } from '@/composables/colorSteps';
-import { lineStep, typingTakesKeys } from '@/composables/useTextTool';
+import { lineStep, typingNow, typingTakesKeys } from '@/composables/useTextTool';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -161,7 +161,7 @@ const hiddenPick = (ctx) => !!ctx.project.layerById(picked(ctx))?.hidden;
 const stepLayer = (by) => ({
   where: (ctx) => art(ctx) && free(ctx) && shut(ctx) && !ctx.workspace.isPainting,
   run: ({ project, workspace }) => {
-    const typing = workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor;
+    const typing = typingNow(workspace);
     const layers = project.layers, from = layers.findIndex((layer) => layer.id === workspace.shownPick);
     if (from < 0) return; // VECTOR's pick before its first shape: the vector layer it will bring isn't a row yet
     for (let at = from + by; layers[at]; at += by) {

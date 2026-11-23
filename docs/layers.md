@@ -23,12 +23,12 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   vector layer shows the **VECTOR** view. Selecting a drawing layer or the base from VECTOR takes you back to the art
   tab you last had.
   - **From the Keys**: **Alt+]** and **Alt+[** (Option on a Mac, as in Photoshop) select the layer above or below, from
-    any tool and wherever the art shows, stopping at the top and the bottom (for an artist in a room, the layer above the base). In Edit Mode,
-    while you type, they work too and keep to the drawing layers and the base, passing vector layers, so you stay in the
-    ANSI view with the cursor where it was.
+    any tool and wherever the art shows, stopping at the top and the bottom (for an artist in a room, the layer above
+    the base). In Edit Mode, while you type, they work too and keep to the drawing layers and the base, passing vector
+    layers, so you stay in the ANSI view with the cursor where it was.
   - **Walking the Rows**: With a row focused (**Tab** to it), **↑** and **↓** select the row above or below as they go,
-    and **Home** and **End** the top and the bottom (passing a row that's off). Focus stays in the list, so Edit Mode's
-    cursor doesn't move.
+    and **Home** and **End** the top and the bottom (passing a row that's off). **←** and **→** do nothing there. Focus
+    stays in the list, so Edit Mode's cursor doesn't move.
 - **What Tools Act On**: Every drawing tool acts on the selected layer, the base too
   ([Drawing on the Base](#drawing-on-the-base)), and every tool is offered whichever layer is selected.
   The [Select tool](#the-select-tool) and the [Magic Wand](#the-magic-wand) act on the selected layer too, unless

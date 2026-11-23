@@ -136,9 +136,8 @@ test('a focused control keeps the keys it uses: Home on a slider stays there; En
   tab.setAttribute('role', 'tab');
   view.scrollTop = 0;
   tab.focus(); // as a click leaves it
-  await userEvent.keyboard('{End}');
+  await scrolls(view, '{End}', () => view.scrollTop === view.scrollHeight - view.clientHeight);
   expect(document.activeElement).toBe(view);
-  await vi.waitUntil(() => view.scrollTop === view.scrollHeight - view.clientHeight);
 });
 
 test('the pointer is over the view for a mouse, not after a tap (Space pans a focused button only with the mouse over it)', async () => {

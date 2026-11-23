@@ -5,7 +5,7 @@ import { stacked } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
-import { typeText } from '@/composables/useTextTool';
+import { typeText, typingNow } from '@/composables/useTextTool';
 import { takeKey } from '@/lib/commands';
 import { ownsKey, typesIn } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
@@ -61,7 +61,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   // Typing in Edit Mode: the Text tool with its cursor placed, in the ANSI view.
-  const _typing = () => workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
+  const _typing = () => typingNow(workspaceStore);
   // What a command's where, available and run are asked with (src/lib/commands.js).
   const _ctx = (e) => ({ project: projectStore, workspace: workspaceStore, event: e, view: workspaceStore.editorTab, typing: _typing(), uncommitted: typing.has(e.target) });
 

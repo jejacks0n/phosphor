@@ -77,10 +77,11 @@ const editableFocus = () => {
   const el = document.activeElement;
   return isFormField(el) || (!!el && !isTextInput(el) && inDialog(el));
 };
+// Edit Mode's typing: the Text tool with its cursor placed, in the ANSI view.
+export const typingNow = (workspace) => workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor;
 // Whether the Text tool's keydown takes Edit Mode's keys now (its onKeyDown asks the same), so a command that must not
 // let a key through (Alt+←, the browser's Back) can take it when typing won't.
-export const typingTakesKeys = (workspace) => workspace.editorTab === 'output' && workspace.activeTool === 'text'
-  && !!workspace.textCursor && !workspace.paletteLayerOpen && !editableFocus();
+export const typingTakesKeys = (workspace) => typingNow(workspace) && !workspace.paletteLayerOpen && !editableFocus();
 
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
@@ -173,7 +174,7 @@ export function useTextTool(project, workspace, textInput) {
   // dialog or Versions closes), and never takes it from a real field, nor from a row of a list walked by the
   // arrows (data-walk: LAYERS') reached by the keys, whose walk onto a cells layer brings typing back while the arrows go
   // on walking. A row clicked is any button clicked: typing has the keys again.
-  const inUse = () => workspace.editorTab === 'output' && workspace.activeTool === 'text' && !!workspace.textCursor && !workspace.paletteLayerOpen;
+  const inUse = () => typingNow(workspace) && !workspace.paletteLayerOpen;
   watch(() => [inUse(), workspace.textCursor, workspace.colorBox, workspace.shortcutsOpen, workspace.commandListOpen, workspace.saveDialog, workspace.versionsOpen], () => setTimeout(() => {
     const el = textInput?.value;
     if (!el) return;

@@ -224,11 +224,12 @@ test('opened on Palettes as a dialog, back on Colors it sits under the pair and 
   expect(getComputedStyle(panel()).position).toBe('fixed');
   workspace.colorLayerPage = 'colors';
   await nextTick();
+  // Read with offsetLeft and offsetWidth, which the fade's scale doesn't touch: the fade can start after the finish() here,
+  // and on a busy runner a bounding box read through its scale was 3px off past the wait.
   panel().getAnimations().forEach((move) => move.finish()); // the shrink and the fade, not waited for
-  const bar = host.getBoundingClientRect();
-  await vi.waitFor(() => expect(Math.round(panel().getBoundingClientRect().left - bar.left)).toBe(120));
+  await vi.waitFor(() => expect(panel().offsetLeft).toBe(120));
   host.style.width = '300px'; // narrower than the pair's left and the layer
-  await vi.waitFor(() => expect(Math.round(host.getBoundingClientRect().right - panel().getBoundingClientRect().right)).toBe(10));
+  await vi.waitFor(() => expect(host.offsetWidth - panel().offsetLeft - panel().offsetWidth).toBe(10));
 });
 
 // Back from the dialog the box fades in at its own place, as the design says: once the switch's work is done it's already

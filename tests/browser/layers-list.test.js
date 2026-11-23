@@ -461,9 +461,13 @@ test('with the cursor placed, ↓ walks from a vector row onto a cells row, the 
     await key(pickOf(0), 'ArrowDown');
     await new Promise((resolve) => setTimeout(resolve, 10));
     expect(document.activeElement).toBe(pickOf(1));
-    const left = new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true, cancelable: true });
-    pickOf(1).dispatchEvent(left); // not the rows': it's typing's still
-    expect(workspace.textCursor).toEqual({ col: 2, row: 2 });
+    for (const arrow of ['ArrowLeft', 'ArrowRight']) { // the rows' too, doing nothing: the cursor stays
+      const e = new KeyboardEvent('keydown', { key: arrow, bubbles: true, cancelable: true });
+      pickOf(1).dispatchEvent(e);
+      expect(e.defaultPrevented, arrow).toBe(true);
+      expect(workspace.textCursor, arrow).toEqual({ col: 3, row: 2 });
+    }
+    expect(workspace.pickedLayer).toBe('edit');
     expect(project.layers).toHaveLength(3);
   } finally {
     typingApp?.unmount();
