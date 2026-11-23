@@ -63,8 +63,10 @@ Phosphor installs from the list only the files the list was built from. Each ent
 was built, with a hash of each file. If a file has changed since, is gone (its repository deleted or made private) or
 has grown past its size limit, the install is refused: "This plugin changed after it was listed." Phosphor says "The
 marketplace couldn't be reached." only when the connection fails. Updates an author pushes show after the next refresh
-of the list, which happens when the wiki page changes, once a day, and with each release. The pin covers what's
-installed, not what runs later: a plugin's script can fetch more code after it's installed, and nothing checks that.
+of the list, which happens when the wiki is edited, once a day, and with each release. The pin covers what's
+installed, not what runs later: nothing stops a script, once it runs, from fetching more code, and nothing checks what
+it fetches. A listing isn't a review: nobody reads a plugin's code before it's listed
+([What a plugin can reach](https://github.com/jejacks0n/phosphor/wiki/What-a-Plugin-Can-Reach)).
 
 A browser that won't keep anything (some private windows) says "This browser isn't keeping plugins, so none can be
 installed."
@@ -76,7 +78,10 @@ only themes says "Adds 1 theme. Runs no code." A plugin with a script says "Adds
 script.") and, under it, "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from." Nothing
 of the plugin runs before you press Install: Phosphor reads the manifest and the script's text to ask, and nothing more.
 Cancel leaves nothing behind. A script that fails its checks when it's loaded keeps nothing, and an older version of the
-plugin stays as it was.
+plugin stays as it was. Once installed, a script runs in the page as Phosphor does, with what the page can reach: your
+drawings, what the browser keeps for Phosphor, SOCIAL as you, and on the desktop app the project files it has opened or
+saved. The
+wiki says it plainly: [What a plugin can reach](https://github.com/jejacks0n/phosphor/wiki/What-a-Plugin-Can-Reach).
 
 - **A folder**: `phosphor-plugin.json` at its top, and the script it names, relative to the folder. Nothing else in the
   folder is read.
@@ -253,6 +258,11 @@ translated.
 
 While a plugin is off, or Phosphor is started with `plugins=off`, nothing of its script is offered. In a room none of it
 is: rooms don't use plugin solvers, brushes, shapes or filters ([In a room](#in-a-room)).
+
+What a script may rely on is the JavaScript language and what its calls hand it: `cell` and `look`, `paint`, a shape's
+values, a filter's prelude. The page around it (`window`, `document`, storage, timers and the network) isn't part of the
+plugin API: a script can reach it today, since it runs in the page, but a later Phosphor may run scripts where none of
+it is there, and a plugin that uses it would stop working.
 
 ### Options
 
@@ -652,7 +662,8 @@ Each pass is the body of a GLSL ES 1.00 function, `vec3 filter()`, that returns 
 clamped after). Phosphor puts it after a prelude of its own:
 
 - `pixel(vec2 d)`: the color of the pixel `d` pixels away from this one (the edge's past the border), as the pass before
-  left it, as a `vec3` of 0 to 1. The first pass reads the picture after Blur, Simplify and Edges.
+  left it, as a `vec3` of 0 to 1. `d` counts the pixels the effects work in, `uResolution`'s, which needn't be the
+  picture file's own. The first pass reads the picture after Blur, Simplify and Edges.
 - `uv`: this pixel's place in the picture, 0 to 1 each way, and `uResolution`: the picture's size in pixels, as the
   effects work on it.
 - `luma(vec3 c)`: a color's brightness, with the weights Edges uses.
@@ -716,13 +727,5 @@ Superformula and Aberration are there), each with a `phosphor-plugin.json`. They
 install them from the Marketplace. The ids starting `phosphor.` are kept for them, and a community listing that uses one
 is left out.
 
-To list yours, put it on GitHub with `phosphor-plugin.json` and its script, and add a line to the wiki page **Plugins** in
-jejacks0n/phosphor (collaborators can edit it). The line is a link in one of two forms:
-
-- `https://github.com/<owner>/<repo>`: the manifest is at the top of the repository's default branch.
-- `https://github.com/<owner>/<repo>/tree/<branch>/<path>`: the manifest is in that folder of that branch.
-
-Anything else on the page is ignored. If two listings have one id, the first wins: official plugins, then the wiki's in
-page order. The manifest's and the script's size limits are the same as for installing. The list is built from the page
-at the next refresh. It takes the commit it sees then, so a later push shows only after the next refresh, and it makes an
-Update only if you raise `version`. Take the line off the page and the plugin leaves the list; people who have it keep it.
+Community plugins are listed by a line on the wiki page [Plugins](https://github.com/jejacks0n/phosphor/wiki/Plugins). How to add one, what's checked and
+when the list changes: [Listing a plugin](https://github.com/jejacks0n/phosphor/wiki/Listing-a-Plugin).
