@@ -8,7 +8,8 @@
  *        | { type: 'slot', index } (F1–F12) | { type: 'grab', index } (Ctrl+Shift+F1–F12)
  *        | { type: 'line', delta } (Moebius's Alt+↑ puts a line in at the cursor: 1, Alt+↓ takes it out: -1)
  *        | { type: 'column', delta } (Alt+→ and Alt+← the same for a column)
- * The color steps (Ctrl+arrows) and the character set's (Ctrl+, and Ctrl+.) are the command table's: null here.
+ * The color steps (Ctrl+arrows), the character set's (Ctrl+, and Ctrl+.) and the layer steps (Alt+] and Alt+[) are the
+ * command table's: null here.
  */
 import { graphemes, usableChar } from './CharWidth.js';
 
@@ -36,6 +37,8 @@ export function colorBoxKey(e) {
 const altHelp = (e) => e.altKey && e.shiftKey && e.code === 'Slash' && !e.ctrlKey && !e.metaKey;
 // Moebius's lines and columns, by Alt+arrow.
 const LINES = { ArrowUp: ['line', 1], ArrowDown: ['line', -1], ArrowRight: ['column', 1], ArrowLeft: ['column', -1] };
+// The layer above and below, by physical key: Option+] and Option+[ type ‘ and “ on a Mac, which typing gives up for them.
+const LAYER_STEPS = new Set(['BracketLeft', 'BracketRight']);
 
 // The letters the editor's own keys take before any tool's (useKeyboardShortcuts): X swaps the colors (Shift+X is
 // left to the tools), and with Animate on, L plays and pauses and N adds a frame, with Shift or without. EDITOR_KEYS are
@@ -56,6 +59,7 @@ export function textKeyAction(e, { editable }) {
   }
   if (e.altKey) {
     if (LINES[e.key]) return e.shiftKey ? null : { type: LINES[e.key][0], delta: LINES[e.key][1] };
+    if (LAYER_STEPS.has(e.code) && !e.shiftKey) return null;
     // The Insert key's work for a keyboard that has none (a MacBook's): Alt+Enter types nothing on any layout, where
     // an Alt+letter is a character or an accent someone types (Option+I starts ê).
     if (e.key === 'Enter') return { type: 'toggleInsert' };

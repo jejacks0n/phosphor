@@ -22,6 +22,13 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   drawing or base layer shows the **PIXEL** and **ANSI** views (**ASCII** in the ASCII art styles), while selecting a
   vector layer shows the **VECTOR** view. Selecting a drawing layer or the base from VECTOR takes you back to the art
   tab you last had.
+  - **From the Keys**: **Alt+]** and **Alt+[** (Option on a Mac, as in Photoshop) select the layer above or below, from
+    any tool and wherever the art shows, stopping at the top and the bottom (for an artist in a room, the layer above the base). In Edit Mode,
+    while you type, they work too and keep to the drawing layers and the base, passing vector layers, so you stay in the
+    ANSI view with the cursor where it was.
+  - **Walking the Rows**: With a row focused (**Tab** to it), **↑** and **↓** select the row above or below as they go,
+    and **Home** and **End** the top and the bottom (passing a row that's off). Focus stays in the list, so Edit Mode's
+    cursor doesn't move.
 - **What Tools Act On**: Every drawing tool acts on the selected layer, the base too
   ([Drawing on the Base](#drawing-on-the-base)), and every tool is offered whichever layer is selected.
   The [Select tool](#the-select-tool) and the [Magic Wand](#the-magic-wand) act on the selected layer too, unless
@@ -31,6 +38,8 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
   - Click **Add layer** (the cells icon with a plus) to add a new drawing layer directly above the selected layer, or
     **Add vector layer** (the path icon with a plus) to add a new vector layer there. The new layer is selected. Each
     button says its name on hover, or why it's off.
+  - **Shift+Alt+N** (Shift+Option+N) adds a drawing layer and **Shift+Alt+V** a vector layer, as the buttons do, and
+    are off when they are. Not while you type in Edit Mode (press **Escape** first), and holding one adds only one.
   - New layers are named "Layer 2", "Vector 2" and so on.
   - A drawing can have up to 64 layers. At 64, **Add layer**, **Add vector layer** and **Duplicate** turn off.
   - A vector layer stays when its last shape is deleted.
@@ -1128,6 +1137,8 @@ swaps the two halves of each cell's base colors.
   line, insert a column, delete the cursor's column, on the layer you're typing on
   ([Typing Text Directly](characters.md#typing-text-directly)). Anywhere else the art shows, **Alt+←** and **Alt+→** do
   nothing, so the browser doesn't go back a page.
+- **Alt + ] and Alt + [** (Option on a Mac): Select the layer above or below, in Edit Mode while you type too
+  ([The Layers List](#the-layers-list)). **Shift+Alt+N** adds a drawing layer and **Shift+Alt+V** a vector layer.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
 - **Cmd + K** (Ctrl+K on Windows and Linux): Opens the command list, to find any command by name and run it
   ([The Command List](#the-command-list)).
@@ -1289,8 +1300,8 @@ About's Licenses tab credits the palettes to Lospec's Palette List and their aut
   first. In Edit Mode, while you type, Home and End move the cursor instead.
 - **Keys and Focus**: A focused control keeps only the keys it uses, and the rest are the app's. A field you type in or
   a menu keeps every key; a slider its arrows, Home, End, Page Up and Page Down; a checkbox or a button Space and Enter
-  (a radio button its arrows too, a tab ← and →). So after you click **All layers**, say, Delete and Escape still work
-  on the selection.
+  (a radio button its arrows too, a tab ← and →, a LAYERS row its arrows, Home and End). So after you click **All
+  layers**, say, Delete and Escape still work on the selection.
 - **Saving and Exporting**: **Cmd+S** (Ctrl+S) saves the project and **Cmd+E** (Ctrl+E) opens Export. In either
   dialog, **Enter** in the file name saves or exports.
 

@@ -104,3 +104,14 @@ test('Alt+, and Alt+. type while typing, frames or not: a frame step needs Escap
   assert.deepEqual(textKeyAction(ev('≥', 'Period'), { editable: false }), { type: 'char', char: '≥' }); // Option+. on a Mac
   assert.deepEqual(textKeyAction(ev('≤', 'Comma'), { editable: false }), { type: 'char', char: '≤' });
 });
+
+test('Alt+] and Alt+[ never type (the layer above and below, typing too); with Shift, AltGr, and Shift+Alt+N or V they type', () => {
+  const ev = (key, code, mods = {}) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...mods });
+  assert.equal(textKeyAction(ev('‘', 'BracketRight'), { editable: false }), null); // Option+] on a Mac
+  assert.equal(textKeyAction(ev('“', 'BracketLeft'), { editable: false }), null);
+  assert.equal(textKeyAction(ev(']', 'BracketRight'), { editable: false }), null); // Alt+] elsewhere
+  assert.deepEqual(textKeyAction(ev('’', 'BracketRight', { shiftKey: true }), { editable: false }), { type: 'char', char: '’' });
+  assert.deepEqual(textKeyAction(ev('[', 'BracketLeft', { ctrlKey: true }), { editable: false }), { type: 'char', char: '[' }); // AltGr
+  assert.deepEqual(textKeyAction(ev('˜', 'KeyN', { shiftKey: true }), { editable: false }), { type: 'char', char: '˜' });
+  assert.deepEqual(textKeyAction(ev('◊', 'KeyV', { shiftKey: true }), { editable: false }), { type: 'char', char: '◊' });
+});

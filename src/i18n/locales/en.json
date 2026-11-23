@@ -1474,7 +1474,9 @@
       "layer": "Layer: {action}",
       "shapes": "Selected shapes: {action}",
       "option": "{tool}: {option}",
-      "optionChoice": "{tool}: {option} {choice}"
+      "optionChoice": "{tool}: {option} {choice}",
+      "layerAbove": "Select the layer above",
+      "layerBelow": "Select the layer below"
     },
     "reasons": {
       "noDrawing": "No drawing open",
@@ -1580,7 +1582,8 @@
       "prevNextFrame": "Go to previous or next frame (also {keys})",
       "newFrame": "Add a new frame matching current frame type (hold to add multiple)",
       "switchTabs": "With a tab focused: switch tabs",
-      "commandList": "Find a command and run it"
+      "commandList": "Find a command and run it",
+      "layerAboveBelow": "Select the layer above or below"
     }
   },
   "social": {
