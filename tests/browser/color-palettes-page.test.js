@@ -709,6 +709,26 @@ test('Up and Down on a swatch of the editor stay the swatches\' and land on the 
   expect(await check()).not.toBe(small);
 });
 
+// The picked swatch's ring is drawn outside it; the grid scrolls, which cuts off what's past its edges.
+test('the picked swatch\'s ring shows whole, whichever swatch is picked: the scrolling grid cuts off none of it', async () => {
+  await browserPage.viewport(1300, 850);
+  onTestFinished(() => browserPage.viewport(414, 896));
+  await mount({ quantize: 'palette', palette: PALETTES.cga.map((c) => c.hex).join(' ') });
+  const grid = editor().querySelector('div.swatches'), swatches = [...grid.querySelectorAll('button.swatch')];
+  const style = getComputedStyle(swatches[0]);
+  expect(swatches[0].getAttribute('aria-pressed')).toBe('true');
+  const ring = parseFloat(style.outlineWidth) + parseFloat(style.outlineOffset);
+  expect(ring).toBeGreaterThan(0);
+  const box = grid.getBoundingClientRect();
+  const clip = { left: box.left + grid.clientLeft, top: box.top + grid.clientTop };
+  Object.assign(clip, { right: clip.left + grid.clientWidth, bottom: clip.top + grid.clientHeight });
+  const cut = swatches.filter((s) => {
+    const r = s.getBoundingClientRect();
+    return r.left - ring < clip.left - 0.5 || r.top - ring < clip.top - 0.5 || r.right + ring > clip.right + 0.5 || r.bottom + ring > clip.bottom + 0.5;
+  });
+  expect(cut.map((s) => s.getAttribute('aria-label'))).toEqual([]);
+});
+
 test('two hundred colors scroll inside the details, the actions still on screen', async () => {
   await mount({ quantize: 'palette', palette: Array.from({ length: 200 }, (_, i) => `#${(i + 1).toString(16).padStart(6, '0')}`).join(' ') });
   const grid = editor().querySelector('div.swatches');
