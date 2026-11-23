@@ -974,6 +974,7 @@
       "blocksSetMeta": "blocks set by you",
       "width": "Width",
       "widthInRoom": "Only the room’s host can change the width.",
+      "widthNarrowNote": "Only Phosphor supports a width of {width}. ANSI and XBin exports use 8.",
       "findBlocks": "Find blocks again",
       "findBlocksTitle": "Forget the slots you set and find the blocks from the font's pixels again",
       "blocksInRoom": "A font’s blocks, lines and sets can’t change in a room.",
