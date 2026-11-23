@@ -81,7 +81,7 @@ button.chip {
   border: 2px solid var(--text-dim);
   border-radius: 4px;
   cursor: pointer;
-  box-shadow: 0 0 0 1px var(--black);
+  box-shadow: 0 0 0 1px var(--tooltip);
 }
 
 button.chip.fg {

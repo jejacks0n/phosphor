@@ -741,7 +741,7 @@ div.blocks button {
 
 div.blocks button.on {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
   border-color: var(--accent);
 }
 

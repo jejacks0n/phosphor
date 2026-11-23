@@ -594,7 +594,7 @@ button.frame.out {
 }
 button.frame.now span {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 @media (hover: hover) {
   button.frame:hover span {
@@ -661,7 +661,7 @@ button.key.fixed::before {
 }
 button.key[aria-pressed='true']::before {
   background: var(--accent);
-  box-shadow: 0 0 0 2px var(--white);
+  box-shadow: 0 0 0 2px var(--text-on-accent);
 }
 
 span.playhead {
@@ -748,7 +748,7 @@ button.guide {
 }
 button.guide[aria-pressed='true'] {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 button.delete {
   flex: none;

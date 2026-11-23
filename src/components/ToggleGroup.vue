@@ -74,6 +74,6 @@ div.toggle-group button.on {
   z-index: 1;
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 </style>

@@ -13,8 +13,6 @@
       "name": "Rain",
       "base": "light",
       "colors": {
-        "white": "#ffffff",
-        "black": "#1f2a33",
         "background": "#c9d3db",
         "background-highlight": "#ffffff66",
         "accent": "#3d6f95",
@@ -34,7 +32,6 @@
         "surface-4": "#c0ccd6",
         "surface-light": "#1f2a33",
         "border": "#bcc8d2",
-        "border-dark": "#aab8c4",
         "border-subtle": "#d5dee6",
         "border-light": "#9fb0bd",
         "text": "#1b2730",
@@ -42,8 +39,10 @@
         "text-muted": "#5d6f7d",
         "text-faint": "#8494a1",
         "text-inverted": "#ffffff",
+        "text-on-accent": "#ffffff",
         "shadow": "#3a4a57",
         "guide": "#d9480f",
+        "tooltip": "#1f2a33",
         "toast": "#33424e",
         "toast-text": "#eef2f5",
         "wand-fill": "#3d6f954d"

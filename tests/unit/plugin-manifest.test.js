@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { test, expect } from 'vitest';
 import { readManifest, ManifestError, API_LEVEL, COLOR_SLOTS, MOST_MANIFEST_BYTES } from '../../src/plugins/manifest.js';
 
@@ -138,8 +139,26 @@ test('the slots are the color properties of :root in global.css', () => {
   expect([...COLOR_SLOTS]).toEqual(declared);
   // The slots a theme has had since the first: none may go, or a kept theme would be refused.
   for (const slot of ['background', 'accent', 'surface-0', 'border', 'text', 'text-inverted']) expect(COLOR_SLOTS).toContain(slot);
-  for (const slot of ['white', 'black', 'accent-glow', 'shadow', 'guide', 'toast', 'toast-text', 'wand-fill']) expect(COLOR_SLOTS).toContain(slot);
-  expect(COLOR_SLOTS).toHaveLength(34);
+  for (const slot of ['text-on-accent', 'tooltip', 'accent-glow', 'shadow', 'guide', 'toast', 'toast-text', 'wand-fill']) expect(COLOR_SLOTS).toContain(slot);
+  expect(COLOR_SLOTS).toHaveLength(33);
+});
+
+// A slot is named for what it colors, and a slot can never be taken away once a theme may set it: so none is kept that
+// nothing uses (border-dark was one), and none is named for a color (white and black were: the words on the accent and
+// on a tooltip, and a tooltip's ground).
+test('every slot colors something: each is used in the app beyond where it\'s declared', () => {
+  const files = (dir) => readdirSync(dir, { withFileTypes: true }).flatMap((each) => {
+    const path = `${dir}/${each.name}`;
+    return each.isDirectory() ? files(path) : /\.(vue|css|js)$/.test(each.name) ? [path] : [];
+  });
+  const root = fileURLToPath(new URL('../../', import.meta.url));
+  const source = [...files(`${root}src`), `${root}index.html`].map((path) => readFileSync(path, 'utf8')).join('\n');
+  const unused = COLOR_SLOTS.filter((slot) => !new RegExp(`--${slot}(?![\\w-])(?!\\s*:)`).test(source));
+  expect(unused).toEqual([]);
+  for (const gone of ['white', 'black', 'border-dark']) {
+    expect(COLOR_SLOTS).not.toContain(gone);
+    expect(new RegExp(`--${gone}(?![\\w-])`).test(source), gone).toBe(false);
+  }
 });
 
 // The store reads a kept manifest again on every load: what was accepted once must be accepted again.
@@ -176,11 +195,12 @@ test('a theme-only manifest reads again from its own output', () => {
 });
 
 // What's drawn over the art (the Brush's circle, a selection's dashes) and the black behind a picture must show on
-// any art under any theme, so they're true white and black, not the slots a theme may set.
-test('the marks over the art and the ground behind a picture use no white or black slot', () => {
+// any art under any theme, so they're true white and black, not the slots a theme may set for its lightest and darkest
+// (text-on-accent and tooltip, which were named white and black).
+test('the marks over the art and the ground behind a picture use no slot for their white or black', () => {
   for (const file of ['EditorViewport.vue', 'PluginMarket.vue', 'social/RoomCard.vue']) {
     const source = readFileSync(new URL(`../../src/components/${file}`, import.meta.url), 'utf8');
-    expect([file, /var\(--(white|black)\)/.test(source)]).toEqual([file, false]);
+    expect([file, /var\(--(text-on-accent|tooltip|white|black)\)/.test(source)]).toEqual([file, false]);
   }
 });
 

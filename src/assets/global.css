@@ -9,8 +9,6 @@
   --display-font-family: "JetBrains Mono", monospace;
   --display-font-size: 17px;
   --display-line-height: 1.2;
-  --white: #fff;
-  --black: #000;
 
   /* Background */
   --background: #313439;
@@ -38,7 +36,6 @@
 
   /* Borders */
   --border: #333;
-  --border-dark: #222;
   --border-subtle: #2a2a2a;
   --border-light: #444;
 
@@ -48,10 +45,12 @@
   --text-muted: #888;
   --text-faint: #666;
   --text-inverted: #000;
+  --text-on-accent: #fff;  /* words and icons on the accent (a chosen button, tab or toggle) and on a tooltip, a check mark, a focused slider's thumb */
 
   /* Over the art, and what floats over the page */
   --shadow: #000;          /* every drop shadow's color; each keeps its own strength */
   --guide: #22e3ff;        /* the guides, their ticks on the rulers and the label dragging one (GuideRulers.vue) */
+  --tooltip: #000;         /* a tooltip's ground, and the dark ring around a color swatch */
   --toast: #e0b050;        /* the toast's ground and its words (AppToast.vue) */
   --toast-text: #000;
   --wand-fill: #5aa0ff4d;  /* the Magic Wand's tint over what it selected (WandOverlay.vue) */
@@ -144,13 +143,13 @@ button.primary:active {
 button.danger {
   background: var(--danger);
   border-color: var(--danger);
-  color: var(--white);;
+  color: var(--text-on-accent);;
 }
 @media (hover: hover) {
   button.danger:hover:not(:disabled) {
     background: var(--danger-hover);
     border-color: var(--danger-hover);
-    color: var(--white);
+    color: var(--text-on-accent);
   }
 }
 
@@ -183,7 +182,7 @@ span.unread {
   font-size: 10px;
   font-weight: 600;
   text-align: center;
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 input, select, textarea {
@@ -250,7 +249,7 @@ input[type=checkbox]:checked::after {
   left: 50%;
   width: 4px;
   height: 8px;
-  border: solid var(--white);
+  border: solid var(--text-on-accent);
   border-width: 0 2px 2px 0;
   transform: translate(-50%, -60%) rotate(45deg);
 }
@@ -265,7 +264,7 @@ input[type=radio]:checked::after {
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--white);
+  background: var(--text-on-accent);
   transform: translate(-50%, -50%);
 }
 input[type=checkbox]:focus, input[type=radio]:focus {
@@ -362,7 +361,7 @@ input[type=range]::-moz-range-thumb {
   border: 2px solid var(--border-subtle);
 }
 input[type=range]:hover::-webkit-slider-thumb,
-input[type=range]:focus::-webkit-slider-thumb { background: var(--white); }
+input[type=range]:focus::-webkit-slider-thumb { background: var(--text-on-accent); }
 input[type=range]:hover::-moz-range-thumb,
 input[type=range]:focus::-moz-range-thumb { background: var(--surface-light); }
 input[type=range]:active::-webkit-slider-thumb {
@@ -403,7 +402,7 @@ span.value-tooltip {
   /* Account for thumb width (17px + 2px border on each side = 21px) */
   left: calc(10.5px + (100% - 21px) * var(--percent, 0) / 100);
   transform: translateX(-50%) translateY(-12px);
-  background: var(--black);
+  background: var(--tooltip);
   color: white;
   padding: 4px 8px;
   border-radius: 4px;
@@ -426,7 +425,7 @@ span.value-tooltip::after {
   margin-left: -5px;
   border-width: 5px;
   border-style: solid;
-  border-color: var(--black) transparent transparent transparent;
+  border-color: var(--tooltip) transparent transparent transparent;
 }
 
 /* Tool Cursors */
@@ -515,7 +514,6 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
 
   /* Borders */
   --border: #c8c8c8;
-  --border-dark: #bbbbbb;
   --border-subtle: #dedede;
   --border-light: #aaaaaa;
 

@@ -215,7 +215,7 @@ div.box button.send:hover {
 div.box button.send.ready,
 div.box button.send.ready:hover {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 p.refused {

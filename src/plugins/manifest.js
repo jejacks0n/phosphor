@@ -20,13 +20,12 @@ export const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 // this copy doesn't know refuses a manifest, so a theme that sets a slot added later isn't read by a copy of Phosphor
 // from before it.
 export const COLOR_SLOTS = Object.freeze([
-  'white', 'black',
   'background', 'background-highlight',
   'accent', 'accent-hot', 'accent-hover', 'accent-glow', 'accent-faint', 'danger', 'danger-hover', 'warning', 'success',
   'surface-dark', 'surface-0', 'surface-1', 'surface-2', 'surface-3', 'surface-4', 'surface-light',
-  'border', 'border-dark', 'border-subtle', 'border-light',
-  'text', 'text-dim', 'text-muted', 'text-faint', 'text-inverted',
-  'shadow', 'guide', 'toast', 'toast-text', 'wand-fill',
+  'border', 'border-subtle', 'border-light',
+  'text', 'text-dim', 'text-muted', 'text-faint', 'text-inverted', 'text-on-accent',
+  'shadow', 'guide', 'tooltip', 'toast', 'toast-text', 'wand-fill',
 ]);
 const SLOTS = new Set(COLOR_SLOTS);
 
