@@ -9,10 +9,10 @@
  *        | { type: 'line', delta } (Moebius's Alt+↑ puts a line in at the cursor: 1, Alt+↓ takes it out: -1)
  *        | { type: 'column', delta } (Alt+→ and Alt+← the same for a column)
  * The color steps (Ctrl+arrows), the character set's (Ctrl+, and Ctrl+.), the layer steps (Alt+] and Alt+[) and the
- * cell's colors (Alt+U, Shift+Alt+U, Alt+X) are the command table's: null here.
+ * cell's colors (Alt+U, Shift+Alt+U, Alt+X) are the command table's: null here, as Alt+1–4 are on Linux.
  */
 import { graphemes, usableChar } from './CharWidth.js';
-import { isMac } from './keyLabels.js';
+import { isLinux, isMac } from './keyLabels.js';
 
 const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
 const NAMED = { Home: 'home', End: 'end', Enter: 'newline', Backspace: 'backspace', Delete: 'delete', Insert: 'toggleInsert' };
@@ -46,6 +46,11 @@ const LAYER_STEPS = new Set(['BracketLeft', 'BracketRight']);
 // keys' work there. false takes them on a Mac too, here and in the command table's where (commands.js).
 export const MAC_TYPES_OPTION_U = true;
 export const typingKeepsAltU = (mac = isMac) => MAC_TYPES_OPTION_U && mac;
+// Alt+1–4 choose the editor's tabs, never while typing, where Option's digits type on a Mac (a British Mac's Option+3 is
+// #). On Linux the browser switches its own tabs on them: typing gives them up there, and the command table takes them and
+// does nothing (commands.js: tab.keptFromBrowser).
+const TAB_DIGITS = new Set(['Digit1', 'Digit2', 'Digit3', 'Digit4']);
+export const keptFromBrowser = (e, linux = isLinux) => linux && e.altKey && !e.ctrlKey && !e.metaKey && !e.shiftKey && TAB_DIGITS.has(e.code);
 const cellKey = (e, mac) => (e.code === 'KeyX' && !e.shiftKey) || (e.code === 'KeyU' && !typingKeepsAltU(mac));
 
 // The letters the editor's own keys take before any tool's (useKeyboardShortcuts): X swaps the colors (Shift+X is
@@ -56,7 +61,7 @@ export const SWAP_COLORS_KEY = 'x', PLAY_KEY = 'l', ADD_FRAME_KEY = 'n', DRAW_WI
 export const EDITOR_KEYS = [SWAP_COLORS_KEY, PLAY_KEY, ADD_FRAME_KEY, DRAW_WITH_KEY].map((key) => key.toUpperCase())
   .flatMap((key) => (key === SWAP_COLORS_KEY.toUpperCase() ? [key] : [key, `Shift+${key}`]));
 
-export function textKeyAction(e, { editable, mac = isMac }) {
+export function textKeyAction(e, { editable, mac = isMac, linux = isLinux }) {
   if (editable || e.metaKey || e.isComposing || e.keyCode === 229) return null; // a field, Cmd, or an IME
   if (colorBoxKey(e) || altHelp(e)) return null; // the color box and the shortcuts list never type
   // AltGr (Windows/Linux) arrives as Ctrl+Alt and produces characters such as @ or €: those type.
@@ -68,7 +73,7 @@ export function textKeyAction(e, { editable, mac = isMac }) {
   }
   if (e.altKey) {
     if (LINES[e.key]) return e.shiftKey ? null : { type: LINES[e.key][0], delta: LINES[e.key][1] };
-    if ((LAYER_STEPS.has(e.code) && !e.shiftKey) || cellKey(e, mac)) return null;
+    if ((LAYER_STEPS.has(e.code) && !e.shiftKey) || cellKey(e, mac) || keptFromBrowser(e, linux)) return null;
     // The Insert key's work for a keyboard that has none (a MacBook's): Alt+Enter types nothing on any layout, where
     // an Alt+letter is a character or an accent someone types (Option+I starts ê).
     if (e.key === 'Enter') return { type: 'toggleInsert' };

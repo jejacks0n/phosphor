@@ -26,6 +26,11 @@ const SHARED = {
   // The column rows' keys are Edit Mode's typing (useTextTool), never takeKey's; elsewhere Alt+← and Alt+→ do nothing.
   'edit.altArrowsElsewhere edit.deleteColumn': 'Alt+←: a column out while typing, nothing elsewhere',
   'edit.altArrowsElsewhere edit.insertColumn': 'Alt+→: a column in while typing, nothing elsewhere',
+  // The tabs never while typing; typing on Linux, Alt+1–4 do nothing, so the browser's tabs don't switch.
+  'tab.keptFromBrowser tab.picture': 'Alt+1: the picture tab, or nothing while typing on Linux',
+  'tab.ansi tab.keptFromBrowser': 'Alt+2: ANSI, or nothing while typing on Linux',
+  'tab.keptFromBrowser tab.sauce': 'Alt+3: SAUCE, or nothing while typing on Linux',
+  'tab.keptFromBrowser tab.room': 'Alt+4: ROOM, or nothing while typing on Linux',
 };
 
 // A key as what it is, so 'Alt+KeyF' and 'Alt+F' (or Shift+Mod+Z and Mod+Shift+Z) are one: its modifiers sorted, and a letter's code read as the letter.

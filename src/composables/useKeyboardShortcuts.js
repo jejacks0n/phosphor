@@ -270,7 +270,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (takeKey(e, ctx, ['animation.prevFrame', 'animation.nextFrame', 'animation.newFrame'])) return;
     if (takeKey(e, ctx, ['general.undo', 'general.redo', 'file.save', 'file.saveAs', 'file.export', 'file.open',
       'view.zoomIn', 'view.zoomOut', 'view.zoomBack', 'general.help', 'ui.commandList',
-      'layer.above', 'layer.below', 'layer.newCells', 'layer.newVector'])) return;
+      'layer.above', 'layer.below', 'layer.newCells', 'layer.newVector',
+      'tab.picture', 'tab.ansi', 'tab.sauce', 'tab.room', 'tab.keptFromBrowser'])) return;
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;
     if (takeKey(e, ctx, ['colors.openFg', 'colors.openBg', 'colors.swap', 'colors.fgPrev', 'colors.fgNext', 'colors.bgPrev', 'colors.bgNext',

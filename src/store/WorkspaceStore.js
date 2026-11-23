@@ -187,6 +187,24 @@ export const useWorkspaceStore = defineStore('workspace', {
       return layer?.kind === 'cells' && layer.id !== 'base';
     },
     editMode: (state) => ['input', 'output', 'vector'].includes(state.editorTab), // the art is showing
+    // The editor's tabs, in order, as EditTabs shows them and Alt+1–4 choose them (commands.js): [{ id, disabled }]. The
+    // picked layer decides the art tabs, by its kind: a cells layer (the base among them) shows PIXEL and ANSI, a vector
+    // layer VECTOR, and inside an art layer VECTOR and ANSI (shownPick is its vector layer's row then). 'vector' before
+    // the first shape brings its layer is the vector layer it will be. The art tabs wait for something to show; from ROOM
+    // (the room you watch) they're the way back to the start screen.
+    shownTabs() {
+      return (project, room) => {
+        const noArt = !project.image && this.editorTab !== 'room';
+        const isVector = (id) => project.layerById(id)?.kind === 'vector' || id === 'vector';
+        return [
+          ...(!isVector(this.shownPick) ? [{ id: 'input', disabled: noArt }] : []),
+          ...(isVector(this.shownPick) ? [{ id: 'vector', disabled: noArt }] : []),
+          ...(!isVector(this.pickedLayer) || project.artInside ? [{ id: 'output', disabled: noArt }] : []),
+          { id: 'sauce', disabled: noArt },
+          ...(room.role === 'watch' || this.editorTab === 'room' ? [{ id: 'room', disabled: false }] : []),
+        ];
+      };
+    },
     // The view the room's host is looking at, for watchers: whole cells and the zoom to draw them at
     // (a fraction of the font's cell), of the art tab last shown (SAUCE and SOCIAL keep it). PIXEL's
     // zoom is its pixels per column against the font's cell width. Each zoom is the one its cells were

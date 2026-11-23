@@ -1496,7 +1496,9 @@
       "inRoom": "Quittez d’abord la salle",
       "notSharing": "Seulement en dessinant ensemble dans une salle",
       "noCell": "Pointez d’abord une cellule du dessin",
-      "ansiOnly": "Uniquement avec le style ANSI"
+      "ansiOnly": "Uniquement avec le style ANSI",
+      "notWatching": "Uniquement en regardant une salle",
+      "vectorPicked": "Pas avec un calque vectoriel sélectionné"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1593,6 +1595,11 @@
       "prevNextFrame": "Aller à l'image précédente ou suivante (aussi {keys})",
       "newFrame": "Ajouter une nouvelle image du même type que l'image actuelle (maintenir pour en ajouter plusieurs)",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet",
+      "tabPicture": "Afficher l'onglet PIXEL, ou VECTOR avec un calque vectoriel sélectionné",
+      "tabAnsi": "Afficher l'onglet ANSI (ou ASCII)",
+      "tabSauce": "Afficher l'onglet SAUCE",
+      "tabRoom": "Afficher l'onglet SALLE, en regardant une salle",
+      "tabsKeptFromBrowser": "Rien en tapant sous Linux, pour que le navigateur ne change pas d'onglet",
       "commandList": "Trouver une commande et la lancer",
       "layerAboveBelow": "Sélectionner le calque au-dessus ou en dessous",
       "takeUnder": "Prendre les couleurs de la cellule sous le pointeur, ou en Mode Édition celles du curseur (PIXEL : celle du pixel, en premier plan)",

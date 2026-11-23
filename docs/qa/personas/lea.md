@@ -224,8 +224,9 @@ column to see the words change, switch the theme, and open About.
 - Expects: the tap shows the cursor without moving the view and brings up the phone's keyboard; the letters land at the cursor in her colors;
   return goes to the next line; a run of typing is one undo step. To stop typing she has to tap another tool (Escape
   isn't on her keyboard).
-- Probes: `extremes`: type an emoji and a few letters with accents; `interrupt`: halfway through typing, switch to
-  PIXEL and back, and keep typing; `back-out`: tap the art away from the cursor.
+- Probes: `extremes`: type an emoji, a few letters with accents and the digits 1 to 4 (they type: the tabs' keys,
+  Alt+1 to 4, need an Alt her keyboard hasn't); `interrupt`: halfway through typing, switch to PIXEL and back, and keep
+  typing; `back-out`: tap the art away from the cursor.
 - Rated: yes, wants the phone keyboard's Done to put the cursor away
 
 ### 14. Add a layer and name it
@@ -328,7 +329,8 @@ frames, and pinch while it plays.
 
 ### 23. Sign it on SAUCE
 - Does: taps SAUCE and types her name as Author on the phone's keyboard, then a title, pressing return after each.
-- Expects: SAUCE's fields fit at 390 wide; the phone's keyboard doesn't cover the field she's typing in; return moves
+- Expects: SAUCE's fields fit at 390 wide; the phone's keyboard doesn't cover the field she's typing in; a title with
+  digits in it ("selfie 2") types them and stays on SAUCE; return moves
   on or keeps what she typed; the fields hold their widths (Author 20 characters), with a count beside each label;
   Title and Author are still at the top, with Date, the For other viewers group and Export… below them to scroll to.
 - Probes: `extremes`: type 40 characters into Author and see where it stops (20 / 20 turns the warning color above

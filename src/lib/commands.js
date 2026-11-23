@@ -20,13 +20,13 @@
 //   tool       a tool's row (toolCommands): its id, so its key with the tool chosen steps the kind instead (takeKey)
 // A row with a run and no keys is the command list's alone (New project, Export .ans), and the ? list leaves it out.
 // ctx = { project, workspace, event, view: workspace.editorTab, typing: Edit Mode's typing, uncommitted: focus is in a
-// field holding typing it hasn't committed (its own undo has it) }.
+// field holding typing it hasn't committed (its own undo has it), linux: a test's stand-in for the platform (isLinux) }.
 import { nextTick } from 'vue';
 import { t, te } from '@/i18n/index.js';
 import { isMac, shortcut } from '@/lib/keyLabels';
 import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { ownsKey } from '@/lib/fields';
-import { ADD_FRAME_KEY, DRAW_WITH_KEY, PLAY_KEY, SWAP_COLORS_KEY, typingKeepsAltU } from '@/lib/TextKeys';
+import { ADD_FRAME_KEY, DRAW_WITH_KEY, PLAY_KEY, SWAP_COLORS_KEY, keptFromBrowser, typingKeepsAltU } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { usePlayback } from '@/composables/usePlayback';
 import { stepColor } from '@/composables/colorSteps';
@@ -262,6 +262,25 @@ const inRoom = (host) => () => {
   const { role } = useRoomStore();
   return !role ? 'shortcuts.reasons.notInRoom' : host && role !== 'host' ? 'shortcuts.reasons.notHost' : true;
 };
+// Alt+1–4: the editor's tabs, in EditTabs' order, chosen as a click chooses one (its v-model: the router follows), when
+// it shows and is on. Not while typing (Option's digits type on a Mac), mid-stroke, or over a dialog, but everywhere
+// else, SAUCE and ROOM too, and taken there even when the tab isn't: Alt+4 out of a room does nothing. TAB_KEYS is
+// where they live: should Linux's browsers switch their tab despite the preventDefault, the rows' keys become
+// { mac, other, linux } there (Ctrl+Alt+1–4 on Linux, keysFor learning the platform), and the ? list follows.
+const overNothing = (ctx) => shut(ctx) && !document.querySelector('dialog[open]');
+const TAB_KEYS = ['Alt+Digit1', 'Alt+Digit2', 'Alt+Digit3', 'Alt+Digit4'];
+const tabRow = (id, n, label, ids) => ({
+  id, group: 'tabs', keys: TAB_KEYS[n - 1], label: words(label), once: true,
+  where: (ctx) => !ctx.typing && free(ctx) && overNothing(ctx) && !ctx.workspace.isPainting,
+  available: ({ project, workspace }) => {
+    const tab = workspace.shownTabs(project, useRoomStore()).find((shown) => ids.includes(shown.id));
+    if (tab) return tab.disabled ? 'shortcuts.reasons.noDrawing' : true;
+    return id === 'tab.room' ? 'shortcuts.reasons.notWatching' : 'shortcuts.reasons.vectorPicked';
+  },
+  run: ({ project, workspace }) => {
+    workspace.editorTab = workspace.shownTabs(project, useRoomStore()).find((shown) => ids.includes(shown.id)).id;
+  },
+});
 const outOfRoom = () => (useRoomStore().role ? 'shortcuts.reasons.inRoom' : true);
 const ARROWS = '← ↑ → ↓'; // the four, shown as one
 const shiftArrows = () => [shortcut('shift', ARROWS)];
@@ -289,7 +308,7 @@ export const COMMANDS = [
   // The command list: everywhere but over a dialog (the color box, the character palette, any modal one), typing and in
   // a field too. Cmd+K on a Mac only: Ctrl+K there is a text field's, deleting to the end of the line.
   { id: 'ui.commandList', group: 'general', keys: 'Mod+KeyK', strictMod: true, once: true, menu: 'commandList', label: words('commandList'),
-    where: (ctx) => shut(ctx) && !document.querySelector('dialog[open]'), run: ({ workspace }) => { workspace.commandListOpen = true; } },
+    where: overNothing, run: ({ workspace }) => { workspace.commandListOpen = true; } },
   fixed('general.dialogChoices', 'general', words('dialogChoices'), { shown: ['↑ ↓'] }),
 
   { ...fixed('drawing.holdAlt', 'drawing', words('holdAlt'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt') })] }), held: true },
@@ -384,6 +403,13 @@ export const COMMANDS = [
     where: (ctx) => animating(ctx), run: ({ project }) => project.addFrame(project.currentFrame.kind) },
 
   fixed('tabs.switch', 'tabs', words('switchTabs'), { shown: ['← →'] }),
+  tabRow('tab.picture', 1, 'tabPicture', ['input', 'vector']),
+  tabRow('tab.ansi', 2, 'tabAnsi', ['output']),
+  tabRow('tab.sauce', 3, 'tabSauce', ['sauce']),
+  tabRow('tab.room', 4, 'tabRoom', ['room']),
+  // Typing on Linux, where the browser would switch its own tabs: taken, and nothing (TextKeys.js gives them up).
+  { id: 'tab.keptFromBrowser', group: 'tabs', keys: TAB_KEYS, label: words('tabsKeptFromBrowser'), hidden: true,
+    where: (ctx) => ctx.typing && keptFromBrowser(ctx.event, ctx.linux) && free(ctx), run: () => {} },
 
   // Panels, by the words of their tabs and buttons.
   { id: 'panels.layers', group: 'panels', label: said('sidePanel.layers'),
