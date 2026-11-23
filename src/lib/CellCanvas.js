@@ -55,9 +55,10 @@ export function cellGeometry(advance, scale, capped = false, font = DISPLAY_FONT
     const ch = odd ? Math.max(1, round(cw * ratio)) : Math.max(2, round((cw * ratio) / 2) * 2);
     return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
   }
-  const cw = round(advance * scale);
-  const tall = font.size * font.lineHeight * scale;
-  const ch = round(tall / 2) * 2;
+  // Any other font's width follows its rounded height by its shape, so a zoom scales a cell both ways at once.
+  const line = font.size * font.lineHeight;
+  const ch = round((line * scale) / 2) * 2;
+  const cw = round((ch * advance) / line);
   return { cw, ch, cellWidth: cw / scale, lineHeight: ch / scale };
 }
 
