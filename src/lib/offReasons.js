@@ -18,8 +18,10 @@ export const bakeOff = (project, drawing) => wholeOff(project, drawing) ?? (proj
 export const flattenOff = (project, drawing) => wholeOff(project, drawing) ?? (project.hasFrames ? 'toolbar.flattenOneFrame' : null);
 
 // Make art layer, in a room: it goes on the vector layer above the one in use, and with none it's off, as adding one is
-// a stack change.
+// a stack change. The layer in use may not be in the stack yet (an artist's in a room with only the base): its default
+// name then.
 export function artLayerOff(project) {
   const at = project.layers.findIndex((layer) => layer.id === project.editId), above = project.layers[at + 1];
-  return project._sharing && above?.kind !== 'vector' ? ['vector.artLayerNeedsVectorAbove', { name: layerName(project.layers[at]) }] : null;
+  if (!project._sharing || above?.kind === 'vector') return null;
+  return ['vector.artLayerNeedsVectorAbove', { name: at < 0 ? t('layers.editDefault', { n: 1 }) : layerName(project.layers[at]) }];
 }

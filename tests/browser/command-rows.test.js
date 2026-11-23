@@ -107,6 +107,8 @@ test('every generated option row has words, in English and French, and an id of 
       const rows = offeredTools(view, project).flatMap((tool) => optionCommands(tool, view));
       expect(rows.length, view).toBeGreaterThan(0);
       expect(new Set(rows.map(({ id }) => id)).size, view).toBe(rows.length);
+      const said = rows.map(words);
+      expect(said.filter((w, i) => said.indexOf(w) !== i), `${locale} ${view}: two rows read the same`).toEqual([]);
       for (const row of rows) {
         const said = words(row);
         expect(said, `${view} ${row.id}`).toMatch(/\S ?: \S/); // French puts a space before the colon
@@ -237,4 +239,25 @@ test('Dimensions puts the cursor in the field, in the drawer opened for it', asy
     panel.unmount();
     host.remove();
   }
+});
+
+// A pick with no row (VECTOR before its first shape picks the vector layer that shape will bring) offers no layer row,
+// and the layer in use missing from the stack (an artist's in a room with only the base) still gives Make art layer's
+// reason, named by default.
+test('the layer rows want the picked row there; Make art layer\'s reason names a layer not in the stack yet', async () => {
+  const stores = await createTestApp();
+  const { project, workspace } = stores;
+  await project.setBlankCanvas({ cols: 20, rows: 10 });
+  await settle(project);
+  workspace.editorTab = 'vector';
+  expect(project.layerById(workspace.shownPick)).toBeFalsy();
+  const ids = listedCommands(ctxOf(project, workspace)).map(({ id }) => id);
+  for (const id of ['layer.rename', 'layer.duplicate', 'layer.delete', 'layer.hide', 'layer.show']) expect(ids, id).not.toContain(id);
+  project.startSharing({ send: vi.fn(), role: 'host', me: 'host' });
+  workspace.editorTab = 'output';
+  workspace.selection = { c0: 0, r0: 0, c1: 2, r1: 2 };
+  project.editId = 'edit';   // as an artist's is with only the base: the base isn't theirs, and 'edit' isn't there yet
+  expect(project.layers.some((layer) => layer.id === project.editId)).toBe(false);
+  expect(reasonOf('layer.makeArt', project, workspace)).toBe('Add a vector layer above Layer 1 first.');
+  project.stopSharing();
 });

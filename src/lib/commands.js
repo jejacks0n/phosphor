@@ -150,6 +150,8 @@ const fixed = (id, group, label, { keys, shown }) => ({ id, group, label, keys, 
 const ok = (reason) => reason ?? true;
 const art = (ctx) => !!ctx.project.image && ctx.workspace.editMode; // the toolbar and LAYERS show
 const picked = ({ workspace }) => workspace.shownPick; // the row LAYERS shows picked
+// LAYERS has the picked row (on VECTOR before its first shape, the vector layer it will bring isn't there yet).
+const onPick = (ctx) => art(ctx) && !!ctx.project.layerById(picked(ctx));
 const layerWords = (key) => said('shortcuts.commands.layer', () => ({ action: t(key) }));
 const notBase = (ctx) => (picked(ctx) === 'base' ? 'shortcuts.reasons.baseLayer' : null); // the base has no ⋯ menu
 const hiddenPick = (ctx) => !!ctx.project.layerById(picked(ctx))?.hidden;
@@ -336,23 +338,23 @@ export const COMMANDS = [
     available: ({ project, workspace }) => ok(artLayerOff(project)
       ?? (workspace.selection || (workspace.activeTool === 'wand' && workspace.wand) ? null : ['toolbar.selection.selectFirstTitle', { action: t('art.make') }])),
     run: ({ project }) => project.makeArtLayer() },
-  { id: 'layer.rename', group: 'layers', label: layerWords('layers.rename'), where: art, available: () => ok(pausedOff(useDrawingStore())),
+  { id: 'layer.rename', group: 'layers', label: layerWords('layers.rename'), where: onPick, available: () => ok(pausedOff(useDrawingStore())),
     run: ({ workspace }) => {
       workspace.showLayers();
       workspace.renameRequest = workspace.shownPick; // LayersList turns the row into its box
     } },
-  { id: 'layer.duplicate', group: 'layers', label: layerWords('layers.duplicate'), where: art,
+  { id: 'layer.duplicate', group: 'layers', label: layerWords('layers.duplicate'), where: onPick,
     available: (ctx) => ok(notBase(ctx) ?? addOff(ctx.project, useDrawingStore())), run: (ctx) => ctx.project.duplicateLayer(picked(ctx)) },
-  { id: 'layer.delete', group: 'layers', label: layerWords('layers.delete'), where: art,
+  { id: 'layer.delete', group: 'layers', label: layerWords('layers.delete'), where: onPick,
     available: (ctx) => ok(notBase(ctx) ?? pausedOff(useDrawingStore())), run: (ctx) => ctx.workspace.removeLayer(picked(ctx)) },
   // The base row picked, as a click picks it (off for an artist, and inside an art layer).
   { id: 'layer.pickBase', group: 'layers', label: layerWords('layers.pickBase'), where: art,
     available: ({ project }) => (useDrawingStore().mayDraw ? 'social.drawing.onlyHost' : project.artInside ? 'art.baseOff' : true),
     run: ({ workspace }) => workspace.pickLayer('base') },
   // The picked row's eye: Hide while it shows, Show while it's hidden.
-  { id: 'layer.hide', group: 'layers', label: layerWords('layers.hide'), where: (ctx) => art(ctx) && !hiddenPick(ctx),
+  { id: 'layer.hide', group: 'layers', label: layerWords('layers.hide'), where: (ctx) => onPick(ctx) && !hiddenPick(ctx),
     run: (ctx) => ctx.project.setLayerHidden(picked(ctx), true) },
-  { id: 'layer.show', group: 'layers', label: layerWords('layers.show'), where: (ctx) => art(ctx) && hiddenPick(ctx),
+  { id: 'layer.show', group: 'layers', label: layerWords('layers.show'), where: (ctx) => onPick(ctx) && hiddenPick(ctx),
     run: (ctx) => ctx.project.setLayerHidden(picked(ctx), false) },
 
   // VECTOR's: the stacking order (Forward and Back as their buttons, and to the front or back of the layer), and copies

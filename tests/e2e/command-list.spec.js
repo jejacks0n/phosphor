@@ -52,3 +52,24 @@ test('with a dialog open, Cmd+K (Ctrl+K) opens nothing', async ({ page }) => {
   await expect(list(page)).toBeHidden();
   await expect(shortcuts).toBeVisible();
 });
+
+// Rename and Dimensions hand focus on: the list gives it back to the art as it goes, and the row's box or the field must
+// still have it after, taking what's typed.
+test('from Edit Mode, Layer: Rename puts the picked row\'s name box in focus, and Dimensions the size field', async ({ page }) => {
+  await openApp(page);
+  await editAt(page, 2, 2);
+  await page.keyboard.press(MOD_K);
+  await page.keyboard.type('layer rename');
+  await page.keyboard.press('Enter');
+  await expect(list(page)).toBeHidden();
+  const box = page.getByRole('textbox', { name: /^Rename / });
+  await expect(box).toBeFocused();
+  await page.keyboard.type('Ink');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('.layers-list li.picked .name')).toHaveText('Ink');
+
+  await page.keyboard.press(MOD_K);
+  await page.keyboard.type('dimensions');
+  await page.keyboard.press('Enter');
+  await expect(page.locator('#cols')).toBeFocused();
+});
