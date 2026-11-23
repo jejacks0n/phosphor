@@ -102,13 +102,15 @@ async function join(room, sub, { guest = false } = {}) {
   return person;
 }
 
-// Invited, accepted, and with the project opened.
+// Invited, accepted, and with the project opened and drawn. mayDraw comes with the project, before its first render, and
+// paint has nowhere to go until that's done (paintEditPixels): a dab made sooner is no change at all.
 async function artist(room, sub) {
   const person = await join(room, sub);
   expect(room.drawing.invite(sub)).toBe(true);
   await expect.poll(() => person.drawing.invitation, PATIENT).toBe(true);
   person.drawing.accept();
   await expect.poll(() => person.drawing.mayDraw, PATIENT).toBe(true);
+  await settle(person.project);
   return person;
 }
 
