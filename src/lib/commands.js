@@ -92,12 +92,12 @@ const colorBox = (slot) => ({
   },
 });
 // The color steps: wherever the color pair shows (PIXEL and ANSI, not Monochrome ASCII's ANSI, which has no colors),
-// typing too. Moebius's Ctrl+arrows; a Mac keeps those for Spaces, so there they take Option too (and Ctrl+Option is
+// typing too, but not mid-stroke (one stroke draws in one color). Moebius's Ctrl+arrows; a Mac keeps those for Spaces, so there they take Option too (and Ctrl+Option is
 // bound on a Mac only: elsewhere it's AltGr, which types).
 const colorStep = (slot, delta, arrow) => ({
   title: said(`shortcuts.commands.${slot}${delta < 0 ? 'Prev' : 'Next'}`),
   keys: { mac: [`Ctrl+Alt+${arrow}`], other: [`Ctrl+${arrow}`] },
-  where: (ctx) => free(ctx) && !!ctx.project.image && ART.includes(ctx.view) && shut(ctx)
+  where: (ctx) => free(ctx) && !!ctx.project.image && ART.includes(ctx.view) && shut(ctx) && !ctx.workspace.isPainting
     && !(ctx.view === 'output' && ctx.project.renderStyle === 'ascii'),
   run: ({ project, workspace }) => stepColor(project, workspace, slot, delta),
 });

@@ -1222,7 +1222,7 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **Ctrl+↑** and **Ctrl+↓** (**Ctrl+Option+↑** and **↓** on a Mac, which keeps Ctrl+arrows for Spaces): Step the
   foreground color to the palette's previous or next color. **Ctrl+←** and **Ctrl+→** (**Ctrl+Option+←** and **→**) do
   the same for the background. They work in the PIXEL and ANSI views with any tool, typing in Edit Mode too, but not in
-  Monochrome ASCII, which has no colors.
+  Monochrome ASCII, which has no colors, or in the middle of a stroke.
 - **In the Color Picker**: The **arrow keys** move between the swatches (starting on the current color), **Enter**
   picks one and closes the picker, **Space** picks one and leaves it open, and **Escape** closes it.
 - **Pick from the screen** (the eyedropper beside **Swap**, in Chrome, Edge and the desktop app): Click it, then click
