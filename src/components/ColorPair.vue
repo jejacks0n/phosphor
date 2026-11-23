@@ -27,8 +27,6 @@ const shown = (hex) => {
   const v = Math.round(rgb2gray(hex2rgb(color)) * 255);
   return `rgb(${v}, ${v}, ${v})`;
 };
-// The foreground only means "none" for typing, in the ANSI view; paint always uses its color.
-const fgNone = computed(() => ansiView.value && workspace.editFgNone);
 
 const toggle = (slot) => {
   if (workspace.colorBox === slot && workspace.colorLayerPage === 'colors') workspace.colorBox = null;
@@ -47,7 +45,7 @@ const chip = (slot) => {
     if (hex && typeof hex === 'object') return { none: false, color: gradientCss(hex), title: t(`vector.${hex.type}${name === 'stroke' ? 'Stroke' : ''}ChipTitle`, { key }), aria: t(`vector.${name}`) };
     return { none: !hex, color: hex && shown(hex), title: t(hex ? `vector.${name}ChipTitle` : `vector.${name}NoneTitle`, { color: hex, key }), aria: t(`vector.${name}`) };
   }
-  const none = slot === 'fg' ? fgNone.value : workspace.editBgNone, hex = slot === 'fg' ? workspace.editFgColor : workspace.editBgColor;
+  const none = slot === 'fg' ? workspace.editFgNone : workspace.editBgNone, hex = slot === 'fg' ? workspace.editFgColor : workspace.editBgColor;
   return { none, color: none ? null : shown(hex), title: t(none ? `colors.${slot}NoneTitle` : `colors.${slot}Title`, { color: hex, key }), aria: t(`colors.${slot}Aria`) };
 };
 </script>

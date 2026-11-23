@@ -17,6 +17,7 @@ const brush = {
   altPicks: true,
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   preview: { shape: 'circle', size: (workspace) => workspace.editBrushSize },
+  nothingToLay: ({ workspace }) => (workspace.editFgNone ? 'tools.fgNone' : null), // it paints the foreground
   options: [
     { key: 'editBrushSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
     { key: 'editBrushOpacity', get label() { return t('tools.brush.opacity'); }, get title() { return t('tools.brush.opacityTitle'); }, min: 1, max: 100, unit: '%' },

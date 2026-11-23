@@ -9,7 +9,7 @@ import { cellWidth } from '@/lib/CharWidth';
 import { isFormField, isTextInput, typesIn } from '@/lib/fields';
 import { snapCursor } from '@/document/wideChars';
 import { t } from '@/i18n/index.js';
-import { refusesHidden } from '@/tools';
+import { refusesHidden, sayColorsKept } from '@/tools';
 import { refusedNoCells, sayBaseOnEveryFrame } from '@/store/project/shared.js';
 
 // Type one character at the Text tool's cursor and move right by its width (the keyboard and the
@@ -21,6 +21,7 @@ export function typeAtCursor(project, workspace, char) {
   const typed = project.typeAt(cursor.col, cursor.row, char, workspace.typingAttrs(), { mode: workspace.typingMode });
   if (typed === false) toast(t('palette.wideLastColToast'));
   if (!typed) return; // false, or nothing at all: refused while paused
+  sayColorsKept({ workspace });
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
 }
 

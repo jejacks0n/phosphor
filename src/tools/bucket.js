@@ -181,6 +181,16 @@ export default {
     { key: 'activeChar', get label() { return t('tools.matchToggles.char'); }, type: 'char', views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' && ws.bucketSet.char },
     FILL_WITH,
   ],
+  // Normal paints the foreground; Cells writes what Set lights, a None color keeping the cell's, so with only None
+  // colors lit it would write nothing (and clear the paint under the area).
+  nothingToLay({ workspace, view }) {
+    if (!fillsCells(workspace, view)) return workspace.editFgNone ? 'tools.fgNone' : null;
+    const { fg, bg, char } = workspace.bucketSet;
+    if (char || (fg && !workspace.editFgNone) || (bg && !workspace.editBgNone)) return null;
+    return fg && bg ? 'tools.colorsNone' : fg ? 'tools.fgNone' : bg ? 'tools.bgNone' : null;
+  },
+  // With Char alone lit it sets no colors anyway, so None has nothing to say there.
+  writesChars: ({ workspace, view }) => fillsCells(workspace, view) && workspace.bucketSet.char && (workspace.bucketSet.fg || workspace.bucketSet.bg),
   // One click fills, with no stroke to continue; a click outside the selection does nothing.
   begin(ctx, pos, event) {
     if (!ctx.project.renderer.outputCanvas) return false;

@@ -37,6 +37,9 @@ const pencil = {
     },
   ],
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
+  // Its paint is the foreground; its lines are characters.
+  nothingToLay: (ctx) => (!drawsLines(ctx) && ctx.workspace.editFgNone ? 'tools.fgNone' : null),
+  writesChars: drawsLines,
   // no preview: the crosshair cursor is enough for 1px
   begin(ctx, pos, event) {
     const from = (event?.shiftKey && ctx.workspace.strokeEnd) || pos;

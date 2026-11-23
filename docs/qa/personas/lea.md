@@ -210,10 +210,11 @@ column to see the words change, switch the theme, and open About.
 - Does: picks the Brush, picks a color from the color pair, and paints a few strokes with a finger.
 - Expects: the color box opens fitting the screen, and a pick closes it or shows which color she has; the strokes land
   where her finger went, after the short wait a touch has (in case of a pinch), on the picture itself (Base is
-  picked); each stroke is one undo step ([Other tools](../../layers.md#other-tools),
-  [Drawing on the Base](../../layers.md#drawing-on-the-base)).
+  picked); each stroke is one undo step; with the foreground set to None a stroke paints nothing and a toast says why
+  ([Other tools](../../layers.md#other-tools), [Drawing on the Base](../../layers.md#drawing-on-the-base),
+  [None](../../layers.md#color-keys)).
 - Probes: `back-out`: open the color box and tap outside it; `speed`: scribble fast with `qa.frames`; `out-of-order`:
-  pick a color of None and paint.
+  set the foreground to None and paint.
 - Rated: no (drawing)
 
 ### 13. Write a caption

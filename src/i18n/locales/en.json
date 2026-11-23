@@ -470,6 +470,10 @@
     "keysOr": "{a} or {b}",
     "paintOff": "Paint is off: this drawing's font, {name}, has no lower half block, and paint is drawn in it. Give the font one on the Fonts page.",
     "moreTools": "More tools",
+    "fgNone": "Your foreground color is None, so there’s nothing to paint. Choose a color first.",
+    "bgNone": "Your background color is None, so there’s nothing to paint. Choose a color first.",
+    "colorsNone": "Your foreground and background colors are both None, so there’s nothing to paint. Choose a color first.",
+    "colorsKept": "Your foreground and background colors are both None, so the characters keep the colors already there.",
     "groups": {
       "fill": "Fill tools",
       "select": "Selection tools",

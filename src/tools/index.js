@@ -17,6 +17,10 @@
  *              every frame (sayBaseOnEveryFrame).
  *   cancel?(ctx)  end without applying (a second finger landed: a pinch); without it, end(ctx)
  *   keydown?(ctx, event) -> true when the tool took the key (useKeyboardShortcuts asks it first)
+ *   nothingToLay?(ctx) -> the words (an i18n key) for why a press would put nothing down, a color it paints in being
+ *              None (the foreground, for paint); begin is refused with them in a toast
+ *   writesChars?(ctx) -> true when it writes characters, which keep a cell's color for a side that's None: with both
+ *              None a toast says the characters keep the colors already there, and the press goes on
  * ctx = { project, workspace, view, unit (CSS px per grid pixel, { x, y }) }; positions are fractional grid pixels.
  */
 import pencil from './pencil';
@@ -60,6 +64,11 @@ export function refusesHidden({ project, workspace, view }) {
   return true;
 }
 
+// Characters written with both colors None keep the colors already there, which a toast says (typing too).
+export function sayColorsKept({ workspace }, writesChars = true) {
+  if (writesChars && workspace.editFgNone && workspace.editBgNone) toast(t('tools.colorsKept'));
+}
+
 // The paint tools that turn off while the drawing's font has no lower half block (project.paintOff); plugin brushes,
 // which paint too, turn off with them.
 export const PAINT_OFF_TOOLS = ['pencil', 'brush', 'bucket', 'shapes', 'gradient', 'blur', 'dodge', 'burn'];
@@ -76,6 +85,12 @@ function guardBegin(tool) {
       return false;
     }
     if (refusesHidden(ctx) || refusedNoCells(ctx.project)) return false;
+    const nothing = tool.nothingToLay?.(ctx);
+    if (nothing) {
+      toast(t(nothing));
+      return false;
+    }
+    sayColorsKept(ctx, tool.writesChars?.(ctx));
     sayBaseOnEveryFrame(ctx.project);
     return begin.call(tool, ctx, ...rest);
   };

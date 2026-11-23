@@ -470,6 +470,10 @@
     "keysOr": "{a} ou {b}",
     "paintOff": "La peinture est désactivée : la police de ce dessin, {name}, n'a pas de demi-bloc inférieur, et la peinture est dessinée avec. Ajoutez-en un à la police sur la page Polices.",
     "moreTools": "Plus d'outils",
+    "fgNone": "Votre couleur de premier plan est Aucun : il n’y a rien à peindre. Choisissez d’abord une couleur.",
+    "bgNone": "Votre couleur d’arrière-plan est Aucun : il n’y a rien à peindre. Choisissez d’abord une couleur.",
+    "colorsNone": "Vos couleurs de premier plan et d’arrière-plan sont toutes deux Aucun : il n’y a rien à peindre. Choisissez d’abord une couleur.",
+    "colorsKept": "Vos couleurs de premier plan et d’arrière-plan sont toutes deux Aucun : les caractères gardent les couleurs déjà en place.",
     "groups": {
       "fill": "Outils de remplissage",
       "select": "Outils de sélection",

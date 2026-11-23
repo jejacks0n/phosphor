@@ -967,8 +967,8 @@ swaps the two halves of each cell's base colors.
 ## Other Tools
 
 - **Shapes** (**U**): **Rectangle**, **Ellipse** or **Line**. They draw their outline in the foreground color and fill
-  the inside with the background color; set the background to None for an outline only. In the ANSI view, **Draw
-  with** chooses how:
+  the inside with the background color; set the background to None for an outline only, or the foreground for the fill
+  alone ([None](#color-keys)). In the ANSI view, **Draw with** chooses how:
   - **Single line** and **Double line** (rectangles and lines; an ellipse set to them draws as Half-block): box-drawing
     frames. With **Connect** on, a box joins its frame to the lines it crosses or meets, the ones you can see: a line
     hidden under paint isn't joined.
@@ -1176,6 +1176,13 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   While the side is **None**, the label beside it says None and the color it shows is the one None was laid over (black,
   for a new drawing's background). Pressing it chooses that color at once, so black is one press away, and whatever you
   pick in it after replaces it.
+- **None**: Either side can be **None**, in every view, and None leaves what's there. Typing, line boxes, a Character
+  shape and the Paint Bucket's **Cells** write characters, and a side set to None keeps the cell's own color (with
+  only None colors lit in **Set**, **Cells** fills nothing and says why). The Brush, the Pencil's paint and the Paint
+  Bucket's **Normal** paint in the foreground color, so with it None they paint nothing and say why. A shape painted
+  or drawn in blocks with the foreground None is its fill alone, its edge in the background color too; with both None,
+  or a line with the foreground None, it draws nothing and says why. With both None, typing still types, and a line
+  box or a Character shape still draws, in the colors already there, and a toast says so.
 - **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch, in the grid and in **Recent**, paints
   its palette color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
