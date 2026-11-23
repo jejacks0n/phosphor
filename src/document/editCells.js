@@ -207,6 +207,27 @@ export function shiftRow(map, row, fromCol, delta, cols) {
   return result;
 }
 
+// A map of cells ('col,row' keys: a layer's entries, the base's pins) with the line and column moves made (shared.js:
+// lineMoves, [{ span, from, dx, dy }] in cell rects): what's in from goes dx, dy along, the rest of span is left empty,
+// and what would land outside span (past the grid's edge) goes. One pass over the map, whatever the moves; the map
+// itself when none of its keys is in a span.
+export function moveCells(map, moves) {
+  const inside = (rect, col, row) => !!rect && col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1;
+  const gone = [], landed = [];
+  for (const [key, value] of map) {
+    const { col, row } = parseKey(key), move = moves.find(({ span }) => inside(span, col, row));
+    if (!move) continue;
+    gone.push(key);
+    const to = { col: col + move.dx, row: row + move.dy };
+    if (inside(move.from, col, row) && inside(move.span, to.col, to.row)) landed.push([cellKey(to.col, to.row), value]);
+  }
+  if (!gone.length) return map;
+  const out = new Map(map);
+  for (const key of gone) out.delete(key);
+  for (const [key, value] of landed) out.set(key, value);
+  return out;
+}
+
 // A bake burns the color transforms (params) into an entry's colors, so it looks as it did once
 // the sliders are back at neutral; its character is kept. The palette isn't burnt in: it still
 // applies at display.

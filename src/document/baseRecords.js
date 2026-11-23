@@ -8,7 +8,7 @@
  * pin: the 256-color index its cell's color was given when a lower index shares the color (xterm's 16 and 231, as edit
  * cells' fgIndex and bgIndex), so the export writes it back.
  */
-import { cellKey, parseKey } from './editCells.js';
+import { cellKey, moveCells, parseKey } from './editCells.js';
 import { cellAt } from '../lib/Cells.js';
 import { usableChar } from '../lib/CharWidth.js';
 
@@ -43,6 +43,12 @@ export function withoutPins(records, cells) {
   const pins = new Map(records.pins), indexes = new Map(records.indexes);
   keys.forEach(key => { pins.delete(key); indexes.delete(key); });
   return make(pins, indexes);
+}
+
+// The records with line and column moves made (moveCells): each pin goes with its indexes.
+export function movePins(records, moves) {
+  const pins = moveCells(records.pins, moves);
+  return pins === records.pins ? records : make(pins, moveCells(records.indexes, moves));
 }
 
 // The records on a resized grid (cols x rows grid pixels), following the picture the way the paint

@@ -8,14 +8,15 @@ import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { loadImage } from '@/document/projectIO.js';
 import { findUniform, markUniform } from '@/lib/ImageProcessor.js';
 import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
-import { MAX_CELLS, cellIndex, halfColors, mix, opensToPaint } from '@/lib/Cells.js';
+import { MAX_CELLS, cellIndex, charRowsOf, halfColors, mix, opensToPaint } from '@/lib/Cells.js';
+import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { withoutPins } from '@/document/baseRecords.js';
-import { isFrozen } from '@/document/editCells.js';
+import { cellKey, isFrozen } from '@/document/editCells.js';
 import { plainActions } from '@/store/project/combineActions.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
@@ -241,6 +242,36 @@ export function pastEdge(project, row) {
     project._pastEdge = { at, rows };
   };
   return { was, keep };
+}
+
+// A line or column step (insertLine, deleteLine, insertColumn, deleteColumn) moves the picked layer's rows out from under
+// what typing pushed past their edge (pastEdge), so the layer's memory of it goes, with the step: its undo puts it back.
+export function forgetPastEdge(project) {
+  const rows = project._pastEdge?.rows, mine = `${project.editId}|`;
+  if (project._artInside || !rows || ![...rows.keys()].some((name) => name.startsWith(mine))) return;
+  const stroke = project._stroke;
+  if (stroke && stroke.pastEdge === undefined) stroke.pastEdge = project._pastEdge;
+  project._pastEdge = { at: project._pastEdge.at, rows: new Map([...rows].filter(([name]) => !name.startsWith(mine))) };
+}
+
+// The moves a line or column step makes on the picked layer, a line (axis 'row') or column ('col') put in at at (delta 1)
+// or taken out there (-1): [{ span, from, dx, dy }], span the cell rect that changes, from the part of it that moves (null:
+// none) by dx, dy; what would move past the grid's edge goes, and the line or column left behind is empty. A column
+// starts a column early on a row where the layer's own character there (an entry, on the base a pin) is wide, so the
+// character moves, or goes, whole. None for a line or column off the grid.
+export function lineMoves(project, axis, at, delta) {
+  const { cols } = project, last = charRowsOf(project.rows) - 1, rows = axis === 'row';
+  const move = (span) => ({ span, from: delta > 0 ? span : project.clipRect(rows ? { ...span, r0: span.r0 + 1 } : { ...span, c0: span.c0 + 1 }), dx: rows ? 0 : delta, dy: rows ? delta : 0 });
+  if (rows) return at >= 0 && at <= last ? [move({ c0: 0, r0: at, c1: cols - 1, r1: last })] : [];
+  if (at < 0 || at >= cols) return [];
+  const own = onBottom(project) ? (col, row) => project.baseRecords.pins.get(cellKey(col, row)) : (col, row) => project.editCells.get(cellKey(col, row))?.char;
+  const spans = [];
+  for (let row = 0; row <= last; row++) {
+    const lead = at > 0 && own(at - 1, row), c0 = lead && cellWidth(lead) === 2 ? at - 1 : at, run = spans.at(-1);
+    if (run?.c0 === c0) run.r1 = row;
+    else spans.push({ c0, r0: row, c1: cols - 1, r1: row });
+  }
+  return spans.map(move);
 }
 
 // Cells layer id's data (or the bottom's, baseFields) becomes the edit layer's fields (editCells, paintLayer, hasPaint) as

@@ -3,7 +3,7 @@
 // being applied) and _typingTimer (the pause that ends a typing run). With the base picked (onBottom)
 // it all goes on the base: a cell written as it then shows (completeAt, writeBaseCells), paint as base
 // pixels, and a row pushed along by typing as shiftBaseCells moves it.
-import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, isFrozen, isLaid, isPaintBlock, ownEntry } from '@/document/editCells.js';
+import { cellKey, parseKey, withCellEdit, mergeEntry, withoutCells, shiftRow, moveCells, isFrozen, isLaid, isPaintBlock, ownEntry } from '@/document/editCells.js';
 import { overwritesAll } from '@/document/wideChars.js';
 import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
@@ -14,7 +14,9 @@ import { cellWidth } from '@/lib/CharWidth.js';
 import { fitFont } from '@/lib/BitmapFont.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { TYPING_PAUSE_MS, bytesHeld, onBottom, over, ownHalves, pastEdge, readsOf, refusedHidden, refusedNoCells, takePins, ownColored } from '@/store/project/shared.js';
+import { TYPING_PAUSE_MS, bytesHeld, forgetPastEdge, lineMoves, onBottom, over, ownHalves, pastEdge, readsOf, refusedHidden, refusedNoCells, takePins, ownColored } from '@/store/project/shared.js';
+import { toast } from '@/composables/useToast';
+import { t } from '@/i18n';
 
 // A typed character with the colors it's typed in. A space has no ink, so it takes the background alone: the cell keeps
 // the foreground it had (on the base that's its lower pixel, which the PIXEL view shows; on a layer a color no one sees
@@ -199,6 +201,19 @@ export const editLayerActions = {
     const k = this.cells[cellIndex(col, row, this.cols)]?.wide === 'lead' ? 2 : 1;
     this.typing(() => this.shiftCells(row, col + k, -k, { paint: mode === 'insert' }));
   },
+
+  // Lines and columns (Edit mode's Alt+arrows, Moebius's Insert Row and the rest): a line put in at row, pushing the lines
+  // from there down, or taken out, pulling the ones below up; a column the same, right and left. Each moves everything the
+  // picked layer has, and only that layer, as Insert typing moves a row (shiftCells with paint): every entry and the paint,
+  // on the base every cell's pixels and pin (shiftBaseLines, shiftBaseColumns). The grid keeps its size, what's pushed past
+  // the bottom or right edge goes, and the layer's memory of what typing pushed past the edge goes too (forgetPastEdge).
+  // One undo step each, and in a room an edit like any other; the cursor stays where it is. False when refused: no cells
+  // layer, a hidden one (with its toast), a line or column off the grid, or the base for an artist; paused, the guard's
+  // undefined.
+  insertLine(row) { return lineStep(this, 'row', row, 1); },
+  deleteLine(row) { return lineStep(this, 'row', row, -1); },
+  insertColumn(col) { return lineStep(this, 'col', col, 1); },
+  deleteColumn(col) { return lineStep(this, 'col', col, -1); },
 
   // A run of typing is one undo step (editRun).
   typing(fn) {
@@ -418,6 +433,49 @@ function paintReader(paint, cells) {
     c0 = Math.min(c0, col); c1 = Math.max(c1, col); r0 = Math.min(r0, row); r1 = Math.max(r1, row);
   }
   return paint.pixelsIn(c0, 2 * r0, c1, 2 * r1);
+}
+
+// A line or column step (insertLine and the others): refused as drawing on the layer is, then one step of its own.
+function lineStep(project, axis, at, delta) {
+  if (refusedNoCells(project)) return false;
+  if (project.layerHidden(project.drawsOn)) { // as drawing on it is (tools: refusesHidden)
+    toast(t('layers.hiddenToast'));
+    return false;
+  }
+  project.commitPending(); // a run of typing is a step of its own
+  if (onBottom(project)) {
+    if (!(axis === 'row' ? project.shiftBaseLines(at, delta) : project.shiftBaseColumns(at, delta))) return false;
+  } else {
+    const moves = lineMoves(project, axis, at, delta);
+    if (!moves.length) return false;
+    project.ensureLayer();
+    project.beginEdit();
+    forgetPastEdge(project);
+    moveLayer(project, moves);
+  }
+  project.commitEdit();
+  return true;
+}
+
+// A cells layer's entries and paint with lineMoves' moves made. Inside an art layer they're its drawing, which commitArt
+// reads back (too big: refused there, and nothing changes).
+function moveLayer(project, moves) {
+  const paint = project.paintLayer, pixels = [];
+  let painted = false;
+  for (const { span, from, dx, dy } of moves) {
+    for (let row = span.r0; row <= span.r1; row++) for (let x = span.c0; x <= span.c1; x++) pixels.push({ x, y: 2 * row }, { x, y: 2 * row + 1 });
+    if (!paint?.hasPaintIn(span)) continue;
+    painted = true;
+    const block = from && paint.copyCells(from);
+    paint.eraseCells(span);
+    if (block) paint.pasteCells(block, from.c0 + dx, from.r0 + dy, from.c1 - from.c0 + 1, from.r1 - from.r0 + 1, span);
+  }
+  const next = moveCells(project.editCells, moves);
+  if (next === project.editCells && !painted) return;
+  project.noteDrawn(pixels);
+  if (painted) project.hasPaint = paint.hasPaint;
+  project.editCells = next; // the whole map: the slice scans it, as for any edit that commits at once
+  project.recomposeEdit(pixels, { composited: painted });
 }
 
 // The frozen cells (docs/model.md R3: Merge down's pinned conversion of the paint under them) among the cells the grid

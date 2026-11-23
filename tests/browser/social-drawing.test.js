@@ -219,6 +219,41 @@ test('host and artist end with equal edit layers after crossing strokes', async 
   for (let i = 0; i < 12; i++) expect(painted(ann.project, 2 * i, 20)).toEqual(painted(room.project, 2 * i, 20));
 });
 
+// Lines and columns (editLayer.js: insertLine and the others) are edits like any other in a room.
+test('the host puts in a line and takes out a column: every artist\'s layer and base match the host\'s', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  for (let i = 0; i < 4; i++) room.project.editCell(i, i, { char: 'H' });
+  dab(room.project, 0, 2);
+  room.project.commitEdit();
+  room.project.beginEdit();
+  room.project.writeBaseCells([{ col: 5, row: 1, char: 'b', fg: '#ff0000', bg: '#000000' }]);
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  setActivePinia(room.pinia);
+  expect(room.project.insertLine(1)).toBe(true);
+  expect(room.project.deleteColumn(0)).toBe(true);
+  await allMatch(room, ann);
+  expect(char(ann.project, 0, 2)).toBe('H');
+  expect(workspaceOf(room).pickLayer('base')).toBe(true);
+  expect(room.project.insertLine(0)).toBe(true);
+  await expect.poll(() => JSON.stringify([...ann.project.baseRecords.pins]), PATIENT).toBe(JSON.stringify([...room.project.baseRecords.pins]));
+  expect(room.project.baseRecords.pins.get('5,2')).toBe('b'); // only the layer lost a column
+});
+
+test('an artist with the base in use is refused a line or column, and nothing moves', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  setActivePinia(ann.pinia);
+  ann.project.useLayer('base');
+  expect(ann.project.editId).toBe('base');
+  const records = ann.project.baseRecords, version = ann.project.history.version;
+  expect(ann.project.insertLine(0)).toBe(false);
+  expect(ann.project.deleteColumn(0)).toBe(false);
+  expect(ann.project.baseRecords).toBe(records);
+  expect(ann.project.history.version).toBe(version);
+});
+
 // The stack is the host's, made before the room went live (startRoom's go-live check isn't in a store's sharing); each
 // artist draws on a layer of their own at the same cells.
 test('two artists paint and type on two layers at once, and every page matches', async () => {

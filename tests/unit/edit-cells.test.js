@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock, isLaid,
+  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock, isLaid, moveCells,
 } from '../../src/document/editCells.js';
 
 test('Edit cell map: merge/remove semantics, grid-position keys, (de)serialization and the migration of older index-keyed char edits', async () => {
@@ -160,4 +160,14 @@ test('R1: a laid cell keeps its mark while it moves whole, and loses it when a c
   assert.equal(isLaid(cleanEntry({ char: '▌', laid: true })), true);
   assert.equal(cleanEntry({ char: '▌', laid: 'yes' }).laid, undefined);
   assert.equal(deserializeEditCells(serializeEditCells(new Map([['1,1', laid]]))).get('1,1').laid, true); // saved and reopened
+});
+
+test('moveCells: what\'s in from moves along, the rest of span empties, what lands past it goes, and the rest stays', () => {
+  const map = new Map([['0,0', 'a'], ['0,1', 'b'], ['0,2', 'c'], ['3,3', 'z']]);
+  const span = { c0: 0, r0: 1, c1: 2, r1: 2 };
+  // a line put in at 1: 1 and 2 move down, and 2 goes past the edge
+  assert.deepEqual([...moveCells(map, [{ span, from: span, dx: 0, dy: 1 }])], [['0,0', 'a'], ['3,3', 'z'], ['0,2', 'b']]);
+  // a line taken out at 1: 2 moves up over it
+  assert.deepEqual([...moveCells(map, [{ span, from: { ...span, r0: 2 }, dx: 0, dy: -1 }])], [['0,0', 'a'], ['3,3', 'z'], ['0,1', 'c']]);
+  assert.equal(moveCells(map, [{ span: { c0: 1, r0: 0, c1: 2, r1: 2 }, from: null, dx: 1, dy: 0 }]), map); // nothing in it
 });

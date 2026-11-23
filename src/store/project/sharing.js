@@ -44,6 +44,7 @@ const HIDDEN_TAB_MS = 100; // a hidden tab has no frames, and still has to catch
 // to the document, and Deselect goes on working.
 export const DRAWING_ACTIONS = [
   'paintEditPixels', 'putEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'editRun', 'shiftCells',
+  'insertLine', 'deleteLine', 'insertColumn', 'deleteColumn', 'shiftBaseLines', 'shiftBaseColumns',
   'writeEditCells', 'writeBlocks', 'colorsOnlyCells', 'clearEditCells', 'unlockCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'selectionEdit',
@@ -55,7 +56,7 @@ export const DRAWING_ACTIONS = [
 
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
-  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'shiftBaseCells', 'paintBasePixels', 'addPictureToLayer',
+  'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'shiftBaseCells', 'shiftBaseLines', 'shiftBaseColumns', 'paintBasePixels', 'addPictureToLayer',
   'bake', 'flattenDrawing', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars', 'setDrawingFont', 'setDrawingFontWidth',
   'updateCols', 'updateRows',
