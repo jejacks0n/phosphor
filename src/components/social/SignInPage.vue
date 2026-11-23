@@ -52,11 +52,13 @@ async function signInWith(provider) {
       <p v-if="error" class="error" role="alert">{{ error }}</p>
     </form>
     <hr>
-    <p class="foot"><button class="link inline" @click="social.page = 'forgot'">{{ t('social.auth.forgotPassword') }}</button></p>
-    <i18n-t keypath="social.lobby.noAccount" tag="p" class="foot">
-      <template #create>
-        <button class="link inline" @click="social.page = 'create'">{{ t('social.lobby.createOne') }}</button>
-      </template>
-    </i18n-t>
+    <div class="foot-row">
+      <i18n-t keypath="social.lobby.noAccount" tag="p" class="foot">
+        <template #create>
+          <button class="link inline" @click="social.page = 'create'">{{ t('social.lobby.createOne') }}</button>
+        </template>
+      </i18n-t>
+      <p class="foot"><button class="link inline" @click="social.page = 'forgot'">{{ t('social.auth.forgotPassword') }}</button></p>
+    </div>
   </div>
 </template>

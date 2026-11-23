@@ -62,7 +62,7 @@ test('out of a room it has LAYERS and Social (marked Beta); its edge\'s keys res
   expect([turned(), arrow().getAttribute('aria-label'), arrow().getAttribute('aria-expanded')]).toEqual(['0deg', 'Collapse panel', 'true']);
   expect(arrow().parentElement.matches('.side-panel div.tabs')).toBe(true);   // at the right end of the panel's tabs
   const mid = (el) => (el.getBoundingClientRect().top + el.getBoundingClientRect().bottom) / 2;
-  expect(arrow().getBoundingClientRect().top - arrow().parentElement.getBoundingClientRect().top).toBeCloseTo(8.5, 1);   // 2px lower than it was, nearer the « folded
+  expect(arrow().getBoundingClientRect().top - arrow().parentElement.getBoundingClientRect().top).toBeCloseTo(10.5, 1);   // 4px lower than it was
   const layers = host.querySelector('.side-panel [role=tab]'), word = document.createRange();
   word.selectNodeContents(layers);
   expect(mid(word) - mid(layers)).toBeCloseTo(2, 0);   // a tab's word sits 2px under its middle

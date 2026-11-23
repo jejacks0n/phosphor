@@ -237,6 +237,31 @@ div.people-forms div.form-page p.foot {   /* the links after the form, past its 
 div.people-forms div.form-page hr + p.foot {
   margin: 0;
 }
+div.people-forms div.form-page div.foot-row {   /* Sign in's two: No account? at the left, Forgot your password? at the right */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 16px;
+}
+div.people-forms div.form-page div.foot-row p.foot {
+  margin: 0;
+}
+/* A page that starts with its heading has it where a box's title goes, 18px in, and the × on its line, short of it: the
+   head that held the × alone takes no room. (A notice over the page, or a page that starts with Cancel, keeps the ×'s own
+   line.) */
+dialog:has(div.people-forms > div.form-page:first-child > h2:first-child) > div.head {
+  min-height: 0;
+  padding: 0;
+}
+dialog:has(div.people-forms > div.form-page:first-child > h2:first-child) > div.head > button.close {
+  top: 13px;
+}
+dialog:has(div.people-forms > div.form-page:first-child > h2:first-child) > div.body {
+  padding-top: 18px;
+}
+div.people-forms > div.form-page:first-child > h2:first-child {
+  padding-right: 24px;
+}
 div.people-forms div.form-page div.turnstile:empty {
   display: none;
 }
