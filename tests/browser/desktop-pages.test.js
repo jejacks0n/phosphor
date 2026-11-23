@@ -46,7 +46,7 @@ async function mount(component, before = () => {}, props = {}) {
   await nextTick();
   return { room, social };
 }
-const button = (name, within = host) => [...within.querySelectorAll('button')].find((b) => b.textContent.trim() === name);
+const button = (name, within = host) => [...within.querySelectorAll('button')].find((b) => (b.textContent.trim() || b.getAttribute('aria-label')) === name); // an icon's by its label
 const field = (label, within = host) => [...within.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(label))?.querySelector('input, textarea');
 const type = async (input, text) => {
   input.value = text;
@@ -159,7 +159,7 @@ test('the name gate\'s help is the name field\'s description; Copy, Let in and T
   app.unmount();
   host.remove();
   await mount(HostRoomPage, hosting({ addresses: ['192.168.1.20:31337'], asks: [{ ask: 'a1', sub: 'wren-sub', name: 'wren' }] }));
-  expect(button('Copy').getAttribute('aria-label')).toBe('Copy 192.168.1.20:31337');
+  expect(button('Copy 192.168.1.20:31337').querySelector('svg')).toBeTruthy(); // an icon, named for its address
   expect(button('Let in').getAttribute('aria-label')).toBe('Let wren in');
   expect(button('Turn away').getAttribute('aria-label')).toBe('Turn wren away');
 });
@@ -245,7 +245,9 @@ test('HostRoomPage desktop lists addresses with copy buttons and the three notes
   expect(rows.map((li) => !!li.querySelector('.tag')?.textContent.includes('Tailscale'))).toEqual([false, true, false]);   // 100.64.0.0/10 only
 
   const copied = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue();
-  button('Copy', rows[1]).click();
+  const copy = button('Copy 100.101.2.3:31337', rows[1]);
+  expect(copy.previousElementSibling.textContent).toBe('100.101.2.3:31337'); // right after its address
+  copy.click();
   await vi.waitFor(() => expect(button('Copied', rows[1])).toBeTruthy());
   expect(copied).toHaveBeenCalledWith('100.101.2.3:31337');
 
@@ -253,8 +255,7 @@ test('HostRoomPage desktop lists addresses with copy buttons and the three notes
   expect(host.textContent).toContain('Over the internet, forward port 31337 on your router.');
   expect(host.textContent).toContain('The connection isn\'t encrypted.');
   expect(host.textContent).not.toContain('Only this computer can join');
-  for (const words of ['Allow guests', 'Listed in the lobby', 'Only with the link', 'Send the link', 'Copy link']) expect(host.textContent).not.toContain(words);
-  expect(host.textContent).toContain('Password set');
+  for (const words of ['Allow guests', 'Listed in the lobby', 'Only with the link', 'Send the link', 'Copy link', 'Password set']) expect(host.textContent).not.toContain(words);
 });
 
 test('HostRoomPage desktop: no addresses shows the loopback note', async () => {

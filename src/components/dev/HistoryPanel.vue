@@ -50,7 +50,6 @@ ol {
   padding: 4px 8px;
   overflow: auto;
   list-style: none;
-  font-family: var(--display-font-family);
   font-size: 11px;
   line-height: 1.5;
   color: var(--text-dim);

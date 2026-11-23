@@ -1694,11 +1694,7 @@
         "removed": "Removed"
       },
       "roomSettings": "Room settings",
-      "kickGuests": "Also remove the guest currently in the room | Also remove the {count} guests currently in the room",
-      "setAtStart": "Set when the room started",
-      "listedInLobby": "Listed in the lobby",
-      "onlyWithLink": "Only with the link",
-      "passwordSet": "Password set"
+      "kickGuests": "Also remove the guest currently in the room | Also remove the {count} guests currently in the room"
     },
     "cameBy": {
       "heading": "Who came by",
@@ -1738,7 +1734,6 @@
       "hostHeading": "Host a room",
       "address": "Address",
       "ipSeen": "The people you connect with see your IP address.",
-      "copy": "Copy",
       "copyAddress": "Copy address",
       "copyAria": "Copy {address}",
       "letInAria": "Let {name} in",

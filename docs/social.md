@@ -229,8 +229,8 @@ it, as it does for a video. It can sleep again once you've left the room.
 
 **Settings and stats** opens your room's dashboard in a box:
 
-- **The top**: the room's name, **Live for** (H:MM:SS since it went live; a reconnect or a reload doesn't restart it),
-  **Copy link** and **End room**. The link is shown under them. For an unlisted room, send it to the people you want
+- **The top**: the room's name and **Live for** (H:MM:SS since it went live; a reconnect or a reload doesn't restart it).
+  Under them, the link with a copy button right after it, and **End room** at the right. For an unlisted room, send it to the people you want
   in, with the password if it has one. Following a link asks **Join this room?** first (**Join** or **Not now**),
   since joining shows the host your IP address.
 - **The numbers**, counted by your browser for this room only and gone with it:
@@ -245,8 +245,8 @@ it, as it does for a video. It can sleep again once you've left the room.
   the card show just what the frame shows. Scrolling while it's checked moves it; unchecking follows your view again.
   The choice lasts as long as the room.
 - **Room settings**: **Welcome message**, **Allow guests**, **Max watchers** and, for a public room, **Signal**, with
-  **Save**. Under them, **Set when the room started**: **Listed in the lobby** or **Only with the link**, and
-  **Password set**. Those can't change while the room is live. What you've typed stays when you visit another tab,
+  **Save**. Whether the room is listed and its password were set when it started and can't change while it's live.
+  What you've typed stays when you visit another tab,
   and a field you're halfway through typing in stays as it is when the setting changes meanwhile.
 - **Turning guests off** while you're live: no new guest gets in, and a guest who leaves can't come back. The guests
   already here stay, unless you tick **Also remove the 2 guests currently in the room** before you save.

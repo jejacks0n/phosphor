@@ -9,12 +9,13 @@ import EndRoomDialog from './EndRoomDialog.vue';
 import LobbyPicture from './LobbyPicture.vue';
 import CameBy from './CameBy.vue';
 import JoinAsks from './JoinAsks.vue';
+import { COPY, CHECK } from '@/components/icons';
 
-// The room you host, as a dashboard: its name and how long it's been live, Copy link and End room (which
-// asks first), the session's five numbers, its settings with the facts that can't change, and who came by. One status
+// The room you host, as a dashboard: its name and how long it's been live, its link with a copy button beside it and End
+// room (which asks first) at the right, the session's five numbers, its settings, and who came by. One status
 // region, always there, says Reconnecting… (seen; also while connecting a room that has been live: a reload
 // bringing it back) and Copied or Saved (which their buttons show).
-// On desktop there's no link or lobby: the addresses others can join at, each with its Copy (127.0.0.1 when this
+// On desktop there's no link or lobby: the addresses others can join at, each with its copy button (127.0.0.1 when this
 // computer has no network), what to know about them, and the joins waiting for a yes; no guests and no listing.
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const room = useRoomStore();
@@ -116,8 +117,7 @@ const save = () => {
     <header>
       <h2>{{ room.room.name }}</h2>
       <span v-if="room.session.liveSince" class="live">{{ t('social.host.liveFor', { duration: liveFor }) }}</span>
-      <span class="actions">
-        <button v-if="!DESKTOP" @click="copyLink">{{ done === 'copied' ? t('common.copied') : t('common.copyLink') }}</button>
+      <span v-if="DESKTOP" class="actions">   <!-- on the web, beside the link -->
         <button ref="endButton" class="danger" @click="ending = true">{{ t('social.host.endRoom') }}</button>
       </span>
     </header>
@@ -127,8 +127,14 @@ const save = () => {
       <ul class="addresses" :aria-label="t('social.desktop.addressesAria')">
         <li v-for="address in addresses" :key="address">
           <span class="link-text address">{{ address }}</span>
+          <button
+              class="icon copy"
+              :aria-label="done === 'copied' && copiedAddress === address ? t('common.copied') : t('social.desktop.copyAria', { address })"
+              :title="done === 'copied' && copiedAddress === address ? t('common.copied') : t('social.desktop.copyAria', { address })"
+              @click="copyAddress(address)"
+              v-html="done === 'copied' && copiedAddress === address ? CHECK : COPY"
+          />
           <span v-if="tailscale(address)" class="tag">Tailscale</span>
-          <button :aria-label="t('social.desktop.copyAria', { address })" @click="copyAddress(address)">{{ done === 'copied' && copiedAddress === address ? t('common.copied') : t('social.desktop.copy') }}</button>
         </li>
       </ul>
       <p v-if="!room.addresses.length" class="help">{{ t('social.desktop.loopbackOnly') }}</p>
@@ -139,7 +145,21 @@ const save = () => {
       </ul>
     </template>
     <template v-else>
-      <p class="link"><span class="link-text">{{ room.link }}</span></p>
+      <div class="link-row">
+        <p class="link">
+          <span class="link-text">{{ room.link }}</span>
+          <button
+              class="icon copy"
+              :aria-label="done === 'copied' ? t('common.copied') : t('common.copyLink')"
+              :title="done === 'copied' ? t('common.copied') : t('common.copyLink')"
+              @click="copyLink"
+              v-html="done === 'copied' ? CHECK : COPY"
+          />
+        </p>
+        <span class="actions">
+          <button ref="endButton" class="danger" @click="ending = true">{{ t('social.host.endRoom') }}</button>
+        </span>
+      </div>
       <p v-if="!room.room.public" class="help">{{ room.hasPassword ? t('social.host.sendLinkWithPassword') : t('social.host.sendLink') }}</p>
     </template>
 
@@ -170,11 +190,6 @@ const save = () => {
             </label>
             <button type="submit">{{ done === 'saved' ? t('common.saved') : t('common.save') }}</button>
           </form>
-          <div v-if="!DESKTOP || room.hasPassword" class="facts">   <!-- on desktop only a password is set at the start -->
-            <p class="help">{{ t('social.host.setAtStart') }}</p>
-            <p v-if="!DESKTOP">{{ room.room.public ? t('social.host.listedInLobby') : t('social.host.onlyWithLink') }}</p>
-            <p v-if="room.hasPassword">{{ t('social.host.passwordSet') }}</p>
-          </div>
         </section>
       </div>
       <CameBy :people="room.session.people" :now="now" />
@@ -189,11 +204,7 @@ div.host-room {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  box-sizing: border-box;   /* the tab's height with its padding, so only this scrolls, not the tab */
-  height: 100%;
-  min-height: 0;
-  padding: 16px;
-  overflow: auto;
+  min-height: 0;   /* inset by the Settings and stats dialog's own padding, which scrolls it */
   font-size: 12px;
   color: var(--text-dim);
 }
@@ -223,7 +234,37 @@ span.actions {
   gap: 8px;
   margin-left: auto;
 }
-p.status, p.help, p.link, div.facts p, ul.notes {
+div.link-row {   /* the room's link, Copy link and End room at its right; under it when there isn't room */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+div.link-row p.link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+button.icon.copy {   /* beside the link or address it copies */
+  display: inline-flex;
+  flex: none;
+  padding: 4px;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: var(--text-muted);
+}
+button.icon.copy:hover {
+  transform: none;
+  color: var(--accent);
+}
+button.icon.copy :deep(svg) {
+  width: 13px;
+  height: 13px;
+  fill: currentColor;
+}
+p.status, p.help, p.link, ul.notes {
   margin: 0;
   color: var(--text-muted);
 }
@@ -254,9 +295,6 @@ ul.addresses li {
   display: flex;
   align-items: center;
   gap: 8px;
-}
-ul.addresses button {
-  margin-left: auto;
 }
 span.tag {   /* as the chat panel's tags */
   padding: 1px 6px;
@@ -351,16 +389,5 @@ p.count {
   margin-top: -4px;
   font-size: 11px;
   text-align: right;
-}
-div.facts {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  margin-top: 14px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border);
-}
-div.facts p:first-child {
-  font-size: 11px;
 }
 </style>
