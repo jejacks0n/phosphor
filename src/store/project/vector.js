@@ -311,13 +311,14 @@ export const vectorActions = {
     if (!inside) return this.cells;
     this.commitPending();
     const { editCells, paintLayer, hasPaint } = this;
+    this._frameSwaps++; // autosave: not an edit (before editCells changes, as leaveArt does)
     Object.assign(this, { editCells: inside.editCells, paintLayer: inside.paintLayer, hasPaint: inside.hasPaint, _artInside: null });
     try {
       redraw(this);
       return this.cells.slice();
     } finally {
+      this._frameSwaps++;
       Object.assign(this, { editCells, paintLayer, hasPaint, _artInside: inside });
-      this._frameSwaps++; // autosave: not an edit
       redraw(this);
     }
   },

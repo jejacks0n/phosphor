@@ -15,6 +15,7 @@ import SaveDialog from '@/components/SaveDialog.vue';
 import { writeLatest, addVersion, evict, readLatest, readVersion, listDocuments, listVersions } from '@/document/autosaveStore';
 import { SAVE_AFTER_MS, SAVE_AT_LEAST_EVERY_MS, VERSION_EVERY_MS, MAX_TOTAL_BYTES, READY_WAIT_MS } from '@/document/autosaveRules';
 import { readProject, writeProject, loadImage as decodeImage } from '@/document/projectIO';
+import { makeArt } from '@/document/artLayers';
 import { AnsiFile } from '@/lib/AnsiFile';
 import Renderer from '@/document/Renderer';
 
@@ -2146,4 +2147,18 @@ test('an older record, written before the As opened mark, never gets one', async
   await pass(SAVE_AFTER_MS);
   expect(await listVersions(id)).toHaveLength(1);
   expect(await openedVersions(id)).toEqual([]);
+});
+
+test('a save from inside an art layer, with nothing changed, is no edit to autosave', async () => {
+  const { project } = await mounted();
+  await project.openArtFile(textFile());
+  const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 0, 0], art: { cols: 1, rows: 1, cells: [[0, 'A', null, '#ff0000']] } }));
+  await settle(project);
+  await autosave.flush();
+  project.asOpened = true; // as a file with an art layer opens
+  expect(project.enterArt(key)).toBe(true);
+  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  await project.saveProject();
+  expect(project.artInside).toBe(key);
+  expect(project.asOpened).toBe(true);
 });
