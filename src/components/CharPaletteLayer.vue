@@ -443,7 +443,7 @@ onBeforeUnmount(() => {
 
         <div class="sources">
           <div class="tabs">
-            <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ font ? t('palette.layer.fontTab', { name: font.name }) : t('palette.layer.tabs.cp437') }}</button>
+            <button :class="{ on: sourceTab === 'cp437' }" @click="source = 'cp437'; find = ''">{{ font ? t('palette.layer.fontTab') : t('palette.layer.tabs.cp437') }}</button>
             <button v-if="!font" :class="{ on: sourceTab === 'unicode' }" @click="source = 'unicode'; find = ''">{{ t('palette.layer.tabs.unicode') }}</button>
             <button :class="{ on: sourceTab === 'drawing' }" @click="source = 'drawing'; find = ''">{{ t('palette.layer.tabs.inDrawing') }}</button>
             <button :class="{ on: sourceTab === 'recent' }" @click="source = 'recent'; find = ''">{{ t('palette.layer.tabs.recent') }}</button>
@@ -644,26 +644,48 @@ div.sources {
   gap: 6px;
 }
 
+/* The sources' tabs as the Fonts page's Blocks | Lines | Sets: small capitals, the one open underlined, a rule under them. */
 div.sources div.tabs {
   display: flex;
   align-items: center;
-  gap: 4px;
+  border-bottom: 1px solid var(--surface-3);
 }
 
 div.sources div.tabs button {
-  padding: 3px 8px;
+  align-self: stretch;
+  padding: 4px 10px 6px 0;
+  margin-right: 10px;
   border: none;
-  border-radius: 3px;
-  background: transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
   color: var(--text-muted);
   font: inherit;
-  font-size: 12px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
   cursor: pointer;
+  transition: color 0.3s ease;
+}
+
+div.sources div.tabs button:hover {
+  transform: none;
+  background: none;
+}
+
+div.sources div.tabs button:not(.on):hover {
+  color: var(--accent);
+}
+
+div.sources div.tabs button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 div.sources div.tabs button.on {
-  background: var(--surface-3);
   color: var(--text);
+  box-shadow: inset 0 -2px var(--accent);
 }
 
 div.sources div.tabs input {
@@ -682,8 +704,7 @@ div.pane {
   display: flex;
   flex-direction: column;
   flex: 1;
-  min-height: 96px;
-  max-height: 280px;
+  min-height: 96px; /* as tall as the layer lets it be */
   overflow: auto; /* across too, on a phone: 16 glyphs to a row */
   padding: 6px;
   border: 1px solid var(--surface-3);

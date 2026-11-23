@@ -8,7 +8,7 @@ test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true
 test('on a phone, Palettes in the settings drawer shuts it and opens the color layer over the whole window, focus in it', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Toggle settings' }).tap();
-  await page.getByRole('button', { name: 'Palettes', exact: true }).tap();
+  await page.getByRole('button', { name: 'Manage color palettes' }).tap();
 
   const layer = page.locator('.color-layer');
   await expect(layer).toBeVisible();

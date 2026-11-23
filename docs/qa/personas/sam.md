@@ -131,7 +131,7 @@ script. Every section ends with Free time.
 - Probes: `extremes`: set the size to 1 and to 200; `interrupt`: reload and check the font stayed.
 - Rated: yes, wants Tab to Font then the arrows
 
-**Free time:** Sam would press `?` and check the list, try + Load on the Fonts page (Manage fonts) with a file that isn't monospaced
+**Free time:** Sam would press `?` and check the list, try + Load on the Fonts page (the Font field's Manage) with a file that isn't monospaced
 (`fonts/proportional.ttf`, refused with why), type a `﷽` and look at what it covers, and try Insert in the middle of the
 title.
 

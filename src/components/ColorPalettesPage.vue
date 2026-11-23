@@ -172,7 +172,7 @@ const save = ({ slug, name, colors }) => downloadBlob(new Blob([hexFile(colors)]
     <!-- the list: choose a palette to see it (or with the arrow keys) -->
     <div class="list-side">
       <div class="top">
-        <input v-model="search" type="search" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" :placeholder="t('colorPalettes.search')" :aria-label="t('colorPalettes.search')">
+        <input v-model="search" type="search" autocapitalize="off" autocorrect="off" spellcheck="false" enterkeyhint="search" :placeholder="t('colorPalettes.search')" :aria-label="t('colorPalettes.searchAria')">
       </div>
       <div class="list">
         <template v-for="g in groups" :key="g.key">

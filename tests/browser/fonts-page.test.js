@@ -8,7 +8,7 @@ import { i18n } from '@/i18n';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
-import { fontId, blocksOf, fontKey, slotOf, CP437_BLOCKS as cp437Blocks } from '@/lib/BitmapFont.js';
+import { fontId, blocksOf, fontKey, slotOf, withBlock, CP437_BLOCKS as cp437Blocks } from '@/lib/BitmapFont.js';
 import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs.js';
 import { storedBitmapFont } from '@/lib/userFonts';
 import { cp437Font, lowerAt240, noLowerHalf, noLowerNoShades } from '../support/blockFonts.js';
@@ -211,7 +211,7 @@ test('resizing the side panel leaves the layer open', async () => {
 
 test('lists the drawing\'s font first, then yours, then the built-in ones', async () => {
   const { b, tt } = await mount();
-  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Favorites', 'Built-in']);
   expect([...host.querySelectorAll('.row')].map((r) => [r.querySelector('.name span').textContent, r.querySelector('.name em').textContent]))
     .toEqual([['A', '8×8'], ['B', '8×16'], ['Tall Mono', 'TrueType'], ...BUILT_IN.map((name) => [name, 'TrueType'])]);
   const sample = (name) => row(name).querySelector('.sample');
@@ -346,7 +346,7 @@ test('a TrueType font shows a sample and Use this font', async () => {
   await expect.poll(() => workspace.displayFont).toBe(tt.id);
   expect(project.drawingFont).toBeNull();
   // In use, as a bitmap font is once used: first, under In use, with nothing left to apply
-  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Favorites', 'Built-in']);
   expect(names()).toEqual(['Tall Mono', 'B', ...BUILT_IN]);
   expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType');
   expect(await actions()).toEqual(['Export palettes', 'Palettes', 'Remove']);
@@ -446,7 +446,7 @@ test('in someone else\'s room, applying is off', async () => {
 
 test('before any drawing is open, the font chosen is the next drawing\'s', async () => {
   await mount({ canvas: false });
-  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
+  expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Favorites', 'Built-in']);
   await press(row('B'));
   expect(button('Use this font')).toBeTruthy();
 });
@@ -460,8 +460,7 @@ test('shows the eight blocks, and where CP437 would put a moved one', async () =
   await mount({ font: lowerAt240 });
   expect(tiles().map((t) => t.slot)).toEqual(['219', '240', '223', '221', '222', '176', '177', '178']);
   expect(tiles().map((t) => t.name)).toEqual(['Full', 'Lower', 'Upper', 'Left', 'Right', 'Light', 'Medium', 'Dark']);
-  expect(text()).toContain('Lower half found at slot 240. CP437 puts it at 220, which holds');
-  expect(text()).toContain('To change a block, select it and then its character in the character map below, or drag the character into it.');
+  expect(host.querySelector('.blocks .note').textContent).toBe('Pick a block, then click a character below, or drag one onto any block.'); // nothing of where they were found
   expect(slotCell(240).textContent).toBe('▄'); // the sheet shows each slot's own character
   expect(slotCell(240).classList.contains('role')).toBe(true);
   expect(await actions()).not.toContain('Find blocks again');
@@ -495,9 +494,10 @@ test('under the Blocks tab the blocks have no second Blocks heading, and are a g
   expect(group.getAttribute('aria-label')).toBe('Blocks');
 });
 
-test('a font with every block where CP437 puts it says so', async () => {
+test('a block picked, the note says what a click or a drag assigns to', async () => {
   await mount({ font: cp437Font });
-  expect(text()).toContain('All eight blocks found');
+  await press(tile('Medium'));
+  expect(host.querySelector('.blocks .note').textContent).toBe('Assigning to Medium \u2014 click a character below, or drag one onto any block.');
 });
 
 test('picking Lower and clicking a slot sets it, as one undo step, and Find blocks again clears it', async () => {
@@ -558,17 +558,11 @@ test('picking the slot a block already has is no change, and a tile unpicks on a
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
 });
 
-test('a font with no lower half says how to give it one', async () => {
-  await mount({ font: noLowerHalf });
-  expect(tiles()[1].slot).toBe('none');
-  expect(tile('Lower').classList.contains('missing')).toBe(true);
-  expect(host.querySelector('.blocks .note').textContent).toBe('No \u201cLower\u201d block found in this font. Pick one by selecting \u201cLower\u201d and then its character in the character map below, or by dragging the character into \u201cLower\u201d.');
-  expect(host.querySelector('.blocks .note').classList.contains('warn')).toBe(true);
-});
-
-test('with the lower half and other blocks missing, the note says to fill them the same way', async () => {
+test('a font with no lower half marks its tile; the note says only how to pick', async () => {
   await mount({ font: noLowerNoShades });
-  expect(host.querySelector('.blocks .note').textContent).toContain('\u201cLower\u201d. Finish filling out any other missing blocks in the same way.');
+  expect(tiles()[1].slot).toBe('none');
+  expect(['Lower', 'Light', 'Medium', 'Dark'].every((name) => tile(name).classList.contains('missing'))).toBe(true);
+  expect(host.querySelector('.blocks .note').textContent).toBe('Pick a block, then click a character below, or drag one onto any block.');
 });
 
 // A slot dragged from the sheet onto a tile: the HTML drag events with one DataTransfer, as the browser passes it.
@@ -647,7 +641,7 @@ test('Set up its blocks opens the page on the font with Lower picked, and a clic
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('true');
   expect(workspace.fontSetup).toBe(null); // taken
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true); // the place to click
-  expect(text()).toContain('Lower is picked: click the character in the character map below that should draw the lower half.');
+  expect(host.querySelector('.blocks .note').textContent).toBe('Assigning to Lower \u2014 click a character below, or drag one onto any block.');
   expect(text()).not.toContain('Pick Lower, then click a slot');
   await press(slotCell(254));
   expect(blocksOf(project.drawingFont)[1]).toBe(254);
@@ -664,12 +658,12 @@ test('Set up its blocks with another font chosen on the page chooses the drawing
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('true');
 });
 
-test('nothing picked, the sheet isn\u2019t marked; a block that has its slot picked, the notes are as they were', async () => {
+test('nothing picked, the sheet isn\u2019t marked; a block picked, it is, and the note names it', async () => {
   await mount({ font: noLowerHalf });
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
   await press(tile('Full'));
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true);
-  expect(text()).not.toContain('is picked: click the character'); // Full has its slot: the notes as they were
+  expect(host.querySelector('.blocks .note').textContent).toBe('Assigning to Full \u2014 click a character below, or drag one onto any block.');
 });
 
 test('in a room, Set up its blocks picks nothing and says nothing of clicking a slot', async () => {
@@ -678,7 +672,7 @@ test('in a room, Set up its blocks picks nothing and says nothing of clicking a 
   await nextTick();
   expect(workspace.fontSetup).toBe(null);
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
-  expect(text()).not.toContain('is picked: click the character');
+  expect(host.querySelector('.blocks .note')).toBeNull(); // nothing to pick in a room
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
 });
 
@@ -697,14 +691,14 @@ test('the Lines section adds a style slot by slot', async () => {
   expect(host.querySelector('.lines p.note')).toBeNull(); // a piece picked says nothing under the styles
   for (let n = 1; n <= 11; n++) await press(slotCell(n));
   expect(project.drawingFont.lines.styles[0].slots).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
-  expect(host.querySelector('.lines .card').textContent).toContain('Offered under Draw with');
+  expect(host.querySelector('.lines .card .status')).toBeNull(); // a whole style says nothing
   expect(sectionTab('Lines').textContent.replace(/\s+/g, ' ').trim()).toBe('Lines 1');
 });
 
 test('a style missing pieces says every piece is needed', async () => {
   await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, ...Array(9).fill(null)] }] } } });
   await press(sectionTab('Lines'));
-  expect(host.querySelector('.lines .card .status').textContent).toBe('All line sections are required to be able to draw with it. Select characters below or drag them into the sections to define this line style.');
+  expect(host.querySelector('.lines .card .status').textContent).toBe('All line segments are required to draw with it. Pick a segment, then click a character below, or drag one onto any segment.');
   expect(lineTiles()[2].classList.contains('missing')).toBe(true);
 });
 
@@ -713,21 +707,21 @@ test('a character dragged from the sheet into a line section sets that piece; De
   await press(sectionTab('Lines'));
   await drag(slotCell(5), lineTiles()[3]);
   expect(project.drawingFont.lines.styles[0].slots[3]).toBe(5);
-  await drag(slotCell(220), lineTiles()[4]); // a block's slot is refused, as a click is
-  expect(project.drawingFont.lines.styles[0].slots[4]).toBe(null);
-  const widths = lineTiles().map((el) => el.getBoundingClientRect().width);
-  expect(widths.every((w) => Math.abs(w - widths[0]) < 0.5)).toBe(true); // a short last row keeps the columns' width
+  await drag(slotCell(220), lineTiles()[4]); // a block's slot too
+  expect(project.drawingFont.lines.styles[0].slots[4]).toBe(220);
+  const rects = lineTiles().map((el) => el.getBoundingClientRect());
+  expect(rects.every((r) => Math.abs(r.width - rects[0].width) < 0.5 && r.top === rects[0].top)).toBe(true); // one row of equal columns
   const remove = host.querySelector('.lines .card button.ghost');
   expect([remove.textContent.trim(), remove.getAttribute('aria-label'), !!remove.querySelector('svg')]).toEqual(['', 'Delete', true]);
 });
 
-test('a block\u2019s slot can\u2019t be a piece', async () => {
+test('a block\u2019s slot can be a piece', async () => {
   const { project } = await mount({ font: cp437Font });
   await press(sectionTab('Lines'));
   await press(button('+ New line style'));
   await press(slotCell(220));
-  expect(project.drawingFont.lines.styles[0].slots).toEqual(Array(11).fill(null));
-  expect(text()).toContain('Slot 220 draws the Lower block, so it can\u2019t be a line piece.');
+  expect(project.drawingFont.lines.styles[0].slots[0]).toBe(220);
+  expect(host.querySelector('.lines p.note')).toBeNull();
 });
 
 test('a slot one piece of a style has can\u2019t be another of its pieces; another style may have it', async () => {
@@ -744,11 +738,10 @@ test('a slot one piece of a style has can\u2019t be another of its pieces; anoth
   expect(project.drawingFont.lines.styles[1].slots[0]).toBe(1);
 });
 
-test('a block on a piece\u2019s slot keeps the piece and says so', async () => {
-  await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, 3, 4, 5, 6, 220, 8, 9, 10, 11] }] } } });
+test('Single and Double say nothing when a block takes one of their slots', async () => {
+  await mount({ font: { ...cp437Font, blocks: withBlock(cp437Blocks, 'full', 196) } });
   await press(sectionTab('Lines'));
-  expect(host.querySelector('.lines .card').textContent).toContain('├ shares slot 220 with Lower');
-  expect(lineTiles()[6].title).toBe('├ shares slot 220 with Lower');
+  expect(host.querySelector('.lines .stock .status')).toBeNull();
 });
 
 test('undo of a style edit shows on the Lines section', async () => {
@@ -1016,7 +1009,7 @@ test('the layer keeps its height when the list folds or a search finds nothing',
   const panel = host.querySelector('.floating-panel') ?? document.querySelector('.floating-panel');
   const height = () => panel.getBoundingClientRect().height;
   await vi.waitFor(() => expect(height()).toBe(560)); // its most, in a window 900 tall
-  for (const name of ['Yours', 'Built-in', 'Library']) await press([...host.querySelectorAll('.list .group-head')].find((el) => el.textContent.includes(name)));
+  for (const name of ['Favorites', 'Built-in', 'Library']) await press([...host.querySelectorAll('.list .group-head')].find((el) => el.textContent.includes(name)));
   expect(height()).toBe(560);
   await type('nothing by this name');
   expect(height()).toBe(560);
@@ -1029,7 +1022,7 @@ test('Yours, Built-in and Library fold under their titles, which count what the 
   const head = (name) => [...host.querySelectorAll('.list .group-head')].find((el) => el.textContent.includes(name));
   expect(head('In use')).toBeUndefined();
   expect(head('Built-in').textContent.trim()).toContain('Built-in · 4');
-  expect(head('Yours').textContent.trim()).toContain('Yours · 2');
+  expect(head('Favorites').textContent.trim()).toContain('Favorites · 2');
   await type('un'); // Unscii and Unifont
   expect(head('Built-in').textContent.trim()).toContain('Built-in · 2');
   await type('');
@@ -1094,7 +1087,7 @@ test('search matches names, machines and descriptions', async () => {
   expect(libraryNames()).toEqual(['Topaz']);
   await type('rounded');
   expect(libraryNames()).toEqual(['Topaz']);
-  expect(host.querySelector('.top input').placeholder).toBe('Search fonts…');
+  expect(host.querySelector('.top input').placeholder).toBe('Filter fonts…');
   await type('IBM VGA'); // the built-in groups filter by name too
   expect(names()).toContain('IBM VGA');
 });
@@ -1504,7 +1497,7 @@ test('a font in Yours shows From and License after its slots', async () => {
   const index = FIXTURE(), entry = serveFile(index, 'Zeta');
   await mount({ library: index });
   await chooseLibrary('Zeta');
-  await press(button('Add to Yours'));
+  await press(button('☆ Favorite'));
   await vi.waitFor(() => expect(host.querySelector('.edit-side .info')).toBeTruthy());
   await vi.waitFor(async () => expect((await loadFonts()).some((f) => f.id === entry.fontId)).toBe(true));
   const info = host.querySelector('.edit-side .info'), originList = host.querySelector('.edit-side dl.origin');
@@ -1518,7 +1511,8 @@ test('Use this font fetches the font, keeps it in Yours and makes it the drawing
   await chooseLibrary('Zeta');
   expect(title()).toBe('Zeta');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library');
-  expect(await actions()).toEqual(['Use this font', 'Add to Yours']);
+  expect(await actions()).toEqual(['Use this font', '☆ Favorite']);
+  expect(button('Use this font').classList.contains('primary')).toBe(false); // as the color palettes' Use is
   await press(button('Use this font'));
   await waitFor(() => project.drawingFont && fontId(project.drawingFont) === entry.fontId);
   expect(fileFetches).toBe(1);
@@ -1528,16 +1522,23 @@ test('Use this font fetches the font, keeps it in Yours and makes it the drawing
   expect(origin()).toContain('From VileR');
 });
 
-test('Add to Yours keeps it without using it', async () => {
+test('☆ Favorite keeps it without using it, and ★ Favorite takes it out again, back on the library\u2019s row', async () => {
   const index = FIXTURE(), entry = serveFile(index, 'Zeta');
   const { project, workspace } = await mount({ library: index });
   await chooseLibrary('Zeta');
-  await press(button('Add to Yours'));
+  expect(button('☆ Favorite').getAttribute('aria-pressed')).toBe('false');
+  await press(button('☆ Favorite'));
   await waitFor(() => workspace.userFonts.some((f) => f.id === entry.fontId));
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
   await waitFor(() => host.querySelector('.edit-side .sheet'));
   expect(button('Use this font')).toBeTruthy();
-  expect(await actions()).toContain('Remove');
+  expect(button('★ Favorite').getAttribute('aria-pressed')).toBe('true');
+  expect(await actions()).not.toContain('Remove'); // the star takes it out
+  await press(button('★ Favorite'));
+  await waitFor(() => !workspace.userFonts.some((f) => f.id === entry.fontId));
+  expect((await loadFonts()).map((f) => f.id)).not.toContain(entry.fontId);
+  await waitFor(() => button('☆ Favorite'));
+  expect(title()).toBe('Zeta'); // the library's row, not the font in use
 });
 
 test('a library font already in Yours fetches nothing and makes no second entry', async () => {
@@ -1555,12 +1556,12 @@ test('a library font already in Yours fetches nothing and makes no second entry'
   expect(workspace.userFonts.filter((f) => f.id === entry.fontId).length).toBe(1);
 });
 
-test('Add to Yours, then Use this font sets the SAUCE font name the library gives it', async () => {
+test('☆ Favorite, then Use this font sets the SAUCE font name the library gives it', async () => {
   const index = FIXTURE(), entry = serveFile(index, 'Zeta');
   entry.sauce = 'IBM EGA';
   const { project, workspace } = await mount({ library: index });
   await chooseLibrary('Zeta');
-  await press(button('Add to Yours'));
+  await press(button('☆ Favorite'));
   await waitFor(() => workspace.userFonts.some((f) => f.id === entry.fontId));
   await waitFor(() => host.querySelector('.edit-side .sheet')); // the stored font's details now
   expect(project.sauceFontName).toBe('IBM VGA');
@@ -1767,6 +1768,8 @@ test('a stored font not in use shows 7 · 8 and pressing stores its answer witho
   await waitFor(() => widthButtons().length);
   expect(shown()).toEqual(['7', '8']);
   expect(pressed()).toEqual(['7']); // unanswered: drawn at its own width
+  const use = button('Use this font').getBoundingClientRect(), width = host.querySelector('.width-switch').getBoundingClientRect();
+  expect(Math.abs((width.top + width.bottom) / 2 - (use.top + use.bottom) / 2)).toBeLessThan(2); // on Use this font's line
   const drawn = project.drawingFont.cellWidth;
   await press(widthButtons()[1]);
   await vi.waitFor(async () => expect((await storedBitmapFont(id)).width).toBe(8));

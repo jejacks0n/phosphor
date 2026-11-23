@@ -280,7 +280,7 @@ function onKeyDown(event) {
         <div class="label-row">
           <div class="label-group"><label for="quantize">{{ t('panel.quantize.label') }}</label><HelpInfo :name="t('panel.quantize.label')" :text="help('quantize')" /></div>
           <!-- Doesn't take focus, so the open layer keeps the keyboard; data-colors-toggle: it doesn't close the layer first. -->
-          <button type="button" class="text palettes" data-colors-toggle :title="t('panel.quantize.palettesTitle')" @mousedown.prevent @click="openPalettes">{{ t('panel.quantize.palettes') }}</button>
+          <button type="button" class="text palettes" data-colors-toggle :title="t('panel.quantize.palettesTitle')" :aria-label="t('panel.quantize.palettesAria')" @mousedown.prevent @click="openPalettes">{{ t('panel.quantize.palettes') }}</button>
         </div>
         <select id="quantize" v-model="store.quantize">
           <option value="none">{{ t('panel.quantize.none') }}</option>

@@ -82,13 +82,14 @@ describe('lineStylesOf', () => {
     expect(s.hidden).toBe(true);
   });
 
-  it('leaves Single unoffered when a block sits on one of its slots', () => {
+  it('lets a style of its own draw with a block\u2019s slot; Single loses the piece the block took', () => {
     const font = { ...cp437Font, blocks: withBlock(CP437_BLOCKS, 'lower', 196) };
     const single = styleById(font, 'single');
     expect(single.offered).toBe(false);
-    expect(single.problems).toContainEqual({ piece: 0, reason: 'block', block: 'lower' });
+    expect(single.problems).toEqual([{ piece: 0, reason: 'missing' }]); // 196 draws ▄ now, so Single has no ─
     const custom = withLines({ hide: [], styles: [{ id: 'l1', name: 'x', slots: [220, ...Array(10).fill(null).map((_, i) => 1 + i)] }] });
-    expect(styleById(custom, 'l1').problems).toContainEqual({ piece: 0, reason: 'block', block: 'lower' });
+    expect(styleById(custom, 'l1')).toMatchObject({ problems: [], offered: true });
+    expect(styleById(custom, 'l1').chars[0]).toBe('▄');
   });
 
   it('is the same list for the same font', () => {

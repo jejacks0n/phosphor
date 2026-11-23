@@ -1,6 +1,6 @@
 // A bitmap font's own line styles and character sets, kept as slots (0-255) and never as characters:
 // a cell holds slotChars(font)[slot]. A style is the eleven pieces of PIECES, in that order.
-import { slotChars, blocksOf, BLOCKS, SLOT_CHARS } from './BitmapFont.js';
+import { slotChars, SLOT_CHARS } from './BitmapFont.js';
 
 export const PIECES = '─│┌┐└┘├┤┬┴┼';
 export const STOCK_STYLES = Object.freeze([
@@ -46,21 +46,20 @@ export function decodeSets(text) {
   return { hideStock: v.hideStock === true, sets: list(v.sets, (s) => s.length <= 1024 && s.every(slotOk)) };
 }
 
-// Every style a font has, Single and Double first, with whether each is offered and what stops it.
+// Every style a font has, Single and Double first, with whether each is offered and what stops it: a piece with no slot,
+// or a stock piece whose slot no longer draws it (a block moved there).
 export const lineStylesOf = (() => {
   const cache = new WeakMap();
   const make = (font) => {
     const chars = slotChars(font);
-    const blocks = font ? blocksOf(font) : [];
     const hide = font?.lines?.hide ?? [];
     const stock = STOCK_STYLES.map((s) => ({ ...s, name: null, stock: true }));
     const own = (font?.lines?.styles ?? []).map((s) => ({ ...s, stock: false }));
     return [...stock, ...own].map((s) => {
       const problems = [];
       s.slots.forEach((slot, piece) => {
-        const b = slot === null ? -1 : blocks.indexOf(slot);
-        if (b >= 0) problems.push({ piece, reason: 'block', block: BLOCKS[b].key });
-        else if (slot === null || (s.stock && chars[slot] !== SLOT_CHARS[slot])) problems.push({ piece, reason: 'missing' });
+        // A slot a block is drawn from may be a piece of a style of the font's own: the piece is that block's character.
+        if (slot === null || (s.stock && chars[slot] !== SLOT_CHARS[slot])) problems.push({ piece, reason: 'missing' });
       });
       const hidden = s.stock && hide.includes(s.id);
       return { ...s, chars: s.slots.map((slot) => (slot === null ? null : chars[slot])), problems, hidden, offered: !problems.length && !hidden };

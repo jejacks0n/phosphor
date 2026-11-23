@@ -11,7 +11,7 @@ const LIST = '#ff0000 #00ff00 #0000ff';
 const field = (page) => page.locator('.color-layer').getByRole('textbox', { name: 'Hex of the picked color' });
 async function customList(page, list = LIST) {
   await page.getByRole('combobox', { name: 'Color palette' }).selectOption('palette');
-  await page.getByRole('button', { name: 'Palettes', exact: true }).click();
+  await page.getByRole('button', { name: 'Manage color palettes' }).click();
   await field(page).fill(list);
   await field(page).press('Enter');
   await expect.poll(() => store(page, 'project', (p) => p.palette)).toBe(list);
