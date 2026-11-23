@@ -7,21 +7,25 @@
 //   group      the ? list's group it shows under (GROUPS)
 //   label      () => its words
 //   fixed      a key that stays where it's handled (an arrow that nudges, Escape's chain, Edit Mode's typing): shown in
-//              the ? list, never matched here, never remapped
+//              the ? list, never matched here, never remapped (a run on one is for the command list)
 //   where      (ctx) => whether the key is the app's here at all (not in a field, the right view, not mid-drag)
 //   available  (ctx) => true, or an i18n key saying why it can't run now
 //   run        (ctx) => what it does
 //   held       a fixed key that works while held down (Alt for the eyedropper, Space for the hand)
 //   once       a held key's repeats are taken and do nothing (without it they run again, as a held Cmd+Z does)
+//   hidden     a key taken to keep it from the browser that does nothing: left out of the ? list
 // ctx = { project, workspace, event, view: workspace.editorTab, typing: Edit Mode's typing, uncommitted: focus is in a
 // field holding typing it hasn't committed (its own undo has it) }.
 import { t, te } from '@/i18n/index.js';
-import { shortcut } from '@/lib/keyLabels';
+import { isMac, shortcut } from '@/lib/keyLabels';
 import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { ownsKey } from '@/lib/fields';
 import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { usePlayback } from '@/composables/usePlayback';
+import { stepColor } from '@/composables/colorSteps';
+import { lineStep } from '@/composables/useTextTool';
+import { usePaletteStore } from '@/store/PaletteStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 
 export const GROUPS = ['general', 'tools', 'drawing', 'view', 'colors', 'editMode', 'select', 'vector', 'animation', 'tabs',
@@ -37,11 +41,11 @@ const letter = (key) => [key.toUpperCase(), `Shift+${key.toUpperCase()}`]; // wi
 const sizeOption = ({ workspace, view }) => getTool(workspace.activeTool).options
   ?.find((o) => o.size && (!o.views || o.views.includes(view)) && (!o.when || o.when(workspace)));
 
-// The animation keys: with Animate on, in the art views, never inside an art layer; the Alt forms of the frame steps
-// while typing too.
-const animating = (ctx, typingToo = false) => {
+// The animation keys: with Animate on, in the art views, never inside an art layer, not while typing (Edit Mode keeps its
+// keys: Alt+, and Alt+. type ≤ and ≥ there on a Mac).
+const animating = (ctx) => {
   const { project, workspace } = ctx;
-  return project.animate && !!project.image && !project.artInside && (typingToo || !ctx.typing) && workspace.editMode && free(ctx)
+  return project.animate && !!project.image && !project.artInside && !ctx.typing && workspace.editMode && free(ctx)
     && !workspace.isPainting && shut(ctx);
 };
 const frameWords = words('prevNextFrame', () => ({ keys: `${shortcut('alt', ',')} ${shortcut('alt', '.')}` }));
@@ -57,11 +61,37 @@ const zoom = (by) => ({
 const colorBox = (slot) => ({
   where: (ctx) => free(ctx) && !!ctx.project.image && ctx.workspace.editMode && !ctx.workspace.paletteLayerOpen,
   run: ({ project, workspace, view }) => {
-    if (workspace.heldTool?.by === 'alt') workspace.releaseTool();
     // ASCII in the ANSI view has no colors to choose (ColorPair hides itself).
     if (!(view === 'output' && project.renderStyle === 'ascii')) workspace.openColors(slot);
   },
 });
+// The color steps: wherever the color pair shows (PIXEL and ANSI, not Monochrome ASCII's ANSI, which has no colors),
+// typing too. Moebius's Ctrl+arrows; a Mac keeps those for Spaces, so there they take Option too (and Ctrl+Option is
+// bound on a Mac only: elsewhere it's AltGr, which types).
+const colorStep = (slot, delta, arrow) => ({
+  keys: { mac: [`Ctrl+Alt+${arrow}`], other: [`Ctrl+${arrow}`] },
+  where: (ctx) => free(ctx) && !!ctx.project.image && ART.includes(ctx.view) && shut(ctx)
+    && !(ctx.view === 'output' && ctx.project.renderStyle === 'ascii'),
+  run: ({ project, workspace }) => stepColor(project, workspace, slot, delta),
+});
+// The character set's steps, Moebius's Ctrl+, and Ctrl+.: wherever the F-key set shows (the ANSI view's Edit Mode),
+// typing or not.
+const charSet = (delta) => ({
+  where: (ctx) => free(ctx) && !!ctx.project.image && ctx.view === 'output' && !!getTool(ctx.workspace.activeTool).palette && shut(ctx),
+  run: () => usePaletteStore().flip(delta),
+});
+
+// Lines and columns: their keys are Edit Mode's (useTextTool, through textKeyAction), so the rows are fixed; the command
+// list runs them at the cursor.
+const lines = (id, label, keys, type, delta) => ({
+  ...fixed(id, 'editMode', words(label), { keys }),
+  available: ({ workspace, view }) => (view === 'output' && workspace.activeTool === 'text' && workspace.textCursor ? true : 'shortcuts.reasons.noCursor'),
+  run: ({ project, workspace }) => lineStep(project, workspace, type, delta),
+});
+// Alt+← and Alt+→ where Edit Mode's typing won't take them (useTextTool leaves a field's, a dialog's and the palettes'
+// keys alone). On a Mac a field keeps them (Option+arrows move by word), and the browser has no Back on them.
+const backKept = (ctx) => ctx.workspace.editMode && (isMac ? free(ctx) : true) && (!ctx.typing || !free(ctx) || !shut(ctx));
+
 const sized = (by) => ({
   where: (ctx) => free(ctx) && !!ctx.project.image && ctx.workspace.editMode && !ctx.typing && ART.includes(ctx.view)
     && !ctx.workspace.isPainting && shut(ctx) && !!sizeOption(ctx),
@@ -120,6 +150,10 @@ export const COMMANDS = [
       ? !!ctx.project.image && !ctx.workspace.paletteLayerOpen
       : ctx.workspace.activeTool !== 'text'),
     run: ({ workspace, view }) => (view === 'vector' ? useVectorStyle().swap() : workspace.swapColors()) },
+  { id: 'colors.fgPrev', group: 'colors', label: words('stepFg'), ...colorStep('fg', -1, 'ArrowUp') },
+  { id: 'colors.fgNext', group: 'colors', label: words('stepFg'), ...colorStep('fg', 1, 'ArrowDown') },
+  { id: 'colors.bgPrev', group: 'colors', label: words('stepBg'), ...colorStep('bg', -1, 'ArrowLeft') },
+  { id: 'colors.bgNext', group: 'colors', label: words('stepBg'), ...colorStep('bg', 1, 'ArrowRight') },
   fixed('colors.moveSwatches', 'colors', words('moveSwatches'), { shown: [ARROWS] }),
   fixed('colors.pickSwatch', 'colors', words('pickSwatch'), { shown: ['Enter', 'Space'] }),
 
@@ -131,8 +165,16 @@ export const COMMANDS = [
   fixed('editMode.insertOverwrite', 'editMode', words('insertOverwrite'), { keys: ['Insert', 'Alt+Enter'] }),
   fixed('editMode.typeFKey', 'editMode', words('typeFKey'), { shown: ['F1–F12'] }),
   fixed('editMode.grabFKey', 'editMode', words('grabFKey'), { shown: () => [shortcut('ctrl', 'shift', 'F1–F12')] }),
-  fixed('editMode.prevNextPalette', 'editMode', words('prevNextPalette'), { keys: ['Alt+ArrowLeft', 'Alt+ArrowRight'] }),
-  fixed('editMode.stepFgPalette', 'editMode', words('stepFgPalette'), { keys: ['Alt+ArrowUp', 'Alt+ArrowDown'] }),
+  { id: 'characters.setPrev', group: 'editMode', keys: 'Ctrl+Comma', label: words('prevNextPalette'), ...charSet(-1) },
+  { id: 'characters.setNext', group: 'editMode', keys: 'Ctrl+Period', label: words('prevNextPalette'), ...charSet(1) },
+  // Moebius's lines and columns, on the picked layer at the cursor (useTextTool, by textKeyAction).
+  lines('edit.insertLine', 'insertLine', 'Alt+ArrowUp', 'line', 1),
+  lines('edit.deleteLine', 'deleteLine', 'Alt+ArrowDown', 'line', -1),
+  lines('edit.insertColumn', 'insertColumn', 'Alt+ArrowRight', 'column', 1),
+  lines('edit.deleteColumn', 'deleteColumn', 'Alt+ArrowLeft', 'column', -1),
+  // Alt+← and Alt+→ anywhere else the art shows: nothing, so Windows and Linux don't go Back or Forward out of the editor.
+  { id: 'edit.altArrowsElsewhere', group: 'editMode', keys: ['Alt+ArrowLeft', 'Alt+ArrowRight'], label: words('altArrowsElsewhere'), hidden: true,
+    where: backKept, run: () => {} },
 
   fixed('select.all', 'select', words('selectAll'), { keys: 'Mod+A' }),
   fixed('select.copyCutPaste', 'select', words('copyCutPaste'), { keys: ['Mod+C', 'Mod+X', 'Mod+V'] }),
@@ -152,9 +194,9 @@ export const COMMANDS = [
   { id: 'animation.play', group: 'animation', keys: letter(PLAY_KEY), shown: [PLAY_KEY.toUpperCase()], label: words('playPause'), once: true,
     where: (ctx) => animating(ctx), run: () => usePlayback().toggle() },
   { id: 'animation.prevFrame', group: 'animation', keys: [',', 'Alt+Comma'], shown: [','], label: frameWords,
-    where: (ctx) => animating(ctx, ctx.event.altKey), run: stepFrame(-1) },
+    where: animating, run: stepFrame(-1) },
   { id: 'animation.nextFrame', group: 'animation', keys: ['.', 'Alt+Period'], shown: ['.'], label: frameWords,
-    where: (ctx) => animating(ctx, ctx.event.altKey), run: stepFrame(1) },
+    where: animating, run: stepFrame(1) },
   { id: 'animation.newFrame', group: 'animation', keys: letter(ADD_FRAME_KEY), shown: [ADD_FRAME_KEY.toUpperCase()], label: words('newFrame'),
     where: (ctx) => animating(ctx), run: ({ project }) => project.addFrame(project.currentFrame.kind) },
 
@@ -185,16 +227,20 @@ export function toolCommands(view, project) {
 const keyMatches = (e, key) => matches(e, key, { mac: true }) || matches(e, key, { mac: false });
 
 // The first of ids (a trailing * takes a prefix: 'tool.*') whose key this is and whose where holds takes the key: its
-// default prevented, then it runs when available (a held key's repeat with once runs nothing). True when taken.
+// default prevented, then it runs when available (a held key's repeat with once runs nothing). True when taken. An Alt
+// chord that runs lets an Alt-held eyedropper go first, so a chord that changes the view or the layer doesn't hand it back
+// to the wrong one.
 export function takeKey(event, ctx, ids) {
   const pool = ids.some((id) => id.startsWith('tool.')) ? [...COMMANDS, ...toolCommands(ctx.view, ctx.project)] : COMMANDS;
   for (const id of ids) {
     const prefix = id.endsWith('*') ? id.slice(0, -1) : null;
-    const command = pool.find((c) => c.run && (prefix ? c.id.startsWith(prefix) : c.id === id)
+    const command = pool.find((c) => c.run && !c.fixed && (prefix ? c.id.startsWith(prefix) : c.id === id)
       && keysFor(c.keys).some((key) => keyMatches(event, key)) && (!c.where || c.where(ctx)));
     if (!command) continue;
     event.preventDefault();
-    if (!(event.repeat && command.once) && (command.available?.(ctx) ?? true) === true) command.run(ctx);
+    if (command.hidden || (event.repeat && command.once) || (command.available?.(ctx) ?? true) !== true) return true;
+    if (event.altKey && ctx.workspace.heldTool?.by === 'alt') ctx.workspace.releaseTool();
+    command.run(ctx);
     return true;
   }
   return false;

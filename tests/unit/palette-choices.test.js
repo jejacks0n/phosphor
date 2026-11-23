@@ -24,7 +24,7 @@ test('Swatches: with the adjustments moved, each swatch still paints its palette
   paletteChoices(params, PALETTES.cga).forEach((hex, i) => assert.equal(shows(hex, params, PALETTES.cga), PALETTES.cga[i].hex));
 });
 
-test('Swatches: a palette color no color can display as has no swatch color, and Alt+arrows step past it', () => {
+test('Swatches: a palette color no color can display as has no swatch color, and the color steps (Ctrl+arrows) step past it', () => {
   const palette = parseColorList('#FFFFFF #E03020 #808080 #000000');
   const params = { ...neutral, saturation: 0 }; // gray only: red is out of reach
   const choices = paletteChoices(params, palette);

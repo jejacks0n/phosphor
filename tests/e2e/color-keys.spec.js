@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store } from './support.js';
+import { openApp, store, cellPoint } from './support.js';
 
 // Moebius-style color keys: Alt+F / Alt+A open the color box on the foreground, Alt+B on the
 // background, Shift+Cmd/Ctrl+X swaps the two.
@@ -35,6 +35,36 @@ test('from a drawing tool the held eyedropper gives way to the box, and the tool
   await page.keyboard.up('Alt');
   await expect(box(page)).toBeVisible();
   expect(await ws(page, (w) => w.activeTool)).toBe('pencil');
+});
+
+// The color steps: Ctrl+arrows (Ctrl+Option on a Mac, which keeps Ctrl+arrows), with any tool and while typing, the
+// view not scrolling; Alt+← elsewhere is taken, so the page stays.
+test('Ctrl+↓ and Ctrl+→ step the colors through the palette with the Pencil and while typing; Alt+← with the Pencil leaves the page', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga');
+  const step = (arrow) => page.keyboard.press(`${process.platform === 'darwin' ? 'Control+Alt' : 'Control'}+${arrow}`);
+  await page.getByRole('button', { name: 'Pencil' }).click();
+  const fg = await ws(page, (w) => w.editFgColor);
+  await step('ArrowUp');
+  const stepped = await ws(page, (w) => w.editFgColor);
+  expect(stepped).not.toBe(fg);
+  await step('ArrowDown');
+  expect(await ws(page, (w) => w.editFgColor)).toBe(fg);
+  const url = page.url();
+  await page.keyboard.press('Alt+ArrowLeft');
+  expect(page.url()).toBe(url);
+  expect(await ws(page, (w) => w.activeTool)).toBe('pencil');
+
+  await page.getByRole('button', { name: 'Edit Mode' }).click();
+  const at = await cellPoint(page, 2, 2);
+  await page.mouse.click(at.x, at.y);
+  await page.waitForFunction(() => document.activeElement?.dataset?.textInput !== undefined);
+  const bg = await ws(page, (w) => w.editBgColor);
+  await step('ArrowRight');
+  expect(await ws(page, (w) => w.editBgColor)).not.toBe(bg);
+  await step('ArrowUp');
+  expect(await ws(page, (w) => w.editFgColor)).toBe(stepped);
+  expect(await ws(page, (w) => w.textCursor)).toEqual({ col: 2, row: 2 }); // still typing
 });
 
 test('in the color box the arrow keys move between swatches, Space picks, Enter picks and closes, and nothing else moves', async ({ page }) => {

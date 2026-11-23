@@ -1,8 +1,6 @@
 import { onMounted, onBeforeUnmount, watch } from 'vue';
 import { textKeyAction, moveCursor, typedText } from '@/lib/TextKeys';
 import { charRowsOf } from '@/lib/Cells';
-import { effectiveColor, paletteChoices, stepChoice } from '@/lib/PixelTransforms';
-import { sharedIndex } from '@/lib/ColorUtils';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { toast } from '@/composables/useToast';
 import { cellWidth } from '@/lib/CharWidth';
@@ -23,6 +21,20 @@ export function typeAtCursor(project, workspace, char) {
   if (!typed) return; // false, or nothing at all: refused while paused
   sayColorsKept({ workspace });
   workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(cursor, cellWidth(char), 0, project.cols, charRowsOf(project.rows)), 1);
+}
+
+// Moebius's lines and columns (Alt+arrows, the command list): a line or column of the picked layer in at the Text tool's
+// cursor or out, one undo step that ends a run of typing. The cursor stays where it was, off a wide character's trail
+// that moved under it. Falsy when refused.
+export function lineStep(project, workspace, type, delta) {
+  const { col, row } = workspace.textCursor;
+  project.commitPending();
+  sayBaseOnEveryFrame(project);
+  const step = type === 'line'
+    ? (delta > 0 ? project.insertLine(row) : project.deleteLine(row))
+    : (delta > 0 ? project.insertColumn(col) : project.deleteColumn(col));
+  if (step) workspace.textCursor = snapCursor(project.cells, project.cols, workspace.textCursor, 0);
+  return step;
 }
 
 // A paste: typed from the cursor (typeLines), one undo step of its own.
@@ -74,18 +86,6 @@ export function useTextTool(project, workspace, textInput) {
     workspace.textCursor = snapCursor(project.cells, project.cols, moveCursor(workspace.textCursor, dc, dr, project.cols, charRowsOf(project.rows)), dc);
   };
 
-  // Alt+Up/Down: the slot's color steps through the active palette (nothing to step in 24-bit), from
-  // the palette color it displays as (by its index, so 16 isn't read as 0's black), to the next one's swatch
-  // color (as the color picker offers it), past the ones the adjustments can't make.
-  const stepColor = (slot, delta) => {
-    const palette = project.activePalette;
-    if (!palette || !palette.length) return;
-    const fg = slot === 'fg';
-    const { c } = effectiveColor(fg ? workspace.editFgColor : workspace.editBgColor, project, palette, fg ? workspace.editFgIndex : workspace.editBgIndex);
-    const choices = paletteChoices(project, palette), next = stepChoice(choices, c, delta);
-    if (next !== null) workspace.setColor(slot, choices[next].toLowerCase(), { index: sharedIndex(next, palette), kept: palette[next].hex.toLowerCase() });
-  };
-
   const apply = (action) => {
     const { col, row } = workspace.textCursor ?? {};
     const mode = workspace.typingMode;
@@ -101,7 +101,7 @@ export function useTextTool(project, workspace, textInput) {
         break;
       case 'delete': if (!refusesHidden({ project, workspace })) project.deleteAt(col, row, { mode }); break;
       case 'toggleInsert': workspace.cycleTypingMode(); break;
-      case 'color': stepColor(action.slot, action.delta); break;
+      case 'line': case 'column': lineStep(project, workspace, action.type, action.delta); break;
       case 'slot': {
         const glyph = palettes.active.glyphs[action.index];
         if (!glyph) break;
@@ -118,7 +118,6 @@ export function useTextTool(project, workspace, textInput) {
         if (forked) toast(t('palette.forkedToast', { name: forked }));
         break;
       }
-      case 'palette': palettes.flip(action.delta); break;
     }
   };
 
@@ -133,10 +132,10 @@ export function useTextTool(project, workspace, textInput) {
       event.preventDefault();
       return textInput?.value?.focus({ preventScroll: true });
     }
-    const action = textKeyAction(event, { editable: editableFocus(), animate: project.animate });
+    const action = textKeyAction(event, { editable: editableFocus() });
     if (!action) return;
-    // Without a cursor only palette flips and slot choices apply (a slot still sets the character to draw with).
-    if (!workspace.textCursor && action.type !== 'palette' && action.type !== 'slot') return;
+    // Without a cursor only slot choices apply (a slot still sets the character to draw with).
+    if (!workspace.textCursor && action.type !== 'slot') return;
     if (action.type === 'char' && isTextInput(document.activeElement)) return; // the textarea's input event types it
     event.preventDefault();
     apply(action);

@@ -4,7 +4,8 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
-import { useTextTool, typeAtCursor } from '@/composables/useTextTool';
+import { typeAtCursor } from '@/composables/useTextTool';
+import { stepColor } from '@/composables/colorSteps';
 import { PALETTES } from '@/lib/ColorUtils';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools/index.js';
@@ -54,24 +55,21 @@ test('Flatten onto the edit layer keeps 16 and 231, and so do its undo and redo'
   expect(await exported(project)).toBe(original);
 });
 
-// Alt+Down and Alt+Up step the FG (Shift: BG) color through the palette by index: 15, 16, 17 and 230, 231, 232, not back
-// to 1 from 16 (it's 0's black) or on to 16 from 231 (it's 15's white).
-test('Alt+Up/Down walks the 256 colors straight through 16 and 231', async () => {
+// The color steps (Ctrl+arrows, color-steps.test.js) walk the FG and BG color through the palette by index: 15, 16, 17
+// and 230, 231, 232, not back to 1 from 16 (it's 0's black) or on to 16 from 231 (it's 15's white).
+test('the color steps walk the 256 colors straight through 16 and 231', async () => {
   const { project, workspace } = await opened('edit');
-  mounted = createApp({ setup: () => { useTextTool(project, workspace, null); return () => null; } });
-  mounted.mount(document.createElement('div'));
-  Object.assign(workspace, { editorTab: 'output', outputActiveTool: 'text', textCursor: { col: 0, row: 0 } });
-  const step = (key, shiftKey = false) => window.dispatchEvent(new KeyboardEvent('keydown', { key, altKey: true, shiftKey, bubbles: true, cancelable: true }));
   const shows = (slot) => PALETTES.vga.findIndex((p, i) => p.hex.toLowerCase() === workspace[slot === 'fg' ? 'editFgColor' : 'editBgColor'] && (workspace[slot === 'fg' ? 'editFgIndex' : 'editBgIndex'] ?? i) === i);
-  for (const [slot, shiftKey] of [['fg', false], ['bg', true]]) {
+  for (const slot of ['fg', 'bg']) {
+    const step = (delta) => stepColor(project, workspace, slot, delta);
     workspace.setColor(slot, PALETTES.vga[15].hex.toLowerCase());
     const walked = [];
-    for (let n = 0; n < 2; n++) { step('ArrowDown', shiftKey); walked.push(shows(slot)); }
-    step('ArrowUp', shiftKey); walked.push(shows(slot));
-    step('ArrowUp', shiftKey); walked.push(shows(slot));
+    for (let n = 0; n < 2; n++) { step(1); walked.push(shows(slot)); }
+    step(-1); walked.push(shows(slot));
+    step(-1); walked.push(shows(slot));
     workspace.setColor(slot, PALETTES.vga[230].hex.toLowerCase());
-    for (let n = 0; n < 2; n++) { step('ArrowDown', shiftKey); walked.push(shows(slot)); }
-    step('ArrowUp', shiftKey); walked.push(shows(slot));
+    for (let n = 0; n < 2; n++) { step(1); walked.push(shows(slot)); }
+    step(-1); walked.push(shows(slot));
     expect(walked, slot).toEqual([16, 17, 16, 15, 231, 232, 231]);
   }
 });
@@ -299,15 +297,12 @@ test('a block copied to another tab keeps 16 and 231', async () => {
 });
 
 // f1: Recent keeps the palette color stepped to, not the color stored for it under the adjustments.
-test('Alt+Down with Hue moved puts the palette color in Recent, not the color stored for it', async () => {
+test('a color step with Hue moved puts the palette color in Recent, not the color stored for it', async () => {
   const { project, workspace } = await opened('edit');
-  mounted = createApp({ setup: () => { useTextTool(project, workspace, null); return () => null; } });
-  mounted.mount(document.createElement('div'));
-  Object.assign(workspace, { editorTab: 'output', outputActiveTool: 'text', textCursor: { col: 0, row: 0 } });
   project.hue = 90;
   await settle(project);
   workspace.setColor('fg', '#000000');
-  window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true, cancelable: true }));
+  stepColor(project, workspace, 'fg', 1);
   const stepped = project.activePalette.findIndex((p) => getEffectiveColor(workspace.editFgColor, project, project.activePalette) === p.hex.toLowerCase());
   expect(workspace.recentColors[0]).toBe(project.activePalette[stepped].hex.toLowerCase());
 });

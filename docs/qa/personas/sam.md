@@ -225,10 +225,10 @@ check the file ends with the art and opens with an empty SAUCE tab.
 - Does: presses N three times, steps with comma and period, and types a different last character on each frame (a
   spinner: `|`, `/`, `-`, `\`), with Frame actions' New cells set to Keep on this frame only.
 - Expects: N adds a frame after the one showing, of its kind; on a Blank frame what's inherited shows dimmed as the
-  ghost; a cell drawn to stay shows on its frame only; Alt+comma and Alt+period step while typing.
+  ghost; a cell drawn to stay shows on its frame only; while typing, Alt+comma and Alt+period type (Escape first to step).
 - Probes: `undo-redo`: undo across frames (it goes back to the frame the edit was made on); `speed`: hold N for a
   second and count the frames added, then delete the extras from Frame actions.
-- Rated: yes, wants N, then Alt+. while typing
+- Rated: yes, wants N, then Alt+. while typing (Escape first now: Edit Mode keeps its keys)
 
 ### 19. Set its timing
 - Does: sets frames per second to 4 and a Hold of 1 second on the first frame; presses L to play, then any key.

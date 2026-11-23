@@ -1455,7 +1455,8 @@
     "holdSpace": "hold Space",
     "macFnNote": "On Mac keyboards, you may need to hold Fn to use F1–F12. To use them without Fn, turn on “Use F1, F2, etc. keys as standard function keys” in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.",
     "reasons": {
-      "noDrawing": "No drawing open"
+      "noDrawing": "No drawing open",
+      "noCursor": "Place the cursor in Edit Mode first"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1530,7 +1531,13 @@
       "typeFKey": "Type character from active palette slot",
       "grabFKey": "Save character under cursor to this palette slot",
       "prevNextPalette": "Previous or next character palette",
-      "stepFgPalette": "Step foreground color through palette (hold Shift for background)",
+      "stepFg": "Foreground color: previous or next in the palette",
+      "stepBg": "Background color: previous or next in the palette",
+      "insertLine": "Insert a line at the cursor",
+      "deleteLine": "Delete the cursor's line",
+      "insertColumn": "Insert a column at the cursor",
+      "deleteColumn": "Delete the cursor's column",
+      "altArrowsElsewhere": "Nothing outside Edit Mode, so the browser doesn't go back",
       "selectAll": "Select all",
       "copyCutPaste": "Copy, cut, paste",
       "nudge": "Nudge the selection",
@@ -1539,7 +1546,7 @@
       "stamp": "Stamp: place a copy here and keep moving the selection",
       "deselect": "Deselect and place selection onto canvas (returns to Edit Mode if active before)",
       "playPause": "Play or pause animation (any other key also pauses)",
-      "prevNextFrame": "Go to previous or next frame ({keys} while typing)",
+      "prevNextFrame": "Go to previous or next frame (also {keys})",
       "newFrame": "Add a new frame matching current frame type (hold to add multiple)",
       "switchTabs": "With a tab focused: switch tabs"
     }

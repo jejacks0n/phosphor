@@ -1123,6 +1123,11 @@ swaps the two halves of each cell's base colors.
   "Use F1, F2, etc. keys as standard function keys" in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.
 - **Ctrl + Shift + F1 to F12**: In Edit Mode, puts the character under the cursor on that slot of your active character
   palette. It takes Shift because macOS keeps Ctrl+F1 to Ctrl+F8 for itself.
+- **Ctrl + , and Ctrl + .**: In Edit Mode, the previous and next character palette (the F-key strip's arrows).
+- **Alt + ↑ ↓ → ←** (Option on a Mac): In Edit Mode, as in Moebius, insert a line at the cursor, delete the cursor's
+  line, insert a column, delete the cursor's column, on the layer you're typing on
+  ([Typing Text Directly](characters.md#typing-text-directly)). Anywhere else the art shows, **Alt+←** and **Alt+→** do
+  nothing, so the browser doesn't go back a page.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
 
 ### Tool Keys
@@ -1176,6 +1181,10 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 
 - **Alt+F** (Option+F), or Moebius's **Alt+A**: Open the color picker on the foreground.
 - **Alt+B**: Open it on the background.
+- **Ctrl+↑** and **Ctrl+↓** (**Ctrl+Option+↑** and **↓** on a Mac, which keeps Ctrl+arrows for Spaces): Step the
+  foreground color to the palette's previous or next color. **Ctrl+←** and **Ctrl+→** (**Ctrl+Option+←** and **→**) do
+  the same for the background. They work in the PIXEL and ANSI views with any tool, typing in Edit Mode too, but not in
+  Monochrome ASCII, which has no colors.
 - **In the Color Picker**: The **arrow keys** move between the swatches (starting on the current color), **Enter**
   picks one and closes the picker, **Space** picks one and leaves it open, and **Escape** closes it.
 - **Pick from the screen** (the eyedropper beside **Swap**, in Chrome, Edge and the desktop app): Click it, then click
@@ -1195,7 +1204,7 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch, in the grid and in **Recent**, paints
   its palette color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
-  **Alt+↑** and **Alt+↓** in Edit Mode, step past it. **Recent** keeps the palette colors you picked; a recent color
+  the color steps (**Ctrl+arrows**), step past it. **Recent** keeps the palette colors you picked; a recent color
   the palette doesn't have (one picked in Full Color) shows as the palette's nearest. A palette with many colors (a
   list of 256 is 32 rows) scrolls by itself, so **None** and **Recent** under it stay in reach. With a Custom color
   list, the color layer's **Palettes** page edits it ([The Color Layer](#the-color-layer)).

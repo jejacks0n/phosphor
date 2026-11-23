@@ -1,7 +1,7 @@
 // The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { colorBoxKey, frameStepKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
+import { colorBoxKey, textKeyAction, moveCursor, typedText } from '../../src/lib/TextKeys.js';
 import { shiftRow } from '../../src/document/editCells.js';
 
 test("The Text tool's keys -> editing actions, cursor clamping, and row shifting for insert mode", async () => {
@@ -19,11 +19,20 @@ test("The Text tool's keys -> editing actions, cursor clamping, and row shifting
   assert.deepEqual(k('F12'), { type: 'slot', index: 11 });
   assert.deepEqual(k('F1'), { type: 'slot', index: 0 });
   assert.equal(k('F13'), null);
-  assert.deepEqual(k('ArrowLeft', { altKey: true }), { type: 'palette', delta: -1 });
-  assert.deepEqual(k('ArrowRight', { altKey: true }), { type: 'palette', delta: 1 });
+  // Moebius's lines and columns: Alt+↑ puts a line in at the cursor, Alt+↓ takes the cursor's out, Alt+→ and Alt+← the same
+  // for a column.
+  assert.deepEqual(k('ArrowUp', { altKey: true }), { type: 'line', delta: 1 });
+  assert.deepEqual(k('ArrowDown', { altKey: true }), { type: 'line', delta: -1 });
+  assert.deepEqual(k('ArrowRight', { altKey: true }), { type: 'column', delta: 1 });
+  assert.deepEqual(k('ArrowLeft', { altKey: true }), { type: 'column', delta: -1 });
+  for (const key of ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight']) {
+    assert.equal(k(key, { altKey: true, shiftKey: true }), null, key);          // Shift+Alt+arrows: nothing
+    assert.equal(k(key, { ctrlKey: true }), null, key);                        // the color steps (the command table's)
+    assert.equal(k(key, { ctrlKey: true, altKey: true }), null, key);          // ...as a Mac has them
+  }
+  assert.equal(k(',', { ctrlKey: true, code: 'Comma' }), null);                // the character set's steps
+  assert.equal(k('.', { ctrlKey: true, code: 'Period' }), null);
   assert.equal(k('ArrowRight', { shiftKey: true }), null);                    // Shift+arrows select (useKeyboardShortcuts)
-  assert.deepEqual(k('ArrowUp', { altKey: true, shiftKey: true }), { type: 'color', slot: 'bg', delta: -1 });
-  assert.deepEqual(k('ArrowDown', { altKey: true }), { type: 'color', slot: 'fg', delta: 1 });
   assert.deepEqual(k('å', { altKey: true }), { type: 'char', char: 'å' });   // macOS Option characters
   assert.deepEqual(k('ArrowDown'), { type: 'move', dc: 0, dr: 1 });
   assert.deepEqual(k('ArrowLeft'), { type: 'move', dc: -1, dr: 0 });
@@ -90,13 +99,8 @@ test('Alt+? opens the shortcuts list even while typing, and never types; ? types
   assert.deepEqual(textKeyAction(ev('?', 'Slash'), { editable: false }), { type: 'char', char: '?' });
 });
 
-test('Alt+, and Alt+. step frames by physical key, even while typing, and with frames never type', () => {
-  const ev = (key, code, mods = {}) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...mods });
-  assert.equal(frameStepKey(ev('≤', 'Comma')), -1); // Option+, on a Mac
-  assert.equal(frameStepKey(ev('≥', 'Period')), 1);
-  assert.equal(frameStepKey(ev('.', 'Period', { altKey: false })), 0); // plain . types while typing
-  assert.equal(frameStepKey(ev('.', 'Period', { ctrlKey: true })), 0); // AltGr
-  assert.equal(frameStepKey(ev('>', 'Period', { shiftKey: true })), 0);
-  assert.equal(textKeyAction(ev('≥', 'Period'), { editable: false, animate: true }), null);
-  assert.deepEqual(textKeyAction(ev('≥', 'Period'), { editable: false }), { type: 'char', char: '≥' }); // a still: Option+. types ≥
+test('Alt+, and Alt+. type while typing, frames or not: a frame step needs Escape first', () => {
+  const ev = (key, code) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false });
+  assert.deepEqual(textKeyAction(ev('≥', 'Period'), { editable: false }), { type: 'char', char: '≥' }); // Option+. on a Mac
+  assert.deepEqual(textKeyAction(ev('≤', 'Comma'), { editable: false }), { type: 'char', char: '≤' });
 });

@@ -1455,7 +1455,8 @@
     "holdSpace": "maintenir Espace",
     "macFnNote": "Sur les claviers Mac, il peut falloir maintenir Fn pour utiliser F1–F12. Pour vous en passer, activez « Utiliser les touches F1, F2, etc. comme touches de fonction standard » dans Réglages Système → Clavier → Raccourcis clavier… → Touches de fonction.",
     "reasons": {
-      "noDrawing": "Aucun dessin ouvert"
+      "noDrawing": "Aucun dessin ouvert",
+      "noCursor": "Placez d’abord le curseur en Mode Édition"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1530,7 +1531,13 @@
       "typeFKey": "Taper le caractère depuis l'emplacement de palette actif",
       "grabFKey": "Enregistrer le caractère sous le curseur dans cet emplacement de palette",
       "prevNextPalette": "Palette de caractères précédente ou suivante",
-      "stepFgPalette": "Faire défiler la couleur de premier plan dans la palette (maintenir Maj pour l'arrière-plan)",
+      "stepFg": "Couleur de premier plan : précédente ou suivante dans la palette",
+      "stepBg": "Couleur d'arrière-plan : précédente ou suivante dans la palette",
+      "insertLine": "Insérer une ligne au curseur",
+      "deleteLine": "Supprimer la ligne du curseur",
+      "insertColumn": "Insérer une colonne au curseur",
+      "deleteColumn": "Supprimer la colonne du curseur",
+      "altArrowsElsewhere": "Rien hors du Mode Édition, pour que le navigateur ne revienne pas en arrière",
       "selectAll": "Tout sélectionner",
       "copyCutPaste": "Copier, couper, coller",
       "nudge": "Ajuster la sélection pas à pas",
@@ -1539,7 +1546,7 @@
       "stamp": "Tampon : placer une copie ici et continuer à déplacer la sélection",
       "deselect": "Désélectionner et placer la sélection sur le canevas (revient au Mode Édition s'il était actif auparavant)",
       "playPause": "Lire ou mettre en pause l'animation (toute autre touche met également en pause)",
-      "prevNextFrame": "Aller à l'image précédente ou suivante ({keys} pendant la frappe)",
+      "prevNextFrame": "Aller à l'image précédente ou suivante (aussi {keys})",
       "newFrame": "Ajouter une nouvelle image du même type que l'image actuelle (maintenir pour en ajouter plusieurs)",
       "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"
     }

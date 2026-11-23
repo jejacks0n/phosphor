@@ -6,7 +6,7 @@ import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { TOOLS, keyLabel } from '@/tools';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
-import { COMMANDS, GROUPS } from '@/lib/commands';
+import { COMMANDS, GROUPS, commandById } from '@/lib/commands';
 import { keysFor, keyLabel as label } from '@/lib/keymap';
 
 let app = null;
@@ -41,12 +41,14 @@ test('the list is the command table: its groups in order, and every row with key
   const general = sections[0].querySelectorAll('dt');
   expect([...general].slice(0, 3).map((dt) => dt.textContent)).toEqual(['?', label('Mod+Z'), label('Shift+Mod+Z')]);
   const lines = new Map(sections.flatMap((s) => [...s.querySelectorAll('dt')].map((dt) => [dt.nextElementSibling.textContent, dt.textContent])));
-  for (const row of COMMANDS.filter((c) => (c.run || c.fixed) && (c.keys || c.shown) && c.group !== 'animation')) {
+  for (const row of COMMANDS.filter((c) => (c.run || c.fixed) && (c.keys || c.shown) && c.group !== 'animation' && !c.hidden)) {
     expect(GROUPS, row.id).toContain(row.group);
     const words = row.label();
     expect(lines.has(words), row.id).toBe(true);
     if (!row.shown) for (const key of keysFor(row.keys)) expect(lines.get(words), row.id).toContain(label(key));
   }
+  // A hidden row (Alt+← and Alt+→ outside Edit Mode, taken so the browser doesn't go Back) has no line.
+  expect(lines.has(commandById('edit.altArrowsElsewhere').label())).toBe(false);
 });
 
 test('it has the ×, with focus starting on Done; on a phone it is the whole window, the list taking the room over Done', async () => {

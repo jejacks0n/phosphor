@@ -110,21 +110,27 @@ test('a line or column that moves nothing is no step, and what typing pushed pas
 test('R1: with the base picked, its cells move with their pins, and the line left behind is erased', async () => {
   const { project, workspace } = await blank();
   project.beginEdit();
-  project.writeBaseCells([...'abcd'].map((char, row) => ({ col: 1, row, char, fg: RED, bg: '#000000' })));
+  const FGS = [RED, '#00ff00', '#0000ff', '#ffff00'], BGS = ['#000080', '#008000', '#800000', '#808080']; // a color pair a row
+  project.writeBaseCells([...'abcd'].map((char, row) => ({ col: 1, row, char, fg: FGS[row], bg: BGS[row] })));
   project.commitEdit();
+  await settle(project);
   const layer = project.editId;
   workspace.pickLayer('base');
   const pins = () => Array.from({ length: 4 }, (_, row) => project.baseRecords.pins.get(`1,${row}`) ?? '.').join('');
+  const colors = () => Array.from({ length: 4 }, (_, row) => `${project.baseCellAt(1, row).fg} ${project.baseCellAt(1, row).bg}`);
+  const before = colors();
+  expect(new Set(before).size).toBe(4);
   expect(project.insertLine(0)).toBe(true);
   await settle(project);
   expect(pins()).toBe(' abc');
   expect([1, 2, 3].map((row) => project.baseCellAt(1, row).char).join('')).toBe('abc');
-  expect(project.baseCellAt(1, 1).fg).toBe(RED);
-  expect(project.baseCellAt(1, 0).bg).toBe('#000000');
+  expect(colors().slice(1)).toEqual(before.slice(0, 3)); // each row's pixels moved down with it
+  expect(project.baseCellAt(1, 0).bg).toBe('#000000'); // the line left behind, erased
   expect([...project.cellsOf(layer).keys()].sort()).toEqual(['0,0', '0,1', '0,2', '0,3']); // only the picked layer moves
   project.undo();
   await settle(project);
   expect(pins()).toBe('abcd');
+  expect(colors()).toEqual(before);
   expect(project.deleteColumn(0)).toBe(true);
   expect(Array.from({ length: 4 }, (_, row) => project.baseRecords.pins.get(`0,${row}`) ?? '.').join('')).toBe('abcd');
 });

@@ -280,7 +280,9 @@ test('on a phone the menus stay on screen side to side too', async ({ page }) =>
   }
 });
 
-test('Alt+. and Alt+, step frames while typing, and the typing carries on there', async ({ page }) => {
+// Edit Mode keeps its keys: Alt+. and Alt+, type while typing (≥ and ≤ on a Mac), and step once Escape has put the
+// cursor away; T brings it back where it was.
+test('Alt+. types while typing and steps the frame once Escape has put the cursor away', async ({ page }) => {
   await openApp(page);
   await animateSwitch(page).check();
   await addFrame(page, 'Blank');
@@ -291,14 +293,16 @@ test('Alt+. and Alt+, step frames while typing, and the typing carries on there'
   await page.mouse.click(at.x, at.y);
   await page.waitForFunction(() => document.activeElement?.dataset?.textInput !== undefined);
   await page.keyboard.press('A');
+  await page.keyboard.press('Alt+Period'); // it types what the keyboard makes of it (Playwright's Alt makes nothing)
+  await page.keyboard.press('B');
+  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
+  await expect(shown(page)).toHaveText('1 / 2');
+  await expect.poll(() => chars(page, 2, 3, 4)).toMatch(/B/); // the cursor still up, on this frame
+  await page.keyboard.press('Escape');
   await page.keyboard.press('Alt+Period');
   await expect(shown(page)).toHaveText('2 / 2');
-  await page.keyboard.press('B'); // the cursor's still up, where it was
-  await expect.poll(() => chars(page, 2, 2, 3)).toBe('AB');
   await page.keyboard.press('Alt+Comma');
   await expect(shown(page)).toHaveText('1 / 2');
-  await expect.poll(() => chars(page, 2, 2, 2)).toBe('A');
-  expect(await chars(page, 2, 3, 3)).not.toBe('B'); // the B is frame 2's
 });
 
 test('New cells in the frame menu sets whether what is drawn next carries on or stays, and changes nothing drawn', async ({ page }) => {

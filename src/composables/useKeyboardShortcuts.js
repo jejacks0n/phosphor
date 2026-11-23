@@ -272,7 +272,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       'view.zoomIn', 'view.zoomOut', 'view.zoomBack', 'general.help'])) return;
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;
-    if (takeKey(e, ctx, ['colors.openFg', 'colors.openBg', 'colors.swap'])) return;
+    if (takeKey(e, ctx, ['colors.openFg', 'colors.openBg', 'colors.swap', 'colors.fgPrev', 'colors.fgNext', 'colors.bgPrev', 'colors.bgNext',
+      'characters.setPrev', 'characters.setNext', 'edit.altArrowsElsewhere'])) return;
     if (_handleToolSwap(e)) return;
     if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;
