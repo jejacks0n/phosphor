@@ -11,8 +11,9 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 // The command list, opened with Cmd+K (Ctrl+K off a Mac) or the desktop's Help menu: one field, and under it every
 // command the table can run here (src/lib/commands.js), found by its words' letters in order (commandSearch.js). Each
-// row is its words and its key, when it has one; one that can't run now is grayed with why. ↑ ↓ move the row picked
-// while focus stays in the field, Enter runs it, Escape closes. With nothing typed: the commands last run from it,
+// row is its words and its key, when it has one; one that can't run now is grayed with why, and found after the ones that
+// can. The first that can run is picked, ↑ ↓ move the row picked while focus stays in the field, Enter runs it, Escape
+// closes. With nothing typed: the commands last run from it,
 // then all of them by group. It closes with the id chosen (or none), and App.vue runs it once the list has gone
 // (chooseCommand); focus goes back where it was as it goes.
 const emit = defineEmits(['close']);
@@ -32,7 +33,10 @@ const byId = new Map(rows.map((row) => [row.id, row]));
 
 const query = ref('');
 const sections = computed(() => {
-  if (query.value.trim()) return [{ title: '', rows: searchCommands(query.value, rows).map(({ id }) => byId.get(id)) }];
+  if (query.value.trim()) {
+    const found = searchCommands(query.value, rows).map(({ id }) => byId.get(id));
+    return [{ title: '', rows: found.sort((a, b) => !!a.reason - !!b.reason) }]; // a stable sort: best first on each side
+  }
   const recent = recentCommands.read().map((id) => byId.get(id)).filter(Boolean);
   const rest = rows.filter((row) => !recent.includes(row));
   return [{ title: t('shortcuts.list.recent'), rows: recent }, ...GROUPS.map((group) => ({ title: t(`shortcuts.groups.${group}`), rows: rest.filter((row) => row.group === group) }))]
@@ -40,8 +44,9 @@ const sections = computed(() => {
 });
 const listed = computed(() => sections.value.flatMap((section) => section.rows));
 
-const active = ref(0);
-watch(query, () => { active.value = 0; });
+const firstRunnable = () => Math.max(0, listed.value.findIndex((row) => !row.reason));
+const active = ref(firstRunnable());
+watch(query, () => { active.value = firstRunnable(); });
 const optionId = (row) => `command-${row.id}`;
 const list = useTemplateRef('list');
 watch(active, () => list.value?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: 'nearest' }), { flush: 'post' });
