@@ -80,6 +80,21 @@ test('the color steps leave Monochrome ASCII and the color box alone', async () 
   expect(workspace.editFgColor).toBe(cga(1));
 });
 
+test('the color steps leave a stroke under way alone', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('pencil');
+  workspace.setColor('fg', cga(1));
+  workspace.setColor('bg', cga(3));
+  workspace.isPainting = true;
+  for (const id of ['colors.fgNext', 'colors.fgPrev', 'colors.bgNext', 'colors.bgPrev']) {
+    pressCommand(id);
+    expect([workspace.editFgColor, workspace.editBgColor], id).toEqual([cga(1), cga(3)]);
+  }
+  workspace.isPainting = false;
+  pressCommand('colors.fgNext');
+  expect(workspace.editFgColor).toBe(cga(2));
+});
+
 test('Ctrl+. and Ctrl+, step the character set, with the cursor placed or not', async () => {
   const { workspace } = await mount();
   const palettes = usePaletteStore();
