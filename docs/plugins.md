@@ -297,7 +297,8 @@ underscores together: it's the end of a shader's uniform name, `opt_<id>`; one o
 - `checkbox`: `default`, true or false.
 - `choice`: `choices` (up to 20, each 40 characters at most) and `default`, the number of the choice (the first is 0).
 - `color`: `default`, a color as `'#rrggbb'` (kept in lowercase). JavaScript gets it as `{ r, g, b }`, each 0 to 255,
-  and a shader as a `vec3`, each channel 0 to 1. It shows as a swatch; in the settings column the colors that come right
+  and a shader as a `vec3` in the scale of that shader's other colors: 0 to 255 a channel in a solver's, 0 to 1 in a
+  filter's. It shows as a swatch; in the settings column the colors that come right
   after a slider, one after another, sit beside it, as Edges has its color (both of Aberration's sit by Distance).
 
 Where the values are kept depends on the kind: a solver's for each layer, saved with the drawing; a filter's with the
@@ -401,10 +402,11 @@ chosen for every cell, and it can read what pass 1 chose around it.
 
 - `look.glyphs`: the characters it may use, each `{ char, mask, own }`: its 32 numbers of ink (0 to 1), and `own`
   true for the solver's own `chars`. The layer's set comes first, then the solver's own.
-- `look.palette` (`null` when any color will do), `look.style`, `look.options` (by id), `look.light` and `look.solids`
-  (Pattern light and Solids).
-- `look.mix(bg, fg, ink)` blends one color channel as By shape does, `look.nearest(color)` gives the palette's nearest
-  color, and `look.gray(color)` a color's brightness, 0 to 255.
+- `look.palette` (`null` when any color will do), `look.style` (`'ansi'`, `'colorAscii'` or `'ascii'`), `look.options`
+  (by id), `look.light` and `look.solids` (Pattern light and Solids, each 0 to 1).
+- `look.mix(bg, fg, ink)` blends one color channel as By shape does: the background first, since it goes from the
+  background (no ink) to the foreground (all ink), as GLSL's `mix` goes from its first to its second. `look.nearest(color)`
+  gives the palette's nearest color, and `look.gray(color)` a color's brightness, 0 to 255.
 - `look.byShape()` gives the cell as By shape would pick it from the layer's set alone, so a solver can do its own
   thing in some cells and leave the rest to By shape.
 
@@ -455,14 +457,18 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
   set and the palette, as `look` has them.
 - `ownGlyph[k]`: the index of the solver's k-th own character in the set (only where the solver has `chars`). A glyph is
   named by its index, so use this where the JavaScript uses a character.
-- `uLight` (Pattern light), `uTolerance` (Solids), `uStyle`, and `opt_<id>` for each option: a `float` for a slider, a
-  `bool` for a checkbox, an `int` for a choice and a `vec3` (0 to 1) for a color.
+- `uLight` and `uSolids` (Pattern light and Solids, the numbers `look.light` and `look.solids` give), `uStyle` (the
+  style: 0 for `ansi`, 1 for `colorAscii`, 2 for `ascii`), and `opt_<id>` for each option: a `float` for a slider, a
+  `bool` for a checkbox, an `int` for a choice and a `vec3` for a color, 0 to 255 a channel as every color in a solver's
+  shader is.
 - `snap(vec3 v, out vec3 c)` (rounds `v` to bytes into `c` and returns the palette's nearest index, or -1 with no
-  palette), `mixed(bg, fg, lb, lf, ink)` (By shape's blend, `lb` and `lf` the linear light of the colors), and
-  `toLinear` and `toSrgb`: the helpers By shape uses.
+  palette), `mixed(bg, fg, lb, lf, ink)` (By shape's blend, the background first as `look.mix` has it, `lb` and `lf` the
+  linear light of the colors), `gray(vec3 c)` (a color's brightness, 0 to 255, as `look.gray`), and `toLinear` and
+  `toSrgb`: the helpers By shape uses.
 - `byShape()`: By shape's pick for the cell, put as the result.
 - `charAt(ivec2 d)` (pass 2): pass 1's glyph index for the cell `d` away, or -1 past the border.
-- `put(vec3 fg, vec3 bg, int glyph)`: the result. Glyph 255 means a solid cell.
+- `put(vec3 fg, vec3 bg, int glyph)`: the result, the foreground first, as a pass's `{ char, fg, bg }` names them
+  (`mixed` is the one that takes the background first). Glyph 255 means a solid cell.
 
 The JavaScript is the reference, and the shader has to agree with it. The first time a shader would be used for a set of
 characters in a visit, Phosphor runs both on a test picture of 8 x 8 cells and compares them, with the layer's
