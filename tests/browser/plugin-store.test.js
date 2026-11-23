@@ -54,6 +54,11 @@ test('a file that is not a manifest is refused in words, and nothing is stored',
     .rejects.toMatchObject({ userMessage: 'That file is too big for a plugin.' });
   await expect(store.read(file(changed((m) => { m.themes[0].colors.accent = 'red'; }))))
     .rejects.toMatchObject({ userMessage: 'The theme “Midnight” sets “accent” to “red”, which isn\'t a hex color.' });
+  // A field Phosphor doesn't know isn't left out, and a plugin for a higher level says so whatever else it has.
+  await expect(store.read(file(changed((m) => { m.themes[0].fonts = { ui: 'serif' }; }))))
+    .rejects.toMatchObject({ userMessage: 'The manifest has a field this Phosphor doesn\'t know: “themes[0].fonts”.' });
+  await expect(store.read(file(changed((m) => { m.phosphor = 2; m.themes[0].fonts = { ui: 'serif' }; }))))
+    .rejects.toMatchObject({ userMessage: 'This plugin was made for a newer Phosphor.' });
   expect(await loadPlugins()).toEqual([]);
 });
 

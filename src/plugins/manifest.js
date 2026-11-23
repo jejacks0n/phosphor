@@ -1,16 +1,24 @@
-// A plugin's manifest (phosphor-plugin.json) is a stranger's data: read into a clean object with only the fields
-// Phosphor knows, every string within its limit, every color hex for one of the app's own color slots. docs/plugins.md
+// A plugin's manifest (phosphor-plugin.json) is a stranger's data: read into a clean object, every string within its
+// limit, every color hex for one of the app's own color slots, and no field Phosphor doesn't know. docs/plugins.md
 // describes the format.
 import { parse } from '../lib/semver.js';
 
-export const MANIFEST_FORMAT = 1;
+// The plugin API's level, which a manifest names as "phosphor": the lowest level that has everything the plugin uses.
+// It goes up by one whenever something is added that a plugin can use (a manifest field, a color slot, a list or a
+// field in a script, an option kind, a call on what a script is handed), so a plugin that uses the new thing names the
+// new level and a copy of Phosphor from before it says the plugin is for a newer Phosphor (newer), rather than taking
+// it with the new thing left out. A reader takes every level from 1 up to its own. That's why a field Phosphor doesn't
+// know refuses a plugin at any level (unknownField, and the script's readers the same): at a level this copy knows,
+// it's a slip, not something newer.
+export const API_LEVEL = 1;
 export const MOST_MANIFEST_BYTES = 65536;
 export const MOST_SCRIPT_BYTES = 1048576;
 export const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/i;
 
 // The color custom properties of :root in global.css, without their dashes, in its order. --logo and the fonts aren't
-// slots. accent-glow is worked out from the accent unless a theme sets it. The list can grow, never shrink: an unknown
-// key refuses a manifest, so a theme that sets a slot added later isn't read by a copy of Phosphor from before it.
+// slots. accent-glow is worked out from the accent unless a theme sets it. The list can grow, never shrink: a slot
+// this copy doesn't know refuses a manifest, so a theme that sets a slot added later isn't read by a copy of Phosphor
+// from before it.
 export const COLOR_SLOTS = Object.freeze([
   'white', 'black',
   'background', 'background-highlight',
@@ -33,7 +41,7 @@ const MOST_THEMES = 20;
 // backslash, JavaScript. Each segment is a name a folder can be opened by.
 const SCRIPT_PATH = /^(?!.*(?:^|\/)\.{1,2}(?:\/|$))(?!.*\/\/)[A-Za-z0-9_-][A-Za-z0-9._/-]*\.m?js$/;
 
-// code: tooBig, notJson, newer, nothing, badField { field }, unknownColor { theme, key },
+// code: tooBig, notJson, newer, nothing, badField { field }, unknownField { field }, unknownColor { theme, key },
 // badColor { theme, key, value }. The words are the app's (plugins.errors in the locales).
 export class ManifestError extends Error {
   constructor(code, detail = {}) {
@@ -66,9 +74,19 @@ const isPreview = (value) => {
   return lines.length <= 3 && lines.every((line) => line.length <= 24 && plainText(line));
 };
 
+// The fields a manifest and a theme may have. One that isn't among them refuses the manifest, named (cut short: it's
+// a stranger's word, shown).
+const FIELDS = ['phosphor', 'id', 'name', 'version', 'author', 'description', 'homepage', 'license', 'preview', 'themes', 'script'];
+const THEME_FIELDS = ['id', 'name', 'base', 'colors'];
+const onlyKnown = (raw, fields, at = '') => {
+  const key = Object.keys(raw).find((each) => !fields.includes(each));
+  if (key !== undefined) throw new ManifestError('unknownField', { field: `${at}${key.slice(0, 40)}` });
+};
+
 const readTheme = (raw, i, seen) => {
   const at = `themes[${i}]`;
   if (!isObject(raw)) throw new ManifestError('badField', { field: at });
+  onlyKnown(raw, THEME_FIELDS, `${at}.`);
   const id = text(raw, `${at}.id`, 40, { test: (value) => THEME_ID.test(value) && !seen.has(value) });
   seen.add(id);
   const name = text(raw, `${at}.name`, 40);
@@ -91,10 +109,13 @@ export function readManifest(source) {
   let raw;
   try { raw = JSON.parse(source); } catch { throw new ManifestError('notJson'); }
   if (!isObject(raw)) throw new ManifestError('notJson');
-  if (typeof raw.phosphor === 'number' && raw.phosphor > MANIFEST_FORMAT) throw new ManifestError('newer');
-  if (raw.phosphor !== MANIFEST_FORMAT) throw new ManifestError('badField', { field: 'phosphor' });
+  // The level first: a plugin for a newer Phosphor says so, whatever else of it this copy doesn't know.
+  const level = raw.phosphor;
+  if (typeof level === 'number' && level > API_LEVEL) throw new ManifestError('newer');
+  if (!Number.isInteger(level) || level < 1) throw new ManifestError('badField', { field: 'phosphor' });
+  onlyKnown(raw, FIELDS);
   const manifest = {
-    phosphor: MANIFEST_FORMAT,
+    phosphor: level,
     id: text(raw, 'id', MOST_ID, { test: goodPluginId }),
     name: text(raw, 'name', 60),
     version: text(raw, 'version', 60, { test: (value) => parse(`v${value}`) !== null }),

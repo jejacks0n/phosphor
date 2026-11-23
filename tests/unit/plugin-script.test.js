@@ -148,6 +148,36 @@ describe('readScript: brushes, shapes and filters', () => {
   });
 });
 
+// A field Phosphor doesn't know isn't left out: it's a slip (refine misspelled would silently never run), or something
+// of a newer Phosphor's, which the manifest's level says (plugin-manifest.test.js).
+describe('readScript: fields it doesn\'t know', () => {
+  const slider = { id: 'a', kind: 'slider', name: 'A', min: 0, max: 1, step: 1, default: 0 };
+  it.each([
+    [{ refne: () => null }, 'solvers[0].refne'], [{ optons: [] }, 'solvers[0].optons'], [{ icon: 'x' }, 'solvers[0].icon'],
+    [{ shader: { solve: 'x', common: 'y' } }, 'solvers[0].shader.common'],
+    [{ options: [{ ...slider, choices: ['x'] }] }, 'solvers[0].options[0].choices'],
+    [{ options: [{ id: 'a', kind: 'checkbox', name: 'A', default: true, min: 0 }] }, 'solvers[0].options[0].min'],
+    [{ options: [{ id: 'a', kind: 'color', name: 'A', default: '#000000', alpha: true }] }, 'solvers[0].options[0].alpha'],
+    [{ options: [{ id: 'a', kind: 'choice', name: 'A', choices: ['x'], default: 0, step: 1 }] }, 'solvers[0].options[0].step'],
+    [{ options: [{ ...slider, help: 'How much' }] }, 'solvers[0].options[0].help'],
+    [{ ['x'.repeat(100)]: 1 }, `solvers[0].${'x'.repeat(40)}`], // shown, so cut short
+  ])('refuses a solver with %o at %s', (change, field) => expect(() => read(change)).toThrow(shape(field)));
+
+  it('refuses a list it doesn\'t know beside ones it does, and a brush\'s, shape\'s, filter\'s and outline\'s unknown field', () => {
+    expect(() => readScript({ default: { solvers: [OUTLINE_LIKE], tools: [] } })).toThrow(shape('tools'));
+    expect(() => readOf('brushes', { ...BRUSH, cursor: 'cross' })).toThrow(shape('brushes[0].cursor'));
+    expect(() => readOf('shapes', { ...SHAPE, key: 'S' })).toThrow(shape('shapes[0].key')); // a brush's field, not a shape's
+    expect(() => readOf('filters', { ...FILTER, icon: ICON })).toThrow(shape('filters[0].icon'));
+    expect(() => readOutlines([{ closed: true, points: [[0, 0], [1, 1]], fill: '#fff' }])).toThrow(shape('outline.fill'));
+  });
+
+  it('takes a field it knows that is left undefined, and reads the keys of a Proxy that throws as a refusal', () => {
+    expect(read({ refine: undefined, chars: undefined, shader: undefined })[0].refine).toBe(null);
+    const boom = new Proxy({ ...OUTLINE_LIKE }, { ownKeys: () => { throw new Error('no'); } });
+    expect(() => readScript({ default: { solvers: [boom] } })).toThrow(shape('solvers[0]'));
+  });
+});
+
 describe('readOutlines', () => {
   it('gives every point six numbers, zero handles for a plain one', () => {
     const [outline] = readOutlines([{ closed: true, points: [[0, 0], [1, 0], [0.5, 1, 1, 2, 3, 4]] }]);

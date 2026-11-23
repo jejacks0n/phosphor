@@ -33,9 +33,19 @@ const isObject = (value) => value !== null && typeof value === 'object' && !Arra
 const text = (value) => typeof value === 'string' && value.length > 0 && [...value].length <= MOST_NAME && plainText(value);
 const num = (value) => typeof value === 'number' && Number.isFinite(value);
 
-// A stranger's object can be a getter or a Proxy: each field is read once, into a local, and only the locals are
-// checked and kept. An array is copied once and only the copy is looked at.
-const pick = (raw, keys) => Object.fromEntries(keys.map((key) => [key, raw[key]]));
+// A field of a stranger's object that Phosphor doesn't know refuses the plugin, named (cut short: it's a stranger's
+// word, shown): a slip, or something of a newer Phosphor's that the manifest's level should have said (manifest.js
+// API_LEVEL). keys: the object's own, read once.
+const onlyKnown = (keys, known, at) => {
+  const key = keys.find((each) => !known.includes(each));
+  if (key !== undefined) throw shape(`${at ? `${at}.` : ''}${key.slice(0, 40)}`);
+};
+// A stranger's object can be a getter or a Proxy: its keys are read once, each field is read once, into a local, and
+// only the locals are checked and kept. An array is copied once and only the copy is looked at.
+const pick = (raw, keys, at) => {
+  onlyKnown(Object.keys(raw), keys, at);
+  return Object.fromEntries(keys.map((key) => [key, raw[key]]));
+};
 // (An array's iterator re-reads its length each step, so the length is read here, once.)
 const copy = (value) => {
   if (!Array.isArray(value)) return null;
@@ -51,11 +61,17 @@ const guarded = (field, read) => {
   }
 };
 
+// The fields each kind of option has; every kind has an id, a kind, a name and a default.
+const OPTION_FIELDS = { slider: ['min', 'max', 'step'], checkbox: [], color: [], choice: ['choices'] };
+
 function readOption(raw, field) {
   if (!isObject(raw)) throw shape(field);
-  const option = pick(raw, ['id', 'kind', 'name', 'min', 'max', 'step', 'default', 'choices']);
+  const keys = Object.keys(raw);
+  const option = Object.fromEntries(['id', 'kind', 'name', 'min', 'max', 'step', 'default', 'choices'].map((key) => [key, raw[key]]));
   if (typeof option.id !== 'string' || !OPTION_ID.test(option.id) || !text(option.name)) throw shape(field);
   const { id, kind, name, min, max, step, default: value } = option;
+  if (!Object.hasOwn(OPTION_FIELDS, kind)) throw shape(field);
+  onlyKnown(keys, ['id', 'kind', 'name', 'default', ...OPTION_FIELDS[kind]], field);
   if (kind === 'slider') {
     if (![min, max, step, value].every(num) || !(min < max) || !(step > 0) || value < min || value > max) throw shape(field);
     return Object.freeze({ id, kind, name, min, max, step, default: value });
@@ -68,13 +84,11 @@ function readOption(raw, field) {
     if (typeof value !== 'string' || !/^#[0-9a-f]{6}$/i.test(value)) throw shape(field);
     return Object.freeze({ id, kind, name, default: value.toLowerCase() });
   }
-  if (kind === 'choice') {
-    const choices = copy(option.choices);
-    if (!choices || choices.length < 1 || choices.length > MOST_CHOICES || !choices.every(text)
-      || !Number.isInteger(value) || value < 0 || value >= choices.length) throw shape(field);
-    return Object.freeze({ id, kind, name, choices: Object.freeze(choices), default: value });
-  }
-  throw shape(field);
+  // a choice
+  const choices = copy(option.choices);
+  if (!choices || choices.length < 1 || choices.length > MOST_CHOICES || !choices.every(text)
+    || !Number.isInteger(value) || value < 0 || value >= choices.length) throw shape(field);
+  return Object.freeze({ id, kind, name, choices: Object.freeze(choices), default: value });
 }
 
 function readChars(chars, field) {
@@ -89,7 +103,7 @@ function readChars(chars, field) {
 function readShader(raw, field) {
   if (raw === undefined) return Object.freeze({ solve: null, refine: null });
   if (!isObject(raw)) throw shape(field);
-  const { solve, refine } = pick(raw, ['solve', 'refine']);
+  const { solve, refine } = pick(raw, ['solve', 'refine'], field);
   const one = (value) => {
     if (value === undefined) return null;
     if (typeof value !== 'string' || value.length > MOST_SHADER) throw shape(field);
@@ -102,7 +116,7 @@ function readSolver(raw, index) {
   const at = `solvers[${index}]`;
   return guarded(at, () => {
     if (!isObject(raw)) throw shape(at);
-    const { id, name, reach, solve, refine, chars: rawChars, shader, ...rest } = pick(raw, ['id', 'name', 'styles', 'reach', 'chars', 'options', 'solve', 'refine', 'shader']);
+    const { id, name, reach, solve, refine, chars: rawChars, shader, ...rest } = pick(raw, ['id', 'name', 'styles', 'reach', 'chars', 'options', 'solve', 'refine', 'shader'], at);
     if (typeof id !== 'string' || !ID.test(id)) throw shape(`${at}.id`);
     if (!text(name)) throw shape(`${at}.name`);
     const styles = copy(rest.styles);
@@ -155,7 +169,7 @@ function readBrush(raw, index) {
   const at = `brushes[${index}]`;
   return guarded(at, () => {
     if (!isObject(raw)) throw shape(at);
-    const fields = pick(raw, ['id', 'name', 'icon', 'key', 'size', 'options', 'begin', 'move', 'end']);
+    const fields = pick(raw, ['id', 'name', 'icon', 'key', 'size', 'options', 'begin', 'move', 'end'], at);
     const head = readHead(fields, at);
     const options = readOptions(fields.options, at);
     let key = null;
@@ -180,7 +194,7 @@ function readShape(raw, index) {
   const at = `shapes[${index}]`;
   return guarded(at, () => {
     if (!isObject(raw)) throw shape(at);
-    const fields = pick(raw, ['id', 'name', 'icon', 'options', 'outline']);
+    const fields = pick(raw, ['id', 'name', 'icon', 'options', 'outline'], at);
     const head = readHead(fields, at);
     return Object.freeze({ ...head, options: readOptions(fields.options, at), outline: fn(fields.outline, `${at}.outline`) });
   });
@@ -190,7 +204,7 @@ function readFilter(raw, index) {
   const at = `filters[${index}]`;
   return guarded(at, () => {
     if (!isObject(raw)) throw shape(at);
-    const { id, name, options, passes: rawPasses } = pick(raw, ['id', 'name', 'options', 'passes']);
+    const { id, name, options, passes: rawPasses } = pick(raw, ['id', 'name', 'options', 'passes'], at);
     if (typeof id !== 'string' || !ID.test(id)) throw shape(`${at}.id`);
     if (!text(name)) throw shape(`${at}.name`);
     const passes = copy(rawPasses);
@@ -226,6 +240,7 @@ export function readScript(namespace) {
   const exported = guarded('default', () => {
     const value = namespace?.default;
     if (!isObject(value)) throw shape('default');
+    onlyKnown(Object.keys(value), ['solvers', 'brushes', 'shapes', 'filters'], '');
     return value;
   });
   const parts = Object.freeze({
@@ -247,7 +262,7 @@ export function readOutlines(raw) {
     let total = 0;
     const outlines = list.map((item) => {
       if (!isObject(item)) throw shape('outline');
-      const { closed, points: rawPoints } = pick(item, ['closed', 'points']);
+      const { closed, points: rawPoints } = pick(item, ['closed', 'points'], 'outline');
       const points = copy(rawPoints);
       if (typeof closed !== 'boolean' || !points || points.length < 2) throw shape('outline');
       total += points.length;
