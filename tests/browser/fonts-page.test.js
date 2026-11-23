@@ -8,7 +8,8 @@ import { i18n } from '@/i18n';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
-import { fontId, blocksOf, fontKey, CP437_BLOCKS as cp437Blocks } from '@/lib/BitmapFont.js';
+import { fontId, blocksOf, fontKey, slotOf, CP437_BLOCKS as cp437Blocks } from '@/lib/BitmapFont.js';
+import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs.js';
 import { storedBitmapFont } from '@/lib/userFonts';
 import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont, storeFontPart } from '@/lib/userFonts';
@@ -211,6 +212,13 @@ test('lists the drawing\'s font first, then yours, then the built-in ones', asyn
   expect(sample('B').style.fontFamily).toContain(b.id);
   expect(sample('B').style.fontSize).toBe('16px');
   expect(sample('Tall Mono').style.fontFamily).toContain(tt.id);
+});
+
+test('a font\'s sample draws the slots the library\'s samples draw, so a block the font lacks isn\'t drawn in another font', async () => {
+  await mount({ font: noLowerHalf });
+  const sample = host.querySelector('.row .sample'); // In use: the drawing's
+  await waitFor(() => !sample.textContent.includes('▄'));
+  expect([...sample.textContent].map((c) => slotOf(c, noLowerHalf))).toEqual([...SAMPLE_CHARS].map((c) => slotOf(c)));
 });
 
 test('the drawing\'s font\'s actions', async () => {

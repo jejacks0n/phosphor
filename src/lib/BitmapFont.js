@@ -3,7 +3,7 @@
 import { CP437, cp437Substitute } from './Cp437.js';
 import { graphemes } from './CharWidth.js';
 import { t } from '@/i18n';
-import { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, lit, litDrawn, maskOf, narrowWidthOf, ownWidthOf } from './BitmapGlyphs.js';
+import { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, SAMPLE_CHARS, findBlocks, fontId, glyphRows, lit, litDrawn, maskOf, narrowWidthOf, ownWidthOf } from './BitmapGlyphs.js';
 
 export { BLOCKS, CP437_BLOCKS, NARROW_WIDTHS, findBlocks, fontId, glyphRows, maskOf, narrowWidthOf, ownWidthOf };
 
@@ -51,6 +51,11 @@ const fontSlotChars = memo((font) => {
   for (let i = 0; i < 256; i++) if (!chars[i]) chars[i] = displaced.shift() ?? String.fromCodePoint(0xE000 + i);
   return chars;
 });
+
+// A font's sample as the library's index draws it: the glyphs in the slots CP437 puts SAMPLE_CHARS in, as the characters
+// the font's face holds there. A font with no blocks draws blank (or its own glyph) where CP437 has one, never a block
+// the page falls back to another font for.
+export const sampleOf = memo((font) => [...SAMPLE_CHARS].map((c) => fontSlotChars(font)[SLOTS.get(c)]).join(''));
 
 // Each slot's own character, and every block character at its slot (a shared slot's others too).
 export const slotsOf = memo((font) => {
