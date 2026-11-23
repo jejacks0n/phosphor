@@ -443,6 +443,46 @@ test('while a swatch is dragged a dashed placeholder shows where it would land, 
   expect(list.value).toBe('#111111 #222222 #333333');
 });
 
+test('a swatch dragged near the swatches\' top or bottom, or past it, scrolls them, and the scrolling stops with the drag', async () => {
+  await page.viewport(1200, 800);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1200));
+  const many = Array.from({ length: 60 }, (_, i) => `#${(i * 4).toString(16).padStart(2, '0')}0000`).join(' ');
+  await mount(many, (node) => h('div', { style: 'display: flex; flex-direction: column; height: 300px' }, [node]));
+  gridOf(5);
+  const box = host.querySelector('div.swatches');
+  expect(box.scrollHeight).toBeGreaterThan(box.clientHeight + 100);
+  const r = box.getBoundingClientRect();
+  const pointer = (y, x = r.left + 10) => document.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, clientX: x, clientY: y }));
+  const frames = () => new Promise((done) => setTimeout(done, 100));
+
+  pointer(r.bottom - 4); // no drag yet: nothing scrolls
+  await frames();
+  expect(box.scrollTop).toBe(0);
+
+  swatches()[0].dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
+  pointer(r.bottom - 4);
+  await vi.waitFor(() => expect(box.scrollTop).toBeGreaterThan(40));
+  pointer(r.top + r.height / 2); // the middle holds still
+  await frames();
+  const held = box.scrollTop;
+  await frames();
+  expect(box.scrollTop).toBe(held);
+  pointer(r.bottom - 4, r.right + 200); // beside the swatches, not over them, holds still too
+  await frames();
+  expect(box.scrollTop).toBe(held);
+  pointer(r.top - 30); // above them scrolls up
+  await vi.waitFor(() => expect(box.scrollTop).toBeLessThan(held));
+
+  pointer(r.bottom - 4);
+  await frames();
+  swatches()[0].dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+  await frames();
+  const ended = box.scrollTop;
+  await frames();
+  expect(box.scrollTop).toBe(ended);
+});
+
 test('disabled swatches aren\'t draggable even with a mouse', async () => {
   await page.viewport(1200, 800);
   onTestFinished(() => page.viewport(414, 896));
