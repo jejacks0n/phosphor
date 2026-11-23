@@ -172,6 +172,9 @@ test('a grid resize right after typing leaves the typing undoable', async () => 
   project.render();
   await new Promise((r) => setTimeout(r, 50));
   project.ensureLayer();
+  project.undo(); // the size first: it's a step of its own
+  expect(project.cols).toBe(COLS);
+  expect(project.editCellAt(0, 0)?.char).toBe('a');
   project.undo();
   expect(project.editCellAt(0, 0)).toBeUndefined();
 });

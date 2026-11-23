@@ -458,6 +458,7 @@ export const documentActions = {
   // with its handle (fileHandle) and save picker, which come first: the browser asks only straight after a key or click.
   async saveProject(filename = this.filename, { as = false } = {}) {
     if (!this.image || !this.imageBuffer) return false;
+    this.ensureLayer(); // a grid change the render hasn't followed yet is its undo step before the save, not after
     this.commitPending(); // an open typing run counts as saved, not as an edit made after saving
 
     let handle = null;
