@@ -16,8 +16,8 @@ async function setup() {
   app.mount(document.createElement('div'));
   return { project, workspace };
 }
-const key = (k) => {
-  const e = new KeyboardEvent('keydown', { key: k, cancelable: true });
+const key = (k, init = {}) => {
+  const e = new KeyboardEvent('keydown', { key: k, cancelable: true, ...init });
   window.dispatchEvent(e);
   return e;
 };
@@ -62,5 +62,16 @@ test('[ and ] change nothing while typing in Edit Mode, or with a tool that has 
   workspace.textCursor = { col: 0, row: 0 };
   workspace.editBrushSize = 2.5;
   expect(key(']').defaultPrevented).toBe(false);
+  expect(workspace.editBrushSize).toBe(2.5);
+});
+
+test('a layout that types [ and ] with Shift keeps the Size keys; Shift on the bracket keys is the hardness\'s', async () => {
+  const { workspace } = await setup();
+  workspace.setActiveTool('brush');
+  expect(key(']', { code: 'Digit9', shiftKey: true }).defaultPrevented).toBe(true); // ] typed with Shift on another key
+  expect(workspace.editBrushSize).toBe(3.5);
+  key('[', { code: 'Digit8', shiftKey: true });
+  expect(workspace.editBrushSize).toBe(2.5);
+  key(']', { code: 'BracketRight', shiftKey: true }); // Shift+] by code: Harder, not a size
   expect(workspace.editBrushSize).toBe(2.5);
 });
