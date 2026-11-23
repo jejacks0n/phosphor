@@ -6,7 +6,7 @@ import { rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 // Pictures, projects, SVGs and art files (src/lib/ArtFile.js's ART_EXTENSIONS), as the page opens them.
-export const OPENABLE = ['pho', 'phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb'];
+export const OPENABLE = ['pho', 'phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb', 'bin'];
 export const isOpenable = (file) => OPENABLE.includes(path.extname(file).slice(1).toLowerCase());
 // The form Save writes over: a .pho. An opened .phosphor or renamed .png project isn't written over; Save asks beside it.
 export const isProject = (file) => path.extname(file).toLowerCase() === '.pho';

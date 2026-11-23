@@ -12,6 +12,7 @@ import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { readSauce } from '@/lib/Sauce';
 import { readXBin, writeXBin } from '@/lib/XBinFile';
+import { readArtFile } from '@/lib/ArtFile';
 import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
@@ -513,6 +514,45 @@ test('a .xb file without the XBIN signature is refused as broken', async () => {
   await workspace.askArt(new File(['just text'], 'fake.xb'));
   expect(toastMessage.value).toMatch(/fake\.xb/);
   expect(workspace.artDrop).toBeNull();
+});
+
+// BinaryText (.bin): opened as a CP437 .ans is, in the 16 colors, its record's size kept as the grid's.
+const binFixture = async (name = 'BINARYTEXT.BIN') => new File([await (await fetch('/tests/fixtures/ansi/binarytext.bin')).blob()], name);
+
+test('a BinaryText opens on CGA with its cells and SAUCE, keeps the font in use, and exports as an .ans 8 wide', async () => {
+  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const fontBefore = project.drawingFont;
+  closeToast();
+  await workspace.askArt(await binFixture());
+  expect(toastMessage.value).toBeFalsy(); // its record says what it is
+  await project.openArtFile(workspace.artDrop.file, { art: workspace.artDrop.art });
+  await settle(project);
+  expect([project.cols, project.rows, project.quantize, project.filename, project.sauceTitle]).toEqual([8, 6, 'cga', 'BINARYTEXT', 'Bin']);
+  expect(project.cells.slice(0, 16).map((c) => c.char).join('')).toBe('BIN TEXT→█░▒▓▄▀A');
+  expect(project.cells[8].bg.hex).toBe(PALETTES.cga[8].hex); // iCE: a bright background
+  expect(project.drawingFont).toBe(fontBefore);
+  expect(project.history.canUndo).toBe(false);
+  let blob;
+  await project.exportFile('ans', { deliver: (b) => { blob = b; } });
+  const again = readArtFile(new Uint8Array(await blob.arrayBuffer()), 'again.ans');
+  expect([again.cols, again.rows]).toEqual([8, 3]); // the record's width 8, not the 0 a BinaryText's record holds there
+  expect(again.cells.slice(0, 8).map((c) => c.char).join('')).toBe('BIN TEXT');
+});
+
+test('a .bin with no SAUCE opens 160 wide and says so; one that isn\'t BinaryText is refused, and the drawing stays', async () => {
+  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const before = project.documentId;
+  closeToast();
+  const row = Array.from({ length: 320 }, (_, i) => (i % 2 ? 0x1e : 0xdb));
+  await workspace.askArt(new File([Uint8Array.from(row)], 'old.bin'));
+  expect(toastMessage.value).toBe('old.bin has no SAUCE record, so it was read as BinaryText 160 columns wide.');
+  expect([workspace.artDrop.art.cols, workspace.artDrop.art.rows]).toEqual([160, 1]);
+  workspace.artDrop = null;
+  closeToast();
+  await workspace.askArt(new File([new Uint8Array(4096)], 'firmware.bin'));
+  expect(toastMessage.value).toBe('firmware.bin isn\'t a BinaryText file.');
+  expect(workspace.artDrop).toBeNull();
+  expect(project.documentId).toBe(before);
 });
 
 test('opens an XBin and exports the same cells', async () => {

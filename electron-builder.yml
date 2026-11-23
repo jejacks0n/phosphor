@@ -91,6 +91,11 @@ mac:
       name: Image
       role: Editor
       rank: Alternate
+    # .bin is every kind of binary file's, so only macOS offers it, and Linux, which knows it only as octet-stream, doesn't.
+    - ext: bin
+      name: BinaryText Art
+      role: Editor
+      rank: Alternate
 
 # Signed with WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD.
 win:

@@ -262,7 +262,7 @@ export const documentActions = {
     return true;
   },
 
-  // An .ans, .utf8ans, .asc or .txt file as a new document: a blank canvas its size with the art on
+  // An .ans, .utf8ans, .asc, .txt, .xb or .bin file as a new document: a blank canvas its size with the art on
   // the base layer (layer 'base', to draw on top of), or as edit cells over the black base ('edit', to
   // edit it), its palette and SAUCE in the settings (the rest at their defaults, so the sliders leave
   // it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't open
@@ -276,7 +276,7 @@ export const documentActions = {
       if (reason) return void toast(reason);
       // An .ans whose SAUCE names a library font opens in it (kept in Yours); a font that can't be fetched leaves it in the one in use.
       let named = null;
-      if (/\.ans$/i.test(file.name) && sauce?.fontName && !this.inRoom) { // a CP437 file: a .utf8ans's characters need the font in use
+      if (/\.(ans|bin)$/i.test(file.name) && sauce?.fontName && !this.inRoom) { // a CP437 file: a .utf8ans's characters need the font in use
         try {
           const file = await sauceFont(sauce.fontName);
           if (file) {

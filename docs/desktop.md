@@ -100,6 +100,8 @@ of what Phosphor opens is offered under **Open With**, and you can make Phosphor
 - **`.asc`, `.nfo`, `.txt` and pictures** (PNG, JPEG, GIF, WebP, BMP, AVIF and SVG): on macOS, and on Linux except
   `.asc`. On Windows, open them with Open… or by dropping them on the window: other apps own them there (`.nfo` is
   Windows' System Information file), so installing Phosphor doesn't claim them.
+- **`.bin`** (BinaryText): on macOS only, since every kind of binary file is a `.bin`. Open… and a drop open it
+  everywhere.
 
 A `.pho` is a PNG picture of the drawing with the project inside, so once the app is installed your system previews it
 the way it previews any PNG:

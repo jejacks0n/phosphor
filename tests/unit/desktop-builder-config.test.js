@@ -88,7 +88,7 @@ test('every file the app opens is associated, and only what no other app owns be
   assert.deepEqual(everywhere, ['pho', 'phosphor', 'ans', 'utf8ans', 'diz', 'xb']);
   const mac = exts(section(yml, 'mac'));
   assert.deepEqual([...everywhere, ...mac].sort(), [...OPENABLE].sort());
-  assert.equal(section(yml, 'mac').match(/rank: (\w+)/g).join(), 'rank: Alternate,rank: Alternate');
+  assert.equal(section(yml, 'mac').match(/rank: (\w+)/g).join(), 'rank: Alternate,rank: Alternate,rank: Alternate');
   assert.doesNotMatch(section(yml, 'win'), /fileAssociations/);
   const linux = /mimeTypes: \[(.+)\]/.exec(section(yml, 'linux'))[1].split(', ');
   for (const type of ['text/x-nfo', 'text/plain', 'image/png', 'image/jpeg', 'image/svg+xml']) assert.ok(linux.includes(type), type);

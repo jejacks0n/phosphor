@@ -1,5 +1,5 @@
 /**
- * Reads a text-art file (.ans, .utf8ans, .asc, .txt, .nfo, .diz) into cells, the way a terminal would show it:
+ * Reads a text-art file (.ans, .utf8ans, .asc, .txt, .nfo, .diz; an XBin or BinaryText goes to XBinFile.js) into cells, the way a terminal would show it:
  * a cursor, wrapping at the file's width, and the escape sequences art files use (cursor moves,
  * clear, erase and colors). Nothing here touches the store; the caller decides what to do with the
  * cells.
@@ -9,11 +9,11 @@ import { cellWidth, graphemes } from './CharWidth.js';
 import { PALETTES } from './ColorUtils.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { artEndOf, readSauce } from './Sauce.js';
-import { isXBin, readXBin } from './XBinFile.js';
+import { isXBin, readBinaryText, readXBin } from './XBinFile.js';
 import { t } from '@/i18n';
 import { formatNumber } from '@/i18n/format';
 
-export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb'];
+export const ART_EXTENSIONS = ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb', 'bin'];
 
 const extensionOf = (name) => /\.([^./\\]+)$/.exec(name ?? '')?.[1].toLowerCase() ?? '';
 export const isArtFile = (name) => ART_EXTENSIONS.includes(extensionOf(name));
@@ -51,6 +51,7 @@ function decode(bytes, name) {
 
 export function readArtFile(bytes, name, knownBlocks) {
   if (isXBin(bytes) || extensionOf(name) === 'xb') return readXBin(bytes, name, knownBlocks); // by its bytes, whatever the name; a .xb without them is broken
+  if (extensionOf(name) === 'bin') return readBinaryText(bytes, name);
   const sauce = readSauce(bytes);
   const { items, cp437, notUtf8 } = decode(bytes.subarray(0, artEndOf(bytes)), name);
   const fixed = sauce && sauce.dataType === 1 && sauce.width > 0 ? sauce.width : extensionOf(name) === 'ans' || notUtf8 ? 80 : 0; // 0: no wrapping

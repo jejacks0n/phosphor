@@ -3,6 +3,8 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { ART_EXTENSIONS, isArtFile, readArtFile } from '../../src/lib/ArtFile.js';
+import { Sauce } from '../../src/lib/Sauce.js';
+import { PALETTES } from '../../src/lib/ColorUtils.js';
 
 const cp = (text) => Uint8Array.from(text, (c) => c.charCodeAt(0));
 const utf = (text) => new TextEncoder().encode(text);
@@ -12,13 +14,14 @@ const text = (art, row = 0) => art.cells.slice(row * art.cols, (row + 1) * art.c
 const error = (fn) => { try { fn(); } catch (e) { return e; } assert.fail('did not throw'); };
 
 test('isArtFile checks the extension, ignoring case', () => {
-  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb']);
+  assert.deepEqual(ART_EXTENSIONS, ['ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb', 'bin']);
   assert.equal(isArtFile('A.ANS'), true);
   assert.equal(isArtFile('release.NFO'), true);
   assert.equal(isArtFile('file_id.diz'), true);
   for (const name of ['a.sue', 'a.tnd', 'a.ttf']) assert.equal(isArtFile(name), false);
   assert.equal(isArtFile('x.utf8ans'), true);
   assert.equal(isArtFile('A.XB'), true);
+  assert.equal(isArtFile('A.BIN'), true);
   assert.equal(isArtFile('a.png'), false);
   assert.equal(isArtFile('ans'), false);
 });
@@ -337,4 +340,55 @@ test('.nfo and .diz read as CP437 text, the way .asc does', () => {
     assert.equal(text(art, 0).trim(), '░█');
     assert.equal(at(art, 0, 1).char, 'A');
   }
+});
+
+// BinaryText: a character byte and an attribute a cell, its width from SAUCE, or 160 with no record.
+const CGA = PALETTES.cga.map((c) => c.hex);
+const binRecord = (data, opts) => new Sauce({ cols: 0, rows: 0 }, { dataType: 5, fileType: 2, width: 0, height: 0, flags: 0, ...opts }).appendTo(Uint8Array.from(data));
+
+test('the .bin fixture opens 8 wide from its record: DOS colors, iCE backgrounds, a 0x1A that\'s a character, a short last row', () => {
+  const art = readArtFile(new Uint8Array(readFileSync(new URL('../fixtures/ansi/binarytext.bin', import.meta.url))), 'BINARYTEXT.BIN');
+  assert.deepEqual([art.cols, art.rows], [8, 3]);
+  assert.equal(text(art, 0), 'BIN TEXT');
+  assert.equal(at(art, 0).fg, CGA[4]); // DOS 1 is blue, ANSI 4
+  assert.equal(at(art, 3).fg, CGA[1]); // DOS 4 is red, ANSI 1
+  assert.deepEqual([at(art, 0).fgIndex, at(art, 0).bgIndex], [4, 0]);
+  assert.equal(text(art, 1), '→█░▒▓▄▀A');
+  assert.deepEqual(art.cells.slice(8, 16).map((c) => c.bg), [8, 12, 10, 14, 9, 13, 11, 15].map((i) => CGA[i])); // iCE: bright
+  assert.equal(text(art, 2), 'BC      ');
+  assert.deepEqual([at(art, 0, 2).fg, at(art, 0, 2).bg], [CGA[11], CGA[4]]);
+  assert.deepEqual([at(art, 2, 2).fg, at(art, 2, 2).bg], [CGA[7], CGA[0]]); // past the data: a blank cell
+  assert.equal(art.sauce.title, 'Bin');
+  assert.deepEqual([art.sauce.width, art.sauce.height], [8, 3]); // the grid's size, for an export's record
+  assert.equal(art.palette.length, 16);
+  assert.equal(art.binNoSauce, false);
+});
+
+test('a .bin without iCE colors takes the blink bit off the background', () => {
+  const art = readArtFile(binRecord([65, 0x9f, 66, 0x1f]), 'a.bin');
+  assert.deepEqual(art.cells.slice(0, 2).map((c) => c.bg), [CGA[4], CGA[4]]);
+  assert.equal(readArtFile(binRecord([65, 0x9f], { flags: 1 }), 'a.bin').cells[0].bg, CGA[12]);
+});
+
+test('a .bin with no record is 160 wide, said so, when it\'s whole rows of that; otherwise it isn\'t BinaryText', () => {
+  const row = Array.from({ length: 320 }, (_, i) => (i % 2 ? 0x07 : 65));
+  const art = readArtFile(Uint8Array.from([...row, ...row, 0x1a]), 'old.bin'); // an EOF byte after it
+  assert.deepEqual([art.cols, art.rows, art.binNoSauce, art.sauce], [160, 2, true, null]);
+  for (const bytes of [Uint8Array.from(row.slice(2)), Uint8Array.from({ length: 4096 }), new Uint8Array(0)]) {
+    assert.equal(error(() => readArtFile(bytes, 'FIRMWARE.BIN')).userMessage, "FIRMWARE.BIN isn't a BinaryText file.");
+  }
+  const ansi = new Sauce({ cols: 80, rows: 1 }, {}).appendTo(cp('hello'));
+  assert.equal(error(() => readArtFile(ansi, 'a.bin')).userMessage, "a.bin isn't a BinaryText file."); // its record is an ANSI file's
+});
+
+test('a .bin\'s record of width 0 is 160 wide; one over the limits or with no data says so before reading cells', () => {
+  assert.equal(readArtFile(binRecord([65, 7], { fileType: 0 }), 'a.bin').cols, 160);
+  assert.match(error(() => readArtFile(binRecord([65, 7], { fileType: 255 }), 'a.bin')).userMessage, /510 × 1\. Phosphor opens at most/);
+  assert.match(error(() => readArtFile(binRecord(new Uint8Array(320 * 5001), { fileType: 80 }), 'a.bin')).userMessage, /160 × 5001\. Phosphor opens at most/);
+  assert.equal(error(() => readArtFile(binRecord([]), 'a.bin')).userMessage, "There's no art in this file.");
+});
+
+test('an XBin named .bin opens as XBin', () => {
+  const art = readArtFile(Uint8Array.from([0x58, 0x42, 0x49, 0x4e, 0x1a, 2, 0, 1, 0, 16, 0, 65, 7, 66, 7]), 'a.bin');
+  assert.deepEqual([art.xbin, text(art)], [true, 'AB']);
 });
