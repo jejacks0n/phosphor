@@ -330,6 +330,41 @@ div.floating-panel.editing.maximized :deep(div.page.fonts > div.list-side) {
   color: var(--text-muted);
 }
 
+/* A group that folds does so on its title (Fonts: Yours, Built-in and Library; Palettes: Favorites and Library); In use's
+   and This drawing's are plain labels. */
+:deep(div.group button.group-head) {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  box-shadow: none;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  transition: color 0.2s;
+}
+
+:deep(div.group button.group-head:hover) {
+  transform: none;
+  color: var(--text);
+}
+
+:deep(div.group button.group-head svg.chevron) {
+  flex-shrink: 0;
+  width: 10px;
+  height: 10px;
+  fill: currentColor;
+  transition: transform 0.15s;
+}
+
+:deep(div.group button.group-head[aria-expanded='false'] svg.chevron) {
+  transform: rotate(-90deg);
+}
+
 :deep(div.row) {
   display: flex;
   flex-direction: column;

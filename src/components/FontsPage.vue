@@ -681,40 +681,6 @@ div.sample {
   color: var(--text);
 }
 
-/* Yours, Built-in and Library fold on their titles; In use's is a plain label. */
-div.group button.group-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 0;
-  border: none;
-  background: none;
-  box-shadow: none;
-  color: inherit;
-  font: inherit;
-  letter-spacing: inherit;
-  text-transform: inherit;
-  cursor: pointer;
-  transition: color 0.2s;
-}
-
-div.group button.group-head:hover {
-  transform: none;
-  color: var(--text);
-}
-
-svg.chevron {
-  flex-shrink: 0;
-  width: 10px;
-  height: 10px;
-  fill: currentColor;
-  transition: transform 0.15s;
-}
-
-button.group-head[aria-expanded='false'] svg.chevron {
-  transform: rotate(-90deg);
-}
-
 /* The column's head and the search's row beside it, one height: the row's 34px controls, its padding and border. */
 div.page.fonts div.top,
 div.filters-head {

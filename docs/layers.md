@@ -1205,7 +1205,8 @@ outside it or the **×** at the top right of the dialog. **↓** and **↑** wal
 - **The List**: **This drawing** first (with no drawing open, **New drawings**: the palette the next drawing starts
   with), then **Favorites** and **Library**, a search narrowing the rows by name or author, and **Search Lospec** at the
   foot. **Library** holds the palettes from Lospec that come with Phosphor; **Favorites** the ones you starred or got from
-  Lospec, kept in this browser, newest first.
+  Lospec, kept in this browser, newest first. **Favorites** and **Library** fold on their titles, as the Fonts page's
+  groups do, and stay folded in this browser; a palette you get from Lospec opens **Favorites** to show it.
 - **The Details**: A palette's name and author, **Use this palette** (**In use** when its colors are the list, in the
   same order), **Favorite**, **Save .hex**, **On Lospec** (its page), and its colors as swatches with their hex under
   them. **Use this palette** sets Color palette to Custom color list with those colors, and the layer stays open. A line
