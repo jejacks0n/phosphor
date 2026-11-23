@@ -1,7 +1,7 @@
 // The chat panel at the right of the whole app while you're in a room: the host's page and members' pages
 // in one fake Room, talking through the real peers. The welcome pinned, sending (Enter, Shift+Enter, 300
 // characters, one a second), who can send, folding to the rail, earlier messages on scrolling up, and the
-// host's Delete and room menu, and who is here with Remove and Block.
+// host's Delete and room gear, and who is here with Remove and Block.
 import { test, expect, tab, store } from './support.js';
 import { fakeRoom, goLive, watcherPage, joinFromCard, member, shown, addressIs, live, joins, ROOM_ID } from './social-support.js';
 
@@ -57,12 +57,12 @@ test('the panel is beside every tab for the host and the watcher, with the welco
   const edge = await panel(watcher).boundingBox();
   expect(edge.x + edge.width - (exit.x + exit.width)).toBeLessThan(16);
   expect(exit.y).toBeLessThan(name.y + name.height);   // on the name's line, not under it
-  const menu = await panel(host).getByRole('button', { name: 'Room', exact: true }).boundingBox();
-  expect(exit.height).toBe(menu.height);   // the size of the host's ⋯ in its place
+  const gear = await panel(host).getByRole('button', { name: 'Settings and stats' }).boundingBox();
+  expect(exit.height).toBe(gear.height);   // the size of the host's gear in its place
   await expect(panel(host).getByText('hosted by ansi-fan')).toHaveCount(0);
   await expect(panel(host).getByRole('button', { name: 'Exit' })).toHaveCount(0);
-  // The room menu and the people list are the host's.
-  await expect(panel(watcher).getByRole('button', { name: 'Room', exact: true })).toHaveCount(0);
+  // The room's gear and the people list are the host's.
+  await expect(panel(watcher).getByRole('button', { name: 'Settings and stats' })).toHaveCount(0);
   await expect(panel(watcher).getByRole('button', { name: /here$/ })).toHaveCount(0);
   // The box says who you are on its top border, as [ avatar name ], each person their own.
   for (const [page, name, other] of [[watcher, 'pixel_wren', 'ansi-fan'], [host, 'ansi-fan', 'pixel_wren']]) {
@@ -438,23 +438,18 @@ test('the host\'s panel says who is here, folded; opened it lists each with gues
   expect(server.sent('POST', '/api/blocks')).toHaveLength(0);   // removing is not blocking
 });
 
-test('the room menu: Copy link, Settings and stats opens in a dialog and its welcome is pinned for everyone; End room beside it asks first, and Cancel keeps the room', async ({ page: host, context }) => {
+test('the room\'s gear: Settings and stats opens in a dialog, where the link is copied and the welcome is pinned for everyone; End room beside the gear asks first, and Cancel keeps the room', async ({ page: host, context }) => {
   const { room, watcher } = await inRoom(host, context, { me: wren });
-  const menu = panel(host).getByRole('button', { name: 'Room', exact: true });
-  const item = (name) => host.locator('.dropdown-content').getByRole('button', { name, exact: true });
+  const gear = panel(host).getByRole('button', { name: 'Settings and stats' });
   await tab(host, 'ANSI').click();
-  await menu.click();
-  await expect(host.locator('.dropdown-content button')).toHaveText(['Copy link', 'Settings and stats']);
 
-  await item('Copy link').click();
-  await expect.poll(() => host.evaluate(() => navigator.clipboard.readText())).toContain(`?room=${ROOM_ID}`);
-
-  // Settings and stats is a dialog over the tab you're on, where the welcome is changed; closing it puts focus back on
-  // the menu.
-  await menu.click();
-  await item('Settings and stats').click();
+  // Settings and stats is a dialog over the tab you're on, where the link is copied and the welcome is changed; closing
+  // it puts focus back on the gear.
+  await gear.click();
   const stats = host.getByRole('dialog', { name: 'Settings and stats' });
   await expect(stats.locator('div.host-room')).toBeVisible();
+  await stats.getByRole('button', { name: 'Copy link' }).click();
+  await expect.poll(() => host.evaluate(() => navigator.clipboard.readText())).toContain(`?room=${ROOM_ID}`);
   expect(await store(host, 'workspace', (w) => w.editorTab)).toBe('output');
   await stats.getByLabel('Welcome message').fill('draw something loud');
   await stats.getByRole('button', { name: 'Save' }).click();
@@ -462,9 +457,9 @@ test('the room menu: Copy link, Settings and stats opens in a dialog and its wel
   await expect(panel(watcher).getByText('draw something loud')).toBeVisible();
   await host.keyboard.press('Escape');
   await expect(stats).toHaveCount(0);
-  await expect(menu).toBeFocused();
+  await expect(gear).toBeFocused();
 
-  // End room sits beside the menu, and asks first: Cancel keeps the room going for everyone.
+  // End room sits beside the gear, and asks first: Cancel keeps the room going for everyone.
   await panel(host).getByRole('button', { name: 'End room' }).click();
   const asked = host.getByRole('dialog', { name: 'End this room?' });
   await expect(asked.getByRole('button', { name: 'Cancel' })).toBeFocused();
