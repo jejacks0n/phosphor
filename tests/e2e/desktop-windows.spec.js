@@ -146,7 +146,7 @@ test('a file the window couldn’t open leaves it free: Open… there opens in t
 
 test('a project already open is brought forward, not opened twice', async () => {
   const folder = mkdtempSync(join(tmpdir(), 'phosphor-windows-'));
-  const file = join(folder, 'night.phosphor');
+  const file = join(folder, 'night.pho');
   try {
     launched = await launchApp();
     const { app, page } = launched;
