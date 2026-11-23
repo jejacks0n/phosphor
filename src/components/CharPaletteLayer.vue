@@ -239,7 +239,8 @@ const info = computed(() => {
     `${char}  ${code(char)}`,
     byte !== null && isCp437(char) ? t('palette.layer.infoCp437', { byte }) : t('palette.layer.infoUtf8Only'),
   ];
-  if (!fits(char)) parts.push(t('palette.layer.infoCantUse'));
+  if (!fitsGrid(char)) parts.push(t('palette.layer.infoDoesntFit'));
+  else if (!fits(char)) parts.push(t('palette.layer.infoCantUse'));
   else if (cellWidth(char) === 2) parts.push(t('palette.layer.infoWide'));
   if (slot >= 0) parts.push(t('palette.layer.infoOnSlot', { slot: slot + 1 }));
   return parts.join(' · ');
@@ -464,7 +465,6 @@ onBeforeUnmount(() => {
             </div>
             <GlyphZoom v-if="zoom" :key="zoom.n" :char="zoom.char" :family="zoom.family" :size="zoom.size" :cell="zoom.cell" :label="zoomLabel(zoom.char)" @close="zoomOut"/>
           </div>
-          <div class="legend"><span class="l1">{{ t('palette.layer.legendInPalette') }}</span><span v-if="!font" class="l2">{{ t('palette.layer.legendNotCp437') }}</span><span class="l3">{{ t('palette.layer.legendDoesntFit') }}</span></div>
           <div class="info">{{ info }}</div>
         </div>
       </div>
@@ -751,36 +751,5 @@ button.g.bad {
 button.g:disabled {
   opacity: 0.25;
   cursor: default;
-}
-
-div.legend {
-  display: flex;
-  gap: 12px;
-  font-size: 10px;
-  color: var(--text-muted);
-}
-
-div.legend span {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-div.legend span.l1::before {
-  content: '';
-  width: 8px;
-  height: 8px;
-  border: 1px solid var(--text-muted);
-}
-
-div.legend span.l2::before {
-  content: '';
-  width: 8px;
-  height: 2px;
-  background: var(--accent);
-}
-
-div.legend span.l3::before {
-  content: '—';
 }
 </style>
