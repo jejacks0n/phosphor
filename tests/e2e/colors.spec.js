@@ -7,7 +7,7 @@ import { test, expect, openApp, store, settled } from './support.js';
 const shipped = JSON.parse(await readFile(new URL('../../src/lib/colorPalettes.json', import.meta.url), 'utf8'));
 const SWEETIE = shipped.find((p) => p.slug === 'sweetie-16').colors;
 
-test('Get from Lospec works under the built page\'s policy: the palette is kept, used, and the picture recolors', async ({ page }) => {
+test('Search Lospec works under the built page\'s policy: the palette is kept, used, and the picture recolors', async ({ page }) => {
   const asked = [];
   await page.route('https://lospec.com/palette-list/sweetie-16.json', (route) => {
     asked.push(route.request().url());
@@ -19,8 +19,8 @@ test('Get from Lospec works under the built page\'s policy: the palette is kept,
   await openApp(page);
   await page.getByRole('button', { name: 'Palettes', exact: true }).click();
   const layer = page.locator('.color-layer');
-  await layer.getByRole('textbox', { name: "A palette's name or lospec.com link" }).fill('https://lospec.com/palette-list/sweetie-16');
-  await layer.getByRole('button', { name: 'Get from Lospec' }).click();
+  await layer.getByRole('textbox', { name: "A palette's name or id" }).fill('https://lospec.com/palette-list/sweetie-16');
+  await layer.getByRole('button', { name: 'Search Lospec' }).click();
 
   await expect(layer.locator('div.edit-side span.title')).toHaveText('Sweetie 16'); // kept and chosen
   await expect(layer.locator('div.row.current div.name > span').first()).toHaveText('Sweetie 16');

@@ -172,7 +172,7 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
           <p v-if="g.key === 'favorites' && !library.kept.length" class="empty">{{ t('colorPalettes.favoritesEmpty') }}</p>
           <div v-for="r in g.rows" :key="r.id" class="row" :class="{ current: r.id === chosen && g.key === chosenIn }" @click="choose(r)">
             <template v-if="r.palette">
-              <div class="name"><span>{{ r.palette.name }}</span><em>{{ r.palette.author }}</em></div>
+              <div class="name"><span>{{ r.palette.name }}</span><em :title="r.palette.author || undefined">{{ r.palette.author }}</em></div>
               <div class="strip" aria-hidden="true"><i v-for="(color, i) in r.palette.colors" :key="i" :style="{ background: color }"></i></div>
             </template>
             <template v-else>
@@ -186,7 +186,9 @@ const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { ty
       <form class="get" @submit.prevent="get">
         <span>{{ t('colorPalettes.notHere') }}</span>
         <input v-model="typed" type="text" class="get-name" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" enterkeyhint="go" :placeholder="t('colorPalettes.getPlaceholder')" :aria-label="t('colorPalettes.getPlaceholder')">
-        <button type="submit">{{ getting ? t('colorPalettes.getting') : t('colorPalettes.get') }}</button>
+        <button type="submit" class="search" :aria-busy="getting" :aria-label="getting ? t('colorPalettes.getting') : t('colorPalettes.get')" :title="getting ? t('colorPalettes.getting') : t('colorPalettes.get')">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="M10.5 10.5L14 14"/></svg>
+        </button>
       </form>
       <p v-if="problem" class="get-problem" role="alert">{{ problem }}</p>
       <p v-else-if="cut && library.has(cut.slug)" class="get-note" role="status">{{ t('colorPalettes.cut', { n: cut.of }) }}</p>
@@ -282,7 +284,25 @@ p.none {
   color: var(--text-muted);
 }
 
-/* Get from Lospec at the list's foot: Not here? [field] [Get from Lospec], wrapping in the narrow list. */
+/* A palette's name keeps its line; a long author gives way first, cut short with its whole name in the tooltip. */
+div.colors-palettes div.name {
+  gap: 8px;
+}
+
+div.colors-palettes div.name > span,
+div.colors-palettes div.name > em {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+div.colors-palettes div.name > span {
+  flex: none;
+  max-width: 100%; /* only a name longer than the whole row is cut */
+}
+
+/* Searching Lospec at the list's foot: "Not here? Search Lospec." on its line, then [field] [search]. */
 form.get {
   display: flex;
   flex: none;
@@ -308,10 +328,25 @@ form.get input {
   font: inherit;
 }
 
-form.get button {
+form.get > span {
+  flex: 1 0 100%;
+}
+
+form.get button.search {
+  display: flex;
   flex: none;
-  padding: 5px 10px;
-  font-size: 12px;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+}
+
+form.get button.search svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
 }
 
 p.get-problem,
