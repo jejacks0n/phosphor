@@ -40,7 +40,7 @@ test('the merge dialog: centered, canceled three ways, keys kept inside, each ch
 
   await dialog(page).getByRole('button', { name: /^Keep crisp cells/ }).click();
   await expect(dialog(page)).toBeHidden();
-  expect(await hasEdits(page)).toBe(false);
+  await expect.poll(() => hasEdits(page)).toBe(false); // on the next frame, under the busy note
 
   await page.getByRole('button', { name: 'Add layer' }).click(); // the merged layer went: a new one to draw on, picked
   await drawLine(page, 10);

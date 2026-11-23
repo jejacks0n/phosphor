@@ -60,6 +60,29 @@ test('a fill sets the busy note as it\'s clicked, runs under it, and clears it; 
   expect(project.rawColorAt(20, 20)).not.toBe('#ff0000'); // one step
 });
 
+test('a fill fills what its click saw: a selection dropped or a color changed before it runs changes nothing', async () => {
+  const { project, workspace, ctx } = await blank();
+  workspace.selection = { c0: 0, r0: 0, c1: 9, r1: 4 };
+  bucket.begin(ctx, { x: 3.5, y: 3.5 }, ev);
+  workspace.selection = null; // Escape, in the frame before the fill
+  workspace.editFgColor = '#00ff00';
+  await settle(project);
+  expect(project.rawColorAt(3, 3)).toBe('#ff0000');
+  expect(project.rawColorAt(20, 20)).not.toBe('#ff0000'); // outside the selection the click had
+  project.undo();
+  await settle(project);
+
+  // The Gradient's, from the release.
+  Object.assign(workspace, { editFgColor: '#ff0000', editBgColor: '#0000ff', editFgNone: false, editBgNone: false, selection: { c0: 0, r0: 0, c1: 9, r1: 4 } });
+  gradient.begin(ctx, { x: 0.5, y: 0.5 }, ev);
+  gradient.move(ctx, { x: 0.5, y: 0.5 }, { x: 9.5, y: 0.5 });
+  gradient.end(ctx);
+  workspace.selection = null;
+  await settle(project);
+  expect(project.cellHasPaint(3, 3)).toBe(true);
+  expect(project.cellHasPaint(20, 10)).toBe(false);
+});
+
 test('a fill that throws clears the note, and the next click fills', async () => {
   const { project, ctx } = await blank();
   vi.spyOn(project, 'paintStroke').mockImplementationOnce(() => { throw new Error('no'); });

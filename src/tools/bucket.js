@@ -123,17 +123,23 @@ export function pixelArea(project, workspace, pos) {
 export const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';
 
 // Cells gives the area what bucketSet lights (your FG and BG, None keeps the cell's, and
-// character) as edit cells over the paint; Normal paints it in the foreground color. Under the busy note ("Filling…"),
-// which a fill over most of a large drawing is long enough to show; it starts on the next frame, with the note drawn.
+// character) as edit cells over the paint; Normal paints it in the foreground color. The area is the click's (its
+// selection, the Wand's, the settings), worked out at once; it's written under the busy note ("Filling…"), which a fill
+// over most of a large drawing is long enough to show, on the next frame, with the note drawn. A key pressed in that
+// frame (Escape, say) doesn't change what fills.
 export async function fillSolid({ project, workspace, view }, pos) {
+  let write;
+  if (fillsCells(workspace, view)) {
+    const set = workspace.bucketSet, colors = workspace.typingAttrs();
+    const attrs = { ...(set.fg ? { fg: colors.fg, fgIndex: colors.fgIndex } : {}), ...(set.bg ? { bg: colors.bg, bgIndex: colors.bgIndex } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
+    const cells = cellArea(project, workspace, pos).map(({ x, y }) => ({ col: x, row: y, attrs }));
+    write = () => project.writeEditCells(cells, { clearPaint: true });
+  } else {
+    const pixels = pixelArea(project, workspace, pos), color = workspace.editFgColor;
+    write = () => project.paintStroke(pixels, color);
+  }
   return busyWhile(t('busy.filling'), () => {
-    if (fillsCells(workspace, view)) {
-      const set = workspace.bucketSet, colors = workspace.typingAttrs();
-      const attrs = { ...(set.fg ? { fg: colors.fg, fgIndex: colors.fgIndex } : {}), ...(set.bg ? { bg: colors.bg, bgIndex: colors.bgIndex } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
-      project.writeEditCells(cellArea(project, workspace, pos).map(({ x, y }) => ({ col: x, row: y, attrs })), { clearPaint: true });
-    } else {
-      project.paintStroke(pixelArea(project, workspace, pos));
-    }
+    write();
     project.commitEdit();
   });
 }
