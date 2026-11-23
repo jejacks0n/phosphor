@@ -307,7 +307,7 @@ div.tabs button.tone:hover {
 div.tabs button.panel {   /* as EditTabs' « folded, so it keeps its place */
   display: flex;
   align-self: flex-start;
-  margin: 8.5px 5px 0 4px;   /* 1.5px above the row's middle, 1px over EditTabs' « folded (measured) */
+  margin: 10.5px 5px 0 4px;   /* 0.5px under the row's middle, 1px under EditTabs' « folded (measured) */
   padding: 4px;
 }
 div.tabs button[role='tab'] {

@@ -109,7 +109,7 @@ Signed in, you're a **member**; otherwise you're a **guest**.
 ## Signing In and Creating an Account
 
 **Sign in** offers **Continue with Discord**, **Continue with GitHub**, or your **Email or username** and
-**Password**, with **Forgot your password?** below. Discord and GitHub show only where Phosphor's server has them set
+**Password**. Below them, **No account? Create one** and, at the right, **Forgot your password?**. Discord and GitHub show only where Phosphor's server has them set
 up.
 
 **Create an account** asks for:

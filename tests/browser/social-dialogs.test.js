@@ -182,3 +182,22 @@ test('answered, the question gives focus back to what asked', async () => {
   await nextTick();
   expect(document.activeElement).toBe(asker);
 });
+
+test('Sign in\'s × is on its heading\'s line, and Forgot your password? at the right of No account?', async () => {
+  const { social } = await mount();
+  social.supported = true;
+  social.page = 'sign-in';
+  await nextTick();
+  const mid = (r) => (r.top + r.bottom) / 2;
+  const range = document.createRange();
+  range.selectNodeContents(dialog().querySelector('h2'));
+  const h2 = range.getBoundingClientRect(), close = dialog().querySelector('button.close').getBoundingClientRect();
+  expect(Math.abs(mid(h2) - mid(close))).toBeLessThan(1.5);
+  expect(close.left).toBeGreaterThan(h2.right);
+  expect(h2.top).toBeGreaterThan(dialog().querySelector('div.body').getBoundingClientRect().top); // not under the body's edge
+  const forgot = [...dialog().querySelectorAll('button')].find((b) => b.textContent === 'Forgot your password?').getBoundingClientRect();
+  const create = [...dialog().querySelectorAll('button')].find((b) => b.textContent === 'Create one').getBoundingClientRect();
+  const form = dialog().querySelector('form').getBoundingClientRect();
+  expect(Math.abs(mid(forgot) - mid(create))).toBeLessThan(1.5);
+  expect(Math.abs(forgot.right - form.right)).toBeLessThan(1);
+});
