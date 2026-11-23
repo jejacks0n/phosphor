@@ -27,8 +27,9 @@ const SHARED = {
 // A key as what it is, so 'Alt+KeyF' and 'Alt+F' (or Shift+Mod+Z and Mod+Shift+Z) are one: its modifiers sorted, and a letter's code read as the letter.
 const same = (key) => {
   const { mod, ctrl, alt, shift, code, key: value } = parseKey(key);
-  const part = (code?.match(/^Key([A-Z])$/)?.[1] ?? code ?? value).toUpperCase();
-  return [...[mod && 'mod', ctrl && 'ctrl', alt && 'alt', shift && 'shift'].filter(Boolean), part].join('+');
+  const names = { Comma: ',', Period: '.', Slash: '/', BracketLeft: '[', BracketRight: ']' };
+  const part = (code ? names[code] ?? code.replace(/^(Key|Digit)/, '') : value).toUpperCase();
+  return [...[(mod || ctrl) && 'mod', alt && 'alt', shift && 'shift'].filter(Boolean), part].join('+'); // takeKey takes Cmd or Ctrl for Mod
 };
 
 test('no two runnable commands share a key on a platform, but for the pairs whose views or typing keep them apart', async () => {
