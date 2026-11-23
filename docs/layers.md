@@ -1372,7 +1372,9 @@ don't need a key or a trip to their button. In the desktop app it's also **Help 
   The tools of the tab showing are there too, and inserting and deleting lines and columns at Edit Mode's cursor. A
   command that doesn't apply where you are (zooming on the start screen, VECTOR's on PIXEL) isn't listed.
 - **Grayed Rows**: A command that can't run now shows grayed with the reason its button gives, such as **No drawing
-  open**, **Not on the base layer** or **Only the host can do this**, and Enter does nothing on it.
+  open**, **Not on the base layer** or **Only the host can do this**, and Enter does nothing on it. What you type finds
+  the commands that can run first and the grayed ones under them, and the first that can run is the one picked, so
+  Enter runs it.
 - **Where It Opens**: From anywhere but another dialog, the color box or the character palette, while you type in Edit
   Mode or in a field too. On a Mac it's **Cmd**+K only, as **Ctrl+K** in a text field deletes to the end of the line.
   The commands you ran last are kept in this browser.

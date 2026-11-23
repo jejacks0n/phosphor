@@ -84,6 +84,29 @@ test('with no drawing, Export… is grayed with why and Enter on it does nothing
   expect(again.defaultPrevented).toBe(true);
 });
 
+test('a search finds the rows that can run first, best first, then the grayed ones; Enter runs the first that can', async () => {
+  await open(); // no drawing: Save As and the ROOM tab grayed
+  for (const [query, first] of [['file', 'file.open'], ['room', 'rooms.start']]) {
+    await type(query);
+    const off = options().map((o) => o.getAttribute('aria-disabled') === 'true');
+    expect(off, query).toContain(true);
+    expect(off.indexOf(true), query).toBe(off.lastIndexOf(false) + 1); // every runnable row ahead of every grayed one
+    expect(words(options()[0]), query).toBe(named(first));
+    expect(field().getAttribute('aria-activedescendant')).toBe(options()[0].id);
+  }
+  await type('file');
+  const before = workspace.openRequest;
+  await press('Enter');
+  await vi.waitFor(() => expect(workspace.openRequest).toBe(before + 1));
+});
+
+test('with nothing typed, the first row that can run is picked', async () => {
+  localStorage.setItem('phosphor.recentCommands', JSON.stringify(['file.saveAs', 'file.open'])); // Save As grayed with no drawing
+  await open();
+  expect(words(options()[0])).toBe(named('file.saveAs'));
+  expect(field().getAttribute('aria-activedescendant')).toBe(options()[1].id);
+});
+
 test('with nothing typed, the commands run from it lead, then every command by group; a row shows its key', async () => {
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
   await open();
