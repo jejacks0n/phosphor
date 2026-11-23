@@ -48,9 +48,9 @@ function nameOf(font) {
 // A font of another height (from and to: the cells' heights as tallOf counts them) for a drawing: the columns stay and
 // the rows change so the picture keeps its shape (fontGrid). Refused with frames. With nothing drawn (nothing a rescale
 // would leave in the wrong place: resizesCanvas), on a picture that isn't a working copy with content (that stretches),
-// it's a settings step with the grid in it, and the next render rescales, as a Columns change with the lock on does: the
-// picture refits and a later Columns change refits it again. Otherwise regrid. font: the BitmapFont or null;
-// settings: its settings (fontStep's). A Promise only while a working copy with content is stretched.
+// it rescales, as a Columns change with the lock on does: the picture refits and a later Columns change refits it again,
+// and the rescale's step (rendering.js: ensureLayer) takes the font with it. Otherwise regrid. font: the BitmapFont or
+// null; settings: its settings (fontStep's). A Promise only while a working copy with content is stretched.
 function newHeight(project, font, settings, from, to, unanswered) {
   if (project.hasFrames) return void toast(t('font.heightFrames', { name: nameOf(font), to: heightOf(font), from: heightOf(project.drawingFont) }));
   project.ensureLayer();
@@ -61,8 +61,15 @@ function newHeight(project, font, settings, from, to, unanswered) {
   const parts = partsOf(before, after);
   project.commitPending();
   project.$patch(after);
+  const last = project.history.last;
+  project._gridRun = null; // a step of its own, never a Dimensions press's, and none joins it: its undo and redo set the grid too
+  project.ensureLayer(); // the rescale's own step (rendering.js), which the font goes in, so it's one
+  project._gridRun = null;
+  const grid = project.history.last !== last && project.history.last;
   const on = (values, from, bare) => () => { project.$patch(values); keepCopy(project, parts, from, bare); project.render(); };
-  project.pushEdit({ settingsOnly: true, undo: on(before, after, unanswered && 'now'), redo: on(after, before, unanswered && 'from') }); // settingsOnly: kept through a rescale (dropEdits)
+  const undo = on(before, after, unanswered && 'now'), redo = on(after, before, unanswered && 'from');
+  if (grid) Object.assign(grid, { undo: ((back) => () => { back(); undo(); })(grid.undo), redo: ((forth) => () => { forth(); redo(); })(grid.redo) });
+  else project.pushEdit({ settingsOnly: true, undo, redo }); // in a room, or the grid the same: settingsOnly, kept through a room's grid change (dropEdits)
   project.render();
   if (after.cols < was) toast(t('font.heightShrunk', { name: nameOf(font), cols: after.cols, rows: after.rows }));
 }

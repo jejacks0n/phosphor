@@ -253,11 +253,10 @@ Moving a slider in Transforms, Adjustments or Image filters is an undo step, lik
   an artist the Characters section shows the selected layer's settings, turned off, with "Only the host changes
   character settings in a room." A change to a layer's isn't an undo step in a room; a change to the base's is the
   host's undo step, as the sliders are.
-- **Not Undo Steps**: The grid size, the Art style, the Color palette, the Color count, frames per second and a
-  frame's hold. Changing one keeps the undo steps before it: **Cmd+Z** afterward takes back the edit you made before
-  the change and leaves the setting as it is, and redo puts that edit back. One exception: paint is kept at up to the
-  picture's own resolution, at most 4,000 pixels on a side, so on a large picture a grid grown past that resamples the
-  paint, and that forgets the steps before it.
+- **Not Undo Steps**: The Art style, the Color palette, the Color count, frames per second and a frame's hold.
+  Changing one keeps the undo steps before it: **Cmd+Z** afterward takes back the edit you made before the change and
+  leaves the setting as it is, and redo puts that edit back.
+- **Dimensions**: A change of the grid's size is an undo step ([When the Grid Changes](#when-the-grid-changes)).
 
 ### Baking
 
@@ -1295,10 +1294,17 @@ the grid's size. The stepper arrows and the **↑** and **↓** keys change the 
   and its own pixels, from drawing on it, erasing it, Merge down or an ANSI file opened with Draw on top), or any drawing
   step to undo or redo (a cleared layer, a stroke you undid), resizing is a canvas resize. The picture and everything
   on it stay exactly where they are; columns and rows are added or removed at the right and bottom, and every undo step
-  still fits. What a shrink cuts off isn't lost: it comes back when you make the grid bigger again, and it's saved with
+  still fits. Paint is kept at up to the picture's own resolution, at most 4,000 pixels on a side, so on a large
+  picture a grid grown past that resamples the paint. What a shrink cuts off isn't lost: it comes back when you make the grid bigger again, and it's saved with
   the project. **Lock aspect ratio** still works: on, the other number follows to keep the shape.
 - **Rescale**: With nothing drawn and no drawing step to undo (slider, settings and selection steps don't count, nor
   adding or reordering layers), resizing rescales: the image is converted again at the new size.
+- **Undo**: Each change of size is one undo step, and so is a run of them a moment apart (the stepper arrows or the
+  **↑** and **↓** keys held), as a run of nudges on a slider is. Undo puts back the old size and everything on it as it was, pixel
+  for pixel, every frame too (paint the resize resampled, and a picture that rescaled, aren't resized back, which
+  would blur them), and the steps before it stay, so undo goes on past it. A size change of its own doesn't count as a
+  drawing step: with nothing drawn, the next one rescales too. In a room a size change isn't an undo step: the host's
+  new grid goes to everyone with the whole drawing, and nobody's undo reaches back past it.
 - **Back to Rescaling**: Clearing or erasing everything on the drawing layers brings rescaling back once there's no
   drawing step left to undo, unless the base has been drawn on. A new document, or a project or file opened, starts
   with no steps to undo.

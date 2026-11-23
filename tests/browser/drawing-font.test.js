@@ -733,7 +733,7 @@ test('a width change is one undo step with Letter spacing', async () => {
   expect(project.fontWidth).toBe('');
   expect(project.sauceLetterSpacing).toBe('9');
   expect(project.drawingFont.cellWidth).toBe(9);
-  expect(project.history.last.settingsOnly).toBe(true);
+  expect(project.history.last.gridOp).toBe(true); // nothing drawn: the lines refit, in the rescale's step
   project.undo(); // one undo takes back both
   expect(project.fontWidth).toBe('7');
   expect(project.sauceLetterSpacing).toBe(spacing);

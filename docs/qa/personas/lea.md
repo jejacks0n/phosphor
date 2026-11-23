@@ -189,8 +189,8 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
 - Expects: the picture converts again at 40 columns, its rows following the photo's shape (Lock aspect ratio is on);
   the change lands within the `setting` budget.
 - Probes: `extremes`: type 0, then 999, and check where it stops (300 columns at most); `undo-redo`: undo from
-  Actions and check it takes back her brush mark from step 4 and leaves the size (a size change isn't an undo step,
-  and mustn't forget the steps before it); redo it. End at 40 columns.
+  Actions and check it puts the old size back, the picture as it was, and a second undo takes back her brush mark from
+  step 4 (a size change is an undo step, and mustn't forget the steps before it); redo both. End at 40 columns.
 - Rated: yes, wants return on the phone's keyboard
 
 ### 11. Undo, from a phone

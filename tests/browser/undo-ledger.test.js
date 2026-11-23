@@ -285,6 +285,10 @@ test('a stroke at the layer\'s edge undoes exactly, and still does after the lay
   project.rows += 8;
   await settle(project);
   expect(project.canUndo).toBe(true);
+  project.undo(); // the grid back, the layer as it grew
+  expect(painted(project, ...last)).toEqual({ r: 0, g: 0, b: 255, a: 1 });
+  project.redo();
+  project.undo();
   project.undo();
   expect(painted(project, ...last)).toEqual(RED);
   project.undo();
@@ -359,7 +363,7 @@ test('selection and slider steps stay as they are, among strokes', async () => {
   await settle(project);
 });
 
-test('clearHistory and opening a document start the ledger over; a grid change keeps it, for a redo', async () => {
+test('clearHistory and opening a document start the ledger over; a grid change is a step, which ends the redo', async () => {
   const { project } = await drawing();
   type(project, 3, 3, 'A');
   project.clearHistory();
@@ -379,12 +383,13 @@ test('clearHistory and opening a document start the ledger over; a grid change k
   blank.project.commitEdit();
   blank.project.undo(); // nothing shows, and the ledger still holds it, for a redo
   expect(blank.project._ledger.kept().stacks.strokes.size).toBe(1);
-  blank.project.cols = 24; // nothing on the edit layer, but a stroke to redo: a canvas resize
+  blank.project.cols = 24; // nothing on the edit layer, but a stroke to redo: a canvas resize, as a new step
   await settle(blank.project);
-  expect(blank.project._ledger.kept().stacks.strokes.size).toBe(1);
+  expect(blank.project._ledger.kept().stacks.strokes.size).toBe(0);
+  expect(blank.project.canRedo).toBe(false);
+  blank.project.undo(); // the resize
+  expect(blank.project.cols).toBe(20);
   expect(blank.project.canUndo).toBe(true); // the slider's step
-  blank.project.redo();
-  expect(blank.project.paintLayer.pixelAt(2, 2)).toMatchObject({ r: 255, g: 0, b: 0 });
 
   type(blank.project, 1, 1, 'A');
   await loadImage(blank.project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });

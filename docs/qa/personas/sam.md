@@ -85,8 +85,9 @@ script. Every section ends with Free time.
   then, not digit by digit.
 - Probes: `extremes`: type 0, then 99999, then `-3` and `4.5` into each number (0 and `-3` stay put, and a message
   gives the smallest size); `back-out`: type a size, press Escape,
-  and check the field shows the grid's size again and the grid never changed; `undo-redo`: Cmd+Z, and check nothing changes and the size stays (a size change isn't an undo
-  step, and nothing's drawn yet), then Shift+Cmd+Z.
+  and check the field shows the grid's size again and the grid never changed; `undo-redo`: Cmd+Z, and check each press takes back one size change (the
+  pixel rows, then the columns) until it's 80 by 50 again, the blank canvas as it was, then Shift+Cmd+Z until it's 40
+  by 20.
 - Rated: yes, wants Tab to Dimensions
 
 ### 3. Type the banner
