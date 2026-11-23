@@ -269,12 +269,13 @@ export function onLaunchedFiles(open) {
 }
 
 // Where Save writes a project: the handle given, once the browser says it may (after a reload it asks), or else a file
-// the save picker names (Save As, a drawing never saved, or the asking refused). Null when the picker's canceled.
+// the save picker names (Save As, a drawing never saved, an older .phosphor, or the asking refused), opening in the
+// handle's folder when there's one. Null when the picker's canceled.
 export async function projectTarget(handle, { suggestedName, description, as = false }) {
   const mode = { mode: 'readwrite' };
   if (handle && !as && isSavedForm(handle.name) && ((await handle.queryPermission(mode)) === 'granted' || (await handle.requestPermission(mode)) === 'granted')) return handle;
   try {
-    return await globalThis.showSaveFilePicker({ suggestedName, types: [{ description, accept: { [PROJECT_MIME]: [PROJECT_EXTENSION] } }] });
+    return await globalThis.showSaveFilePicker({ suggestedName, ...(handle && { startIn: handle }), types: [{ description, accept: { [PROJECT_MIME]: [PROJECT_EXTENSION] } }] });
   } catch (error) {
     if (error.name === 'AbortError') return null;
     throw error;

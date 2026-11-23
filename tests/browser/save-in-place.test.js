@@ -39,6 +39,7 @@ test('Save asks where once, writes the project there, and after that writes over
   expect(workspace.saveDialog).toBe(null);
   expect(picker).toHaveBeenCalledTimes(1);
   expect(picker.mock.calls[0][0]).toMatchObject({ suggestedName: 'untitled.pho', types: [{ accept: { 'image/x-phosphor': ['.pho'] } }] });
+  expect(picker.mock.calls[0][0]).not.toHaveProperty('startIn'); // no file yet: the picker's own folder (null it refuses)
   const first = await privateFile('first.pho');
   expect((await readProject(await first.getFile())).editCells.size).toBe(1);
   expect([project.filename, project.fileExt]).toEqual(['first', 'pho']);
@@ -86,7 +87,7 @@ test('a file it may not write yet is asked for first; refused, the save picker a
   expect(project.filename).toBe('elsewhere');
 });
 
-test("an opened .phosphor's first Save shows the picker with name.pho, and the second writes over that .pho", async () => {
+test("an opened .phosphor's first Save shows the picker in its folder with name.pho, and the second writes over that .pho", async () => {
   const { project, workspace } = await drawing();
   const old = await privateFile('opened.phosphor');
   const writable = await old.createWritable();
@@ -103,6 +104,7 @@ test("an opened .phosphor's first Save shows the picker with name.pho, and the s
   await workspace.saveFile();
   expect(picker).toHaveBeenCalledTimes(1);
   expect(picker.mock.calls[0][0].suggestedName).toBe('opened.pho');
+  expect(await picker.mock.calls[0][0].startIn?.isSameEntry(old)).toBe(true); // in the .phosphor's folder
   expect(await written(old)).toBe(before); // the .phosphor is never written
   const pho = await privateFile('opened.pho');
   expect((await readProject(await pho.getFile())).editCells.size).toBe(2);
