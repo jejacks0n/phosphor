@@ -16,9 +16,43 @@ import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerIn
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
 import { withoutPins } from '@/document/baseRecords.js';
 import { isFrozen } from '@/document/editCells.js';
+import { plainActions } from '@/store/project/combineActions.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
+
+// The project for one pass of reads that changes nothing between them (a Merge down's freeze, a Cells fill's looks
+// on the base): each field and getter read from the store once and kept, and the actions called as written, on this
+// view, so the actions they call come here too. Through the store, Pinia's wrapping of every call and Vue's reads were
+// most of such a pass's time, half a million cells at the limit (issue #231). A write goes to the store and drops
+// what was kept of it.
+// The getters that give a function of one id, whose answers are kept by it too.
+const BY_ID = new Set(['cellsOf', 'paintOf', 'layerById', 'charsOf', 'layerHidden']);
+export function readsOf(project) {
+  const kept = new Map();
+  const view = new Proxy({}, {
+    get(_, key) {
+      if (kept.has(key)) return kept.get(key);
+      const action = plainActions[key];
+      let value = action ? action.bind(view) : project[key];
+      if (BY_ID.has(key)) {
+        const of = value, answers = new Map();
+        value = (id) => {
+          if (!answers.has(id)) answers.set(id, of(id));
+          return answers.get(id);
+        };
+      }
+      kept.set(key, value);
+      return value;
+    },
+    set(_, key, value) {
+      project[key] = value;
+      kept.delete(key);
+      return true;
+    },
+  });
+  return view;
+}
 
 export const DEFAULT_COLS = getSetting('cols').default;
 export const DEFAULT_ROWS = getSetting('rows').default;

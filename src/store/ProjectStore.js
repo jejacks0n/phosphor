@@ -23,7 +23,7 @@ import { t } from '@/i18n/index.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { combineActions, guarded } from '@/store/project/combineActions.js';
+import { combineActions, guarded, plainActions } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
 import { mergingActions } from '@/store/project/merging.js';
 import { selectionActions } from '@/store/project/selection.js';
@@ -471,8 +471,8 @@ export const useProjectStore = defineStore('project', {
     },
   },
 
-  // One file per area in store/project/ (AGENTS.md, "Where things live").
-  actions: guarded(guarded(guarded(combineActions(
+  // One file per area in store/project/ (AGENTS.md, "Where things live"). plainActions keeps them as written, for readsOf.
+  actions: Object.assign(plainActions, guarded(guarded(guarded(combineActions(
     documentActions,
     renderingActions,
     readingActions,
@@ -490,5 +490,5 @@ export const useProjectStore = defineStore('project', {
     animationActions,
     vectorActions,
     layerActions,
-  ), WHOLE_LAYER_ACTIONS, lockedOut), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject),
+  ), WHOLE_LAYER_ACTIONS, lockedOut), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject)),
 });
