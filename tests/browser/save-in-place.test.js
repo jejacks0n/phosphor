@@ -41,7 +41,7 @@ test('Save asks where once, writes the project there, and after that writes over
   expect(picker.mock.calls[0][0]).toMatchObject({ suggestedName: 'untitled.pho', types: [{ accept: { 'image/x-phosphor': ['.pho'] } }] });
   const first = await privateFile('first.pho');
   expect((await readProject(await first.getFile())).editCells.size).toBe(1);
-  expect(project.filename).toBe('first');
+  expect([project.filename, project.fileExt]).toEqual(['first', 'pho']);
   expect([project.savedToFile, project.isDirty]).toEqual([true, false]);
 
   project.typeAt(2, 0, 'B', { fg: '#ffee00', bg: '#0044aa' });

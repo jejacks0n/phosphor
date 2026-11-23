@@ -2054,6 +2054,17 @@ test('an export of a drawing saved as a project keeps the project\'s name and ex
   expect((await readLatest(project.documentId)).record).toMatchObject({ filename: 'hello-fixed', fileExt: 'pho' });
 });
 
+// Records written before .pho name the project's extension phosphor: it's a project all the same.
+test('a project restored from a record that says phosphor keeps its name through an export', async () => {
+  const { project } = await mounted();
+  await project.openArtFile(textFile());
+  const rest = await (await writeProject({ ...(await project.projectParts()), imageBuffer: new ArrayBuffer(0) })).arrayBuffer();
+  const record = { rest, filename: 'older', fileExt: 'phosphor', savedToFile: true, dirty: false };
+  await project.restoreDocument({ record, imageBuffer: project.imageBuffer }, { documentId: project.documentId });
+  await project.exportFile('ans', { filename: 'older-20261122-215500' });
+  expect({ filename: project.filename, fileExt: project.fileExt }).toEqual({ filename: 'older', fileExt: 'phosphor' });
+});
+
 test('a blank canvas has no As opened: there is nothing to go back to', async () => {
   const { project } = await mounted();
   await project.setBlankCanvas({ withLayer: true });

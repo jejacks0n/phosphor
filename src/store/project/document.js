@@ -6,7 +6,7 @@ import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/
 import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
-import { loadImage, readProject, writeProject, withProject, gzipped, downloadBlob, PROJECT_EXTENSION, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
+import { loadImage, readProject, writeProject, withProject, gzipped, downloadBlob, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { cellsPng } from '@/lib/PngFile.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
@@ -83,12 +83,13 @@ function newLayers(project, { baseOnly = false } = {}) {
 const nameOf = ({ name }) => ({ filename: name.replace(/\.[^/.]+$/, ''), fileExt: name.match(/\.([^/.]+)$/)?.[1].toLowerCase() ?? null });
 
 const PROJECT_EXT = PROJECT_EXTENSION.slice(1);
+const PROJECT_EXTS = [PROJECT_EXT, OLD_PROJECT_EXTENSION.slice(1)]; // a record written before .pho says phosphor
 
 // An export names the drawing after the file it went out as, once there's a file to give the name to, unless the
-// drawing is a project (.pho): an export is a copy then, and the drawing keeps its project's name, so its row in
+// drawing is a project (.pho, or .phosphor in an older record): an export is a copy then, and the drawing keeps its project's name, so its row in
 // Pick up where you left off doesn't read as one of the exports.
 function exported(filename, ext) {
-  if (this.fileExt === PROJECT_EXT) return;
+  if (PROJECT_EXTS.includes(this.fileExt)) return;
   this.rename(filename);
   this.fileExt = ext;
 }
@@ -487,6 +488,7 @@ export const documentActions = {
       await writeFileHandle(handle, blob);
       this.fileHandle = markRaw(handle);
       this.rename(nameOf(handle).filename);
+      this.fileExt = PROJECT_EXT;
       Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
       return true;
     }
