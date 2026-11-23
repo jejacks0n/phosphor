@@ -979,12 +979,13 @@
       "blocksSet": "Blocks set by you. Find blocks again goes back to what the pixels say.",
       "blockMovedFound": "{name} found at slot {n}. CP437 puts it at {home}, which holds {char} here.",
       "blockMovedSet": "{name} set to slot {n}. CP437 puts it at {home}, which holds {char} here.",
-      "noLower": "No lower half found in this font, so drawings in it can’t hold paint. Pick Lower, then click a slot to give it one.",
-      "noBlocks": "No {names} found in this font, so those characters draw blank.",
-      "blocksHint": "To change a block, pick it, then click the slot that draws it.",
+      "noLower": "No “Lower” block found in this font. Pick one by selecting “Lower” and then its character in the character map below, or by dragging the character into “Lower”.",
+      "fillOthers": "Finish filling out any other missing blocks in the same way.",
+      "noBlocks": "No {names} found in this font, so those characters draw blank. Select one and then its character in the character map below, or drag the character into it.",
+      "blocksHint": "To change a block, select it and then its character in the character map below, or drag the character into it.",
       "slotBlock": "Slot {n} {char} · {block}",
       "slotBlockSet": "Slot {n} {char} · {block} (set by you)",
-      "pickedMissing": "{name} is picked: click the slot in the sheet that should draw the {long}.",
+      "pickedMissing": "{name} is picked: click the character in the character map below that should draw the {long}.",
       "setupNoLower": "This drawing’s font, {name}, has no lower half block, so it can’t be painted in yet.",
       "setupMissing": "This font has no {names} block, so that character draws blank. | This font has no {names} block, so those characters draw blank.",
       "setupInRoom": "Its blocks can’t change in a room; set them once the room ends.",
@@ -1004,7 +1005,7 @@
       "lineName": "Line {n}",
       "lineNameAria": "Line style name",
       "lineOffered": "Offered under Draw with",
-      "lineToGo": "All line sections are required to be able to draw with it. Select characters below to define this style.",
+      "lineToGo": "All line sections are required to be able to draw with it. Select characters below or drag them into the sections to define this line style.",
       "lineSharesBlock": "{piece} shares slot {n} with {block}",
       "lineBlockSlot": "Slot {n} draws the {block} block, so it can’t be a line piece.",
       "lineSlotTaken": "Slot {n} is already this style’s {piece}.",
@@ -1012,10 +1013,8 @@
       "setName": "Set {n}",
       "setNameAria": "Set name",
       "setCharsAria": "{name}’s characters",
-      "setPicked": "{name} is open: click slots on the sheet to add them, in order (a slot can go in twice), or type into its field. Backspace takes the last one off.",
-      "setsHint": "To add to a set, click into its characters, then click slots on the sheet.",
       "deleted": "Deleted {name}.",
-      "showStockSets": "Show stock sets"
+      "showStockSets": "Show stock sets for this font (e.g. “Blocks & shades”)"
     }
   },
   "status": {

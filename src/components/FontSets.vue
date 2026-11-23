@@ -3,7 +3,7 @@ import { computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { slotChars, slotOf } from '@/lib/BitmapFont';
 import { nextId } from '@/lib/FontLines';
-import { ANSI_CHARSETS, ASCII_CHARSETS } from '@/lib/charsetPresets';
+import { TRASH } from '@/components/icons';
 
 // The Fonts page's Sets section: the font's own character sets, kept as slots, and one switch for the stock sets. A
 // set is picked by focusing its characters; the page passes a click on the sheet to slot(n), which appends it.
@@ -20,11 +20,7 @@ const { t } = useI18n();
 const sets = computed(() => props.font.sets ?? { hideStock: false, sets: [] });
 const chars = computed(() => slotChars(props.font));
 const charsOf = (set) => set.slots.map((s) => chars.value[s]).join('');
-const stockNames = computed(() => [...new Set([...ANSI_CHARSETS, ...ASCII_CHARSETS].map((p) => p.name))].join(' · '));
 const pickedSet = computed(() => sets.value.sets.find((s) => s.id === props.picked));
-const note = computed(() => (pickedSet.value && !props.disabled
-  ? t('palette.fonts.setPicked', { name: pickedSet.value.name })
-  : sets.value.sets.length ? t('palette.fonts.setsHint') : ''));
 
 const change = (list, hideStock = sets.value.hideStock) => emit('change', { hideStock, sets: list });
 const setSlots = (id, slots) => change(sets.value.sets.map((s) => (s.id === id ? { ...s, slots } : s)));
@@ -84,15 +80,13 @@ defineExpose({ slot });
           @blur="done(s, $event)"
           @keydown.backspace="backspace"
       >
-      <button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="remove(s.id)">{{ t('common.delete') }}</button>
+      <button class="ghost delete" :disabled="disabled" :aria-label="t('common.delete')" :title="disabled ? reason : t('common.delete')" @click="remove(s.id)" v-html="TRASH"/>
     </div>
     <div><button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="add">{{ t('palette.fonts.newSet') }}</button></div>
-    <p v-if="note" class="note">{{ note }}</p>
     <label class="stock">
       <input type="checkbox" :checked="!sets.hideStock" :disabled="disabled" @change="change(sets.sets, !$event.target.checked)">
       {{ t('palette.fonts.showStockSets') }}
     </label>
-    <p class="note">{{ stockNames }}</p>
   </div>
 </template>
 
@@ -143,11 +137,15 @@ label.stock {
   color: var(--text);
 }
 
-p.note {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.45;
-  color: var(--text-muted);
+button.delete { /* a trash can */
+  display: inline-flex;
+  align-items: center;
+}
+
+button.delete :deep(svg) {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 
 button.ghost:disabled,

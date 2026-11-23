@@ -979,12 +979,13 @@
       "blocksSet": "Blocs définis par vous. Retrouver les blocs revient à ce que disent les pixels.",
       "blockMovedFound": "{name} trouvé à l'emplacement {n}. CP437 le place en {home}, qui contient {char} ici.",
       "blockMovedSet": "{name} placé à l'emplacement {n}. CP437 le place en {home}, qui contient {char} ici.",
-      "noLower": "Aucune moitié basse trouvée dans cette police : les dessins qui l'utilisent ne peuvent pas contenir de peinture. Choisissez Bas, puis cliquez sur un emplacement pour lui en donner une.",
-      "noBlocks": "Aucun bloc ({names}) trouvé dans cette police : ces caractères s'affichent vides.",
-      "blocksHint": "Pour changer un bloc, choisissez-le, puis cliquez sur l'emplacement qui le dessine.",
+      "noLower": "Aucun bloc « Bas » trouvé dans cette police. Choisissez-en un en sélectionnant « Bas » puis son caractère dans la table des caractères ci-dessous, ou en faisant glisser le caractère dans « Bas ».",
+      "fillOthers": "Complétez de la même façon les autres blocs manquants.",
+      "noBlocks": "Aucun bloc ({names}) trouvé dans cette police : ces caractères s’affichent vides. Sélectionnez-en un puis son caractère dans la table des caractères ci-dessous, ou faites-y glisser le caractère.",
+      "blocksHint": "Pour changer un bloc, sélectionnez-le puis son caractère dans la table des caractères ci-dessous, ou faites-y glisser le caractère.",
       "slotBlock": "Emplacement {n} {char} · {block}",
       "slotBlockSet": "Emplacement {n} {char} · {block} (défini par vous)",
-      "pickedMissing": "{name} est choisi : cliquez dans la feuille sur l’emplacement qui doit dessiner ce bloc ({long}).",
+      "pickedMissing": "{name} est choisi : cliquez dans la table des caractères ci-dessous sur le caractère qui doit dessiner ce bloc ({long}).",
       "setupNoLower": "La police de ce dessin, {name}, n’a pas de demi-bloc inférieur : on ne peut pas encore y peindre.",
       "setupMissing": "Cette police n’a pas de bloc {names} : ce caractère s’affiche vide. | Cette police n’a pas de bloc {names} : ces caractères s’affichent vides.",
       "setupInRoom": "Ses blocs ne peuvent pas changer dans une salle ; définissez-les une fois la salle terminée.",
@@ -1004,7 +1005,7 @@
       "lineName": "Ligne {n}",
       "lineNameAria": "Nom du style de ligne",
       "lineOffered": "Proposé dans Dessiner avec",
-      "lineToGo": "Toutes les sections de ligne sont nécessaires pour dessiner avec. Choisissez les caractères ci-dessous pour définir ce style.",
+      "lineToGo": "Toutes les sections de ligne sont nécessaires pour dessiner avec. Choisissez les caractères ci-dessous ou faites-les glisser dans les sections pour définir ce style de ligne.",
       "lineSharesBlock": "{piece} partage l'emplacement {n} avec {block}",
       "lineBlockSlot": "L'emplacement {n} dessine le bloc {block} : il ne peut pas être une pièce de ligne.",
       "lineSlotTaken": "L'emplacement {n} est déjà la pièce {piece} de ce style.",
@@ -1012,10 +1013,8 @@
       "setName": "Jeu {n}",
       "setNameAria": "Nom du jeu",
       "setCharsAria": "Caractères de {name}",
-      "setPicked": "{name} est ouvert : cliquez sur des emplacements de la feuille pour les ajouter, dans l'ordre (un emplacement peut y être deux fois), ou tapez dans son champ. Retour arrière enlève le dernier.",
-      "setsHint": "Pour compléter un jeu, cliquez dans ses caractères, puis sur des emplacements de la feuille.",
       "deleted": "{name} supprimé.",
-      "showStockSets": "Afficher les jeux prédéfinis"
+      "showStockSets": "Afficher les jeux prédéfinis pour cette police (par ex. « Blocs et ombres »)"
     }
   },
   "status": {

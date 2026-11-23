@@ -2,6 +2,7 @@
 button.tile {
   display: grid;
   grid-template-columns: auto auto;
+  justify-content: center;
   column-gap: 6px;
   align-items: center;
   padding: 3px 7px 3px 4px;
@@ -37,6 +38,22 @@ button.tile.picked {
 
 button.tile.missing.picked { /* still red: the accent ring says it's picked */
   border-color: var(--danger);
+}
+
+button.tile.over { /* a slot dragged over it */
+  border-color: var(--accent);
+  background: var(--surface-2);
+}
+
+button.delete { /* a trash can */
+  display: inline-flex;
+  align-items: center;
+}
+
+button.delete :deep(svg) {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
 }
 
 /* The glyph in the middle of its box, the box as wide as it needs (FontsPage sets the size, a whole number of times

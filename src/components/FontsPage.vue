@@ -9,7 +9,7 @@ import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { setFontWidth } from '@/composables/useFontWidth';
 import { storedBitmapFont, registerBitmapFont, releaseBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
-import { parseRawFont, narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, sampleOf, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
+import { parseRawFont, narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, sampleOf, slotChars, withBlock, BLOCKS, SLOT_DRAG } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs';
@@ -352,10 +352,11 @@ const setBlocks = (blocks) => {
   const found = blocks && findBlocks({ ...font.value, blocks: undefined });
   setPart('blocks', found?.every((s, i) => s === blocks[i]) ? undefined : blocks); // where the pixels put them: found, not set
 };
-const setSlot = (n) => {
-  if (!picked.value || inRoom.value || !font.value) return;
+// A slot for the picked block or piece, or for the block a slot was dragged onto (pick).
+const setSlot = (n, pick = picked.value) => {
+  if (!pick || inRoom.value || !font.value) return;
   if (section.value !== 'blocks') return part.value?.slot(n);
-  const blocks = blocksOf(font.value), next = withBlock(blocks, picked.value, n);
+  const blocks = blocksOf(font.value), next = withBlock(blocks, pick, n);
   if (next.some((s, i) => s !== blocks[i])) setBlocks(next);
 };
 // A slot clicked (no block picked to set): its glyph large over the sheet, for a closer look (GlyphZoom). Another click,
@@ -367,6 +368,10 @@ const chosenZoom = (event, n) => (zoom.value?.n === n ? null : showZoom(event, n
 const clickSlot = (event, n) => {
   if (pressedLong(n)) return;
   return picked.value && !inRoom.value ? setSlot(n) : showZoom(event, n, chars.value[n], chosen.value);
+};
+const dragSlot = (event, n) => {
+  event.dataTransfer.setData(SLOT_DRAG, String(n));
+  closeZoom();
 };
 const libFace = computed(() => libEntry.value && preview.value && { kind: 'bitmap', height: libEntry.value.height, family: preview.value.family });
 const zoomOut = () => { closeZoom(); emit('acted'); };
@@ -558,6 +563,7 @@ const exportPalettes = () => {
             :disabled="inRoom"
             :reason="t('palette.fonts.blocksInRoom')"
             @pick="picked = $event"
+            @place="(key, n) => setSlot(n, key)"
         />
         <component
             :is="section === 'lines' ? FontLines : FontSets"
@@ -585,6 +591,8 @@ const exportPalettes = () => {
               @pointercancel="releaseSlot"
               @contextmenu.prevent
               @click="clickSlot($event, i)"
+              :draggable="!inRoom"
+              @dragstart="dragSlot($event, i)"
           >{{ c === '␀' ? ' ' : c }}</span>
         </div>
         <div class="info">{{ hovered === null ? t('palette.fonts.slotHint') : readout(hovered) }}</div>

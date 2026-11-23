@@ -25,6 +25,7 @@ const blank = (h) => solid(h, 0);
 export const cp437Font = fontWith(cp437);
 export const lowerAt240 = fontWith({ ...cp437, 220: undefined, 240: lowerHalf });
 export const noLowerHalf = fontWith({ ...cp437, 220: blank });
+export const noLowerNoShades = fontWith({ ...cp437, 220: blank, 176: blank, 177: blank, 178: blank });
 export const solidAt220 = fontWith({ ...cp437, 219: blank, 220: (h) => solid(h, 0xff) });
 export const lightAt240 = fontWith({ ...cp437, 176: blank, 240: checker(0x88, 0x22), 179: (h) => solid(h, 0x18), 186: (h) => solid(h, 0x66), 72: (h) => solid(h, 0x7e) });
 
