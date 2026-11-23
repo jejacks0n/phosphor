@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { test, expect } from 'vitest';
-import { readManifest, ManifestError, COLOR_SLOTS, MOST_MANIFEST_BYTES } from '../../src/plugins/manifest.js';
+import { readManifest, ManifestError, API_LEVEL, COLOR_SLOTS, MOST_MANIFEST_BYTES } from '../../src/plugins/manifest.js';
 
 const text = readFileSync(new URL('../../plugins/midnight/phosphor-plugin.json', import.meta.url), 'utf8');
 const good = () => JSON.parse(text);
@@ -11,11 +11,34 @@ const refused = (change) => {
   return null;
 };
 
-test('the example reads as itself, frozen, with nothing extra kept', () => {
-  const raw = { ...good(), extra: 1, themes: [{ ...good().themes[0], extra: 1 }] };
-  const m = readManifest(JSON.stringify(raw));
+test('the example reads as itself, frozen', () => {
+  const m = readManifest(JSON.stringify(good()));
   expect(m).toEqual({ ...good(), script: '', preview: '' });
   expect(Object.isFrozen(m.themes[0].colors)).toBe(true);
+});
+
+// "phosphor" is the API level a plugin needs (API_LEVEL). A field this copy doesn't know isn't left out: at a level it
+// knows that's a slip, and something of a newer Phosphor's comes with a higher level, which is refused as newer first.
+test('a field Phosphor doesn\'t know refuses the manifest, named, in the manifest and in a theme', () => {
+  const unknown = (change) => { const error = refused(change); return [error?.code, error?.detail]; };
+  expect(unknown((m) => { m.extra = 1; })).toEqual(['unknownField', { field: 'extra' }]);
+  expect(unknown((m) => { m.fonts = { ui: 'serif' }; })).toEqual(['unknownField', { field: 'fonts' }]);
+  expect(unknown((m) => { m.themes[0].fonts = { ui: 'serif' }; })).toEqual(['unknownField', { field: 'themes[0].fonts' }]);
+  expect(unknown((m) => { m.Name = 'Midnight'; })).toEqual(['unknownField', { field: 'Name' }]); // a field's name is exact
+  expect(unknown((m) => { m['x'.repeat(100)] = 1; })).toEqual(['unknownField', { field: 'x'.repeat(40) }]); // shown, so cut short
+});
+
+test('the level: a whole number from 1 to this Phosphor\'s own is taken and kept, a higher one is newer whatever else it has', () => {
+  expect(API_LEVEL).toBe(1);
+  expect(readManifest(JSON.stringify(good())).phosphor).toBe(1);
+  for (const level of [API_LEVEL + 1, 7, 1.5]) {
+    const error = refused((m) => { m.phosphor = level; m.fonts = {}; m.themes[0].fonts = {}; });
+    expect([level, error?.code]).toEqual([level, 'newer']);
+  }
+  for (const level of [0, -1, '1', null, undefined, true, NaN]) {
+    const error = refused((m) => { m.phosphor = level; });
+    expect([level, error?.code, error?.detail]).toEqual([level, 'badField', { field: 'phosphor' }]);
+  }
 });
 
 test.each([

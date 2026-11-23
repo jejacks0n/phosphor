@@ -2368,6 +2368,7 @@
       "needsNewer": "This plugin needs a newer Phosphor.",
       "nothing": "This plugin adds nothing this Phosphor can use.",
       "badField": "The manifest's “{field}” is missing or isn't right.",
+      "unknownField": "The manifest has a field this Phosphor doesn't know: “{field}”.",
       "unknownColor": "The theme “{theme}” sets “{key}”, which isn't one of Phosphor's colors.",
       "badColor": "The theme “{theme}” sets “{key}” to “{value}”, which isn't a hex color.",
       "otherPlugin": "That file is now a different plugin ({id}).",

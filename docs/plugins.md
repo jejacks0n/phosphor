@@ -173,7 +173,7 @@ The fields:
 
 | Field | What it is | Rules |
 |---|---|---|
-| `phosphor` | The manifest's format. | `1`. A higher number is refused: "This plugin was made for a newer Phosphor." |
+| `phosphor` | The plugin API level the plugin needs ([Levels](#levels)). | `1`, the only level so far. A level higher than this Phosphor's is refused: "This plugin was made for a newer Phosphor." |
 | `id` | Who made it and what it is: `author.name`. The same id installed again replaces the plugin. | Lowercase letters, digits and hyphens on each side of one dot, each side beginning and ending with a letter or a digit; 64 characters at most. |
 | `name` | The plugin's name, as the dialog shows it. | Required; 60 characters at most. |
 | `version` | Its version, in [semver](https://semver.org) (`1.0.0`, `1.1.0-beta`). | Required, without a `v`. |
@@ -230,9 +230,23 @@ choice) are plain text on one line, in any language: no line breaks, no control 
 turn text's direction around (U+200E, U+200F, U+061C, U+202A to U+202E, U+2066 to U+2069). A word that has one refuses
 the plugin, naming the field.
 
-A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. Fields Phosphor
-doesn't know are left out, except that a manifest from a format newer than Phosphor's is refused. The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
+A key that isn't a slot, or a value that isn't hex, refuses the whole manifest, and the dialog names it. A field
+Phosphor doesn't know refuses it too ("The manifest has a field this Phosphor doesn't know: “fonts”."), in the manifest
+and in a theme: nothing of a plugin is quietly left out ([Levels](#levels)). The file can be 64 KB at most. Every word in it is shown as you wrote it, as text: never as
 markup, and never translated.
+
+### Levels
+
+`phosphor` is the level of the plugin API a plugin needs. Everything on this page is level 1. When a later Phosphor adds
+something a plugin can use (a field in the manifest, a color slot, a new kind of option, a call a script is handed), the
+level goes up by one, and this page says which level each thing came in at. Name the lowest level that has everything
+your plugin uses:
+
+- A Phosphor takes every level from 1 up to its own, so a plugin written for level 1 keeps working.
+- A Phosphor from before your level refuses the plugin ("This plugin was made for a newer Phosphor.") and leaves it out
+  of its Marketplace. It never installs part of a plugin.
+- A field Phosphor doesn't know refuses the plugin at any level, in the manifest and in the script, naming it. So a
+  misspelled field is told, not ignored, and something from a newer level can't be used under an older number.
 
 ## Writing a script
 
@@ -259,7 +273,9 @@ A script holds 8 of each kind at most. Each has an `id` (lowercase letters, digi
 with a letter or a digit, 40 characters at most, one of its kind in the script: a brush and a shape may share one) and a
 `name` (plain text, 40 characters at most). Everything is
 read once, when the script is loaded, and anything that isn't the shape refuses the plugin, naming the field ("The
-plugin's script has a problem at “brushes[0].icon”."). A plugin's words are shown as you wrote them, as text, and never
+plugin's script has a problem at “brushes[0].icon”."). A field Phosphor doesn't know is refused the same way, wherever
+it is: a list beside the four (“tools”), a field of a solver, brush, shape or filter (“brushes[0].cursor”), of an option
+(“solvers[0].options[0].help”, or a slider's `choices`) or of a shader (“solvers[0].shader.common”). A plugin's words are shown as you wrote them, as text, and never
 translated.
 
 While a plugin is off, or Phosphor is started with `plugins=off`, nothing of its script is offered. In a room none of it
