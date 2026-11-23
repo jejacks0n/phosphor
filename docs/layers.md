@@ -63,8 +63,8 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
     when you hover over it.
   - Names are saved with the drawing. A rename isn't an undo step.
 - **On a Phone**: The side panel comes in over the art from the right. The unfold button at the right end of the tab bar opens it,
-  and selecting a layer leaves it open, so you can select, rename or hide in one visit. The fold button, **Escape** or a tap on the
-  strip of art beside it shuts it ([The Side Panel](social.md#the-side-panel)).
+  and selecting a layer leaves it open, so you can select, rename or hide in one visit. The fold button, **Escape** or a touch on the
+  strip of art beside it shuts it, and draws nothing ([The Side Panel](social.md#the-side-panel)).
 - **In a Room**: A room starts from any stack, and everyone in it, the host and artists alike, changes the stack:
   **Add layer**, **Add vector layer**, **Duplicate**, **Delete**, **Move up**, **Move down**, dragging and renaming all
   work, and everyone sees the result. Artists draw on any layer but the bottom one.
@@ -193,7 +193,8 @@ The settings on the left come in sections, each following a layer:
 Each section under Drawing folds and unfolds on its title, and your browser remembers which are folded. A folded
 slider group says how many of its sliders are on.
 
-On a phone the settings slide out from **☰** at the left end of the tab bar. Opened with the keys, focus goes into them,
+On a phone the settings slide out from **☰** at the left end of the tab bar, sliding the art aside. A touch on the strip
+of art still showing only shuts them: nothing is drawn until they're shut. Opened with the keys, focus goes into them,
 to the Phosphor logo, so **Tab** goes on to **Dimensions**. **Escape** shuts them and puts focus back on **☰**. In a field
 you type in, such as Dimensions or the hex of the Custom color list, Escape is the field's: it puts back what was there,
 and the settings stay open.

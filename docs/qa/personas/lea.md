@@ -138,7 +138,8 @@ in the status bar to see what they do, and try "Start with a blank canvas" from 
 ### 5. Find the settings
 - Does: taps ☰.
 - Expects: the art slides right and the settings column shows on the left, with ☰ turned into ✕; a tap on ✕ or on the
-  slid-aside art slides it back; the slide is quick and doesn't stutter; everything in the column fits its width.
+  slid-aside art slides it back; a swipe on the slid-aside art with the Pencil in hand slides it back too, and draws
+  nothing (Undo stays off); the slide is quick and doesn't stutter; everything in the column fits its width.
 - Probes: `again`: open and close it five times in a row; `interrupt`: open it, turn the phone sideways (the settings
   show beside the art on a wide screen), and back upright; `back-out`: open it and use the phone's Back
   (`page.goBack()`), and check where she lands.
@@ -341,8 +342,8 @@ Terms from it and check they fit, and look for a Share button.
 ### 24. Open a room link a friend sent
 - Does: opens the app at a room's address (`/social?room=abc123`), as a link in a message would.
 - Expects: it asks "Join this room?" with the lobby open over the art; Join takes her to ROOM with the host's art and
-  the panel shut; the unfold button opens CHAT over the art, with what was said counted beside it, and a tap on the strip of art shuts
-  it ([The Side Panel](../../social.md#the-side-panel)). Her work in progress is still there when she leaves.
+  the panel shut; the unfold button opens CHAT over the art, with what was said counted beside it, and a tap or a swipe on the strip of art shuts
+  it, drawing nothing ([The Side Panel](../../social.md#the-side-panel)). Her work in progress is still there when she leaves.
 - Probes: `interrupt`: open the link with work in progress, and check nothing was lost; `again`: open it twice.
 - Rated: no (touch only: no keyboard shows here)
 

@@ -1,12 +1,13 @@
 <script setup>
 import { computed, ref, watch, onMounted } from 'vue';
-import { useMediaQuery } from '@vueuse/core';
+import { useEventListener, useMediaQuery } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
 import { desktop, fileFrom } from '@/social/desktop';
+import { desktopQuery } from '@/social/config';
 import { holdsProject, loadImage, pickFile, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
 import { isArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
@@ -58,6 +59,27 @@ watch(() => [project.frame, project.frames, project.renderedCells, project.anima
 // art file says so when it fails to open.
 const chooser = ref(null);
 const touch = useMediaQuery('(pointer: coarse)');
+
+// A narrow screen's settings drawer slides the art aside, a strip of it showing: a press there only shuts the drawer.
+// It's taken in the capture phase, before the art's own handlers, and so are that press's moves and lift (a finger's
+// touches and pointer events both), so no tool starts a stroke. A wide screen's settings sit beside the art, which paints.
+const wide = useMediaQuery(desktopQuery);
+const viewport = ref(null);
+let shutting = false;
+const PRESS = ['pointerdown', 'pointermove', 'pointerup', 'pointercancel', 'touchstart', 'touchmove', 'touchend', 'touchcancel'];
+useEventListener(viewport, PRESS, (e) => {
+  if (e.type === 'pointerdown' && e.pointerType !== 'touch') shutting = false; // a pen's or a mouse's lifted off the art
+  if (!shutting && (e.type === 'pointerdown' || e.type === 'touchstart')) {
+    if (wide.value || !workspace.settingsOpen) return;
+    shutting = true;
+    workspace.toggleSettings();
+  }
+  if (!shutting) return;
+  e.stopPropagation();
+  if (e.cancelable) e.preventDefault(); // no mouse events after it, nor a click
+  // A finger's press ends with its last touch (its pointerup comes first); a pen's or a mouse's with the pointer's.
+  if (e.type.startsWith('touch') ? (e.type === 'touchend' || e.type === 'touchcancel') && !e.touches.length : (e.type === 'pointerup' || e.type === 'pointercancel') && e.pointerType !== 'touch') shutting = false;
+}, { capture: true, passive: false });
 const extensions = ['.svg', PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, ...ART_EXTENSIONS.map((e) => `.${e}`)];
 const accept = ['image/*', ...extensions].join(',');
 watch(() => workspace.openRequest, () => (DESKTOP ? openChosen() : browse()));
@@ -250,7 +272,7 @@ async function addSvg(file) {
         <ColorLayer v-if="workspace.colorBox"/>
       </div>
       <DropZone @file-dropped="handleFileSelected">
-        <div class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
+        <div ref="viewport" class="edit-viewport viewport" :class="{ editing: workspace.editMode }" v-if="project.image">
           <InputEditor v-if="workspace.editorTab === 'input'"/>
           <AnsiEditor v-if="workspace.editorTab === 'output' || workspace.editorTab === 'vector'" :view="workspace.editorTab"/>
           <SauceEditor v-if="workspace.editorTab === 'sauce'"/>
