@@ -11,6 +11,9 @@ import { readProject, writeProject } from '@/document/projectIO.js';
 import { solverRef, unregisterScript } from '@/plugins/solvers';
 import { useRoomStore } from '@/store/RoomStore';
 import { onPlugin } from '../support/pluginSolvers.js';
+import midnight from '../../plugins/midnight/phosphor-plugin.json';
+import { readManifest } from '@/plugins/manifest';
+import { usePluginStore } from '@/store/PluginStore';
 import ControlPanel from '@/components/ControlPanel.vue';
 import ExportModal from '@/components/ExportModal.vue';
 import StartRoomPage from '@/components/social/StartRoomPage.vue';
@@ -240,6 +243,29 @@ test('in a room the groups aren\'t shown and no filter runs', async () => {
   expect(groupOf(host, 'Aberration')).toBe(undefined);
   expect(project.filterGroups).toEqual([]);
   expect(project.processParams.pluginFilters).toEqual([]);
+});
+
+// Two plugins whose names sort one way and whose ids the other. The Plugins dialog lists them by name; the filters show
+// and run by id, so renaming a plugin can't change how a drawing with both looks.
+test('filters show and run in the order of their ids, not their plugins\' names', async () => {
+  const { project } = await drawing(), pinia = getActivePinia(), plugins = usePluginStore();
+  for (const [id, name] of [['ann.fx', 'Zebra filters'], ['zed.fx', 'Apple filters']]) {
+    await plugins.install(readManifest(JSON.stringify({ ...midnight, id, name })));
+    plugins.useScript(id, 'h', { filters: [DIM] });
+    setActivePinia(pinia);
+  }
+  expect(plugins.plugins.map((plugin) => plugin.id).filter((id) => id !== 'jane.fx')).toEqual(['zed.fx', 'ann.fx']); // by name
+  const dims = ['plugin:ann.fx/dim', 'plugin:jane.fx/dim', 'plugin:zed.fx/dim'];
+  project.setSlider('filterOptions', Object.fromEntries(dims.map((each) => [each, { name: 'Dim', values: { amount: 0.25 } }])));
+  await settle(project);
+  expect(project.processParams.pluginFilters.map((filter) => filter.ref)).toEqual(dims);
+  const host = await mount(ControlPanel);
+  const shown = project.filterGroups.map((group) => group.ref);
+  expect(shown.filter((each) => dims.includes(each))).toEqual(dims);
+  expect([...host.querySelectorAll('fieldset legend .title')].map((title) => title.textContent).filter((title) => ['Aberration', 'Dim', 'Same'].includes(title)))
+    .toEqual(shown.map((each) => project.filterGroups.find((group) => group.ref === each).name)); // the column, in that order
+  unregisterScript('ann.fx');
+  unregisterScript('zed.fx');
 });
 
 test('a group folds on its title, each by its own, and stays folded', async () => {

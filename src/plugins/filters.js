@@ -52,12 +52,15 @@ function stateOf(ref, def, values, { pluginState, pluginsOff, failures }) {
   return def.options.some((option) => values[option.id] !== option.default) ? 'on' : 'idle';
 }
 
-// The settings column's groups, in run order: the filters installed (installed: [{ ref, pluginId, hash, def }], in their
-// order), then the drawing's saved ones that aren't, by name, with no def. Each { ref, pluginId, hash, name, def, values,
-// state }: values every option's (its saved value where that's good, else its default), or with no def what was saved.
+// The settings column's groups, in run order: the filters installed (installed: [{ ref, pluginId, hash, def }]) in the
+// order of their refs, then the drawing's saved ones that aren't, by name, with no def. Each { ref, pluginId, hash, name,
+// def, values, state }: values every option's (its saved value where that's good, else its default), or with no def what
+// was saved. By ref, as plain text (the plugin's id, then the filter's): a drawing with two filters on looks the same
+// whatever the plugins are named, in whatever language sorts them, and whatever order a script lists its filters in.
+const byRef = (a, b) => (a.ref < b.ref ? -1 : a.ref > b.ref ? 1 : 0);
 export function filterGroups({ saved, installed, pluginState, pluginsOff, failures }) {
   const context = { pluginState, pluginsOff, failures };
-  const here = installed.map(({ ref, pluginId, hash, def }) => {
+  const here = [...installed].sort(byRef).map(({ ref, pluginId, hash, def }) => {
     const values = optionValues(def, saved[ref]?.values);
     return { ref, pluginId, hash, name: def.name, def, values, state: stateOf(ref, def, values, context) };
   });

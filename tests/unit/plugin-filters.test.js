@@ -115,6 +115,19 @@ describe('filterGroups', () => {
     expect(groups({ failures: { [ref]: { log: 'oops' } } })[0].state).toBe('failed');
   });
 
+  // One order for the column and the pipeline: the refs', the plugin's id and then the filter's, as plain text. Not the
+  // plugins' names (a plugin renamed would change how a drawing with two filters looks), nor a script's own order.
+  it('orders the installed by ref, whatever order they come in, and they run in the order they show', () => {
+    const of = (pluginId, id) => ({ ref: solverRef(pluginId, id), pluginId, hash: 'h1', def: { ...ABERRATION, id } });
+    const mixed = [of('zed.fx', 'aberration'), of('ann.fx', 'zoom'), of('jane.fx', 'aberration'), of('ann.fx', 'blur')];
+    const saved = Object.fromEntries(mixed.map(({ ref: r }) => [r, { name: 'Aberration', values: { distance: 4 } }]));
+    const list = filterGroups({ saved, installed: mixed, pluginState: on, pluginsOff: false, failures: {} });
+    const order = ['plugin:ann.fx/blur', 'plugin:ann.fx/zoom', 'plugin:jane.fx/aberration', 'plugin:zed.fx/aberration'];
+    expect(list.map((group) => group.ref)).toEqual(order);
+    expect(runningFilters(list).map((filter) => filter.ref)).toEqual(order);
+    expect(mixed.map(({ ref: r }) => r)[0]).toBe('plugin:zed.fx/aberration'); // the list given is left as it came
+  });
+
   it('runs only the groups that are on, as the pipeline takes them', () => {
     const list = groups({ saved: { [ref]: { name: 'Aberration', values: { distance: 4 } } } });
     expect(runningFilters(list)).toEqual([
