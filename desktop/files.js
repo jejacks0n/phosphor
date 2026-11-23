@@ -6,9 +6,21 @@ import { rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 // Pictures, projects, SVGs and art files (src/lib/ArtFile.js's ART_EXTENSIONS), as the page opens them.
-export const OPENABLE = ['phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb'];
+export const OPENABLE = ['pho', 'phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb'];
 export const isOpenable = (file) => OPENABLE.includes(path.extname(file).slice(1).toLowerCase());
-export const isProject = (file) => path.extname(file).toLowerCase() === '.phosphor';
+// The form Save writes over: a .pho. An opened .phosphor or renamed .png project isn't written over; Save asks beside it.
+export const isProject = (file) => path.extname(file).toLowerCase() === '.pho';
+
+// Whether a save asks where (`box`) and the box's starting path: beside the file the project came from when it's one the
+// page may write to (`isGranted`), else just the suggested name. Only a .pho is written over without asking, unless `as`.
+export function saveBox({ file, name, as = false, isGranted = false }) {
+  const known = typeof file === 'string' && isGranted;
+  if (known && isProject(file) && !as) return { box: false };
+  return { box: true, defaultPath: known ? path.join(path.dirname(file), path.basename(name)) : path.basename(name) };
+}
+
+// A path the save box returned, as a .pho path.
+export const projectPath = (chosen) => (isProject(chosen) ? chosen : `${chosen}.pho`);
 
 // The files on a command line the app can open, as full paths: not its flags, not Electron or main.js.
 export const filesIn = (argv, cwd = process.cwd()) => argv

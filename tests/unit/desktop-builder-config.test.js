@@ -85,7 +85,7 @@ test('every file the app opens is associated, and only what no other app owns be
   const yml = read('electron-builder.yml');
   const exts = (text) => [...text.matchAll(/- ext: (?:\[(.+)\]|(\S+))$/gm)].flatMap(([, list, one]) => (list ?? one).split(', '));
   const everywhere = exts(section(yml, 'fileAssociations'));
-  assert.deepEqual(everywhere, ['phosphor', 'ans', 'utf8ans', 'diz', 'xb']);
+  assert.deepEqual(everywhere, ['pho', 'phosphor', 'ans', 'utf8ans', 'diz', 'xb']);
   const mac = exts(section(yml, 'mac'));
   assert.deepEqual([...everywhere, ...mac].sort(), [...OPENABLE].sort());
   assert.equal(section(yml, 'mac').match(/rank: (\w+)/g).join(), 'rank: Alternate,rank: Alternate');

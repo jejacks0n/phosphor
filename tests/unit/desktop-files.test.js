@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { OPENABLE, filesIn, isOpenable, isProject, recentFiles, writeWhole } from '../../desktop/files.js';
+import { OPENABLE, filesIn, isOpenable, isProject, projectPath, recentFiles, saveBox, writeWhole } from '../../desktop/files.js';
 import { ART_EXTENSIONS } from '../../src/lib/ArtFile.js';
 
 let dir;
@@ -15,7 +15,24 @@ afterEach(() => dir && rmSync(dir, { recursive: true, force: true }));
 test('it opens what the page opens: projects, pictures, SVGs and every art file', () => {
   for (const ext of ['phosphor', 'png', 'jpg', 'svg', 'xb', ...ART_EXTENSIONS]) assert.ok(OPENABLE.includes(ext), ext);
   assert.ok(isOpenable('/a/Art.ANS') && isOpenable('b.Phosphor') && !isOpenable('main.js') && !isOpenable('notes'));
-  assert.ok(isProject('/a/b.PHOSPHOR') && !isProject('/a/b.phosphor.png'));
+  assert.ok(isOpenable('a.pho') && isOpenable('a.phosphor'));
+  assert.ok(isProject('/a/b.PHO') && !isProject('/a/b.phosphor') && !isProject('/a/b.pho.png'));
+});
+
+test('a save writes over a granted .pho, and otherwise asks, beside the file when it is a granted one', () => {
+  const g = { isGranted: true, name: 'night.pho' };
+  assert.deepEqual(saveBox({ ...g, file: '/a/night.pho' }), { box: false });
+  assert.deepEqual(saveBox({ ...g, file: '/a/night.pho', as: true }), { box: true, defaultPath: path.join('/a', 'night.pho') });
+  assert.deepEqual(saveBox({ ...g, file: '/a/old.phosphor' }), { box: true, defaultPath: path.join('/a', 'night.pho') });
+  assert.deepEqual(saveBox({ ...g, file: '/a/old.png' }), { box: true, defaultPath: path.join('/a', 'night.pho') });
+  assert.deepEqual(saveBox({ ...g, file: '/a/night.pho', isGranted: false }), { box: true, defaultPath: 'night.pho' });
+  assert.deepEqual(saveBox({ name: 'night.pho', file: null }), { box: true, defaultPath: 'night.pho' });
+});
+
+test('a path the save box returns becomes a .pho path', () => {
+  assert.equal(projectPath('/a/night'), '/a/night.pho');
+  assert.equal(projectPath('/a/night.pho'), '/a/night.pho');
+  assert.equal(projectPath('/a/night.phosphor'), '/a/night.phosphor.pho');
 });
 
 test('the command line’s files: openable ones that exist, as full paths, not flags or the app itself', () => {

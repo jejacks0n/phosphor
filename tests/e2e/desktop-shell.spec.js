@@ -164,7 +164,7 @@ const { version } = JSON.parse(readFileSync(new URL('../../package.json', import
 // Open Recent and a file named at launch open it again; Open is the system's chooser.
 test('the menu saves a project where the box says and then over it, and it opens again from Open Recent and at launch', async () => {
   const folder = mkdtempSync(join(tmpdir(), 'phosphor-saved-'));
-  const file = join(folder, 'night.phosphor');
+  const file = join(folder, 'night.pho');
   let second;
   try {
     launched = await launchApp();
@@ -173,7 +173,7 @@ test('the menu saves a project where the box says and then over it, and it opens
     await app.evaluate(({ dialog }, chosen) => {
       globalThis.boxes = 0;
       dialog.showSaveDialog = async () => { globalThis.boxes++; return { canceled: false, filePath: chosen }; };
-    }, join(folder, 'night'));   // no extension typed: .phosphor is added
+    }, join(folder, 'night'));   // no extension typed: .pho is added
     await openImage(page);
 
     // Help's links open in the browser, for Phosphor's version (package.json's, not Electron's).
@@ -193,7 +193,7 @@ test('the menu saves a project where the box says and then over it, and it opens
 
     await clickMenu(app, 'File', 'New');
     await expect.poll(() => store(page, 'project', (p) => !!p.image)).toBe(false);
-    await clickMenu(app, 'File', 'Open Recent', 'night.phosphor');
+    await clickMenu(app, 'File', 'Open Recent', 'night.pho');
     await expect.poll(() => store(page, 'project', (p) => [p.filename, p.filePath, p.cols])).toEqual(['night', file, 60]);
 
     await clickMenu(app, 'File', 'New');
