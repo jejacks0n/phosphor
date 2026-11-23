@@ -1607,9 +1607,11 @@ test('the drawing\'s narrow font shows Width 7 · 8 · 9, pressed at its width; 
   const { project } = await mount({ font: { ...slim(), width: 7 } });
   expect(shown()).toEqual(['7', '8', '9']);
   expect(pressed()).toEqual(['7']);
+  expect(host.querySelector('.width-note').textContent).toBe('Only Phosphor supports a width of 7. ANSI and XBin exports use 8.'); // exports can't hold 7
   await press(widthButtons()[2]);
   await waitFor(() => project.drawingFont.cellWidth === 9);
   expect(pressed()).toEqual(['9']);
+  await vi.waitFor(() => expect(host.querySelector('.width-note')).toBe(null));
   expect(project.sauceLetterSpacing).toBe('9');
 });
 
@@ -1631,6 +1633,7 @@ test('an 8-wide font shows 8 · 9 only', async () => {
   await mount();
   expect(shown()).toEqual(['8', '9']);
   expect(pressed()).toEqual(['8']);
+  expect(host.querySelector('.width-note')).toBe(null);
 });
 
 test('a stored font not in use shows 7 · 8 and pressing stores its answer without touching the drawing', async () => {

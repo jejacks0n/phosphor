@@ -560,6 +560,7 @@ const exportPalettes = () => {
               @update:model-value="setWidth(+Object.keys($event).find((k) => $event[k]))"
           />
         </div>
+        <div v-if="widths.length && widthNow < 8" class="note width-note">{{ t('palette.fonts.widthNarrowNote', { width: widthNow }) }}</div>
         <FontBlocks
             v-if="section === 'blocks'"
             :font="font"
