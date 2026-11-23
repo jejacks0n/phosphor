@@ -1454,6 +1454,9 @@
     "holdKey": "maintenir {key}",
     "holdSpace": "maintenir Espace",
     "macFnNote": "Sur les claviers Mac, il peut falloir maintenir Fn pour utiliser F1–F12. Pour vous en passer, activez « Utiliser les touches F1, F2, etc. comme touches de fonction standard » dans Réglages Système → Clavier → Raccourcis clavier… → Touches de fonction.",
+    "reasons": {
+      "noDrawing": "Aucun dessin ouvert"
+    },
     "groups": {
       "vector": "VECTOR",
       "general": "Général",
@@ -1464,7 +1467,12 @@
       "editMode": "Mode Édition",
       "select": "Sélection",
       "animation": "Animation",
-      "tabs": "Onglets de l'éditeur"
+      "tabs": "Onglets de l'éditeur",
+      "layers": "Calques",
+      "panels": "Panneaux",
+      "file": "Fichier",
+      "drawingCommands": "Le dessin",
+      "rooms": "Salles"
     },
     "rows": {
       "vselect": "Sélection vectorielle : sélectionner, déplacer, redimensionner et faire pivoter les formes (double-cliquez pour utiliser l'outil Nœud)",

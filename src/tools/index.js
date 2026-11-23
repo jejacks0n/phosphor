@@ -44,7 +44,7 @@ import pen from './pen';
 import { toast } from '@/composables/useToast';
 import { showFontSetup } from '@/composables/useFontSetup';
 import { refusedNoCells, sayBaseOnEveryFrame } from '@/store/project/shared.js';
-import { shortcut } from '@/lib/keyLabels';
+import { keyLabel as keyName } from '@/lib/keymap';
 import { EDITOR_KEYS } from '@/lib/TextKeys';
 import { groupOf } from './groups';
 import { t } from '@/i18n/index.js';
@@ -162,7 +162,7 @@ export function slotFace(slot, workspace) {
 }
 
 // A key as its tool's button shows it: 'G', or '⇧G' (Shift+G elsewhere) for 'Shift+G'.
-export const keyLabel = (key) => (key.startsWith('Shift+') ? shortcut('shift', key.slice(6)) : key);
+export const keyLabel = (key) => keyName(key);
 
 // A tool's name with its keys, for its button's tooltip: 'Pencil (1px) · P'.
 export const toolTitle = (tool) => {
