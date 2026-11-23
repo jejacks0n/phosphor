@@ -132,7 +132,7 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Does: in Edit Mode, types F1 to F12, switches palettes with Ctrl+. and Ctrl+,, puts the character under the cursor on a
   slot with Ctrl+Shift+F5, and opens Character palettes to pick `╬` from CP437 onto a slot.
 - Expects: each F-key types its slot's character; the strip under the tools shows each slot; Character palettes opens
-  with CP437, Unicode, In this drawing and Recent; a character CP437 lacks is marked ("isn't in CP437"); a built-in
+  with CP437, Unicode, In this drawing and Recent; a character CP437 lacks is marked ("isn't in CP437"), and with no legend under the sources, hovering one reads UTF-8 only, the slot it's already on, or "does not fit in one cell" for one that can't go in a cell; a built-in
   palette edited makes his own copy and says so.
 - Probes: `back-out`: open Character palettes and press Escape; check focus comes back so his keys work;
   `extremes`: put an emoji on a slot and type it in the last column ("Two-column characters cannot fit in the last column."); `again`: Ctrl+. through every palette and round;

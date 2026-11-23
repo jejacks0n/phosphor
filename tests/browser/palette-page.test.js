@@ -1,7 +1,7 @@
 // The palette layer's Palettes page: the drawing's font's palettes first, a palette's font shown and changed,
 // palettes for fonts not loaded, and palette files in and out.
 import { test, expect, vi, afterEach, onTestFinished } from 'vitest';
-import { page } from 'vitest/browser';
+import { page, userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
@@ -248,13 +248,25 @@ test('a font drawing\'s sources are the font', async () => {
   await mount();
   await press(button('Edit'));
   expect(tabs()).toEqual(['A · 256', 'In this drawing', 'Recent']);
-  expect(host.querySelector('.legend').textContent).not.toContain('not in CP437');
   app.unmount();
   host.remove();
   await mount({ font: false });
   await press(button('Edit'));
   expect(tabs()).toEqual(['CP437', 'Unicode', 'In this drawing', 'Recent']);
-  expect(host.querySelector('.legend').textContent).toContain('not in CP437');
+});
+
+test('the sources have no legend: a glyph that does not fit in a cell says so when hovered', async () => {
+  await mount({ font: false });
+  await press(button('Edit'));
+  expect(host.querySelector('.legend')).toBeNull();
+  const find = host.querySelector('input[aria-label="Find or paste characters"]');
+  find.value = 'U+0378'; // unassigned, so no cell holds it
+  find.dispatchEvent(new Event('input'));
+  await nextTick();
+  const glyph = [...host.querySelectorAll('.grid button.g')].find((b) => b.textContent === '\u0378');
+  expect(glyph.classList.contains('bad')).toBe(true);
+  await userEvent.hover(glyph); // a real pointer, though the button is disabled
+  await expect.poll(() => host.querySelector('.info').textContent).toContain('does not fit in one cell');
 });
 
 test('the Unicode tab gives way to the font tab when the drawing gets a font', async () => {
