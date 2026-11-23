@@ -22,11 +22,12 @@ export const COLOR_SLOTS = Object.freeze([
 ]);
 const SLOTS = new Set(COLOR_SLOTS);
 
-const ID = /^[a-z0-9-]+\.[a-z0-9-]+$/;
+// An id's part: lowercase letters, digits and hyphens, the first and the last a letter or a digit (never all hyphens).
+const ID = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const MOST_ID = 64;
 // A plugin's id as a manifest may have it (author.name, at most 64 characters): also what a ref's plugin part is held to.
 export const goodPluginId = (value) => typeof value === 'string' && value.length <= MOST_ID && ID.test(value);
-const THEME_ID = /^[a-z0-9-]+$/;
+const THEME_ID = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const MOST_THEMES = 20;
 // Relative to the manifest, inside its folder: no leading slash, no . or .. segment, no empty one (a//b.js), no
 // backslash, JavaScript. Each segment is a name a folder can be opened by.
@@ -44,20 +45,25 @@ export class ManifestError extends Error {
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
-const text = (raw, field, most, { required = true, test = null } = {}) => {
+// A stranger's words are shown as one line of text among the app's own, so they hold no control character, no line or
+// paragraph break, and none of the marks that turn text's direction around (which can make a name read as another).
+const NOT_PLAIN = /[\p{Cc}\p{Zl}\p{Zp}\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/u;
+export const plainText = (value) => typeof value === 'string' && !NOT_PLAIN.test(value);
+
+// lines: the field's own test says what it may hold (the preview, which has line breaks).
+const text = (raw, field, most, { required = true, test = null, lines = false } = {}) => {
   const value = raw[field.split('.').pop()];
   if ((value === undefined || value === '') && !required) return ''; // left out, or as this file keeps it
-  if (typeof value !== 'string' || value.length > most || (required && !value.trim()) || (test && !test(value))) {
+  if (typeof value !== 'string' || value.length > most || (required && !value.trim()) || (!lines && !plainText(value)) || (test && !test(value))) {
     throw new ManifestError('badField', { field });
   }
   return value;
 };
 
-// At most 3 lines of at most 24 characters, no control characters but the line break; shown as text.
+// At most 3 lines of at most 24 characters, each plain text; shown as text.
 const isPreview = (value) => {
   const lines = value.split('\n');
-  const control = (char) => { const code = char.charCodeAt(0); return code < 32 || (code >= 127 && code < 160); };
-  return lines.length <= 3 && lines.every((line) => line.length <= 24 && ![...line].some(control));
+  return lines.length <= 3 && lines.every((line) => line.length <= 24 && plainText(line));
 };
 
 const readTheme = (raw, i, seen) => {
@@ -97,7 +103,7 @@ export function readManifest(source) {
     homepage: text(raw, 'homepage', 200, { required: false, test: (value) => /^https:\/\/[^\s]+$/.test(value) }),
     script: raw.script === undefined || raw.script === '' ? '' : text(raw, 'script', 200, { test: (value) => SCRIPT_PATH.test(value) }),
     license: text(raw, 'license', 40, { required: false }),
-    preview: text(raw, 'preview', 74, { required: false, test: isPreview }),
+    preview: text(raw, 'preview', 74, { required: false, test: isPreview, lines: true }),
   };
   const themes = raw.themes === undefined ? [] : raw.themes;
   if (!Array.isArray(themes) || themes.length > MOST_THEMES) throw new ManifestError('badField', { field: 'themes' });

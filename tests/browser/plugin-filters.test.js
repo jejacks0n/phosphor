@@ -36,7 +36,7 @@ const [ABERRATION, SAME, DIM] = readScript({ default: { filters: [
       { id: 'tint', kind: 'color', name: 'Tint', default: '#ffffff' },
     ],
   },
-  { id: 'same', name: 'Same', passes: ['return pixel(vec2(0.0));'] },
+  { id: 'same', name: 'Same', passes: ['return pixel(vec2(0.0));'], options: [{ id: 'on', kind: 'checkbox', name: 'On', default: false }] },
   { id: 'dim', name: 'Dim', passes: ['return pixel(vec2(0.0)) * (1.0 - opt_amount);'], options: [{ id: 'amount', kind: 'slider', name: 'Amount', min: 0, max: 1, step: 0.25, default: 0 }] },
 ] } }).filters;
 const ref = solverRef('jane.fx', 'aberration');

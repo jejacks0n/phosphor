@@ -1,6 +1,6 @@
 // A plugin's script (docs/plugins.md): hashed, imported from a blob: address, and its default export's solvers, brushes,
 // shapes and filters checked and frozen. A script imports nothing, so one blob is the whole module.
-import { ManifestError } from './manifest.js';
+import { ManifestError, plainText } from './manifest.js';
 import { isWideChar } from '@/lib/Cells';
 import { sha256 } from './hash.js';
 import { cleanIcon } from './icon.js';
@@ -10,7 +10,9 @@ export { sha256 };
 export const MOST_REACH = 4;
 const MOST_EACH = 8, MOST_OUTLINES = 200, MOST_POINTS = 500, MOST_OPTIONS = 12, MOST_CHOICES = 20, MOST_NAME = 40, MOST_CHARS = 32, MOST_SHADER = 64 * 1024;
 const STYLES = ['ansi', 'colorAscii', 'ascii'];
-export const ID = /^[a-z0-9-]{1,40}$/; // a solver's, brush's, shape's or filter's id in its plugin
+// A solver's, brush's, shape's or filter's id in its plugin: 1 to 40 lowercase letters, digits and hyphens, the first and
+// the last a letter or a digit.
+export const ID = /^(?=.{1,40}$)[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const MOST_COPY = 1000; // a longer array is over every cap; not walked (undefined fills, which no check passes)
 export const OPTION_ID = /^[a-z](?:[a-z0-9]|_(?!_)){0,31}$/; // a GLSL identifier suffix (the shader's uniform is opt_<id>): no __, which GLSL reserves
 
@@ -27,7 +29,8 @@ export async function importScript(text) {
 
 const shape = (field) => new ManifestError('scriptShape', { field });
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const text = (value) => typeof value === 'string' && value.length > 0 && [...value].length <= MOST_NAME;
+// A name or a choice's words: plain text (manifest.js's plainText), 1 to 40 characters.
+const text = (value) => typeof value === 'string' && value.length > 0 && [...value].length <= MOST_NAME && plainText(value);
 const num = (value) => typeof value === 'number' && Number.isFinite(value);
 
 // A stranger's object can be a getter or a Proxy: each field is read once, into a local, and only the locals are
@@ -195,7 +198,10 @@ function readFilter(raw, index) {
     passes.forEach((pass, i) => {
       if (typeof pass !== 'string' || !pass.length || pass.length > MOST_SHADER) throw shape(`${at}.passes[${i}]`);
     });
-    return Object.freeze({ id, name, options: readOptions(options, at), passes: Object.freeze(passes) });
+    // A filter runs only while one of its options is off its default (plugins/filters.js), so one with none never would.
+    const read = readOptions(options, at);
+    if (!read.length) throw shape(`${at}.options`);
+    return Object.freeze({ id, name, options: read, passes: Object.freeze(passes) });
   });
 }
 

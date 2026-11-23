@@ -32,6 +32,16 @@ test.each([
   [(m) => { m.themes = []; }, 'nothing', {}],
   [(m) => { m.id = 'Jane.Midnight'; }, 'badField', { field: 'id' }],
   [(m) => { m.id = 'midnight'; }, 'badField', { field: 'id' }],
+  [(m) => { m.id = '---.---'; }, 'badField', { field: 'id' }],
+  [(m) => { m.id = 'jane.-midnight'; }, 'badField', { field: 'id' }],
+  [(m) => { m.id = 'jane-.midnight'; }, 'badField', { field: 'id' }],
+  [(m) => { m.themes[0].id = '-midnight'; }, 'badField', { field: 'themes[0].id' }],
+  [(m) => { m.name = 'Midnight\nOfficial'; }, 'badField', { field: 'name' }],
+  [(m) => { m.name = 'Midnight\u202Egnp.exe'; }, 'badField', { field: 'name' }],
+  [(m) => { m.author = 'Jane\u0007'; }, 'badField', { field: 'author' }],
+  [(m) => { m.description = 'One line.\u2028Another.'; }, 'badField', { field: 'description' }],
+  [(m) => { m.license = 'MIT\u200F'; }, 'badField', { field: 'license' }],
+  [(m) => { m.themes[0].name = 'Mid\tnight'; }, 'badField', { field: 'themes[0].name' }],
   [(m) => { m.version = 'one'; }, 'badField', { field: 'version' }],
   [(m) => { delete m.author; }, 'badField', { field: 'author' }],
   [(m) => { m.name = 'x'.repeat(61); }, 'badField', { field: 'name' }],
@@ -54,6 +64,12 @@ const manifestWith = (change) => {
   for (const key of Object.keys(raw)) if (raw[key] === undefined) delete raw[key];
   return JSON.stringify(raw);
 };
+
+test('an id may have hyphens inside, and a name any plain text: other scripts, an emoji joined of several', () => {
+  expect(readManifest(manifestWith({ id: 'jane-doe.mid-night-2' })).id).toBe('jane-doe.mid-night-2');
+  expect(readManifest(manifestWith({ id: 'a.b' })).id).toBe('a.b');
+  for (const name of ['Minuit étoilé', '真夜中', 'شب', 'Night 👩\u200D🚀']) expect(readManifest(manifestWith({ name })).name).toBe(name);
+});
 
 test('takes a script path relative to the manifest', () => {
   expect(readManifest(manifestWith({ script: 'outlines.js' })).script).toBe('outlines.js');
@@ -117,7 +133,7 @@ test('preview: left out is empty, up to 3 short lines are kept, anything else is
   expect(readManifest(JSON.stringify(good())).preview).toBe('');
   expect(readManifest(JSON.stringify({ ...good(), preview: 'ab\ncd' })).preview).toBe('ab\ncd');
   expect(readManifest(JSON.stringify({ ...good(), preview: 'x'.repeat(24) })).preview).toBe('x'.repeat(24));
-  for (const preview of ['a\nb\nc\nd', 'x'.repeat(25), 'a\tb', 'a\u0007b', 5, ['a']]) {
+  for (const preview of ['a\nb\nc\nd', 'x'.repeat(25), 'a\tb', 'a\u0007b', 'a\u202Eb', 5, ['a']]) {
     const error = refused((raw) => { raw.preview = preview; });
     expect(error, JSON.stringify(preview)).toBeInstanceOf(ManifestError);
     expect([error.code, error.detail]).toEqual(['badField', { field: 'preview' }]);

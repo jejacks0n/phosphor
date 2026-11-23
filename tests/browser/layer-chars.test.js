@@ -809,7 +809,7 @@ test('options are one undo step each, kept per solver ref, and survive a save an
   expect(project.history.version).toBe(steps + 1);
   expect(project.layerParams.get('edit').solverOptions).toEqual({ threshold: 70, thin: true, look: 0 });
   expect(project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 70, thin: true } } })).toBe(false); // the same by value
-  project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 70, thin: true }, 'plugin:other/x': { a: 1 } } });
+  project.setLayerChars('edit', { solverOptions: { [ref]: { threshold: 70, thin: true }, 'plugin:jane.other/x': { a: 1 } } });
   project.commitLayerChars();
   project.undo();
   expect(project.charsOf('edit').solverOptions).toEqual({ [ref]: { threshold: 70, thin: true } });
@@ -819,7 +819,7 @@ test('options are one undo step each, kept per solver ref, and survive a save an
   await project.openParts(await readProject(blob), { filename: 'options' });
   await settle(project);
   expect(project.charsOf('edit')).toEqual(own);
-  expect(project.charsOf('edit').solverOptions['plugin:other/x']).toEqual({ a: 1 });
+  expect(project.charsOf('edit').solverOptions['plugin:jane.other/x']).toEqual({ a: 1 });
 });
 
 test('nudges to two options a moment apart are two undo steps; nudges to one are one', async () => {
@@ -880,7 +880,7 @@ test('in a room a plugin choice stands in as room', async () => {
 test('options kept per solver are cut to what a file holds, the layer\'s own solver first, and the file still opens', async () => {
   const { project, pinia } = await blank();
   const ref = await onSolver(OUTLINES, { pinia });
-  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p.p/s${i}`, { a: i }]));
   project.setLayerChars('edit', { charChoice: ref, solverOptions: { ...many, [ref]: { threshold: 70 } } });
   project.commitLayerChars();
   const kept = project.charsOf('edit').solverOptions;
@@ -895,7 +895,7 @@ test('options kept per solver are cut to what a file holds, the layer\'s own sol
 test('as host, a setting changed can be kept for a reload: the ledger clones', async () => {
   const { project } = await blank();
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
-  project.setLayerChars('base', { solverOptions: { 'plugin:p/q': { a: 1 } } });
+  project.setLayerChars('base', { solverOptions: { 'plugin:p.p/q': { a: 1 } } });
   project.sendSettings();
   expect(() => structuredClone(project._ledger.kept())).not.toThrow();
   project.stopSharing();
@@ -904,10 +904,10 @@ test('as host, a setting changed can be kept for a reload: the ledger clones', a
 test('the base\'s options are replaced by a write, not merged: a dropped ref is gone and the total stays under the cap', async () => {
   const { project, pinia } = await blank();
   const ref = await onSolver(OUTLINES, { pinia });
-  project.setLayerChars('base', { charChoice: ref, solverOptions: { 'plugin:p/old': { a: 1 }, [ref]: { threshold: 5 } } });
+  project.setLayerChars('base', { charChoice: ref, solverOptions: { 'plugin:p.p/old': { a: 1 }, [ref]: { threshold: 5 } } });
   project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 6 } } });
   expect(project.solverOptions).toEqual({ [ref]: { threshold: 6 } });
-  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p.p/s${i}`, { a: i }]));
   project.setLayerChars('base', { solverOptions: many });
   project.setLayerChars('base', { solverOptions: { [ref]: { threshold: 7 }, ...many } });
   expect(JSON.stringify(project.solverOptions).length).toBeLessThanOrEqual(4096);
@@ -941,11 +941,11 @@ test('a file saved at the defaults opens at the defaults; a new picture and a bl
 
 test('a heard settings message is cleaned before it is applied: bad entries gone, an over-cap value trimmed, the old refs replaced', async () => {
   const { project } = await blank();
-  project.setLayerChars('base', { solverOptions: { 'plugin:p/old': { a: 1 } } });
-  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
-  project.applySettings({ solverOptions: { ...many, 'plugin:p/bad': { a: 'x' }, nope: { a: 1 } } });
-  expect(project.solverOptions['plugin:p/old']).toBeUndefined();
+  project.setLayerChars('base', { solverOptions: { 'plugin:p.p/old': { a: 1 } } });
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p.p/s${i}`, { a: i }]));
+  project.applySettings({ solverOptions: { ...many, 'plugin:p.p/bad': { a: 'x' }, nope: { a: 1 } } });
+  expect(project.solverOptions['plugin:p.p/old']).toBeUndefined();
   expect(project.solverOptions.nope).toBeUndefined();
   expect(JSON.stringify(project.solverOptions).length).toBeLessThanOrEqual(4096);
-  expect(project.solverOptions['plugin:p/bad']).toEqual({});
+  expect(project.solverOptions['plugin:p.p/bad']).toEqual({});
 });

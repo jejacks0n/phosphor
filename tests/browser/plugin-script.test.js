@@ -50,13 +50,13 @@ test("useScript fills the brushes, shapes and filters slices in the plugin's ord
   const { brushes: [dab, fine], shapes: [star], filters: [glow] } = await onPlugin(readScript({ default: {
     brushes: ['dab', 'fine'].map((id) => ({ id, name: id, icon, move: () => [] })),
     shapes: [{ id: 'star', name: 'Star', icon, outline: () => [] }],
-    filters: [{ id: 'glow', name: 'Glow', passes: ['void main(){}'] }],
+    filters: [{ id: 'glow', name: 'Glow', options: [{ id: 'on', kind: 'checkbox', name: 'On', default: false }], passes: ['void main(){}'] }],
   } }));
   expect(plugins.brushes[dab]).toMatchObject({ pluginId: 'phosphor.outlines', name: 'dab', index: 0, key: null, size: null });
   expect(plugins.brushes[fine].index).toBe(1);
   expect(plugins.brushes[dab].move).toBeUndefined();
   expect(plugins.shapes[star]).toMatchObject({ name: 'Star', index: 0 });
-  expect(plugins.filters[glow]).toMatchObject({ name: 'Glow', index: 0, options: [] });
+  expect(plugins.filters[glow]).toMatchObject({ name: 'Glow', index: 0, options: [{ id: 'on', kind: 'checkbox', name: 'On', default: false }] });
   expect(plugins.filters[glow].passes).toBeUndefined();
   expect(plugins.partsOf('phosphor.outlines')).toEqual({ solvers: 0, brushes: 2, shapes: 1, filters: 1 });
   failFilter(glow, { log: 'nope' });
@@ -74,7 +74,7 @@ test("useScript fills the brushes, shapes and filters slices in the plugin's ord
 test('registering a plugin again clears its filter failures from the slice', async () => {
   setActivePinia(createPinia());
   const plugins = usePluginStore();
-  const filter = { id: 'glow', name: 'Glow', passes: ['void main(){}'] };
+  const filter = { id: 'glow', name: 'Glow', options: [{ id: 'on', kind: 'checkbox', name: 'On', default: false }], passes: ['void main(){}'] };
   const parts = readScript({ default: { filters: [filter] } });
   const { filters: [glow] } = await onPlugin(parts);
   failFilter(glow, { log: 'nope' });

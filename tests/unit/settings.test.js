@@ -35,7 +35,7 @@ test("Settings schema: same keys, storage keys and reset defaults as before the 
   // A plugin filter's values are a group of their own, which Reset all and a bake reset too; none set is none on.
   assert.deepEqual(groupDefaults('filters'), { filterOptions: {} });
   assert.equal(slidersAtDefaults({ ...neutral, filterOptions: {} }), true);
-  assert.equal(slidersAtDefaults({ ...neutral, filterOptions: { 'plugin:p/f': { name: 'F', values: { a: 1 } } } }), false);
+  assert.equal(slidersAtDefaults({ ...neutral, filterOptions: { 'plugin:p.p/f': { name: 'F', values: { a: 1 } } } }), false);
 });
 
 const GOOD = { brightness: 120, contrast: '150', chars: 'abc', colorize: '#00ff00', aspectLock: false, sauceTitle: 'Hi', cols: 80, rows: 50 };
@@ -140,14 +140,16 @@ test('solverOptions from a stranger: bad entries are dropped and the good kept, 
   const options = { [ref]: { threshold: 40, thin: true } };
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: options }), { ...GOOD, solverOptions: options });
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: {} }), { ...GOOD, solverOptions: {} });
-  const mixed = { [ref]: { threshold: 40, a: 'x', b: null, c: Infinity, d: [1] }, [other]: 4, 'nope': { a: 1 }, 'plugin:x': { a: 1 }, 'plugin:p/q': [1] };
+  const mixed = { [ref]: { threshold: 40, a: 'x', b: null, c: Infinity, d: [1] }, [other]: 4, 'nope': { a: 1 }, 'plugin:x': { a: 1 }, 'plugin:p.p/q': [1] };
   assert.deepEqual(settingsFromStranger({ ...GOOD, solverOptions: mixed }).solverOptions, { [ref]: { threshold: 40 } });
   for (const bad of [null, 'x', [], 4]) assert.equal(settingsFromStranger({ ...GOOD, solverOptions: bad }), null);
-  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p/s${i}`, { a: i }]));
+  // A ref is held to the shape a plugin's part has (goodPluginRef), as a filter's is.
+  for (const loose of ['plugin:p/s', 'plugin:jane.fx/Up', 'plugin:-a.b/c', 'plugin:jane.fx/a/b']) assert.deepEqual(cleanOptions({ [loose]: { a: 1 } }), {}, loose);
+  const many = Object.fromEntries(Array.from({ length: 400 }, (_, i) => [`plugin:p.p/s${i}`, { a: i }]));
   const trimmed = settingsFromStranger({ ...GOOD, solverOptions: many }).solverOptions;
   assert.ok(Object.keys(trimmed).length > 0 && Object.keys(trimmed).length < 400);
   assert.ok(JSON.stringify(trimmed).length <= 4096);
-  assert.deepEqual(cleanOptions(many, 'plugin:p/s399') && Object.keys(cleanOptions(many, 'plugin:p/s399'))[0], 'plugin:p/s399'); // the named ref stays first
+  assert.deepEqual(cleanOptions(many, 'plugin:p.p/s399') && Object.keys(cleanOptions(many, 'plugin:p.p/s399'))[0], 'plugin:p.p/s399'); // the named ref stays first
 });
 
 test('filterOptions from a stranger are cleaned as a filter\'s (name and values), not as a solver\'s; a non-object is refused', () => {
@@ -157,7 +159,7 @@ test('filterOptions from a stranger are cleaned as a filter\'s (name and values)
 });
 
 test('cleanOptions keeps a color option as a lowercase #rrggbb and drops other text', () => {
-  assert.deepEqual(cleanOptions({ 'plugin:p/s': { tint: '#00ff00', up: '#00FF00', word: 'green', n: 3 } }), { 'plugin:p/s': { tint: '#00ff00', n: 3 } });
+  assert.deepEqual(cleanOptions({ 'plugin:p.p/s': { tint: '#00ff00', up: '#00FF00', word: 'green', n: 3 } }), { 'plugin:p.p/s': { tint: '#00ff00', n: 3 } });
 });
 
 test('a plugin ref in charChoice or charChoiceAscii survives a stranger\'s settings', () => {
