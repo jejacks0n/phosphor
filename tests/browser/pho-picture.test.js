@@ -1,5 +1,5 @@
 // The picture a .pho file shows: cellsPng, the drawing as a PNG's pixels (Export › PNG's, hard-edged), in bands of lines.
-import { test, expect, beforeEach, afterEach } from 'vitest';
+import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import { drawnCells } from '@/lib/GifFile.js';
 import { cellsPng, MAX_PREVIEW_PIXELS } from '@/lib/PngFile.js';
@@ -56,5 +56,32 @@ test('a drawing taller than one canvas is drawn in bands at full size', async ()
   for (const [line, red] of marks) {
     expect(pixel(16 * line + 8)).toEqual([red, 0, 0]); // in its own line, at its own height
     if (line > 0 && !marks.has(line - 1)) expect(pixel(16 * line - 1)).toEqual([0, 0, 0]); // and not in the one above
+  }
+});
+
+// Safari refuses a 2D canvas of 16,777,216 pixels or more (CellCanvas.js), so a full-color picture past that is written
+// without one: here no canvas that size gets a 2D context, as in Safari.
+test('a picture of more than 256 colors and 16,777,216 pixels is written without a canvas that size', async () => {
+  const getContext = HTMLCanvasElement.prototype.getContext;
+  const refused = vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (kind, ...rest) {
+    return kind === '2d' && this.width * this.height >= 16_777_216 ? null : getContext.call(this, kind, ...rest);
+  });
+  const cols = 300, lines = 437; // 2400 × 6992, just past Safari's limit
+  const bg = (x, y) => ({ r: x % 256, g: y % 256, b: (x + 3 * y) % 256 });
+  const cells = grid(cols, lines, (x, y) => cell(' ', bg(x, y), bg(x, y)));
+  let bytes;
+  try {
+    bytes = await cellsPng(cols, lines, cells);
+  } finally {
+    refused.mockRestore();
+  }
+  expect([bytes[24], bytes[25]]).toEqual([8, 2]); // IHDR: 8 bits, RGB
+  const png = await decoded(bytes);
+  expect([png.width, png.height]).toEqual([8 * cols, 16 * lines]);
+  expect(png.width * png.height).toBeGreaterThan(16_777_216);
+  const pixel = (x, y) => { const at = 4 * (y * png.width + x); return [png.data[at], png.data[at + 1], png.data[at + 2]]; };
+  for (const [x, y] of [[0, 0], [1, 0], [299, 0], [17, 211], [255, 300], [299, 436]]) {
+    const { r, g, b } = bg(x, y);
+    expect(pixel(8 * x + 4, 16 * y + 8)).toEqual([r, g, b]);
   }
 });

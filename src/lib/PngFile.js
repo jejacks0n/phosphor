@@ -1,5 +1,6 @@
 // PNG export: an indexed PNG written here when the picture has 256 colors or fewer (1, 2, 4 or 8 bits a pixel, so
-// a hard-edged drawing stays small), else the browser's own full-color one.
+// a hard-edged drawing stays small), else the browser's own full-color one. A .pho's picture past 256 colors is a
+// full-color PNG written here too (rgbPng), since a canvas that size can be refused.
 import { canvasPng, ctx2d } from './Canvas.js';
 import CellCanvas, { MAX_BACKING_AREA } from './CellCanvas.js';
 
@@ -47,13 +48,33 @@ export async function indexedPng(width, height, rgba) {
       raw[y * stride + 1 + (bit >> 3)] |= indexes[y * width + x] << (8 - depth - (bit & 7));
     }
   }
+  const colors = new Uint8Array(3 * palette.size);
+  for (const [key, i] of palette) colors.set([key >> 16, (key >> 8) & 255, key & 255], 3 * i);
+  return pngFile(width, height, depth, 3, raw, [chunk('PLTE', colors)]); // indexed color
+}
+
+// rgba (opaque) as a full-color PNG's bytes, 8 bits a channel, with no canvas: Safari refuses a 2D canvas of
+// 16,777,216 pixels or more (CellCanvas.js), and a .pho's picture can be twice that.
+export async function rgbPng(width, height, rgba) {
+  const stride = 3 * width + 1; // a filter byte (0, none) first
+  const raw = new Uint8Array(stride * height);
+  for (let y = 0, p = 0; y < height; y++) {
+    for (let at = y * stride + 1, end = at + 3 * width; at < end; p += 4) {
+      raw[at++] = rgba[p];
+      raw[at++] = rgba[p + 1];
+      raw[at++] = rgba[p + 2];
+    }
+  }
+  return pngFile(width, height, 8, 2, raw); // RGB
+}
+
+// A PNG's bytes: its header (deflate, filter set 0, no interlace), the chunks before the pixels, and the filtered rows.
+async function pngFile(width, height, depth, colorType, raw, before = []) {
   const head = new Uint8Array(13), view = new DataView(head.buffer);
   view.setUint32(0, width);
   view.setUint32(4, height);
-  head.set([depth, 3, 0, 0, 0], 8); // indexed color, deflate, filter set 0, no interlace
-  const colors = new Uint8Array(3 * palette.size);
-  for (const [key, i] of palette) colors.set([key >> 16, (key >> 8) & 255, key & 255], 3 * i);
-  const parts = [chunk('IHDR', head), chunk('PLTE', colors), chunk('IDAT', await deflate(raw)), chunk('IEND', new Uint8Array(0))];
+  head.set([depth, colorType, 0, 0, 0], 8);
+  const parts = [chunk('IHDR', head), ...before, chunk('IDAT', await deflate(raw)), chunk('IEND', new Uint8Array(0))];
   return new Uint8Array(await new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), ...parts]).arrayBuffer());
 }
 
@@ -71,7 +92,8 @@ export async function pngBlob(width, height, rgba) {
 export const MAX_PREVIEW_PIXELS = 32_000_000;
 
 // The cells (cols wide, lines tall) as a PNG's bytes, hard-edged at one pixel per font pixel as Export › PNG makes it.
-// Drawn in bands of lines, so no canvas passes MAX_BACKING_AREA and what's drawn is full size, then stitched.
+// Drawn in bands of lines, so no canvas passes MAX_BACKING_AREA and what's drawn is full size, then stitched and
+// written with no canvas at all: indexed when it can be, else full color.
 export async function cellsPng(cols, lines, cells) {
   const view = new CellCanvas(document.createElement('canvas'));
   try {
@@ -92,7 +114,7 @@ export async function cellsPng(cols, lines, cells) {
       ctx.drawImage(view.canvas, 0, 0); // the drawing buffer's only there straight after the draw
       rgba.set(ctx.getImageData(0, 0, width, copy.height).data, row * lineHeight * width * 4);
     }
-    return new Uint8Array(await (await pngBlob(width, kept * lineHeight, rgba)).arrayBuffer());
+    return (await indexedPng(width, kept * lineHeight, rgba)) ?? rgbPng(width, kept * lineHeight, rgba);
   } finally {
     view.destroy();
   }
