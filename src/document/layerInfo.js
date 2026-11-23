@@ -124,19 +124,20 @@ export function newLayerId(layers, kind) {
 // A new layer's number, for its default name: one past the highest of its kind (the bottom, which is "Base", left out).
 export const nextNumber = (layers, kind) => Math.max(0, ...layers.slice(1).filter((layer) => layer.kind === kind).map((layer) => layer.n)) + 1;
 
-// The lower group, the layers today's pipeline converts as one block, and everything above it: over the layers that show
-// (the bottom always counts; its eye is the renderer's hideBase), the bottom, then each vector layer directly above it
-// (vectors), then the next layer if it's a cells layer (cells, its id, or null), and the rest (upper, bottom to top), which
-// the renderer lays over the group cell by cell. baseChars: the bottom's character settings, which a layer must share to
-// be in the group (sameChars): one whose own differ starts the upper walk.
-export function lowerGroup(layers, baseChars) {
+// The lower group, the layers today's pipeline converts as one block, and everything above it: the bottom, then each
+// vector layer directly above it (vectors), then the next layer if it's a cells layer (cells, its id, or null), and the
+// rest (upper, bottom to top), which the renderer lays over the group cell by cell. baseChars: the bottom's character
+// settings, which a layer must share to be in the group (sameChars): one whose own differ starts the upper walk. shows:
+// whether a layer's eye is open (the bottom always counts; its eye is the renderer's hideBase). The group is the whole
+// stack's, and a hidden layer is only left out of it, so an eye never moves another layer in or out (docs/model.md R7).
+export function lowerGroup(layers, baseChars, shows = () => true) {
   needChars(baseChars);
   let i = 1;
   const vectors = [];
   const joins = (kind) => layers[i]?.kind === kind && sameChars(layers[i].chars, baseChars, kind);
   while (joins('vector')) vectors.push(layers[i++].id);
   const cells = joins('cells') ? layers[i++].id : null;
-  return { vectors, cells, upper: layers.slice(i).map((layer) => layer.id) };
+  return { vectors: vectors.filter(shows), cells: cells !== null && shows(cells) ? cells : null, upper: layers.slice(i).map((layer) => layer.id).filter(shows) };
 }
 
 // Keys and runs name their layer, so the ledger, history and frames stay flat maps: a key on the edit layer is as it

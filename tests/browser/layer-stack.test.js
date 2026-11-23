@@ -1101,6 +1101,29 @@ test('R7: the report: a vector circle\'s edge over a file\'s pinned blocks shows
   expect(black).toEqual([]);
 });
 
+// docs/model.md R7: which layers convert with the picture is the whole stack's, eyes aside. The report
+// (projects/vector-strokes-ascii.phosphor, Layer 1 moved under Vector 1): hiding Layer 1 put the vector layer right on the
+// base, drawn at the base's scale in place of the paint's, so its 1.5-pixel strokes came out as other characters.
+test('R7: the report: hiding the cells layer under a vector layer leaves the vector layer\'s characters as they were', async () => {
+  const { project } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/vector-strokes-ascii.phosphor')).arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  project.moveLayer('edit', 1);
+  await settle(project);
+  expect(project.layers.map((l) => l.id)).toEqual(['base', 'edit', 'vector']);
+  expect(project.baseLayer.scale).not.toBe(project.paintLayer.scale);
+  const chars = () => project.cells.map((cell) => cell.char).join('');
+  const shown = chars();
+  expect(shown.trim()).not.toBe('');
+  project.setLayerHidden('edit', true);
+  await settle(project);
+  expect(project.lowerGroup).toEqual({ vectors: [], cells: null, upper: ['vector'] });
+  expect(chars()).toBe(shown);
+  project.setLayerHidden('edit', false);
+  await settle(project);
+  expect(chars()).toBe(shown);
+});
+
 // docs/model.md R7: under a shape on the bottom a pin's look is drawn into the shapes' pixels, so a pin changed with its
 // pixels left as they were (an undo of typing over it in its own colors) draws that cell again.
 test('R7: a pin changed alone under a shape on the base shows its new look, and undo its old one', async () => {

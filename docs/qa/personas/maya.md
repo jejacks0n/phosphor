@@ -372,7 +372,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 
 **Free time:** she'd drag Layer 2 above Vector 1 in LAYERS, rename a layer to a long name with emoji, duplicate the
 vector layer, drop `rose-mark.svg` on the drawing and choose Add to this drawing, and hide each layer to see what it
-held.
+held (the shapes over a hidden layer keep their characters, but for a soft edge over what it hid).
 
 ## Merging and baking
 

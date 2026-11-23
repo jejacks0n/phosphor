@@ -306,7 +306,10 @@ export const useProjectStore = defineStore('project', {
     // would miss a change to it (applyChange, a frame shown).
     ownCellMaps() { return () => this.shownLayers.filter((layer, at) => at && layer.kind === 'cells').map((layer) => this.cellsOf(layer.id)); },
     // The layers the renderer's pipeline converts as one block, and those laid over it (layerInfo.js: lowerGroup).
-    lowerGroup() { return lowerGroup(this.shownLayers, this.baseChars); },
+    lowerGroup() {
+      const shown = new Set(this.shownLayers.map((layer) => layer.id));
+      return lowerGroup(this.layers, this.baseChars, (id) => shown.has(id));
+    },
     // The cells layer in use is above the lower group (or hidden): an edit to it leaves the group as it is.
     editIsUpper() { return this.lowerGroup.cells !== this.editId; },
     // Anything on any cells layer or the vector layer, of any frame (a grid resize is then a canvas resize).

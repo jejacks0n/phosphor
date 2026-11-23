@@ -529,14 +529,15 @@ test('moving a layer under the Number palette counts the colors again: the paint
 });
 
 // The eye of a cells layer with no paint changes no pixel the pipeline converts: the cells are laid again over the output
-// as it is. One with paint that is or becomes the lower group's, or a vector layer in it, changes the picture: a render.
+// as it is. One with paint in the lower group, or a vector layer in it, changes the picture: a render. Hiding the lower
+// group's cells layer leaves the layers above it upper (docs/model.md R7): no render either.
 for (const settings of [{}, { quantize: 'cga', dither: 100, ditherStyle: 'floyd' }, { quantize: 'vga', charChoice: 'best', chars: '▄░▒▓█' }]) {
   test(`a cells layer with no paint hides and shows without the pipeline, as a render shows it; paint or shapes render (${JSON.stringify(settings)})`, async () => {
     const { project } = await picture();
     Object.assign(project, settings);
     project.setLayerChars('edit', settings);
     typed(project, 3, 3, 'A');
-    const two = project.addLayer('cells', 'edit'); // over it, with no paint: the lower group's when the edit layer hides
+    const two = project.addLayer('cells', 'edit'); // over it, with no paint: upper, whatever eye is shut under it
     project.useLayer(two);
     typed(project, 4, 3, '漢');
     const painted = project.addLayer('cells', two);
@@ -562,12 +563,13 @@ for (const settings of [{}, { quantize: 'cga', dither: 100, ditherStyle: 'floyd'
         pipeline.mockClear();
       }
     }
-    project.setLayerHidden('edit', true); // two is the lower group's now; hiding it makes painted the lower group's: a render
+    project.setLayerHidden('edit', true); // two and painted stay upper with every cells layer under them hidden
     await settle(project);
     pipeline.mockClear();
     project.setLayerHidden(two, true);
     await settle(project);
-    expect(pipeline).toHaveBeenCalled();
+    expect(project.lowerGroup).toEqual({ vectors: [vector], cells: null, upper: [painted] });
+    expect(pipeline).not.toHaveBeenCalled();
     expect(shown()).toEqual(await rendered());
   });
 }
