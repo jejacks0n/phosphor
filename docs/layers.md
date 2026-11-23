@@ -1209,8 +1209,8 @@ outside it or the **×** at the top right of the dialog. **↓** and **↑** wal
   Lospec, kept in this browser, newest first. **Favorites** and **Library** fold on their titles, as the Fonts page's
   groups do, and stay folded in this browser; a palette you get from Lospec opens **Favorites** to show it.
 - **The Details**: A palette's name and author, **Use this palette** (**In use** when its colors are the list, in the
-  same order), **Favorite**, **Save .hex**, **On Lospec** (its page), and its colors as swatches with their hex under
-  them. **Use this palette** sets Color palette to Custom color list with those colors, and the layer stays open. A line
+  same order), **Favorite**, **Save .hex** (a file named after the palette, `Sweetie 16.hex`), **On Lospec** (its page),
+  and its colors as swatches with their hex under them. **Use this palette** sets Color palette to Custom color list with those colors, and the layer stays open. A line
   at the details' foot says the drawing's colors were replaced, with **Put back**, which brings back the Color palette
   and the list as they were before the first Use, however many you tried. Closing the layer keeps what's in use.
 - **This Drawing**: With a Custom color list it's the editor: **Import .hex** (replacing the list with a `.hex` or

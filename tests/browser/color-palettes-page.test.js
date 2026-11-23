@@ -315,14 +315,14 @@ test('a palette got from Lospec and taken out of Favorites is gone: This drawing
   expect(focusKept()).toBe(true);
 });
 
-test('Save .hex downloads <slug>.hex', async () => {
+test('Save .hex downloads the palette\'s colors in a file named after it', async () => {
   await mount();
   const saved = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
   await choose('Sweetie 16');
   await press(action('save'));
-  expect(saved[0].name).toBe('sweetie-16.hex');
+  expect(saved[0].name).toBe('Sweetie 16.hex');
   const text = await saved[0].blob.text();
   expect(text.startsWith('1a1c2c\n')).toBe(true);
   expect(text.split('\n')).toHaveLength(17);

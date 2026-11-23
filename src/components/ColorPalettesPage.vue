@@ -8,7 +8,7 @@ import { useSettingsLock } from '@/composables/useSettingsLock';
 import { choicePalette, hexFile, listColors, sameColors, writeList } from '@/lib/colorList';
 import { getPalette, pageOf, slugOf } from '@/lib/lospec';
 import { desktop } from '@/social/desktop';
-import { downloadBlob } from '@/document/projectIO';
+import { downloadBlob, fileStem } from '@/document/projectIO';
 import ArrowIcon from '@/components/ArrowIcon.vue';
 import ColorList from '@/components/ColorList.vue';
 
@@ -163,7 +163,8 @@ async function get() {
   }
 }
 
-const save = ({ slug, colors }) => downloadBlob(new Blob([hexFile(colors)], { type: 'text/plain' }), `${slug}.hex`);
+// Saved as a file named after the palette (its slug when the name leaves nothing a file can be called).
+const save = ({ slug, name, colors }) => downloadBlob(new Blob([hexFile(colors)], { type: 'text/plain' }), `${fileStem(name, 'hex') || slug}.hex`);
 </script>
 
 <template>
