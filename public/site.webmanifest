@@ -17,6 +17,7 @@
       "action": "/",
       "launch_type": "multiple-clients",
       "accept": {
+        "image/x-phosphor": [".pho"],
         "application/x-phosphor": [".phosphor"],
         "text/x-ansi": [".ans", ".asc", ".nfo", ".diz"],
         "text/x-utf8ans": [".utf8ans"],

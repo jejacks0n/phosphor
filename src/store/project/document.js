@@ -6,7 +6,8 @@ import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/
 import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
-import { loadImage, readProject, writeProject, gzipped, downloadBlob, isProjectFile, PROJECT_EXTENSION, fileStem, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
+import { loadImage, readProject, writeProject, withProject, gzipped, downloadBlob, PROJECT_EXTENSION, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
+import { cellsPng } from '@/lib/PngFile.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { knownBlocksOf, loadFonts, addBitmapFont, storedBitmapFont } from '@/lib/userFonts.js';
@@ -84,7 +85,7 @@ const nameOf = ({ name }) => ({ filename: name.replace(/\.[^/.]+$/, ''), fileExt
 const PROJECT_EXT = PROJECT_EXTENSION.slice(1);
 
 // An export names the drawing after the file it went out as, once there's a file to give the name to, unless the
-// drawing is a project (.phosphor): an export is a copy then, and the drawing keeps its project's name, so its row in
+// drawing is a project (.pho): an export is a copy then, and the drawing keeps its project's name, so its row in
 // Pick up where you left off doesn't read as one of the exports.
 function exported(filename, ext) {
   if (this.fileExt === PROJECT_EXT) return;
@@ -466,16 +467,18 @@ export const documentActions = {
     const [settings, version] = [savedJson(this), this.editVersion];
     // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
     // before the system's save box comes up.
+    // The file is a PNG of the drawing (the cells as stepped into an art layer, never its own view, so edits made inside show in the picture once it's out) with the project inside.
     const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
       const parts = await this.projectParts({ forFile: true });
-      return gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }));
+      const project = new Uint8Array(await (await gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }))).arrayBuffer());
+      return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this._artInside?.snapshot ?? this.cells), project)], { type: 'image/png' });
     });
     if (DESKTOP) {
       const bytes = new Uint8Array(await blob.arrayBuffer());
       const saved = await desktop.saveProject({ bytes, name: `${filename}${PROJECT_EXTENSION}`, path: this.filePath, as });
       if (!saved) return false;
       this.filePath = saved;
-      this.rename(saved.split(/[\\/]/).pop().slice(0, -PROJECT_EXTENSION.length));
+      this.rename(nameOf({ name: saved.split(/[\\/]/).pop() }).filename);
       this.fileExt = PROJECT_EXT;
       Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
       return true;
@@ -483,7 +486,7 @@ export const documentActions = {
     if (handle) {
       await writeFileHandle(handle, blob);
       this.fileHandle = markRaw(handle);
-      this.rename(fileStem(handle.name, PROJECT_EXTENSION.slice(1)));
+      this.rename(nameOf(handle).filename);
       Object.assign(this, { savedSettings: settings, savedEditVersion: version, savedToFile: true });
       return true;
     }
@@ -534,7 +537,7 @@ export const documentActions = {
   },
 
   async loadProject(file) {
-    if (!file || !isProjectFile(file.name)) return;
+    if (!file) return;
 
     try {
       const opened = await busyWhile(opening(file.name), async () => {
@@ -545,7 +548,7 @@ export const documentActions = {
           toast(reason);
           return false;
         }
-        await this.openParts(parts, { filename: file.name.slice(0, -PROJECT_EXTENSION.length), fileExt: PROJECT_EXT });
+        await this.openParts(parts, { filename: nameOf(file).filename, fileExt: PROJECT_EXT });
       });
       if (opened === false) return;
       this.savedToFile = true;

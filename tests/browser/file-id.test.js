@@ -2,7 +2,7 @@
 // (autosave's restore: autosave.test.js), and never sent to a room.
 import { test, expect, vi, afterEach } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
-import { goodFileId, readProject, writeProject } from '@/document/projectIO.js';
+import { goodFileId, readProject, writeProject, projectChunkOf } from '@/document/projectIO.js';
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -36,17 +36,19 @@ test('saving writes the id, and opening that file keeps it without showing unsav
   expect(project.isDirty).toBe(false);
 });
 
-test('Save project downloads the file gzipped, and it opens again as it was', async () => {
+test('Save project downloads a PNG holding the gzipped project, and it opens again as it was', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 40 });
   for (let col = 0; col < 40; col++) project.typeAt(col, 3, '▒', { fg: '#aa0000', bg: '#aaaaaa' });
   project.commitEdit();
   const blob = await saved(project);
-  expect([...new Uint8Array(await blob.slice(0, 2).arrayBuffer())]).toEqual([0x1f, 0x8b]);
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  expect([...bytes.slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+  expect([...projectChunkOf(bytes).slice(0, 2)]).toEqual([0x1f, 0x8b]);
   const plain = await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() });
-  expect(blob.size).toBeLessThan(plain.size);
+  expect(projectChunkOf(bytes).length).toBeLessThan(plain.size);
   await project.setBlankCanvas({ withLayer: true });
-  await project.loadProject(new File([blob], 'x.phosphor'));
+  await project.loadProject(new File([blob], 'x.pho'));
   expect([project.cols, project.editCellAt(39, 3)?.char, project.isDirty]).toEqual([40, '▒', false]);
 });
 

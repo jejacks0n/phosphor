@@ -32,14 +32,14 @@ async function drawing() {
 
 test('Save asks where once, writes the project there, and after that writes over it without asking; Save As asks again', async () => {
   const { project, workspace } = await drawing();
-  const picker = savePicker('first.phosphor');
+  const picker = savePicker('first.pho');
   const download = vi.spyOn(HTMLAnchorElement.prototype, 'click');
 
   await workspace.saveFile();
   expect(workspace.saveDialog).toBe(null);
   expect(picker).toHaveBeenCalledTimes(1);
-  expect(picker.mock.calls[0][0]).toMatchObject({ suggestedName: 'untitled.phosphor', types: [{ accept: { 'application/octet-stream': ['.phosphor'] } }] });
-  const first = await privateFile('first.phosphor');
+  expect(picker.mock.calls[0][0]).toMatchObject({ suggestedName: 'untitled.pho', types: [{ accept: { 'image/x-phosphor': ['.pho'] } }] });
+  const first = await privateFile('first.pho');
   expect((await readProject(await first.getFile())).editCells.size).toBe(1);
   expect(project.filename).toBe('first');
   expect([project.savedToFile, project.isDirty]).toEqual([true, false]);
@@ -52,11 +52,11 @@ test('Save asks where once, writes the project there, and after that writes over
   expect((await readProject(await first.getFile())).editCells.size).toBe(2);
   expect(project.isDirty).toBe(false);
 
-  savePicker('second.phosphor');
+  savePicker('second.pho');
   await workspace.saveFile({ as: true });
   expect(window.showSaveFilePicker).toHaveBeenCalledTimes(1);
   expect(project.filename).toBe('second');
-  expect(await project.fileHandle.isSameEntry(await privateFile('second.phosphor'))).toBe(true);
+  expect(await project.fileHandle.isSameEntry(await privateFile('second.pho'))).toBe(true);
   expect(download).not.toHaveBeenCalled();
 });
 
@@ -70,10 +70,10 @@ test('a canceled save picker saves nothing and says nothing', async () => {
 
 test('a file it may not write yet is asked for first; refused, the save picker asks where', async () => {
   const { project, workspace } = await drawing();
-  const file = await privateFile('asked.phosphor');
+  const file = await privateFile('asked.pho');
   const asked = vi.fn(async () => 'granted');
   project.fileHandle = markRaw({ name: file.name, queryPermission: async () => 'prompt', requestPermission: asked, createWritable: () => file.createWritable() });
-  const picker = savePicker('elsewhere.phosphor');
+  const picker = savePicker('elsewhere.pho');
   await workspace.saveFile();
   expect(asked).toHaveBeenCalledWith({ mode: 'readwrite' });
   expect(picker).not.toHaveBeenCalled();
@@ -86,22 +86,32 @@ test('a file it may not write yet is asked for first; refused, the save picker a
   expect(project.filename).toBe('elsewhere');
 });
 
-test('a project opened with its handle saves back over its file', async () => {
+test("an opened .phosphor's first Save shows the picker with name.pho, and the second writes over that .pho", async () => {
   const { project, workspace } = await drawing();
-  const file = await privateFile('opened.phosphor');
-  const writable = await file.createWritable();
+  const old = await privateFile('opened.phosphor');
+  const writable = await old.createWritable();
   await writable.write(await writeProject({ ...await project.projectParts(), imageBuffer: project.imageBuffer }));
   await writable.close();
+  const before = await written(old);
   project.clearImage();
 
-  await project.loadProject(Object.assign(await file.getFile(), { fileHandle: file }));
+  await project.loadProject(Object.assign(await old.getFile(), { fileHandle: old }));
   expect(project.filename).toBe('opened');
   project.typeAt(3, 0, 'C', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
-  const picker = savePicker('never.phosphor');
+  const picker = savePicker('opened.pho');
   await workspace.saveFile();
-  expect(picker).not.toHaveBeenCalled();
-  expect((await readProject(await file.getFile())).editCells.size).toBe(2);
+  expect(picker).toHaveBeenCalledTimes(1);
+  expect(picker.mock.calls[0][0].suggestedName).toBe('opened.pho');
+  expect(await written(old)).toBe(before); // the .phosphor is never written
+  const pho = await privateFile('opened.pho');
+  expect((await readProject(await pho.getFile())).editCells.size).toBe(2);
+
+  project.typeAt(4, 0, 'D', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  await workspace.saveFile();
+  expect(picker).toHaveBeenCalledTimes(1);
+  expect((await readProject(await pho.getFile())).editCells.size).toBe(3);
 });
 
 test('the open picker gives a project its handle, and anything else none; canceled, nothing', async () => {
