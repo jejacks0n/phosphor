@@ -306,3 +306,22 @@ test('a dialog with back false is left to the router', () => {
   expect(cancelTopDialog()).toBe(false);
   expect(page.cancel).not.toHaveBeenCalled();
 });
+
+// One dialog in another's place (Plugins' Install question, and back) keeps the dim: the new backdrop is there at once
+// rather than fading in from nothing over the page the old one left. A dialog opened on its own still fades in.
+test('a dialog in place of another keeps the backdrop; one opened alone fades it in', async () => {
+  const backdrop = () => Number(getComputedStyle(document.querySelector('dialog.modal-dialog'), '::backdrop').opacity);
+  const which = ref('first');
+  await new Promise(requestAnimationFrame); // past the frame the last test's dialog went in, which this would take over
+  host = document.createElement('div');
+  document.body.append(host);
+  app = createApp({ render: () => h(ModalDialog, { key: which.value, title: which.value }) }).use(i18n);
+  app.mount(host);
+  await nextTick();
+  expect(backdrop()).toBeLessThan(1); // fading in
+  await vi.waitFor(() => expect(backdrop()).toBe(1));
+  which.value = 'second';
+  await nextTick();
+  expect(document.querySelector('dialog.modal-dialog h3').textContent).toBe('second');
+  expect(backdrop()).toBe(1);
+});

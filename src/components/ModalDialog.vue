@@ -255,9 +255,9 @@ p.sub {
   line-height: 1.45;
 }
 
-/* It fades in, over a backdrop fading in. */
+/* It fades in, over a backdrop fading in, unless it's in another's place: the dim it takes over stays (useModal). */
 dialog.modal-dialog[open],
-dialog.modal-dialog[open]::backdrop {
+dialog.modal-dialog[open]:not([data-handover])::backdrop {
   transition: opacity 0.15s ease-out;
 }
 @starting-style {
