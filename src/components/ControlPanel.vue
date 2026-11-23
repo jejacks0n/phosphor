@@ -1,5 +1,5 @@
 <script setup>
-import { computed, reactive, useTemplateRef, watch } from 'vue';
+import { computed, reactive, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useLocalStorage, useMediaQuery } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -15,6 +15,7 @@ import { useSettingsLock } from '@/composables/useSettingsLock';
 import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
 import HelpInfo from '@/components/HelpInfo.vue';
+import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import RangeField from '@/components/RangeField.vue';
 import CharsetField from '@/components/CharsetField.vue';
 import FontField from '@/components/FontField.vue';
@@ -52,6 +53,28 @@ const openPalettes = () => {
 // the field back to the grid's size, so a half-typed number never reaches the grid, a room or the undo history. The
 // stepper arrows and the up and down keys give a whole size at a time, so they resize at once: their input isn't typing.
 const stepped = (e) => !e.inputType;
+// A host's change of size in a room can't be undone, and clears their undo history (the room gets the whole drawing
+// again: drawing/host.js), so it asks first, once a change: as the field commits, or at a stepper press. Cancel puts
+// the field back to the grid's size. sizing: the change waiting on the answer.
+const sizing = ref(null);
+const UPDATE = { cols: (value) => store.updateCols(value), rows: (value) => store.updateRows(value) };
+function setSize({ target: field }) {
+  const value = field.value; // as typed: a render while it asks puts the field back to the grid's size
+  const apply = () => {
+    UPDATE[field.id](value);
+    field.value = store[field.id];
+  };
+  if (sizing.value) return; // asking already: the field's change as the question takes the focus
+  if (room.role !== 'host' || Number(value) === store[field.id]) return apply();
+  sizing.value = { apply, field };
+}
+function answerSize(yes) {
+  const { apply, field } = sizing.value;
+  sizing.value = null;
+  if (yes) apply();
+  else field.value = store[field.id];
+}
+const SIZE_CHOICE = computed(() => [{ id: 'resize', title: t('panel.sizeDialog.choice'), text: t('panel.sizeDialog.choiceText') }]);
 // Characters in a room are the host's alone, and each layer has its own: an artist sees the picked layer's, with that reason.
 const lockedFor = (group) => (group.id === 'characters' && drawing.hostOnly ? t('layers.charsHostOnly') : locked.value);
 
@@ -203,8 +226,8 @@ function onKeyDown(event) {
               type="number"
               id="cols"
               :value="store.cols"
-              @input="stepped($event) && store.updateCols($event.target.value)"
-              @change="store.updateCols($event.target.value); $event.target.value = store.cols"
+              @input="stepped($event) && setSize($event)"
+              @change="setSize($event)"
               @keydown.esc="$event.target.value = store.cols"
               :disabled="!!drawing.someoneInside"
               :title="drawing.someoneInside"
@@ -221,8 +244,8 @@ function onKeyDown(event) {
               id="rows"
               :aria-label="t('panel.rowsAria')"
               :value="store.rows"
-              @input="stepped($event) && store.updateRows($event.target.value)"
-              @change="store.updateRows($event.target.value); $event.target.value = store.rows"
+              @input="stepped($event) && setSize($event)"
+              @change="setSize($event)"
               @keydown.esc="$event.target.value = store.rows"
               :disabled="!!drawing.someoneInside"
               :title="drawing.someoneInside"
@@ -389,6 +412,14 @@ function onKeyDown(event) {
 
     <ProjectActions/>
     <ProjectFooter/>
+    <ChoiceDialog
+        v-if="sizing"
+        :title="t('panel.sizeDialog.title')"
+        :sub="t('panel.sizeDialog.warning')"
+        :choices="SIZE_CHOICE"
+        @choose="answerSize(true)"
+        @cancel="answerSize(false)"
+    />
   </aside>
 </template>
 

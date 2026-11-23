@@ -162,6 +162,12 @@
     "aspectLock": "Conserver les proportions",
     "sizeLocked": "Conserver les proportions garde cette forme, et {cols} × {rows} est la plus grande taille qui y tient. Désactivez-le pour changer un seul nombre.",
     "sizeMin": "La plus petite taille est 1 colonne sur 1 ligne de pixels.",
+    "sizeDialog": {
+      "title": "Changer les dimensions",
+      "warning": "Changer les dimensions ne peut pas être annulé dans les salons partagés, et cela efface votre historique d'annulation.",
+      "choice": "Changer les dimensions",
+      "choiceText": "Tout le monde dans le salon reçoit le dessin à la nouvelle taille."
+    },
     "renderStyle": {
       "label": "Style artistique",
       "ansi": "ANSI",

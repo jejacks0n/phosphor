@@ -162,6 +162,12 @@
     "aspectLock": "Lock aspect ratio",
     "sizeLocked": "Lock aspect ratio keeps this shape, and {cols} × {rows} is the largest it fits. Turn off the lock to change one number alone.",
     "sizeMin": "The smallest size is 1 column by 1 pixel row.",
+    "sizeDialog": {
+      "title": "Change dimensions",
+      "warning": "Changing the dimensions cannot be undone in shared rooms, and it clears your undo history.",
+      "choice": "Change dimensions",
+      "choiceText": "Everyone in the room gets the drawing at the new size."
+    },
     "renderStyle": {
       "label": "Art style",
       "ansi": "ANSI",

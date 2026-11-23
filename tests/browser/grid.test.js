@@ -16,6 +16,7 @@ import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { useRoomStore } from '@/store/RoomStore';
 
 async function grid(cols = 40, rows = 40) {
   const { project, workspace } = await createTestApp();
@@ -745,6 +746,79 @@ test('Cmd+Z after a size typed in Dimensions takes it back, then the stroke befo
     await userEvent.keyboard('{Meta>}z{/Meta}');
     await settle(project);
     expect(project.paintLayer.hasPaint).toBe(false);
+  } finally {
+    app.unmount();
+    host.remove();
+  }
+});
+
+// In a room a host's change of size can't be undone and clears their undo history (the room gets the whole drawing),
+// so Dimensions asks first, once a change: as the field commits, or at a stepper press. Cancel keeps the size, and the
+// steps; the choice resizes.
+test('a host\'s change of Dimensions in a room asks first: Cancel keeps the size and the steps, the choice resizes', async () => {
+  const { project } = await grid(40, 40);
+  project.aspectLock = false;
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  useRoomStore().$patch({ role: 'host' });
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const cols = host.querySelector('#cols'), rows = host.querySelector('#rows');
+  const dialog = () => document.querySelector('dialog.modal-dialog');
+  try {
+    cols.focus();
+    cols.select();
+    await userEvent.keyboard('50{Enter}');
+    await nextTick();
+    expect(dialog()?.textContent).toContain('cannot be undone in shared rooms, and it clears your undo history');
+    expect(project.cols).toBe(40); // not yet
+    await userEvent.click(dialog().querySelector('button.cancel'));
+    await nextTick();
+    expect([dialog(), project.cols, cols.value, project.canUndo]).toEqual([null, 40, '40', true]);
+
+    rows.focus();
+    await userEvent.keyboard('{ArrowUp}'); // a stepper press asks too
+    await nextTick();
+    expect([!!dialog(), project.rows]).toEqual([true, 40]);
+    await userEvent.click(dialog().querySelector('button.cancel'));
+    await nextTick();
+    expect([project.rows, rows.value]).toEqual([40, '40']);
+
+    cols.focus();
+    cols.select();
+    await userEvent.keyboard('50{Enter}');
+    await nextTick();
+    await userEvent.click(dialog().querySelector('button.choice'));
+    await settle(project);
+    expect([dialog(), project.cols, cols.value]).toEqual([null, 50, '50']);
+  } finally {
+    app.unmount();
+    host.remove();
+    project.stopSharing();
+    useRoomStore().$patch({ role: null });
+  }
+});
+
+test('alone, Dimensions doesn\'t ask', async () => {
+  const { project } = await grid(40, 40);
+  project.aspectLock = false;
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const cols = host.querySelector('#cols');
+  try {
+    cols.focus();
+    cols.select();
+    await userEvent.keyboard('50{Enter}');
+    await nextTick();
+    expect([document.querySelector('dialog.modal-dialog'), project.cols]).toEqual([null, 50]);
   } finally {
     app.unmount();
     host.remove();

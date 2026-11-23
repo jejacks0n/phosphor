@@ -1304,7 +1304,9 @@ the grid's size. The stepper arrows and the **↑** and **↓** keys change the 
   for pixel, every frame too (paint the resize resampled, and a picture that rescaled, aren't resized back, which
   would blur them), and the steps before it stay, so undo goes on past it. A size change of its own doesn't count as a
   drawing step: with nothing drawn, the next one rescales too. In a room a size change isn't an undo step: the host's
-  new grid goes to everyone with the whole drawing, and nobody's undo reaches back past it.
+  new grid goes to everyone with the whole drawing and clears the host's undo history, so Dimensions asks first,
+  "Changing the dimensions cannot be undone in shared rooms, and it clears your undo history.", once a change (as the
+  field applies it, or at a stepper press); **Cancel** keeps the size, and the steps.
 - **Back to Rescaling**: Clearing or erasing everything on the drawing layers brings rescaling back once there's no
   drawing step left to undo, unless the base has been drawn on. A new document, or a project or file opened, starts
   with no steps to undo.

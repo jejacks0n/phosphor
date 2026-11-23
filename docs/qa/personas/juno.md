@@ -336,12 +336,13 @@ change, ask in the chat whether people can see her box, and have a watcher Exit 
 - Rated: yes, wants Cmd+Z
 
 ### 16. What I can't do while they draw
-- Does: tries Open, New project, the blank canvas, a version from Versions and Clear; then Merge down on Layer 1 and
-  Bake, canceling each warning.
+- Does: tries Open, New project, the blank canvas, a version from Versions and Clear; then Merge down on Layer 1,
+  Bake, and Dimensions' first number typed as 100 with Enter, canceling each warning.
 - Expects: Open, new art, restoring and Clear are off and say "Unavailable while co-artists are drawing."; Merge down
-  warns first ("Merging down cannot be undone in shared rooms.") and Bake too ("Baking cannot be undone in shared rooms."), each with a way to back out ([Drawing together](../../social.md#drawing-together)).
-- Probes: `back-out`: Cancel and Escape at each warning, checking nothing merged or baked; `out-of-order`: press Cmd+O
-  and check the key is refused the same way as the button.
+  warns first ("Merging down cannot be undone in shared rooms.") and Bake too ("Baking cannot be undone in shared rooms."), each with a way to back out ([Drawing together](../../social.md#drawing-together)); Dimensions asks before the size changes ("Changing the dimensions cannot be undone in shared rooms, and it clears your undo history."), and Cancel puts the field back to the size it was.
+- Probes: `back-out`: Cancel and Escape at each warning, checking nothing merged, baked or resized, and that Cmd+Z still
+  takes back her last stroke; `out-of-order`: press Cmd+O and check the key is refused the same way as the button; a
+  stepper arrow on Dimensions asks the same, once a press.
 - Rated: yes, wants Cmd+E for Merge down, then Escape at the warning
 
 ### 17. Put the artist back to watching

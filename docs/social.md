@@ -480,6 +480,9 @@ then says **invited**, with **Withdraw invitation** in the menu.
 - **The picture and the grid**: The settings, SAUCE fields, sliders, the base layer, Bake, Flatten and Merge down are
   off for an artist, and say "Only the room's host can change this." The same goes for a layer's character settings,
   which say "Only the host changes character settings in a room."
+- **Dimensions**: A host's change of the grid's size goes to everyone with the whole drawing, and can't be undone:
+  it clears the host's undo history. Dimensions asks first, "Changing the dimensions cannot be undone in shared rooms,
+  and it clears your undo history.", with **Change dimensions** and **Cancel**, which keeps the size.
 - **Final while others draw**: Merge down, Bake and Flatten can't be undone while anyone's listed as an artist, since
   other people's strokes can land on them. With another artist connected, each warns first: "Merging down cannot be
   undone in shared rooms.", "Baking cannot be undone in shared rooms." or "Flattening cannot be undone in shared
