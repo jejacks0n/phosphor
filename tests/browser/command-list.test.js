@@ -1,6 +1,6 @@
 // The command list (Cmd+K, Ctrl+K off a Mac), mounted alone with the stores as App.vue mounts it: a search field over the
 // commands the table can run here, Enter running the one picked after the list has gone (chooseCommand), the ones that
-// can't run now greyed with the reason, and those run from it first when nothing's typed.
+// can't run now grayed with the reason, and those run from it first when nothing's typed.
 import { test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -60,7 +60,7 @@ test('typing save as and Enter saves as, once, after the list has gone; focus st
   expect(workspace.commandListOpen).toBe(false);
 });
 
-test('with no drawing, Export… is greyed with why and Enter on it does nothing; ↑ ↓ move the row picked', async () => {
+test('with no drawing, Export… is grayed with why and Enter on it does nothing; ↑ ↓ move the row picked', async () => {
   await open();
   await type('export');
   const picked = () => field().getAttribute('aria-activedescendant');

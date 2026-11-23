@@ -11,7 +11,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 // The command list, opened with Cmd+K (Ctrl+K off a Mac) or the desktop's Help menu: one field, and under it every
 // command the table can run here (src/lib/commands.js), found by its words' letters in order (commandSearch.js). Each
-// row is its words and its key, when it has one; one that can't run now is greyed with why. ↑ ↓ move the row picked
+// row is its words and its key, when it has one; one that can't run now is grayed with why. ↑ ↓ move the row picked
 // while focus stays in the field, Enter runs it, Escape closes. With nothing typed: the commands last run from it,
 // then all of them by group. It closes with the id chosen (or none), and App.vue runs it once the list has gone
 // (chooseCommand); focus goes back where it was as it goes.

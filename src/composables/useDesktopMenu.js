@@ -47,7 +47,7 @@ export { reloading };
 // available), so the menu, the keys and the list share one run.
 const TABLE = {
   new: 'file.new', open: 'file.open', save: 'file.save', saveAs: 'file.saveAs', export: 'file.export', versions: 'file.versions',
-  shortcuts: 'general.help', commandList: 'ui.commandList', plugins: 'panels.plugins', pluginsOff: 'panels.pluginsOff',
+  commandList: 'ui.commandList', plugins: 'panels.plugins', pluginsOff: 'panels.pluginsOff',
 };
 
 // The menu's accelerators: each menu command's key from the command table (the first with Cmd, Ctrl or Alt, since a bare key
@@ -75,6 +75,7 @@ export function useDesktopMenu() {
     undo: () => undoOrRedo('undo'),
     redo: () => undoOrRedo('redo'),
     about: () => { workspace.showAboutModal = true; },
+    shortcuts: () => { workspace.shortcutsOpen = true; },   // always, as before: not the ? key's where (the color box open)
     checkUpdates: checkForUpdates,
     hostRoom: () => {
       workspace.showSocial();

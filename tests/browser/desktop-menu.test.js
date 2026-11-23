@@ -76,7 +76,9 @@ test('the menu says the drawing’s name, for the window’s title, and its proj
 
 test('commands open what they name, and Undo from the menu is the drawing’s outside a text field', async () => {
   command('about');
+  workspace.colorBox = 'fg';   // the ? key's where doesn't hold with the color box open; the menu's item opens the list anyway
   command('shortcuts');
+  workspace.colorBox = null;
   const box = document.body.appendChild(document.createElement('dialog'));
   box.showModal();
   command('commandList');   // not over another dialog

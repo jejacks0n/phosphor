@@ -398,7 +398,7 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 - Expects: the box opens over the art with focus in its field; Export opens on .ans once the box has gone; Insert a line
   at the cursor puts a line in where the cursor is, as Alt+↑ does; Escape closes the box and typing goes on at the
   cursor. Each row shows its key.
-- Probes: `out-of-order`: Cmd+K with no drawing open (Export… is greyed, saying why, and Enter does nothing);
+- Probes: `out-of-order`: Cmd+K with no drawing open (Export… is grayed, saying why, and Enter does nothing);
   `undo-redo`: undo the line.
 - Rated: yes, wants every command by name
 
