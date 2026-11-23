@@ -19,6 +19,19 @@ test.beforeEach(async ({ page }) => {
 });
 
 const asked = (page) => page.evaluate(() => window.asked);
+// The name autosave has kept for the open drawing (its record's filename), or null before its first write.
+const keptName = async (page) => {
+  const id = await store(page, 'project', (p) => p.documentId);
+  return page.evaluate((id) => new Promise((resolve, reject) => {
+    const open = indexedDB.open('phosphor-autosave', 1);
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const db = open.result;
+      const get = db.transaction('documents').objectStore('documents').get(id);
+      get.onsuccess = () => { db.close(); resolve(get.result?.filename ?? null); };
+    };
+  }), id);
+};
 const fileBytes = (page, name) => page.evaluate(async (name) => {
   const handle = await (await navigator.storage.getDirectory()).getFileHandle(name);
   return Array.from(new Uint8Array(await (await handle.getFile()).arrayBuffer()));
@@ -59,7 +72,9 @@ test('an old .phosphor opened with Cmd/Ctrl+O asks on its first Save, then saves
   expect(await asked(page)).toEqual({ open: 1, save: 1, permission: 1 }); // the .pho written over: given for this page
   expect(await fileBytes(page, 'as-opened.pho')).not.toEqual(first);
 
-  // A reload keeps the file it's saved to; the browser asks again before the first save.
+  // A reload keeps the file it's saved to; the browser asks again before the first save. The first Save renamed the
+  // drawing, so the reload waits for autosave to have kept the new name (a reload before that brings back the old one).
+  await expect.poll(() => keptName(page)).toBe('as-opened');
   await page.reload();
   await expect.poll(() => store(page, 'project', (p) => p.filename)).toBe('as-opened');
   await settled(page);
