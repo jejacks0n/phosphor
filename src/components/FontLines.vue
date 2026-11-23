@@ -33,15 +33,13 @@ const status = (s) => {
   const block = s.problems.find((p) => p.reason === 'block');
   if (block) return shares(s, block);
   const missing = s.problems.length;
-  return missing ? t('palette.fonts.lineToGo', { n: missing }, missing) : t('palette.fonts.lineOffered');
+  return missing ? t('palette.fonts.lineToGo') : t('palette.fonts.lineOffered');
 };
 const isPicked = (s, piece) => props.picked?.style === s.id && props.picked.piece === piece;
+// Only a refused slot says anything under the styles.
 const note = computed(() => {
   const no = refused.value;
-  if (no) return { text: no.block ? t('palette.fonts.lineBlockSlot', { n: no.n, block: blockName(no.block) }) : t('palette.fonts.lineSlotTaken', { n: no.n, piece: PIECES[no.piece] }), tone: 'warn' };
-  const style = own.value.find((s) => s.id === props.picked?.style);
-  if (style && !props.disabled) return { text: t('palette.fonts.linePicked', { piece: PIECES[props.picked.piece], name: style.name }), tone: '' };
-  return own.value.length ? { text: t('palette.fonts.linesHint'), tone: '' } : null;
+  return no && (no.block ? t('palette.fonts.lineBlockSlot', { n: no.n, block: blockName(no.block) }) : t('palette.fonts.lineSlotTaken', { n: no.n, piece: PIECES[no.piece] }));
 });
 
 const change = (styles, hide = lines.value.hide) => emit('change', { hide, styles });
@@ -113,7 +111,7 @@ defineExpose({ slot });
       <span class="status">{{ status(s) }}</span>
     </div>
     <div><button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="add">{{ t('palette.fonts.newLineStyle') }}</button></div>
-    <p v-if="note" class="note" :class="note.tone">{{ note.text }}</p>
+    <p v-if="note" class="note warn">{{ note }}</p>
   </div>
 </template>
 
