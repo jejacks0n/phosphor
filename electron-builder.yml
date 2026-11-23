@@ -65,6 +65,21 @@ mac:
   extendInfo:
     # macOS asks the person the first time the app reaches the local network, in these words.
     NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network."
+    # A .pho is a PNG with the project inside: declared a kind of PNG, Finder and Quick Look preview it with the
+    # system's own PNG thumbnailer. electron-builder lists pho by extension only, so this entry binds it to the type.
+    UTExportedTypeDeclarations:
+      - UTTypeIdentifier: work.phosphor.pho
+        UTTypeConformsTo: [public.png, public.image]
+        UTTypeDescription: Phosphor Project
+        UTTypeTagSpecification:
+          public.filename-extension: [pho]
+          public.mime-type: image/x-phosphor
+    CFBundleDocumentTypes:
+      - CFBundleTypeName: Phosphor Project
+        CFBundleTypeRole: Editor
+        LSHandlerRank: Owner
+        LSItemContentTypes: [work.phosphor.pho]
+        CFBundleTypeIconFile: icon.icns
   # The rest of what Phosphor opens, offered in Open With without becoming any of these extensions' default app.
   fileAssociations:
     - ext: [asc, nfo, txt]
@@ -82,6 +97,11 @@ win:
     - target: nsis
       arch: [x64, arm64]
 
+# The installer points .pho at Windows' own photo thumbnail provider, so Explorer previews it as the PNG it is, and takes
+# that away on uninstall (build/installer.nsh).
+nsis:
+  include: build/installer.nsh
+
 # Not signed: AppImage and .deb have no signing people would check.
 linux:
   category: Graphics
@@ -91,3 +111,11 @@ linux:
   target:
     - AppImage
     - deb
+
+# electron-builder's own MIME file for the associations can't say a type is a kind of another, so the .deb also installs
+# build/phosphor-mime.xml: image/x-phosphor as a subclass of image/png, for the desktop's PNG thumbnailer. The two
+# declarations merge, and the package's default after-install script already runs update-mime-database. AppImage has no
+# install step, so no thumbnails there.
+deb:
+  fpm:
+    - build/phosphor-mime.xml=/usr/share/mime/packages/phosphor-pho.xml
