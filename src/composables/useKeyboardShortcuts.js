@@ -1,15 +1,14 @@
 import { onMounted, onBeforeUnmount, watch, toRaw } from 'vue';
-import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
+import { getTool } from '@/tools';
 import { clampOffset, normalizeRect } from '@/document/editCells';
 import { stacked } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
 import { readClipboardHtml } from '@/lib/clipboardBlocks';
 import { typeText } from '@/composables/useTextTool';
-import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY, colorBoxKey, frameStepKey, helpKey } from '@/lib/TextKeys';
+import { takeKey } from '@/lib/commands';
 import { ownsKey, typesIn } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
-import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
 import { busyWhile } from '@/composables/useBusy';
 import { t } from '@/i18n';
@@ -17,9 +16,6 @@ import { t } from '@/i18n';
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Delete and paste go under the busy note: most of a second over a whole large drawing.
   const deleting = (sel, layers) => busyWhile(t('busy.deleting'), () => projectStore.deleteSelection(sel, layers));
-  // The pair's swap: on VECTOR, the shapes' Fill and Stroke trade places.
-  const vectorStyle = useVectorStyle();
-  const swapColors = () => (workspaceStore.editorTab === 'vector' ? vectorStyle.swap() : workspaceStore.swapColors());
   const playback = usePlayback();
 
   // Not on SOCIAL: the art isn't showing, and its fields keep their own undo. Nor in a field you type in (the Characters
@@ -29,55 +25,6 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   const typing = new WeakSet(); // the fields with typing not committed yet
   const _onInput = (e) => { if (typesIn(e.target)) typing.add(e.target); };
   const _onChange = (e) => typing.delete(e.target); // and on focusout: what's left was committed, or never typed
-  const _handleUndoRedo = (e) => {
-    if (typing.has(e.target)) return false;
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && workspaceStore.editorTab !== 'room') { // Shift makes it 'Z'
-      e.preventDefault();
-      if (e.shiftKey) {
-        projectStore.redo();
-      } else {
-        projectStore.undo();
-      }
-      return true;
-    }
-    return false;
-  };
-
-  const _handleSave = (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-      e.preventDefault();
-      workspaceStore.saveFile({ as: e.shiftKey });
-      return true;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
-      e.preventDefault();
-      if (projectStore.image) workspaceStore.exportModal = true;
-      return true;
-    }
-    return false;
-  };
-
-  // Cmd/Ctrl+O opens the file chooser (EditWorkspace's, the start screen's too), so the browser's own box stays shut. Not
-  // in a field. With the Text tool's caret placed too, as Save: typing never uses the key.
-  const _handleOpen = (e) => {
-    if (!(e.ctrlKey || e.metaKey) || e.shiftKey || e.altKey || e.key.toLowerCase() !== 'o') return false;
-    if (ownsKey(e.target, e)) return false;
-    e.preventDefault();
-    workspaceStore.openRequest++;
-    return true;
-  };
-
-  // Cmd/Ctrl+= (or +) zooms in, Cmd/Ctrl+- out and Cmd/Ctrl+0 back, in the art views, about the view's middle (EditorViewport),
-  // in place of the browser's page zoom. Not in a field.
-  const ZOOM_KEYS = { '=': 2, '+': 2, '-': 0.5, '_': 0.5, '0': 0 };
-  const _handleZoomKeys = (e) => {
-    const by = ZOOM_KEYS[e.key];
-    if (by === undefined || !(e.ctrlKey || e.metaKey) || e.altKey) return false;
-    if (!projectStore.image || !['input', 'output', 'vector'].includes(workspaceStore.editorTab) || ownsKey(e.target, e)) return false;
-    e.preventDefault();
-    workspaceStore.zoomRequest = { by };
-    return true;
-  };
 
   // Held keys: Alt swaps a drawing tool for the picker (Shift added: the background color), Space any
   // tool for the hand. Let go mid-drag and the tool comes back when the drag ends, so a pick or a pan
@@ -113,51 +60,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return false;
   };
 
-  // X swaps the color pair while the art is showing, unless something is taking text (a field, or the
-  // Text tool).
-  // Colors, Moebius-style: Alt+F (or Alt+A) opens the color box on the foreground, Alt+B on the
-  // background (from a drawing tool too: the held eyedropper gives way), and Shift+Cmd/Ctrl+X swaps
-  // the two. Not in a real field (they type there); in Edit Mode they work while typing.
-  const _handleColorKeys = (e) => {
-    const slot = colorBoxKey(e);
-    const swap = e.code === 'KeyX' && e.shiftKey && (e.metaKey || e.ctrlKey) && !e.altKey;
-    if (!slot && !swap) return false;
-    if (ownsKey(e.target, e) || !projectStore.image || !workspaceStore.editMode || workspaceStore.paletteLayerOpen) return false;
-    e.preventDefault();
-    if (swap) {
-      swapColors();
-      return true;
-    }
-    if (workspaceStore.heldTool?.by === 'alt') workspaceStore.releaseTool();
-    // ASCII in the ANSI view has no colors to choose (ColorPair hides itself).
-    if (!(workspaceStore.editorTab === 'output' && projectStore.renderStyle === 'ascii')) workspaceStore.openColors(slot);
-    return true;
-  };
-
   // Typing in Edit Mode: the Text tool with its cursor placed, in the ANSI view.
   const _typing = () => workspaceStore.activeTool === 'text' && !!workspaceStore.textCursor && workspaceStore.editorTab === 'output';
-
-  // L plays and pauses, comma and period step, N adds a frame: with Animate on, in the art views, never while typing
-  // or inside an art layer. Alt+, and Alt+. step while typing too (typing: true).
-  const _animationKeysApply = (e, { typing = false } = {}) => projectStore.animate && projectStore.image && !projectStore.artInside
-    && (typing || (!e.ctrlKey && !e.metaKey && !e.altKey && !_typing()))
-    && workspaceStore.editMode && !ownsKey(e.target, e)
-    && !workspaceStore.isPainting && !workspaceStore.paletteLayerOpen && !workspaceStore.colorBox;
-
-  // The shortcuts list: ?, or Alt+? while typing in Edit Mode (where ? types). Not in a field.
-  const _handleHelp = (e) => {
-    if (!helpKey(e, { typing: _typing() }) || ownsKey(e.target, e) || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
-    e.preventDefault();
-    workspaceStore.shortcutsOpen = true;
-    return true;
-  };
-
-  const _handleSwapColors = (e) => {
-    if (e.key.toLowerCase() !== SWAP_COLORS_KEY || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return false;
-    if (ownsKey(e.target, e) || !workspaceStore.editMode || workspaceStore.activeTool === 'text') return false; // in Edit Mode, X types
-    swapColors();
-    return true;
-  };
+  // What a command's where, available and run are asked with (src/lib/commands.js).
+  const _ctx = (e) => ({ project: projectStore, workspace: workspaceStore, event: e, view: workspaceStore.editorTab, typing: _typing(), uncommitted: typing.has(e.target) });
 
   // The ANSI view's selection keys: Cmd/Ctrl+C, X, V (on the picked layer, or the shown layers with All layers on; a paste goes to the
   // selection, else the Text tool's cursor, else the top-left of the view, and becomes the
@@ -293,35 +199,6 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // Tool keys (each tool's keys: P Pencil, B Brush, G Paint Bucket, Shift+G Gradient, T or K Edit Mode...): a
-  // letter chooses the tool, when the view offers it. Not while typing (Edit Mode with its cursor, a
-  // field), mid-drag, with a tool held by a key, or with the color box or palette layer open.
-  const _handleToolKeys = (e) => {
-    if (e.ctrlKey || e.metaKey || e.altKey || e.repeat || !/^[a-z]$/i.test(e.key)) return false;
-    if (ownsKey(e.target, e) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
-    if (workspaceStore.isPainting || workspaceStore.heldTool || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
-    const key = (e.shiftKey ? 'Shift+' : '') + e.key.toUpperCase();
-    const tool = offeredTools(workspaceStore.editorTab, projectStore).find(({ keys }) => keys?.includes(key));
-    if (!tool) return false;
-    e.preventDefault();
-    workspaceStore.setActiveTool(tool.id);
-    return true;
-  };
-
-  // ] and [ grow and shrink the tool's Size (its option marked size, the one on offer in this view) a whole step, within the
-  // slider's range, as in Photoshop. In the art views, not while typing, mid-drag, or with the color box or palette open.
-  const _handleSizeKeys = (e) => {
-    const by = { ']': 1, '[': -1 }[e.key];
-    if (!by || e.ctrlKey || e.metaKey || e.altKey || ownsKey(e.target, e) || !projectStore.image || !workspaceStore.editMode || _typing()) return false;
-    if (!['input', 'output'].includes(workspaceStore.editorTab) || workspaceStore.isPainting || workspaceStore.paletteLayerOpen || workspaceStore.colorBox) return false;
-    const option = getTool(workspaceStore.activeTool).options?.find((o) => o.size && (!o.views || o.views.includes(workspaceStore.editorTab)) && (!o.when || o.when(workspaceStore)));
-    if (!option) return false;
-    const round = 10 ** (option.decimals ?? 0);
-    setOptionValue(workspaceStore, option, Math.min(option.max, Math.max(option.min, Math.round((optionValue(workspaceStore, option) + by) * round) / round)));
-    e.preventDefault();
-    return true;
-  };
-
   // Paste, from what the system clipboard holds (the paste event's text and HTML), the first that
   // applies: a Phosphor block (this tab's own copy pastes Phosphor's own block, which a Bake keeps
   // up to date; another tab's pastes as it came); a Moebius block; or text, typed in: at the Text
@@ -383,44 +260,24 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Shift') workspaceStore.isShiftPressed = true;
     if (e.key === 'Alt') workspaceStore.isAltPressed = true;
 
-    if (_animationKeysApply(e) && e.key.toLowerCase() === PLAY_KEY) {
-      e.preventDefault();
-      if (!e.repeat) playback.toggle();
-      return;
-    }
+    // The commands' keys (src/lib/commands.js) and the handlers that aren't commands, in the order they claim a key.
+    if (takeKey(e, _ctx(e), ['animation.play'])) return;
     // A key while playing pauses first, on the frame showing, so what it does lands there. The bar's
     // own controls have their keys, and they pause for themselves.
     if (workspaceStore.playing && !ownsKey(e.target, e) && !e.target?.closest?.('[role="toolbar"]') && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
 
-    const step = frameStepKey(e) || (e.key === ',' ? -1 : e.key === '.' ? 1 : 0);
-    if (step && _animationKeysApply(e, { typing: !!frameStepKey(e) })) {
-      e.preventDefault();
-      playback.pause();
-      projectStore.stepFrame(step);
-      return;
-    }
-    // N: a new frame after the one showing, of its kind (held, it goes on adding them).
-    if (_animationKeysApply(e) && e.key.toLowerCase() === ADD_FRAME_KEY) {
-      e.preventDefault();
-      projectStore.addFrame(projectStore.currentFrame.kind);
-      return;
-    }
-
-    if (_handleUndoRedo(e)) return;
-    if (_handleSave(e)) return;
-    if (_handleOpen(e)) return;
-    if (_handleZoomKeys(e)) return;
-    if (_handleHelp(e)) return;
+    const ctx = _ctx(e);
+    if (takeKey(e, ctx, ['animation.prevFrame', 'animation.nextFrame', 'animation.newFrame'])) return;
+    if (takeKey(e, ctx, ['general.undo', 'general.redo', 'file.save', 'file.saveAs', 'file.export', 'file.open',
+      'view.zoomIn', 'view.zoomOut', 'view.zoomBack', 'general.help'])) return;
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;
-    if (_handleColorKeys(e)) return;
+    if (takeKey(e, ctx, ['colors.openFg', 'colors.openBg', 'colors.swap'])) return;
     if (_handleToolSwap(e)) return;
-    if (_handleSwapColors(e)) return;
     if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;
     if (_handleArtKeys(e)) return;
-    if (_handleToolKeys(e)) return;
-    if (_handleSizeKeys(e)) return;
+    takeKey(e, ctx, ['tool.*', 'drawing.sizeUp', 'drawing.sizeDown']);
   };
 
   const _handleGlobalKeyUp = (e) => {
