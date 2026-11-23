@@ -3,7 +3,7 @@
 ## Who
 
 Lea is a student who tapped a link to Phosphor on her phone after a friend posted an ANSI selfie. She has never heard
-of ANSI art, CP437, layers in this sense or a .phosphor file, and she won't read docs. She knows phone photo apps:
+of ANSI art, CP437, layers in this sense or a .pho file, and she won't read docs. She knows phone photo apps:
 filters, sliders, undo, share. She finds things by tapping what looks tappable and long-pressing what doesn't.
 
 ## Why they're here
@@ -59,7 +59,7 @@ confused, and the work still there if she comes back to the tab later.
   (Dimensions 80 by 50, 2,000 cells).
 - 1 or 2 layers: Base, and one she adds.
 - An animation of 3 to 6 frames at 8 frames per second.
-- Exports: a .gif of a few hundred KB, a .phosphor of a few hundred KB.
+- Exports: a .gif of a few hundred KB, a .pho of a few hundred KB.
 
 ## Traits
 
@@ -107,7 +107,7 @@ script. Every section ends with Free time.
   end opens LAYERS over the art; the toolbar shows the color pair, the Pencil, Brush, Eraser, Paint Bucket, Shapes, a ⋯ for the rest,
   and Actions; the status bar says "Base"; LAYERS has only Base. Opening takes under the `file` budget.
 - Probes: `out-of-order`: first pick `fonts/wide.ttf` by mistake (it says "Couldn't open … Make sure it's a supported
-  image or .phosphor file."); `again`: press New project and open `p3.png`, then `photo.webp`, then `rgba.png`, then
+  image, .pho, or .phosphor file."); `again`: press New project and open `p3.png`, then `photo.webp`, then `rgba.png`, then
   `tiny.gif`, and come back to `photo.jpg`; `extremes`: look at where `rgba.png`'s transparency lands.
 - Rated: no (touch only: no keyboard shows here)
 
@@ -303,7 +303,7 @@ frames, and pinch while it plays.
 
 ### 21. Keep my work for later
 - Does: taps Save project, keeps the name and presses Go; then reloads the page.
-- Expects: a .phosphor downloads; after the reload she's back where she was (autosave brought it back, with its
+- Expects: a .pho downloads; after the reload she's back where she was (autosave brought it back, with its
   frames, layers and settings); New project afterwards asks about unsaved changes only if there are any.
 - Probes: `interrupt`: reload a second and a half after an edit without saving and check it came back; `back-out`:
   press New project with unsaved changes and Cancel Phosphor's "Start a new project?" question (Save project first,
@@ -503,7 +503,7 @@ and sideways.
 - Expects: Aberration's group is after Image filters, titled Aberration with a PLUGIN chip and its own Reset, with
   Distance and the two colors (the colors beside the Distance slider), fitting the column's width; at Distance 3 the
   picture's edges split into her two colors; folded, the group says how many of its options are on; Distance and the
-  color are each one undo step; a .phosphor downloads; after the reload Aberration is still at 3 with her color, and the
+  color are each one undo step; a .pho downloads; after the reload Aberration is still at 3 with her color, and the
   picture is the same ([Writing a filter](../../plugins.md#writing-a-filter)).
 - Probes: `undo-redo`: undo the Distance change from Actions → Undo, then Redo; `out-of-order`: pick her layer and check
   Aberration's group isn't shown there (only with Base picked); `extremes`: Distance 10.

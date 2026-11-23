@@ -11,7 +11,7 @@ its animation.
 
 She wants a short looping scene of 24 frames: a ball that eases down and bounces, a spark that draws itself along a
 curve with a dot riding its tip, a few hand-drawn pieces (art layers) that slide in, all over an imported SVG. Done is
-a GIF to post and a .cast that plays the same in a terminal, and a .phosphor she can reopen and keep retiming, with
+a GIF to post and a .cast that plays the same in a terminal, and a .pho she can reopen and keep retiming, with
 every key, easing and path where she left it.
 
 ## What they bring
@@ -59,7 +59,7 @@ every key, easing and path where she left it.
 - Three cells layers at most (Base, Layer 1 and one more); one vector layer.
 - Bigger: 160 columns by 50 lines (8,000 cells, 192,000 across 24 frames).
 - At the edge: 40,000 cells a frame, the most animation holds; 201 by 200 lines (40,200 cells) is just past it.
-- Exports: a .gif of a few hundred KB, a .cast under 1 MB, a .phosphor of a few hundred KB.
+- Exports: a .gif of a few hundred KB, a .cast under 1 MB, a .pho of a few hundred KB.
 
 ## Traits
 
@@ -431,7 +431,7 @@ Alt+`,` while typing in Edit Mode, and Bake with the sliders moved to see every 
 
 ### 30. Save it and reopen it
 - Does: presses Cmd+S and saves; starts a New project (if it asks about unsaved changes, that's Phosphor's "Start a
-  new project?": Start without saving); opens the .phosphor with Choose a file.
+  new project?": Start without saving); opens the .pho with Choose a file.
 - Expects: everything comes back: 24 frames, their holds, 12 frames per second, the frame she was on, every shape and
   art layer with its keys per part, easings, motions, Start and End, every follower's path and Along, the Guide, Face
   the path; Animate is on, since it has more than one frame ([Saving](../../animation.md#saving),

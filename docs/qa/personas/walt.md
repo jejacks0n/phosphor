@@ -50,7 +50,7 @@ never a lost hour of work, whatever the browser does.
 ## Sizes
 
 - 300 columns by 1,600 lines: 480,000 cells (the limits are 300 columns, 5,000 lines and 500,000 cells; at 300 columns
-  1,666 lines). The .ans is about 10.6 MB; a .phosphor of it a few MB.
+  1,666 lines). The .ans is about 10.6 MB; a .pho of it a few MB.
 - Real files: 80 columns, up to about 1,675 lines (`RA-FIFTY.ANS`), up to 137 KB.
 - SAUCE at its widths: Title 35, Author 20, Group 20 characters, comments up to 255 lines of 64.
 - One or two layers. A session of an hour or more, with `qa.memory` at its start and end.
@@ -126,7 +126,7 @@ script. Every section ends with Free time.
 ### 6. Save the project
 - Does: presses Cmd+S, keeps the offered name, saves; times it.
 - Expects: the dialog offers "long-" with the date and time, focus in the name; Enter saves; the download takes under
-  the `file` budget, with "Saving long-….phosphor…" at the bottom if it takes over half a second; afterwards leaving the
+  the `file` budget, with "Saving long-….pho…" at the bottom if it takes over half a second; afterwards leaving the
   page doesn't ask once the latest edits are written.
 - Probes: `again`: save twice and check the second name is new; `back-out`: open the dialog and press Escape, then
   check focus is where his keys work.
@@ -158,13 +158,13 @@ look at the status bar, and take `qa.memory` again.
 - Rated: yes, wants Cmd+O
 
 ### 10. The project reopens unchanged
-- Does: opens the .phosphor saved in step 6 and compares its cells with the export's.
+- Does: opens the .pho saved in step 6 and compares its cells with the export's.
 - Expects: New project shows the start screen (on a phone, the settings drawer closes); the same cells, the same
   SAUCE, the same size; opening takes under the `file` budget.
 - Probes: `again`: open it twice in a row from the start screen's recent list, and check the rows can be told apart:
-  each whole name with its extension (`.phosphor`, `.ans`), the seconds when two share a minute, and Unchanged,
+  each whole name with its extension (`.pho`, `.ans`), the seconds when two share a minute, and Unchanged,
   Changed or Saved; every row is the same two lines, long name or short, so the times line up; the drawing he saved
-  in step 6 and then exported is listed under its `.phosphor` name, not the export's.
+  in step 6 and then exported is listed under its `.pho` name, not the export's.
 - Rated: yes, wants Cmd+O
 
 ### 11. Restore on top of the original
@@ -330,7 +330,7 @@ long file (time the reload), and press Back from a fresh start screen.
 - Rated: no (a check of memory)
 
 **Free time:** he'd open a pack file with Draw on top and Flatten it, export a pack file and diff its bytes with
-the original, try opening a .phosphor from an older version (`projects/live-main.phosphor`), and leave the session idle
+the original, try opening a .phosphor from an older version (`projects/live-main.phosphor`), press Save, and see it ask where with `live-main.pho` suggested, the old file left as it was, then leave the session idle
 for a few minutes and come back.
 
 ## Known

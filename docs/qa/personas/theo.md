@@ -307,7 +307,7 @@ panel's left edge wider and double-click it back, and type a message with his na
   saved photo from "Pick up where you left off" in a new tab and check it's as he saved it.
 - Rated: no (the host's move)
 
-**Free time:** he'd save the room's art as a .phosphor while he's an artist, look for a way to ask the host to draw
+**Free time:** he'd save the room's art as a .pho while he's an artist, look for a way to ask the host to draw
 again, check his own tool and colors came back, and see what the host's view looks like on ROOM after drawing.
 
 ## Trouble in the room
