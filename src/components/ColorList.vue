@@ -237,10 +237,14 @@ div.color-list {
   min-height: 0;
 }
 
+/* The picked swatch's ring is drawn 3px outside it (its outline and offset), and a scrolling box cuts off what's past
+   its edges: room for the ring inside, taken back outside, so the swatches sit where they did. */
 div.color-list > div.swatches {
   flex: 0 1 auto;
   align-content: start;
   min-height: 0;
+  margin: -3px;
+  padding: 3px;
   overflow-y: auto;
 }
 
