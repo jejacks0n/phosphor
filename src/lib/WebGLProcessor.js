@@ -297,31 +297,32 @@ const optUniform = (id) => `opt_${id}`;
 const FILTER_VERTEX_SHADER = `#version 300 es
 in vec2 position;
 in vec2 texCoord;
-out vec2 vTexCoord;
+out vec2 ph_texCoord;
 uniform bool uFlipY;
 void main() {
     gl_Position = vec4(position, 0, 1);
-    vTexCoord = vec2(texCoord.x, uFlipY ? 1.0 - texCoord.y : texCoord.y);
+    ph_texCoord = vec2(texCoord.x, uFlipY ? 1.0 - texCoord.y : texCoord.y);
 }
 `;
 
 // A plugin filter's pass (the body of a function that returns the pixel's new color) in a program of its own, after the
 // prelude docs/plugins.md describes: pixel(d), the color d processed pixels away as the pass before left it (the edge's
-// past the border), uv, uResolution, luma() and an opt_ uniform for each option. #line: the compiler's log counts the
-// author's lines. (The function can't be called filter: GLSL ES 3.00 keeps that word.)
-const filterSource = (pass, options) => `#version 300 es
+// past the border), uv, uResolution, luma() and an opt_ uniform for each option. Those are the plugin API; every other
+// name a pass can reach is Phosphor's own and begins ph_ (the picture, the varying, the output, the function itself),
+// as in a solver's shader (ShapeMatcher's PLUGIN). #line: the compiler's log counts the author's lines.
+export const filterSource = (pass, options) => `#version 300 es
 precision highp float;
 precision highp int;
-uniform sampler2D uImage; uniform vec2 uResolution; in vec2 vTexCoord; out vec4 outColor;
+uniform sampler2D ph_image; uniform vec2 uResolution; in vec2 ph_texCoord; out vec4 ph_color;
 vec2 uv;
-vec3 pixel(vec2 d) { vec2 h = 0.5 / uResolution; return texture(uImage, clamp(uv + d / uResolution, h, 1.0 - h)).rgb; }
+vec3 pixel(vec2 d) { vec2 h = 0.5 / uResolution; return texture(ph_image, clamp(uv + d / uResolution, h, 1.0 - h)).rgb; }
 float luma(vec3 c) { return dot(c, ${LUMA}); }
 ${options.map((option) => `uniform ${GLSL_TYPES[option.kind]} ${optUniform(option.id)};`).join('\n')}
-vec3 filtered() {
+vec3 ph_pass() {
 #line 1
 ${pass}
 }
-void main() { uv = vTexCoord; outColor = vec4(clamp(filtered(), 0.0, 1.0), texture(uImage, uv).a); }
+void main() { uv = ph_texCoord; ph_color = vec4(clamp(ph_pass(), 0.0, 1.0), texture(ph_image, uv).a); }
 `;
 
 export default class WebGLProcessor {
@@ -606,7 +607,7 @@ export default class WebGLProcessor {
       gl.viewport(0, 0, w, h);
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, currentSrc);
-      gl.uniform1i(gl.getUniformLocation(on, 'uImage'), 0);
+      gl.uniform1i(gl.getUniformLocation(on, on === program ? 'uImage' : 'ph_image'), 0); // a filter's program names it its own way
       gl.drawArrays(gl.TRIANGLES, 0, 6);
       currentSrc = destTex;
     };

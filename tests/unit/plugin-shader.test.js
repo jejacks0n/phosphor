@@ -2,6 +2,7 @@
 // body as solve() or refine(), and a main that calls it.
 import { describe, expect, it } from 'vitest';
 import { pluginShaderSource, ownGlyphs } from '@/lib/ShapeMatcher.js';
+import { filterSource } from '@/lib/WebGLProcessor.js';
 
 const def = {
   id: 'edges', reach: 1,
@@ -39,7 +40,7 @@ describe('pluginShaderSource', () => {
     expect(solve).toMatch(/void solve\(\) \{\n#line 1\nbyShape\(\);\n\}/);
     expect(solve).toMatch(/void main\(\) \{[^}]*solve\(\);/);
     expect(solve).toMatch(/const int glyphCount = 3;/);
-    expect(solve).toMatch(/const int reach = 2;/);
+    expect(solve).toMatch(/const int ph_reach = 2;/);
     const refine = pluginShaderSource(def, 'refine', { glyphs: 3, reach: 1 });
     expect(refine).toMatch(/void refine\(\) \{\n#line 1\nif \(charAt/);
     expect(refine).toMatch(/void main\(\) \{[^}]*refine\(\);/);
@@ -52,5 +53,63 @@ describe('pluginShaderSource', () => {
     expect(ownGlyphs(own, glyphs)).toEqual([3, 5, 6, 7]);
     expect(pluginShaderSource(own, 'solve', { glyphs: 8, reach: 1, own: ownGlyphs(own, glyphs) })).toMatch(/const int ownGlyph\[4\] = int\[4\]\(3, 5, 6, 7\);/);
     expect(pluginShaderSource(def, 'solve', { glyphs: 3, reach: 1, own: [] })).not.toMatch(/ownGlyph/); // no chars: no array
+  });
+});
+
+// An author's pass is pasted into a shader after Phosphor's prelude, so every name declared there is one the pass can
+// use, and would break if it were renamed. The names docs/plugins.md lists are the plugin API; every other one is
+// Phosphor's own and begins ph_, which the docs tell authors never to use or declare.
+describe('the names a pass can reach', () => {
+  // Every name declared outside a function in a shader's source: uniforms, ins and outs, constants, globals, functions
+  // and #defines. Comments are dropped and braces counted, so a function's own locals aren't taken.
+  function declared(source) {
+    const names = new Set();
+    const code = source.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
+    for (const [, name] of code.matchAll(/^[ \t]*#define[ \t]+(\w+)/gm)) names.add(name);
+    let depth = 0, statement = '';
+    const take = () => {
+      const head = statement.replace(/layout\s*\([^)]*\)/g, '').split(/[(=[]/)[0].trim();
+      const name = /(\w+)$/.exec(head)?.[1];
+      if (name && !/^precision\b/.test(head)) names.add(name);
+      statement = '';
+    };
+    for (const line of code.split('\n')) {
+      if (/^[ \t]*#/.test(line)) continue;
+      for (const char of line) {
+        if (char === '{') { if (depth++ === 0) take(); } else if (char === '}') { depth--; statement = ''; } else if (depth === 0) {
+          if (char === ';') take(); else statement += char;
+        }
+      }
+      if (depth === 0) statement += ' ';
+    }
+    return [...names];
+  }
+  const own = (names, listed) => names.filter((name) => !listed.includes(name) && !name.startsWith('ph_') && !name.startsWith('opt_'));
+
+  const SOLVER = ['sampleAt', 'charAt', 'cell', 'glyphCount', 'glyphMask', 'ownGlyph', 'paletteCount', 'paletteColor', 'uLight', 'uSolids', 'uStyle',
+    'snap', 'mixed', 'gray', 'toLinear', 'toSrgb', 'byShape', 'put', 'main'];
+  const FILTER = ['pixel', 'uv', 'uResolution', 'luma', 'main'];
+  const chars = { ...def, chars: '-|' };
+
+  it('finds what a source declares', () => {
+    const names = declared('#define two one\nuniform float one; // not this\nlayout(location = 0) out vec4 three;\nconst int four[2] = int[2](1, 2);\nvec2 five;\nfloat six(vec3 c) { float inner = 1.0; return inner; }\nvoid main() { six(vec3(0)); }');
+    expect(names.sort()).toEqual(['five', 'four', 'main', 'one', 'six', 'three', 'two']);
+  });
+
+  it.each(['solve', 'refine'])('a solver\'s %s pass reaches the listed names and Phosphor\'s own, which begin ph_', (pass) => {
+    const names = declared(pluginShaderSource(chars, pass, { glyphs: 3, reach: 1, own: [1, 2] }));
+    expect(own(names, [...SOLVER, pass])).toEqual([]);
+    for (const name of SOLVER.filter((each) => each !== 'charAt' || pass === 'refine')) expect(names, name).toContain(name);
+    expect(names).toContain('opt_threshold');
+    // sampleAt and put are each one function: By shape's own of those names (other arguments) would be reachable too.
+    const source = pluginShaderSource(chars, pass, { glyphs: 3, reach: 1, own: [1, 2] });
+    expect([source.match(/\bsampleAt\(ivec2 \w+, \w+ \w+\) \{/g), source.match(/\bvoid put\(/g)]).toEqual([['sampleAt(ivec2 d, int i) {'], ['void put(']]);
+  });
+
+  it('a filter\'s pass reaches the listed names and Phosphor\'s own, which begin ph_', () => {
+    const names = declared(filterSource('return pixel(vec2(0.0));', def.options));
+    expect(own(names, FILTER)).toEqual([]);
+    for (const name of FILTER) expect(names, name).toContain(name);
+    expect(names).toContain('opt_threshold');
   });
 });
