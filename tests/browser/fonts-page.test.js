@@ -11,7 +11,7 @@ import { usePaletteStore } from '@/store/PaletteStore.js';
 import { fontId, blocksOf, fontKey, slotOf, CP437_BLOCKS as cp437Blocks } from '@/lib/BitmapFont.js';
 import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs.js';
 import { storedBitmapFont } from '@/lib/userFonts';
-import { cp437Font, lowerAt240, noLowerHalf } from '../support/blockFonts.js';
+import { cp437Font, lowerAt240, noLowerHalf, noLowerNoShades } from '../support/blockFonts.js';
 import { addFont, addBitmapFont, loadFonts, removeFont, storeFontPart } from '@/lib/userFonts';
 import { openFontSetup } from '@/composables/useFontSetup.js';
 import { forgetLibrary } from '@/lib/fontLibrary';
@@ -461,7 +461,7 @@ test('shows the eight blocks, and where CP437 would put a moved one', async () =
   expect(tiles().map((t) => t.slot)).toEqual(['219', '240', '223', '221', '222', '176', '177', '178']);
   expect(tiles().map((t) => t.name)).toEqual(['Full', 'Lower', 'Upper', 'Left', 'Right', 'Light', 'Medium', 'Dark']);
   expect(text()).toContain('Lower half found at slot 240. CP437 puts it at 220, which holds');
-  expect(text()).toContain('To change a block, pick it');
+  expect(text()).toContain('To change a block, select it and then its character in the character map below, or drag the character into it.');
   expect(slotCell(240).textContent).toBe('▄'); // the sheet shows each slot's own character
   expect(slotCell(240).classList.contains('role')).toBe(true);
   expect(await actions()).not.toContain('Find blocks again');
@@ -558,12 +558,38 @@ test('picking the slot a block already has is no change, and a tile unpicks on a
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
 });
 
-test('a font with no lower half says paint is off', async () => {
+test('a font with no lower half says how to give it one', async () => {
   await mount({ font: noLowerHalf });
   expect(tiles()[1].slot).toBe('none');
   expect(tile('Lower').classList.contains('missing')).toBe(true);
-  expect(text()).toContain('No lower half found in this font, so drawings in it can\u2019t hold paint');
+  expect(host.querySelector('.blocks .note').textContent).toBe('No \u201cLower\u201d block found in this font. Pick one by selecting \u201cLower\u201d and then its character in the character map below, or by dragging the character into \u201cLower\u201d.');
   expect(host.querySelector('.blocks .note').classList.contains('warn')).toBe(true);
+});
+
+test('with the lower half and other blocks missing, the note says to fill them the same way', async () => {
+  await mount({ font: noLowerNoShades });
+  expect(host.querySelector('.blocks .note').textContent).toContain('\u201cLower\u201d. Finish filling out any other missing blocks in the same way.');
+});
+
+// A slot dragged from the sheet onto a tile: the HTML drag events with one DataTransfer, as the browser passes it.
+const drag = async (from, to) => {
+  const dataTransfer = new DataTransfer();
+  from.dispatchEvent(new DragEvent('dragstart', { dataTransfer, bubbles: true }));
+  to.dispatchEvent(new DragEvent('dragover', { dataTransfer, bubbles: true, cancelable: true }));
+  to.dispatchEvent(new DragEvent('drop', { dataTransfer, bubbles: true, cancelable: true }));
+  await nextTick();
+};
+
+test('a character dragged from the sheet into a block sets it, nothing picked after; the tiles share the row\u2019s width', async () => {
+  const { project } = await mount({ font: noLowerHalf });
+  expect(slotCell(254).draggable).toBe(true);
+  await drag(slotCell(254), tile('Lower'));
+  expect(blocksOf(project.drawingFont)[1]).toBe(254);
+  expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
+  const row = host.querySelector('.blocks').getBoundingClientRect(), rects = tiles().map((t) => t.el.getBoundingClientRect());
+  for (const top of new Set(rects.map((r) => r.top))) { // each row of tiles reaches the row's end
+    expect(Math.max(...rects.filter((r) => r.top === top).map((r) => r.right))).toBeCloseTo(row.right, 0);
+  }
 });
 
 test('an edit to a font only in the browser is kept with it and leaves the drawing alone', async () => {
@@ -621,7 +647,7 @@ test('Set up its blocks opens the page on the font with Lower picked, and a clic
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('true');
   expect(workspace.fontSetup).toBe(null); // taken
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true); // the place to click
-  expect(text()).toContain('Lower is picked: click the slot in the sheet that should draw the lower half.');
+  expect(text()).toContain('Lower is picked: click the character in the character map below that should draw the lower half.');
   expect(text()).not.toContain('Pick Lower, then click a slot');
   await press(slotCell(254));
   expect(blocksOf(project.drawingFont)[1]).toBe(254);
@@ -643,7 +669,7 @@ test('nothing picked, the sheet isn\u2019t marked; a block that has its slot pic
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
   await press(tile('Full'));
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(true);
-  expect(text()).not.toContain('is picked: click the slot'); // Full has its slot: the notes as they were
+  expect(text()).not.toContain('is picked: click the character'); // Full has its slot: the notes as they were
 });
 
 test('in a room, Set up its blocks picks nothing and says nothing of clicking a slot', async () => {
@@ -652,7 +678,7 @@ test('in a room, Set up its blocks picks nothing and says nothing of clicking a 
   await nextTick();
   expect(workspace.fontSetup).toBe(null);
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('false');
-  expect(text()).not.toContain('is picked: click the slot');
+  expect(text()).not.toContain('is picked: click the character');
   expect(host.querySelector('.sheet').classList.contains('picking')).toBe(false);
 });
 
@@ -678,8 +704,21 @@ test('the Lines section adds a style slot by slot', async () => {
 test('a style missing pieces says every piece is needed', async () => {
   await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: [1, 2, ...Array(9).fill(null)] }] } } });
   await press(sectionTab('Lines'));
-  expect(host.querySelector('.lines .card .status').textContent).toBe('All line sections are required to be able to draw with it. Select characters below to define this style.');
+  expect(host.querySelector('.lines .card .status').textContent).toBe('All line sections are required to be able to draw with it. Select characters below or drag them into the sections to define this line style.');
   expect(lineTiles()[2].classList.contains('missing')).toBe(true);
+});
+
+test('a character dragged from the sheet into a line section sets that piece; Delete is a trash can', async () => {
+  const { project } = await mount({ font: { ...cp437Font, lines: { hide: [], styles: [{ ...heavy, slots: Array(11).fill(null) }] } } });
+  await press(sectionTab('Lines'));
+  await drag(slotCell(5), lineTiles()[3]);
+  expect(project.drawingFont.lines.styles[0].slots[3]).toBe(5);
+  await drag(slotCell(220), lineTiles()[4]); // a block's slot is refused, as a click is
+  expect(project.drawingFont.lines.styles[0].slots[4]).toBe(null);
+  const widths = lineTiles().map((el) => el.getBoundingClientRect().width);
+  expect(widths.every((w) => Math.abs(w - widths[0]) < 0.5)).toBe(true); // a short last row keeps the columns' width
+  const remove = host.querySelector('.lines .card button.ghost');
+  expect([remove.textContent.trim(), remove.getAttribute('aria-label'), !!remove.querySelector('svg')]).toEqual(['', 'Delete', true]);
 });
 
 test('a block\u2019s slot can\u2019t be a piece', async () => {
@@ -812,9 +851,15 @@ test('a style or set named nothing, or only spaces, takes its default name', asy
   expect(host.querySelector('.sets input.name').value).toBe('Set 2');
 });
 
-test('Show stock sets is one switch', async () => {
-  const { project } = await mount({ font: cp437Font });
+test('Show stock sets is one switch, with no notes under the sets and Delete a trash can', async () => {
+  const { project } = await mount({ font: { ...cp437Font, sets: { hideStock: false, sets: [{ id: 's1', name: 'Grit', slots: [250] }] } } });
   await press(sectionTab('Sets'));
+  host.querySelector('.sets input.chars').focus();
+  await nextTick();
+  expect(host.querySelector('.sets p.note')).toBeNull();
+  expect(host.querySelector('.sets label.stock').textContent.trim()).toBe('Show stock sets for this font (e.g. \u201cBlocks & shades\u201d)');
+  const remove = host.querySelector('.sets .set button.ghost');
+  expect([remove.textContent.trim(), remove.getAttribute('aria-label'), !!remove.querySelector('svg')]).toEqual(['', 'Delete', true]);
   const box = host.querySelector('.sets input[type="checkbox"]');
   expect(box.checked).toBe(true);
   await press(box);

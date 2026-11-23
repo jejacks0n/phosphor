@@ -164,6 +164,13 @@ export function decodeBlocks(text) {
 }
 
 // A copy of blocks with this block at slot (or none); another block there shares it.
+// A sheet slot dragged onto a block's or a line piece's tile: its number, under this type.
+export const SLOT_DRAG = 'application/x-phosphor-slot';
+export const droppedSlot = (event) => {
+  const n = event.dataTransfer?.getData(SLOT_DRAG);
+  return n ? Number(n) : null;
+};
+
 export function withBlock(blocks, key, slot) {
   const at = BLOCKS.findIndex((b) => b.key === key);
   return blocks.map((s, i) => (i === at ? slot : s));

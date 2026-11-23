@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { blocksOf, BLOCKS } from '@/lib/BitmapFont';
+import { blocksOf, droppedSlot, BLOCKS } from '@/lib/BitmapFont';
+import { TRASH } from '@/components/icons';
 import { PIECES, lineStylesOf, nextId } from '@/lib/FontLines';
 
 // The Fonts page's Lines section: Single and Double with their Hide switches, then the font's own line styles as cards
@@ -62,20 +63,30 @@ const add = () => {
 };
 
 // A slot clicked on the sheet: the picked piece's, unless a block is drawn from it or another piece of the style has it
-// (two styles may share one); then the next unset piece is picked.
-const slot = (n) => {
-  const style = lines.value.styles.find((s) => s.id === props.picked?.style);
+// (two styles may share one); then the next unset piece is picked. One dragged onto a tile is that piece's (pick), and
+// leaves the pick as it was.
+const slot = (n, pick = props.picked) => {
+  const style = lines.value.styles.find((s) => s.id === pick?.style);
   if (props.disabled || !style) return;
   const block = blocksOf(props.font).indexOf(n);
   if (block >= 0) return void (refused.value = { n, block: BLOCKS[block].key });
-  const piece = props.picked.piece, other = style.slots.findIndex((s, i) => s === n && i !== piece);
+  const piece = pick.piece, other = style.slots.findIndex((s, i) => s === n && i !== piece);
   if (other >= 0) return void (refused.value = { n, piece: other });
   const slots = style.slots.map((s, i) => (i === piece ? n : s));
   if (style.slots[piece] !== n) change(lines.value.styles.map((s) => (s === style ? { ...s, slots } : s)));
+  if (pick !== props.picked) return;
   const next = [...slots.keys()].map((i) => (piece + 1 + i) % slots.length).find((i) => slots[i] === null);
   emit('pick', next === undefined ? null : { style: style.id, piece: next });
 };
 defineExpose({ slot });
+
+const over = ref(null); // 'style:piece', the tile a slot is dragged over
+const drop = (event, style, piece) => {
+  over.value = null;
+  refused.value = null;
+  const n = droppedSlot(event);
+  if (n !== null) slot(n, { style, piece });
+};
 </script>
 
 <template>
@@ -89,19 +100,22 @@ defineExpose({ slot });
     <div v-for="s in own" :key="s.id" class="card">
       <div class="top-row">
         <input :value="s.name" maxlength="40" :aria-label="t('palette.fonts.lineNameAria')" :disabled="disabled" @change="rename(s.id, $event.target)">
-        <button class="ghost" :disabled="disabled" :title="disabled ? reason : undefined" @click="remove(s.id)">{{ t('common.delete') }}</button>
+        <button class="ghost delete" :disabled="disabled" :aria-label="t('common.delete')" :title="disabled ? reason : t('common.delete')" @click="remove(s.id)" v-html="TRASH"/>
       </div>
       <div class="tiles">
         <button
             v-for="(piece, i) in PIECES"
             :key="i"
             class="tile"
-            :class="{ missing: problemAt(s, i), picked: isPicked(s, i) }"
+            :class="{ missing: problemAt(s, i), picked: isPicked(s, i), over: over === `${s.id}:${i}` }"
             :aria-pressed="isPicked(s, i)"
             :disabled="disabled"
             :title="disabled ? reason : problemAt(s, i)?.reason === 'block' ? shares(s, problemAt(s, i)) : undefined"
             :data-off-reason="disabled ? '' : undefined"
             @click="emit('pick', isPicked(s, i) ? null : { style: s.id, piece: i })"
+            @dragover.prevent="over = `${s.id}:${i}`"
+            @dragleave="over = null"
+            @drop.prevent="drop($event, s.id, i)"
         >
           <span class="glyph" :style="{ fontFamily: family }">{{ s.chars[i] ?? '' }}</span>
           <span class="name">{{ piece }}</span>
@@ -172,9 +186,9 @@ div.top-row input {
   font-size: 13px;
 }
 
-div.tiles {
-  display: flex;
-  flex-wrap: wrap;
+div.tiles { /* equal columns across the card, as a palette's slots are; a short last row keeps their width */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
   gap: 4px;
 }
 
