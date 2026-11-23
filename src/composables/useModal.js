@@ -6,11 +6,20 @@ import { nextTick } from 'vue';
 // (Escape, Android's back gesture) calls `cancel` and leaves the dialog open. A browser can close a dialog anyway,
 // after a few requests the page held off: then it cancels, and opens again if whoever shows it says no. `outside`
 // tells a press on the backdrop, which is the dialog's own, from one in its box.
+// One that opens before a frame is drawn since another went (a dialog in another's place: Plugins' Install question,
+// and back) is marked data-handover, so its backdrop doesn't fade in from nothing over the page the old one left.
+let handedOver = false;
+
 export function useModal(cancel, { opened } = {}) {
   let dialog = null;
   const open = (el) => {
+    if (!el && dialog) {
+      handedOver = true;
+      requestAnimationFrame(() => { handedOver = false; });
+    }
     dialog = el;
     if (el && !el.open) {
+      el.toggleAttribute('data-handover', handedOver);
       el.showModal();
       // The toast stays over it, shown again to the top, as it was over the old backdrops. A menu or the color box
       // left open stays under it.
