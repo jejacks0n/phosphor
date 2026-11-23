@@ -8,6 +8,7 @@ import { COMMANDS, commandById, commandContext, listedCommands, optionCommands, 
 import { offeredTools } from '@/tools';
 import { searchCommands } from '@/lib/commandSearch';
 import { rectShape } from '@/document/shapes.js';
+import { makeArt } from '@/document/artLayers.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
@@ -260,4 +261,35 @@ test('the layer rows want the picked row there; Make art layer\'s reason names a
   expect(project.layers.some((layer) => layer.id === project.editId)).toBe(false);
   expect(reasonOf('layer.makeArt', project, workspace)).toBe('Add a vector layer above Layer 1 first.');
   project.stopSharing();
+});
+
+// Fix round 1: each row grays with what its button or field says, by the same test.
+test('Dimensions is off, saying who, while someone is inside an art layer, as its field is', async () => {
+  const { project, workspace } = await drawing();
+  const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 3, rows: 2, cells: [[0, 'A', '#0000ff', '#ff0000']] } }));
+  expect(reasonOf('drawing.canvasSize', project, workspace)).toBe(true);
+  useDrawingStore().cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
+  expect(reasonOf('drawing.canvasSize', project, workspace)).toBe('Ann is currently editing an art layer');
+  expect(reasonOf('drawing.canvasSize', project, workspace)).toBe(useDrawingStore().someoneInside); // the field's title
+});
+
+test('Make art layer is off with nothing drawn in the selection, as its button is, and on with something', async () => {
+  const { project, workspace } = await drawing();
+  workspace.setActiveTool('select');
+  workspace.selection = { c0: 0, r0: 0, c1: 2, r1: 2 };
+  expect(reasonOf('layer.makeArt', project, workspace)).toBe('Nothing is drawn in the selected cells.');
+  project.typeAt(1, 1, 'A');
+  expect(reasonOf('layer.makeArt', project, workspace)).toBe(true);
+});
+
+test('Bake\'s and Flatten\'s questions go with the toolbar, so one left open doesn\'t come back on the next drawing', async () => {
+  const { workspace } = await drawing();
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  Object.assign(workspace, { baking: 'CGA', bakingFinal: true, flattening: true });
+  await nextTick();
+  toolbar.unmount();
+  host.remove();
+  expect([workspace.baking, workspace.bakingFinal, workspace.flattening]).toEqual([null, false, false]);
 });
