@@ -290,14 +290,18 @@ test('version mismatch refuses version with our protocol', async () => {
 });
 
 test('the port falls back when taken, and NO_PORT past twenty', async () => {
-  const base = 40_000 + Math.floor(Math.random() * 20_000);
+  // Below the ports the system hands out for outgoing connections (Linux from 32768, macOS from 49152), so nothing else
+  // takes these while the test runs; one taken all the same is as occupied as one the test holds.
+  const base = 20_000 + Math.floor(Math.random() * 10_000);
   const occupy = (port) => new Promise((resolve, reject) => {
-    const server = net.createServer().once('error', reject).listen(port, '127.0.0.1', () => resolve(server));
-    opened.push(() => new Promise((done) => server.close(done)));
+    const server = net.createServer().once('error', (error) => (error.code === 'EADDRINUSE' ? resolve(null) : reject(error))).listen(port, '127.0.0.1', () => {
+      opened.push(() => new Promise((done) => server.close(done)));
+      resolve(server);
+    });
   });
   await occupy(base);
   const s = await service({ port: base });
-  assert.equal(s.port, base + 1);
+  assert.ok(s.port > base && s.port < base + 20, `${s.port} after ${base}`); // the next free one: base + 1, unless that's taken too
   await s.close();
   for (let port = base + 1; port < base + 20; port++) await occupy(port);
   await assert.rejects(service({ port: base }), { code: 'NO_PORT' });
