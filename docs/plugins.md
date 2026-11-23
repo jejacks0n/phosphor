@@ -176,7 +176,7 @@ The fields:
 | `phosphor` | The plugin API level the plugin needs ([Levels](#levels)). | `1`, the only level so far. A level higher than this Phosphor's is refused: "This plugin was made for a newer Phosphor." |
 | `id` | Who made it and what it is: `author.name`. The same id installed again replaces the plugin. | Lowercase letters, digits and hyphens on each side of one dot, each side beginning and ending with a letter or a digit; 64 characters at most. |
 | `name` | The plugin's name, as the dialog shows it. | Required; 60 characters at most. |
-| `version` | Its version, in [semver](https://semver.org) (`1.0.0`, `1.1.0-beta`). | Required, without a `v`. |
+| `version` | Its version, in [semver](https://semver.org) (`1.0.0`, `1.1.0-beta`). | Required, without a `v` and without build metadata (`1.0.0+5` is refused). |
 | `author` | Who made it. | Required; 60 characters at most. |
 | `description` | A line about it. | Optional; 300 characters at most. |
 | `homepage` | Where to read about it, linked from the dialog. | Optional; `https://` only; 200 characters at most. |
@@ -217,9 +217,8 @@ art's own colors aren't a theme's):
 | `toast`, `toast-text` | The toast's ground and its words. |
 | `wand-fill` | The Magic Wand's tint over what it selected. Its see-through is its own, so give it as `#rrggbbaa`. |
 
-The last eight slots (from `white` down) are newer than the rest. A copy of Phosphor from before a slot was added
-refuses a theme that sets it, and leaves it out of its Marketplace, so a theme meant for older copies too leaves the
-newer slots out.
+Every slot here is level 1 ([Levels](#levels)). A slot added later comes with a higher level, and a theme that sets it
+names that level.
 
 Not slots: the backdrops behind dialogs, what's drawn over the art to show on any art (the Brush's circle, a selection's
 dashes, the dark rings around a guide and another person's cursor), the black behind a Marketplace preview and a room's
@@ -250,7 +249,8 @@ your plugin uses:
 
 ## Writing a script
 
-A script is a JavaScript module that imports nothing: everything it needs comes in its calls. Its default export lists
+A script is a JavaScript module that imports nothing: everything it needs comes in its calls. It's one file, the one
+the manifest names; a plugin written in several files is bundled into one first. Its default export lists
 what it adds, in four lists. Each is optional, and at least one has something in it:
 
 ```js
@@ -290,7 +290,8 @@ it is there, and a plugin that uses it would stop working.
 
 Each of the four kinds can have up to 12 options: what the person can set, drawn with Phosphor's own controls in your
 words. Each has an `id` (a lowercase letter first, then up to 31 lowercase letters, digits and underscores, never two
-underscores together: it's the end of a shader's uniform name, `opt_<id>`; one of its kind among the item's options), a
+underscores together: it's the end of a shader's uniform name, `opt_<id>`, which is why it takes underscores where every
+other id takes hyphens; one of its kind among the item's options), a
 `name` and a `kind`:
 
 - `slider`: `min`, `max`, `step` and `default`.
@@ -303,7 +304,8 @@ underscores together: it's the end of a shader's uniform name, `opt_<id>`; one o
 
 Where the values are kept depends on the kind: a solver's for each layer, saved with the drawing; a filter's with the
 drawing; a brush's and a shape's in this browser, for each brush and each shape, and not in the drawing. A value kept
-that no longer fits (a new version changed a range or the choices) is the option's default.
+that no longer fits (a new version changed a range or the choices) is the option's default; what a new version can
+change without changing people's drawings is in [A new version of a plugin](#a-new-version-of-a-plugin).
 
 ### Icons
 
@@ -318,7 +320,8 @@ what it read. Anything else refuses the plugin ("The plugin's script has a probl
   `y1`, `x2`, `y2`), `stroke-width` and `opacity` as plain numbers (no units), `fill` and `stroke` as `currentColor` or
   `none`, `fill-rule` and `clip-rule` (`nonzero`, `evenodd`), `stroke-linecap` and `stroke-linejoin`.
 - Comments are fine, and so is an `<?xml …?>` line at the very start. Text, styles, classes, `transform`, links (`use`,
-  `xlink:href`), entities, scripts and colors of their own aren't.
+  `xlink:href`), entities, scripts and colors of their own aren't. Nor is anything else a drawing program adds on
+  export: a `<title>`, `fill-opacity`, `stroke-opacity`, `stroke-miterlimit`.
 
 Draw it in `currentColor`, so it takes the toolbar's colors in every theme.
 
@@ -359,6 +362,7 @@ export default {
     options: [
       { id: 'threshold', kind: 'slider', name: 'Threshold', min: 0, max: 100, step: 1, default: 40 },
       { id: 'lines', kind: 'choice', name: 'Lines', choices: ['ASCII', 'Box drawing'], default: 0 },
+      { id: 'elsewhere', kind: 'choice', name: 'Elsewhere', choices: ['By shape', 'Blank'], default: 0 },
       { id: 'clean_up', kind: 'checkbox', name: 'Clean up', default: true },
     ],
     solve,    // pass 1: one cell
@@ -372,10 +376,10 @@ export default {
 |---|---|---|
 | `id` | The solver's own name in the plugin. | Required; one of its kind in the script. |
 | `name` | What the **Choose characters** list shows. | Required; 40 characters at most. |
-| `styles` | The art styles it works in. | Any of `ansi`, `colorAscii`, `ascii`. In another style the layer shows By shape instead. |
-| `reach` | How many cells away it reads (see below). | A whole number, 0 to 4. |
-| `chars` | Characters of its own, added to the layer's set for it, so it can draw one the set doesn't hold. | 32 at most; no control characters, combining marks or two-column characters. |
-| `options` | What the person can set, up to 12. | Below. |
+| `styles` | The art styles it works in. | Required; one or more of `ansi`, `colorAscii`, `ascii`. In another style the layer shows By shape instead. |
+| `reach` | How many cells away it reads (see below). | Required; a whole number, 0 to 4 (0 for a solver that reads only its own cell). |
+| `chars` | Characters of its own, added to the layer's set for it, so it can draw one the set doesn't hold. | Optional; 32 at most; no control characters, combining marks or two-column characters. |
+| `options` | What the person can set, up to 12. | Optional; below. |
 | `solve`, `refine` | The passes. | `solve` is required. |
 | `shader` | The passes for the graphics card. | Optional; each string 64 KB at most. |
 
@@ -408,10 +412,15 @@ chosen for every cell, and it can read what pass 1 chose around it.
   background (no ink) to the foreground (all ink), as GLSL's `mix` goes from its first to its second. `look.nearest(color)`
   gives the palette's nearest color, and `look.gray(color)` a color's brightness, 0 to 255.
 - `look.byShape()` gives the cell as By shape would pick it from the layer's set alone, so a solver can do its own
-  thing in some cells and leave the rest to By shape.
+  thing in some cells and leave the rest to By shape. It answers in one object that its next call overwrites, as
+  `cell.sample` does: return it as it is, or copy what you keep.
+
+`cell` and `look` are Phosphor's own objects, handed to every call of a pass: `cell` is the same object for each cell
+in turn, its `col` and `line` changed, so keep the numbers, not the object.
 
 A pass returns `{ char, fg, bg }`. A color is a palette index or `{ r, g, b }`, 0 to 255, and gets the palette's nearest
-color when there is one. The result is held to the layer's set and the style: a character the layer's set and your
+color when there is one. Anything else is black, so a mistake shows: a channel under 0 or over 255, an index the palette
+doesn't have, or a color as an `[r, g, b]` list (what `cell.sample` gives is a list; name its channels). The result is held to the layer's set and the style: a character the layer's set and your
 `chars` don't hold is the first character of the set (a fault: where your JavaScript draws, the plugin's row in the
 Plugins dialog says the solver returned a character it doesn't draw with), Color ASCII's background is black and
 Monochrome ASCII is white on black. `refine` may return `null` to keep pass 1's cell, as Outlines does where Clean up
@@ -547,8 +556,7 @@ functions, so `this` is undefined. `paint` is made once a stroke, and is the sam
   what the picked layer had there when the stroke began.
 - `paint.set(x, y, color, alpha)`: makes the picked layer's paint at a grid pixel exactly `color` at `alpha`, whatever
   was there; at 0 it clears the pixel, and needs no color. It's how a brush thins or removes paint, which a put can't.
-  On the base, where every pixel is opaque, it's a put. A copy of Phosphor from before it has no `set`, so a brush for
-  those too checks `typeof paint.set === 'function'`, as Smear does.
+  On the base, where every pixel is opaque, it's a put.
 - `paint.dab(from, to, size, hardness)`: the grid pixels a round brush of that size and hardness (0 to 1) covers moving
   from `from` to `to`, as `[{ x, y, alpha }]`, laid as the Brush lays them, so a brush needn't work out its own
   footprint. The size is held to the Brush's largest, 20, and a hardness that isn't given is 1. A pixel can come more
@@ -754,6 +762,49 @@ You don't need to build Phosphor to try a plugin: install your file in the app a
   **Follow file** read the manifest and the script again, so a save to the script shows at once. Its row says "From a
   folder". A script you save that fails its checks is left, and the last good one stays.
 - **The desktop app** doesn't link to files: write your plugin in Chrome or Edge.
+
+## A new version of a plugin
+
+A drawing doesn't hold a copy of your plugin. It holds short references into it, and the plugin that's installed fills
+in the rest. So a new version is read by every drawing made with an older one, and by the settings people already
+have. Phosphor keeps no record of which version made a drawing, so it can't tell when the two no longer fit.
+
+What's kept, and where:
+
+| What | Kept as | Where |
+|---|---|---|
+| A layer's solver | `plugin:<plugin id>/<solver id>`, and its options' values by option id once any has been changed. | The drawing. |
+| A filter's values | `plugin:<plugin id>/<filter id>`, with only the values that are off their defaults, by option id. | The drawing. |
+| A drawn shape | `plugin:<plugin id>/<shape id>`, the box it was drawn in and every value it was drawn with, by option id. | The drawing. |
+| A brush's and a shape's own settings | Their values by option id. | The browser. |
+| The theme in use | `plugin:<plugin id>/<theme id>`. | The browser. |
+
+A slider's value is its number, a checkbox's true or false, a color's `'#rrggbb'`, and a choice's **the number of the
+choice**, not its words.
+
+So once a version is out, these stay as they are:
+
+- **The plugin's `id`, and the `id` of each theme, solver, brush, shape and filter.** Change one and the drawings that
+  name the old one say it isn't installed (a solver's layer shows By shape, a filter's picture shows without it), and
+  the person's theme goes back to its base.
+- **Each option's `id` and `kind`.** A value kept under an id that's gone is forgotten, and the option is at its
+  default.
+- **Each option's `default`.** A solver's option nobody has touched, and every option of a filter that sits at its
+  default, isn't in the drawing: it's read from your plugin. Move a default and those drawings change. A filter runs
+  only while an option is off its default, so a kept value that becomes the new default can also turn the filter off.
+- **The order of `choices`.** New choices go at the end. Put one in the middle and every drawing set to a later choice
+  shows the one before it.
+- **What a part draws for the same values.** A solver or filter that draws differently redraws every drawing that uses
+  it the next time it's opened. For a different look, add an option whose default is the old look, or add a new part
+  with an id of its own beside the old one.
+
+What can change freely: every `name` and choice's words (they're shown, not kept, except a filter's name, which a
+drawing shows when the filter isn't there), an icon, a brush's `key`, a slider's `min`, `max` and `step` (a kept value
+that no longer fits is the option's default, so widen a range rather than narrow it), new options (their defaults being
+what the part did before), new parts, and a theme's colors.
+
+Raise `version` with every change you publish: it's the only thing that makes an Update
+([The Marketplace](#the-marketplace)).
 
 ## Listing a plugin
 
