@@ -80,6 +80,10 @@ const usesHalves = (ws) => blockShape(ws) && !!ws.shapeVerticalHalves;
 // Whether the ANSI view draws this shape in blocks (half or full), so Block characters applies.
 const drawsBlocks = (ws) => drawnWith(ws) === 'half' || drawnWith(ws) === 'full';
 
+// Box lines and Character write characters, which keep a cell's color for a side that's None; the rest paint (blocks
+// too), the outline in the foreground and the inside in the background.
+const writesChars = ({ workspace, view }) => view === 'output' && !drawsBlocks(workspace);
+
 // A shape's inside: its whole coverage (field: alpha or cover) minus its outline's, by key. For an
 // anti-aliased ellipse the two then add up to the filled shape's coverage, pixel by pixel.
 const insideOf = (all, outline, keyOf, field) => {
@@ -106,7 +110,7 @@ const twoTone = (all, outline, fg, bg) => {
 // halfStepLine, halfStepEllipse), as block characters: the outline in FG, the rest of each cell as
 // it was. Filled, the inside is BG: cells wholly inside are BG spaces, and an outline cell takes BG
 // behind it where the rest of it is inside. Every cell is marked laid, so the Soft and PIXEL erasers take it (R1).
-function halfCells(project, workspace, end, fill) {
+function halfCells(project, workspace, end, fill, { fg, fgIndex }) {
   // Without quadrants the half-column detail is whole cells tall (▌ ▐ █), as Full-block draws it.
   const halfRows = drawnWith(workspace) === 'half' && hasQuadrants(project.drawingFont);
   const rows = halfRows ? project.rows : charRowsOf(project.rows);
@@ -117,7 +121,7 @@ function halfCells(project, workspace, end, fill) {
   const outline = shape(false), all = fill ? shape(true) : outline;
   const ring = new Set(outline.map(({ x, y }) => `${x},${y}`));
   const inside = new Map(halfBlockCells(all.filter(({ x, y }) => !ring.has(`${x},${y}`)), halfRows).map((c) => [`${c.col},${c.row}`, c.mask]));
-  const { editFgColor: fg, editBgColor: bg, editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
+  const { editBgColor: bg, editBgIndex: bgIndex } = workspace;
   const cells = halfBlockCells(outline, halfRows).map(({ col, row, char, mask }) => {
     const filled = (inside.get(`${col},${row}`) ?? 0) & ~mask;
     inside.delete(`${col},${row}`);
@@ -150,7 +154,10 @@ function apply({ project, workspace, view }, end) {
   // Filled when there's a background to fill with; Character mode fills with its character instead.
   // A line has no inside.
   const fill = kind === 'line' ? false : charMode ? workspace.shapeCharFill : !workspace.editBgNone;
-  const fg = workspace.editFgColor, bg = workspace.editBgColor;
+  // With the foreground None a painted shape is its fill alone, its outline in the background color too (begin refused
+  // one with nothing to fill).
+  const alone = workspace.editFgNone && !writesChars({ workspace, view });
+  const bg = workspace.editBgColor, fg = alone ? bg : workspace.editFgColor, fgIndex = alone ? workspace.editBgIndex : workspace.editFgIndex;
   // A selection in the ANSI view keeps every write to the pixels or cells inside it.
   const clip = selectionClip(workspace);
   const kept = (list) => (clip ? list.filter((p) => ('col' in p ? clip.cell(p.col, p.row) : clip.pixel(p.x, p.y))) : list);
@@ -171,7 +178,7 @@ function apply({ project, workspace, view }, end) {
 
   // Vertical half blocks: whole blocks placed to the nearest half cell across, as block characters.
   if (usesHalves(workspace)) {
-    project.writeEditCells(kept(halfCells(project, workspace, end, fill)), { clearPaint: true });
+    project.writeEditCells(kept(halfCells(project, workspace, end, fill, { fg, fgIndex })), { clearPaint: true });
     return;
   }
 
@@ -221,7 +228,7 @@ function apply({ project, workspace, view }, end) {
     return;
   }
 
-  const attrs = workspace.typingAttrs();
+  const attrs = { ...workspace.typingAttrs(), ...(alone ? { fg, fgIndex } : {}) };
   let cells;
   if (charMode) {
     // The character in FG, backgrounds untouched.
@@ -281,6 +288,12 @@ export default {
   views: ['input', 'output'],
   kind: 'paint',
   altPicks: true,
+  nothingToLay(ctx) {
+    const { workspace } = ctx;
+    if (writesChars(ctx) || !workspace.editFgNone) return null;
+    return workspace.shapeKind === 'line' ? 'tools.fgNone' : workspace.editBgNone ? 'tools.colorsNone' : null; // a line has no inside
+  },
+  writesChars,
   // What Shift does, for the status bar. A box line only runs across or down already.
   shiftHint: (ws) => (boxLine(ws, 'output', useProjectStore().drawingFont) ? null : {
     rect: t('tools.shapes.shiftSquare'),

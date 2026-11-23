@@ -4,6 +4,7 @@ import { test, expect, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import ColorsPage from '@/components/ColorsPage.vue';
+import ColorPair from '@/components/ColorPair.vue';
 import { i18n } from '@/i18n';
 import { toastMessage } from '@/composables/useToast';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
@@ -211,8 +212,9 @@ test('with no drawing and VGA chosen, the Colors page shows VGA\'s 256 swatches,
   close();
 });
 
-// The foot holds None only where it's offered (not the PIXEL view's foreground), and the box keeps its height either way.
-test('the foot is as tall without None as with it, so the box keeps its height between the slots', async () => {
+// Either side can be None, in every view (what the tools do with it: colors-none.test.js), so the foot holds None for both
+// slots and the box keeps its height between them.
+test('in the PIXEL view the foreground offers None as the background does; choosing it shows None on the chip', async () => {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
@@ -230,6 +232,22 @@ test('the foot is as tall without None as with it, so the box keeps its height b
     return out;
   };
   const fg = await footOf('fg'), bg = await footOf('bg');
-  expect([fg.none, bg.none]).toEqual([false, true]);
+  expect([fg.none, bg.none]).toEqual([true, true]);
   expect(fg.height).toBe(bg.height);
+  const { host, close } = await openBox({ slotName: 'fg' });
+  const chips = document.createElement('div');
+  document.body.append(chips);
+  const pair = createApp(ColorPair).use(i18n);
+  pair.mount(chips);
+  try {
+    host.querySelector('.swatch.none').click();
+    await nextTick();
+    expect(workspace.editFgNone).toBe(true);
+    expect(host.querySelector('.swatch.none').classList.contains('selected')).toBe(true);
+    expect(chips.querySelector('.chip.fg').classList.contains('none')).toBe(true);
+  } finally {
+    pair.unmount();
+    chips.remove();
+    close();
+  }
 });

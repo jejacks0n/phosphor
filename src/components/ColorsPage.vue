@@ -36,7 +36,6 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const root = useTemplateRef('root');
 
-const ansiView = computed(() => workspace.editorTab === 'output');
 const vector = computed(() => workspace.editorTab === 'vector');
 const style = useVectorStyle();
 const SHAPE_SLOTS = { fg: 'fill', bg: 'stroke' };
@@ -60,10 +59,10 @@ const current = computed(() => stop.value ?? (vector.value ? solidOf(style.value
 // The slot's index (16, 231), so its swatch is the one marked, not 0's or 15's beside it; a shape's colors have none.
 const currentIndex = computed(() => (vector.value || stop.value ? undefined : props.slotName === 'fg' ? workspace.editFgIndex : workspace.editBgIndex));
 const KINDS = ['solid', 'linear', 'radial'];
-const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slotName]) : props.slotName === 'fg' ? ansiView.value && workspace.editFgNone : workspace.editBgNone));
-// None means "leave what's underneath": a typing choice, so the foreground offers it only in the ANSI view. A
-// shape can go without either.
-const offersNone = computed(() => !stop.value && (vector.value || props.slotName === 'bg' || ansiView.value));
+const isNone = computed(() => (vector.value ? !style.value(SHAPE_SLOTS[props.slotName]) : props.slotName === 'fg' ? workspace.editFgNone : workspace.editBgNone));
+// None leaves what's there, on either side (what each tool does with it: tools/index.js, nothingToLay); a shape can go
+// without either. A gradient's stop is a color.
+const offersNone = computed(() => !stop.value);
 
 // The palette as the colors its swatches store, or (paints false) a palette color nothing paints as.
 // kept: the palette color, for the recent colors.
@@ -310,7 +309,7 @@ div.color-popover div.foot {
   color: var(--text-muted);
 }
 
-/* As tall as None's swatch whether None is offered or not, so the box doesn't change height between the slots. */
+/* As tall as None's swatch whether None is offered or not (a gradient's stop has none), so the box keeps its height. */
 div.color-popover div.foot {
   min-height: 16px;
 }
