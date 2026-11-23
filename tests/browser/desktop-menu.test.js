@@ -53,10 +53,10 @@ test('the menu gets every label in the language showing, and what can be done, a
   expect(lastMenu()[0].file).toBe('Fichier');
 });
 
-test('the menu is sent its accelerators from the command table, as Electron writes them', () => {
+test('the menu is sent its accelerators from the command table, as Electron writes them, none for Keyboard Shortcuts', () => {
   expect(lastMenu()[3]).toEqual({
     new: 'CmdOrCtrl+N', open: 'CmdOrCtrl+O', save: 'CmdOrCtrl+S', saveAs: 'Shift+CmdOrCtrl+S', export: 'CmdOrCtrl+E',
-    undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', shortcuts: 'Shift+Alt+/',
+    undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z',
   });
 });
 

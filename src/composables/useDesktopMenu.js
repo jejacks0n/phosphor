@@ -4,7 +4,7 @@ import { desktop, fileFrom } from '@/social/desktop';
 import { newerRelease } from '@/lib/semver';
 import { typesIn } from '@/lib/fields';
 import { COMMANDS } from '@/lib/commands';
-import { accelerator } from '@/lib/keymap';
+import { accelerator, keysFor, parseKey } from '@/lib/keymap';
 import { toast } from '@/composables/useToast';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
@@ -47,13 +47,13 @@ export const reloading = {
   withPluginsOff: () => { location.search = '?plugins=off'; },
 };
 
-// The menu's accelerators: each menu command's key from the command table (the first with a modifier, since a bare key
-// types), as Electron writes it. New is the menu's own: Cmd+N is the browser's, so the page has no row for it.
+// The menu's accelerators: each menu command's key from the command table (the first with Cmd, Ctrl or Alt, since a bare key
+// types; Keyboard Shortcuts has none, as a menu key would stop ¿ typing on a Mac), as Electron writes it. New is the menu's own: Cmd+N is the browser's, so the page has no row for it.
 export const menuAccelerators = () => ({
   new: 'CmdOrCtrl+N',
   ...Object.fromEntries(COMMANDS.filter((c) => c.menu).map((c) => {
-    const keys = [c.keys].flat();
-    return [c.menu, accelerator(keys.find((key) => key.includes('+')) ?? keys[0])];
+    const keys = keysFor(c.keys);
+    return [c.menu, accelerator(keys.find((key) => { const k = parseKey(key); return k.mod || k.ctrl || k.alt; }) ?? keys[0])];
   })),
 });
 

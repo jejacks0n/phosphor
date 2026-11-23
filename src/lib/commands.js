@@ -77,7 +77,7 @@ const shiftArrows = () => [shortcut('shift', ARROWS)];
 
 export const COMMANDS = [
   // The shortcuts list: ?, or Alt+? while typing (where ? types; by physical key, as Option+? types ¿).
-  { id: 'general.help', group: 'general', keys: ['?', 'Shift+Alt+Slash'], shown: ['?'], menu: 'shortcuts', label: words('thisList', () => ({ key: shortcut('alt', '?') })),
+  { id: 'general.help', group: 'general', keys: ['?', 'Shift+Alt+Slash'], shown: ['?'], label: words('thisList', () => ({ key: shortcut('alt', '?') })),
     where: (ctx) => (!ctx.typing || ctx.event.altKey) && free(ctx) && shut(ctx),
     run: ({ workspace }) => { workspace.shortcutsOpen = true; } },
   // Not on SOCIAL's ROOM view, nor in a field with typing it hasn't committed: it undoes that itself.
