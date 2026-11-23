@@ -201,3 +201,18 @@ test('Sign in\'s × is on its heading\'s line, and Forgot your password? at the 
   expect(Math.abs(mid(forgot) - mid(create))).toBeLessThan(1.5);
   expect(Math.abs(forgot.right - form.right)).toBeLessThan(1);
 });
+
+test('Start a room\'s × is on its heading\'s line, and the page is inset as Account\'s is, once', async () => {
+  const { social } = await mount();
+  Object.assign(social, { supported: true, me: member() });
+  const mid = (r) => (r.top + r.bottom) / 2;
+  const inset = (page) => {
+    social.page = page;
+    return nextTick().then(() => dialog().querySelector('h2').getBoundingClientRect().left - dialog().getBoundingClientRect().left);
+  };
+  const account = await inset('account');
+  const start = await inset('start-room');
+  expect(start).toBeCloseTo(account, 0);
+  const h2 = dialog().querySelector('h2').getBoundingClientRect(), close = dialog().querySelector('button.close').getBoundingClientRect();
+  expect(Math.abs(mid(h2) - mid(close))).toBeLessThan(1.5);
+});

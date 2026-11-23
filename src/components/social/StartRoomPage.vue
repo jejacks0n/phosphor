@@ -97,11 +97,10 @@ const goLive = () => room.startRoom({ ...draft, name: draft.name.trim() });
 </template>
 
 <style scoped>
-div.start-room {   /* as the room's Settings and stats (HostRoomPage) */
+div.start-room {   /* as the room's Settings and stats (HostRoomPage), inset only by the dialog's own padding */
   display: flex;
   flex-direction: column;
   gap: 10px;
-  padding: 16px;
   font-size: 12px;
   color: var(--text-dim);
 }
