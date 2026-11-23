@@ -5,6 +5,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import ProjectActions from '@/components/ProjectActions.vue';
 import ToggleGroup from '@/components/ToggleGroup.vue';
+import FieldCount from '@/components/FieldCount.vue';
 import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, fitField, keptFields, letterSpacingOf, sauceText } from '@/lib/Sauce.js';
 import { formatNumber } from '@/i18n/format.js';
 
@@ -101,13 +102,7 @@ function fit(event, f) {
           <div class="field">
             <div class="label-row">
               <label :for="f.id">{{ t(f.label) }}</label>
-              <span
-                  v-if="f.counted"
-                  :id="`${f.id}-count`"
-                  class="count"
-                  :class="{ full: charCount(project[f.key] ?? '') >= f.width }"
-                  :aria-label="t('sauce.countAria', { count: charCount(project[f.key] ?? ''), width: f.width })"
-              >{{ charCount(project[f.key] ?? '') }} / {{ f.width }}</span>
+              <FieldCount v-if="f.counted" :id="`${f.id}-count`" :count="charCount(project[f.key] ?? '')" :most="f.width" />
             </div>
             <textarea
                 v-if="f.lines"
@@ -209,13 +204,6 @@ span.label {
   text-transform: uppercase;
   color: var(--text-faint);
 }
-
-span.count {
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--text-faint);
-}
-span.count.full { color: var(--warning); }
 
 /* Under the field, pushing the next one down; empty, it takes no room. */
 p.cut {

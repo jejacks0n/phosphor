@@ -191,6 +191,15 @@ div.people-forms :is(div.form-page, div.start-room, section.settings) label:not(
   text-transform: uppercase;
   color: var(--text-faint);
 }
+div.people-forms div.form-page div.counted {   /* a field with its count at the end of its label's line, as SAUCE's */
+  position: relative;
+}
+div.people-forms div.form-page div.counted > span.count {
+  position: absolute;
+  top: 0;
+  right: 0;
+  line-height: 13px;
+}
 div.people-forms div.form-page label.terms {
   display: flex;
   align-items: flex-start;

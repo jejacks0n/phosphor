@@ -3,11 +3,12 @@ import { computed, nextTick, onBeforeUnmount, ref, useTemplateRef } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { renderSVG } from 'uqr';
 import { useSocialStore, PROVIDERS } from '@/store/SocialStore';
-import { usernameProblem } from '@/social/names';
+import { EMAIL_MAX, PASSWORD_MAX, usernameProblem } from '@/social/names';
 import { messageFor } from '@/social/messages';
 import { mountTurnstile } from '@/social/turnstile';
 import UsernameField from './UsernameField.vue';
 import UserName from './UserName.vue';
+import FieldCount from '@/components/FieldCount.vue';
 
 // Your username, the ways to sign in, two-factor, a link to who you blocked, and deleting the account. Errors of a form
 // show under it; the others are the notice at the top of the tab.
@@ -253,7 +254,12 @@ async function deleteAccount() {
         </span>
       </div>
       <form v-if="changingEmail" ref="emailForm" @submit.prevent="submitEmail">
-        <label>{{ t('social.account.newEmail') }} <input v-model="newEmail" type="email" autocomplete="email" maxlength="254" required></label>
+        <div class="counted">
+          <label>{{ t('social.account.newEmail') }}
+            <input v-model="newEmail" type="email" autocomplete="email" :maxlength="EMAIL_MAX" required aria-describedby="new-email-count">
+          </label>
+          <FieldCount id="new-email-count" :count="newEmail.length" :most="EMAIL_MAX" />
+        </div>
         <label>{{ t('social.account.currentPassword') }} <input v-model="emailPassword" type="password" autocomplete="current-password" required></label>
         <p class="help">{{ me.emailVerified ? t('social.account.emailHelpVerified', { email: me.email }) : t('social.account.emailHelpUnverified') }}</p>
         <div ref="emailWidget" class="turnstile"></div>
@@ -265,8 +271,13 @@ async function deleteAccount() {
       </form>
       <form v-if="changingPassword" ref="passwordForm" @submit.prevent="submitPassword">
         <label>{{ t('social.account.currentPassword') }} <input v-model="currentPassword" type="password" autocomplete="current-password" required></label>
-        <label>{{ t('social.auth.newPasswordLabel') }} <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" required aria-describedby="new-password-help"></label>
-        <label>{{ t('social.account.confirmNewPassword') }} <input v-model="confirmPassword" type="password" autocomplete="new-password" required></label>
+        <div class="counted">
+          <label>{{ t('social.auth.newPasswordLabel') }}
+            <input v-model="newPassword" type="password" autocomplete="new-password" minlength="10" :maxlength="PASSWORD_MAX" required aria-describedby="new-password-count new-password-help">
+          </label>
+          <FieldCount id="new-password-count" :count="newPassword.length" :most="PASSWORD_MAX" />
+        </div>
+        <label>{{ t('social.account.confirmNewPassword') }} <input v-model="confirmPassword" type="password" autocomplete="new-password" :maxlength="PASSWORD_MAX" required></label>
         <p id="new-password-help" class="help">{{ t('social.account.newPasswordHelp') }}</p>
         <div class="actions">
           <button type="button" @click="endPassword">{{ t('common.cancel') }}</button>
