@@ -109,6 +109,29 @@ test('a stored record that is no longer a good manifest is skipped', async () =>
   expect(store.plugins.map(({ id }) => id)).toEqual(['phosphor.midnight']);
 });
 
+// A theme installed before two slots were renamed and one dropped (white, black, border-dark) is kept in the browser
+// with the old names, which the manifest's reader refuses now. Left at that, the plugin would go from the list without a
+// word and the theme in use with it. A kept record's old names are read as the new ones.
+test('a theme kept from before the slots were renamed stays installed, its colors under the new names', async () => {
+  const { store, workspace } = stores();
+  const manifest = JSON.parse(midnight), { colors } = manifest.themes[0];
+  const old = { ...colors, white: colors['text-on-accent'], black: colors.tooltip, 'border-dark': '#161d38' };
+  delete old['text-on-accent'];
+  delete old.tooltip;
+  await putPlugin({ id: 'phosphor.midnight', manifest: { ...manifest, themes: [{ ...manifest.themes[0], colors: old }] }, enabled: true, source: 'marketplace', installedAt: 1 });
+  workspace.theme = MIDNIGHT;
+  await store.load();
+  expect(store.plugins.map(({ id }) => id)).toEqual(['phosphor.midnight']);
+  expect(store.themes).toEqual([{ ref: MIDNIGHT, name: 'Midnight', base: 'dark', colors }]);
+  expect(workspace.theme).toBe(MIDNIGHT);
+  // A new name set beside an old one wins, and a file's manifest gets no such reading: there the old names are refused.
+  await putPlugin({ id: 'phosphor.midnight', manifest: { ...manifest, themes: [{ ...manifest.themes[0], colors: { white: '#111111', 'text-on-accent': '#222222' } }] }, enabled: true, source: 'file', installedAt: 2 });
+  await store.load();
+  expect(store.themes[0].colors).toEqual({ 'text-on-accent': '#222222' });
+  await expect(store.read(file(changed((m) => { m.themes[0].colors.white = '#ffffff'; }))))
+    .rejects.toMatchObject({ userMessage: 'The theme “Midnight” sets “white”, which isn\'t one of Phosphor\'s colors.' });
+});
+
 test('a browser that will not keep anything starts with no plugins and says so', async () => {
   const { store } = stores();
   vi.spyOn(indexedDB, 'open').mockImplementation(() => { throw new DOMException('no', 'SecurityError'); });

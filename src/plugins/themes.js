@@ -2,7 +2,7 @@
 // id>'. It resolves to a base, the app's own look under it, and the colors set over that base. A copy of the last
 // plugin theme shown is kept in localStorage so index.html can paint it before the app starts; index.html's inline
 // script reads that copy by the same rules, since it can't import this file.
-import { COLOR_SLOTS, HEX } from './manifest.js';
+import { COLOR_SLOTS, HEX, keptColors } from './manifest.js';
 
 export const THEME_CACHE_KEY = 'phosphor.themeColors';
 const PREFIX = 'plugin:';
@@ -23,8 +23,9 @@ export function readThemeCache(text) {
   try { copy = JSON.parse(text); } catch { return null; }
   if (!copy || typeof copy !== 'object' || typeof copy.theme !== 'string' || !isBase(copy.base)) return null;
   if (!copy.colors || typeof copy.colors !== 'object') return null;
-  const good = Object.entries(copy.colors).every(([key, value]) => SLOTS.has(key) && typeof value === 'string' && HEX.test(value));
-  return good ? { theme: copy.theme, base: copy.base, colors: copy.colors } : null;
+  const colors = keptColors(copy.colors); // a copy from before three slots' names changed
+  const good = Object.entries(colors).every(([key, value]) => SLOTS.has(key) && typeof value === 'string' && HEX.test(value));
+  return good ? { theme: copy.theme, base: copy.base, colors } : null;
 }
 
 // themes: [{ ref, base, colors }], the plugin themes on offer. known is false when the value names nothing on offer.

@@ -42,6 +42,13 @@ test('a good kept copy reads as itself', () => {
   expect(readThemeCache(JSON.stringify(cached))).toEqual(cached);
 });
 
+// The copy kept for the first paint may be from before white, black and border-dark went (manifest.js keptColors): read
+// with the old names as the new, or a light theme's first load after the change would start dark.
+test('a kept copy with the slots\' old names reads with the new ones', () => {
+  const old = { theme: 'plugin:phosphor.rain/rain', base: 'light', colors: { white: '#ffffff', black: '#1f2a33', 'border-dark': '#aab8c4', text: '#123456' } };
+  expect(readThemeCache(JSON.stringify(old))).toEqual({ ...old, colors: { 'text-on-accent': '#ffffff', tooltip: '#1f2a33', text: '#123456' } });
+});
+
 test('a name round-trips', () => {
   expect(themeRef('phosphor.midnight', 'midnight')).toBe(MIDNIGHT);
   expect(isPluginTheme(MIDNIGHT)).toBe(true);

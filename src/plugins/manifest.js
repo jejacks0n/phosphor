@@ -29,6 +29,22 @@ export const COLOR_SLOTS = Object.freeze([
 ]);
 const SLOTS = new Set(COLOR_SLOTS);
 
+// The names three slots had before the first release, which a theme installed back then is still kept with: white and
+// black were renamed for what they color, and border-dark, which nothing used, went. What a browser kept (a plugin's
+// record, PluginStore.load, and the copy for the first paint, themes.js readThemeCache), and only that, is read with the
+// old names as the new ones, so the theme stays installed and in use; colors that have the new name too keep that. A
+// manifest from a file or the Marketplace has today's names or is refused.
+const OLD_SLOTS = { white: 'text-on-accent', black: 'tooltip', 'border-dark': null };
+export const keptColors = (colors) => Object.fromEntries(Object.entries(colors).flatMap(([key, value]) => {
+  if (!Object.hasOwn(OLD_SLOTS, key)) return [[key, value]];
+  const now = OLD_SLOTS[key];
+  return now && !Object.hasOwn(colors, now) ? [[now, value]] : [];
+}));
+export function keptManifest(manifest) {
+  if (!Array.isArray(manifest?.themes)) return manifest;
+  return { ...manifest, themes: manifest.themes.map((theme) => (isObject(theme?.colors) ? { ...theme, colors: keptColors(theme.colors) } : theme)) };
+}
+
 // An id's part: lowercase letters, digits and hyphens, the first and the last a letter or a digit (never all hyphens).
 const ID = /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/;
 const MOST_ID = 64;
