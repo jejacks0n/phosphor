@@ -149,6 +149,27 @@ test('a pass is GLSL ES 3.00: a loop runs to an option\'s value, and integers wo
   for (let i = 0; i < white.length; i += 4) expect(white.slice(i, i + 3)).toEqual([255, 255, 255]);
 });
 
+// A browser with no WebGL 2: the picture and its own effects work as they did in WebGL 1, and a plugin filter, which
+// is GLSL ES 3.00, doesn't build there and says so.
+test('with only WebGL 1 the picture is processed as ever, and a plugin filter is skipped and said', () => {
+  const real = HTMLCanvasElement.prototype.getContext;
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(function (kind, ...rest) {
+    return kind === 'webgl2' ? null : real.call(this, kind, ...rest);
+  });
+  const old = new WebGLProcessor();
+  vi.restoreAllMocks();
+  expect(old.gl instanceof WebGLRenderingContext).toBe(true);
+  registerScript('jane.fx', 'h1', { filters: [{ id: 'same' }] });
+  const heard = [];
+  listen((ref, why) => heard.push([ref, typeof why.log]));
+  const image = picture(), params = { ...RICH, pluginFilters: [] };
+  const on = (processor, more) => { processor.process(image, { ...params, ...more }, W, W); return pixelsOf(processor.canvas); };
+  const none = on(old);
+  expect(none).toEqual(on(gpu)); // WebGL 1 and WebGL 2 make the same picture, effects, sliders, Sharpen and palette on
+  expect(on(old, { pluginFilters: [filter('same', [IDENTITY])] })).toEqual(none);
+  expect(heard).toEqual([[solverRef('jane.fx', 'same'), 'string']]); // its compiler's log, as any pass that doesn't build
+});
+
 test('a pass that doesn\'t build is skipped and said once, until a new script', () => {
   const ref = solverRef('jane.fx', 'broken');
   registerScript('jane.fx', 'h1', { filters: [{ id: 'broken' }] });
