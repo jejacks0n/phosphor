@@ -305,7 +305,8 @@ frames, and pinch while it plays.
 ### 21. Keep my work for later
 - Does: taps Save project, keeps the name and presses Go; then reloads the page.
 - Expects: a .pho downloads; after the reload she's back where she was (autosave brought it back, with its
-  frames, layers and settings); New project afterwards asks about unsaved changes only if there are any.
+  frames, layers and settings), with the tool, colors and tool options she had (kept in the browser, not the drawing);
+  New project afterwards asks about unsaved changes only if there are any, and keeps her tool and colors.
 - Probes: `interrupt`: reload a second and a half after an edit without saving and check it came back; `back-out`:
   press New project with unsaved changes and Cancel Phosphor's "Start a new project?" question (Save project first,
   Start without saving or Cancel); `again`: start without saving, pick the drawing back up from "Pick up where you left

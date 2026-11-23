@@ -17,6 +17,7 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { groupOf } from '@/tools/groups';
+import { withKept } from '@/store/kept';
 import { brushOffered, isSolverRef } from '@/plugins/solvers';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -40,22 +41,10 @@ export function recentColor(entry) {
 const toolKey = (tab) => (tab === 'input' ? 'inputActiveTool' : tab === 'vector' ? 'vectorActiveTool' : 'outputActiveTool');
 
 export const useWorkspaceStore = defineStore('workspace', {
-  state: () => ({
-    inputActiveTool: 'brush',
-    outputActiveTool: 'hand',
-    vectorActiveTool: 'vselect',
-    slotFaces: {},           // a toolbar slot's tool, by group id (tools/groups.js): the one last chosen
+  // With the person's own choices, kept in this browser (kept.js: the color pair, what the picker picks, the tool on each
+  // tab and the tools' options).
+  state: () => withKept({
     heldTool: null,          // a tool held with a key: { key, tool (the one to go back to), by: 'alt' | 'space' }
-    // The color pair. Paint uses the foreground; typing uses both, where a none slot leaves that
-    // attribute as it is underneath (with the background none, typed text sits on the image).
-    editFgColor:  '#ffffff',
-    editBgColor: '#000000',
-    editFgNone: false,
-    editBgNone: true,
-    // A swatch's 256-color index when a lower index shares its color (16 and 231 are 0's and 15's black and white, fixed
-    // where those follow a terminal's theme), so what's drawn with it exports as it (edit cells' fgIndex, bgIndex).
-    editFgIndex: undefined,
-    editBgIndex: undefined,
     pluginTools: useLocalStorage('phosphor.pluginTools', {}), // { ['brush:' or 'shape:' + ref]: { [optionId]: value } }: the options of plugin brushes and shapes (tools/pluginTool.js), kept in the browser
     recentColors: useLocalStorage('phosphor.recentColors', []),
     ansiRenderer: useLocalStorage('phosphor.ansiRenderer', 'canvas'), // the ANSI view's renderer (trial): 'canvas' | 'dom'
@@ -71,20 +60,14 @@ export const useWorkspaceStore = defineStore('workspace', {
     guides: [],              // { axis: 'v' | 'h', pos }: the open drawing's guides, in cells (kept per drawing in this browser, never part of the document)
     rulerZero: { x: 0, y: 0 }, // where the rulers count from
     guidesFile: null,        // the file id the guides belong to; null: they last until the page closes
-    activeChar: '█',       // what Fill and Shapes draw with; set by picks (and F-keys)
     isShiftPressed: false,
     isAltPressed: false,     // Option on a Mac: Vector select scales from the middle
     pointerOverEditor: false, // the pointer is over the canvas (Space pans even with a button focused)
-    pickLayers: { fg: true, bg: true }, // ANSI view: what a plain picker click picks (both lit: both)
-    pixelPickSlot: { fg: true, bg: false }, // pixel view: what a plain picker click picks, one lit (Shift: the other)
-    vectorPickSlot: { fill: true, stroke: false }, // VECTOR: what a plain picker click sets, one lit (Shift: the other)
-    vectorSnap: 'none',      // VECTOR's Snap to: 'none' | 'cells' | 'half' (half cells, both ways); vectorSnap.js
     lastPick: null,          // the Color Picker's last ANSI pick, for the status bar: { col, row, fg, bg, fgFrom, bgFrom }
     textCursor: null,      // { col, row } of the Text tool's cursor
     lastTextCursor: null,  // where it was when Escape put it away: choosing Edit Mode puts it back there if it's in view
     placedCursor: null,    // the cursor a click or choosing Edit Mode placed: the view doesn't follow it there (AnsiEditor)
     selectFromText: false, // the Select tool took over from Edit Mode (a drag, Shift+arrows): setting the selection down goes back
-    typingMode: 'overwrite', // typing replaces the cell ('overwrite'), or pushes the row right: its characters and paint ('insert'), or its characters alone ('partial')
     paletteLayerOpen: false, // the character palette layer has the keyboard
     paletteLayerPage: 'palettes', // the palette layer's page: 'palettes' | 'fonts'
     fontSetup: null,         // { id, block }: the Fonts page chooses that font and picks that block (useFontSetup's Set up its blocks)
@@ -99,9 +82,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
     wand: null,              // the Magic Wand's selection: { view, width, height, mask (markRaw'd, a byte per unit: cells or grid pixels) }
-    wandMatch: { fg: true, bg: false, char: true }, // ANSI view: what a cell must share with the one clicked
-    wandContiguous: true,    // only what touches the unit clicked
-    wandTolerance: 10,       // how far a color may be from the clicked one's and still match (0-100)
     selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
@@ -123,16 +103,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     inputView: { col: 0, row: 0, cols: 0, rows: 0, zoom: 5 }, // the whole cells on screen in the PIXEL view, and the editZoom they were measured at (InputEditor)
     viewToRestore: null,     // a resumed room's view { tab: 'input' | 'output', col, row }: that tab's editor scrolls there once, and publishes only after
     pixelViewOrigin: { col: 0, row: 0 }, // the same in the PIXEL view (InputEditor), where a paste lands with no selection
-    selectAllLayers: false,  // a selection's actions (selectionIds), Select's and the Magic Wand's: true = every shown cells layer, false = the picked layer only
-    pencilDrawWith: 'normal', // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks)
-    pencilConnect: true,     // Pencil's Single and Double: join the lines it crosses or lands on
-    shapeKind: 'rect',       // Shapes tool: 'rect' | 'ellipse' | 'line'
-    shapeCharFill: false,    // Character mode: fill the inside with the character too (other modes fill with BG)
-    shapeDrawWith: 'double', // ANSI view: 'single' | 'double' | 'half' | 'full' | 'char'
-    shapeConnect: true,      // line boxes join the box characters they cross or meet
-    shapeBlockChars: false,  // ANSI blocks: real ▄/█ characters, or paint over the cells' own
-    shapeAntialias: false,   // ellipses and lines: edge pixels by coverage, or ░▒▓█ cells
-    shapeVerticalHalves: false, // ANSI blocks: ▌▐ too (Half-block: quadrants), for lines and ellipses
     strokeEnd: null,         // where the last Pencil, Brush or Retouch stroke ended (a grid position): Shift-click draws a line from there
     shapeDrag: null,         // { from, to, line? } grid positions while a shape (or the Gradient's line) is being dragged
     editZoom:  PIXEL_ZOOM_START,
@@ -167,34 +137,6 @@ export const useWorkspaceStore = defineStore('workspace', {
     ansiScrollX: null,
     ansiScrollY: null,
 
-    // Brush Settings
-    editBrushSize:  2.5,
-    editEraserSize: 5,  // the PIXEL view's Eraser, in grid pixels
-    editEraserCells: 1, // the ANSI view's, in cells
-    editEraserSoft: false, // a round, feathered eraser that takes paint away by its Flow, in grid pixels in both views, or (off) a hard square
-    editEraserFlow: 50, // a soft eraser's Flow, as the Brush's (brush.js: stampFlow)
-    editBrushOpacity:  100,
-    brushDrawWith: 'normal', // Brush, ANSI view: 'normal' (paint) | 'half' (each cell painted becomes a ▄ the paint colors)
-    editBrushStack: true, // Stack opacity: each stroke lays up to the opacity on top of what's there (PaintLayer.paint)
-    editBrushFlow:  50, // a stamp flow of 0.25 (brush.js squares it)
-    editBrushHardness:  50,
-
-    // Fill Settings
-    editFillTolerance:  10,
-    editFillContiguous:  true,
-    editFillAllLayers: true, // the Paint Bucket's and the Gradient's area: by what every shown layer shows together, or (off) the layer in use alone
-    editFillFeather: 2,
-    bucketFillWith: 'normal', // ANSI view: 'normal' (the color you see) | 'cells' (whole cells, by Match and Set)
-    bucketMatch: { fg: true, bg: true, char: true }, // Cells: what a cell must share with the one clicked
-    bucketSet: { fg: true, bg: false, char: false }, // Cells: what the fill sets (your FG, BG, character)
-    gradientShape: 'linear', // the Gradient: 'linear' | 'spherical' (a drag from FG to BG)
-
-    // Retouch Settings (Blur, Dodge, Burn)
-    retouchSize: 6,
-    retouchStrength: 50,
-    retouchHardness: 50,
-    retouchRange: 'midtones', // Dodge and Burn: 'shadows' | 'midtones' | 'highlights'
-
     // The VECTOR tab
     vectorSelected: [],      // the keys of the shapes Vector select has selected (follows project.shapes: one gone drops out)
     vectorPoints: null,      // the key of the shape whose points are being edited (a double-click), or null
@@ -203,10 +145,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     vectorStop: null,        // the selected gradient stop (the Node tool's, Vector select's): its index in the gradient shown, or null
     vectorGradientSlot: 'fill', // which gradient the Node tool edits on a shape with two: 'fill' or 'stroke'
     vectorPen: null,         // the key of the Pen's shape while it's being drawn, or null
-    vectorStyle: { fill: 'fg', stroke: null, width: 1, cap: 'round', join: 'round', miter: 4, align: 'center' }, // what a new shape gets: a color, 'fg' (the foreground's then) or null
     vectorHover: null,       // where the pointer is over VECTOR's art, in grid pixels, for the Pen's next segment
-    vectorShapeKind: 'rect', // the Shape tool: 'rect' | 'ellipse' | 'polygon', or a plugin shape's ref (vshape.shapeKind reads it)
-    vectorSides: 5,          // a polygon's sides, 3 to 12
     sidePanelWidth: useLocalStorage('phosphor.sidePanelWidth', 280, { serializer: StorageSerializers.number, listenToStorageChanges: false }), // the side panel's (SidePanel) width in px, as dragged: each tab its own, the last kept for the next
     sidePanelFolded: useLocalStorage('phosphor.sidePanelFolded', false, { listenToStorageChanges: false }), // the side panel folded away (it starts open; a fold is kept in the browser)
     chatTone: useLocalStorage('phosphor.chatTone', true), // a tone for someone else's chat message while you aren't in the chat (RoomStore.chime)

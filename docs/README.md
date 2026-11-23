@@ -16,6 +16,9 @@ Learn how to create art, edit layers, and animate in Phosphor.
 
 ## Interface Basics
 
+### Your Tools and Colors
+Your foreground and background colors, what the Color Picker picks, the tool on each tab (PIXEL, ANSI and VECTOR) and each tool's options (sizes, matching, the shape, the vector style, and the rest) are kept in your browser as you change them. A reload or a crash brings them back as you left them, and **New project** or opening a file leaves them as they are. They're yours, not the drawing's, so a saved project (`.pho`) and autosave don't keep them. With Phosphor open in two tabs, the one you changed last is what the next reload brings back. A plugin brush whose plugin is off or gone is the Brush until it's back.
+
 ### Color Theme
 You can choose a color theme using the theme selector at the bottom of the settings panel (a moon, a sun, and a computer display, next to the language option):
 - **Dark** (default): Uses dark backgrounds.
