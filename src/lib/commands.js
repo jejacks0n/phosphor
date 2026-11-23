@@ -17,6 +17,7 @@
 //   once       a held key's repeats are taken and do nothing (without it they run again, as a held Cmd+Z does)
 //   hidden     a key taken to keep it from the browser that does nothing: left out of the ? list and the command list
 //   strictMod  Mod is only the platform's own (Cmd on a Mac), not Cmd or Ctrl as for the others
+//   tool       a tool's row (toolCommands): its id, so its key with the tool chosen steps the kind instead (takeKey)
 // A row with a run and no keys is the command list's alone (New project, Export .ans), and the ? list leaves it out.
 // ctx = { project, workspace, event, view: workspace.editorTab, typing: Edit Mode's typing, uncommitted: focus is in a
 // field holding typing it hasn't committed (its own undo has it) }.
@@ -25,7 +26,7 @@ import { t, te } from '@/i18n/index.js';
 import { isMac, shortcut } from '@/lib/keyLabels';
 import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { ownsKey } from '@/lib/fields';
-import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
+import { ADD_FRAME_KEY, DRAW_WITH_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { usePlayback } from '@/composables/usePlayback';
 import { stepColor } from '@/composables/colorSteps';
@@ -59,9 +60,10 @@ const shut = ({ workspace }) => !workspace.paletteLayerOpen && !workspace.colorB
 const ART = ['input', 'output']; // PIXEL and ANSI
 const letter = (key) => [key.toUpperCase(), `Shift+${key.toUpperCase()}`]; // with Shift or without
 
-// The tool's Size option on offer in this view, the one ] and [ change.
-const sizeOption = ({ workspace, view }) => getTool(workspace.activeTool).options
-  ?.find((o) => o.size && (!o.views || o.views.includes(view)) && (!o.when || o.when(workspace)));
+// The chosen tool's first option with a mark (tools/index.js: size, kind, drawWith, amount, hardness) that the toolbar
+// shows in this view.
+const markedOption = (mark, { workspace, view }) => getTool(workspace.activeTool).options
+  ?.find((o) => o[mark] && (!o.views || o.views.includes(view)) && (!o.when || o.when(workspace)));
 
 // The animation keys: with Animate on, in the art views, never inside an art layer, not while typing (Edit Mode keeps its
 // keys: Alt+, and Alt+. type ≤ and ≥ there on a Mac).
@@ -119,14 +121,62 @@ const lines = (id, label, keys, type, delta) => ({
 // browser has no Back on them.
 const backKept = (ctx) => ctx.workspace.editMode && (isMac ? free(ctx) : true) && !typingTakesKeys(ctx.workspace);
 
+// The tools' option keys: where the art and the toolbar show, not typing, not mid-drag, with the option marked so.
+const optionKey = (mark) => (ctx) => free(ctx) && !!ctx.project.image && ctx.workspace.editMode && !ctx.typing
+  && [...ART, 'vector'].includes(ctx.view) && !ctx.workspace.isPainting && shut(ctx) && !!markedOption(mark, ctx);
+// A slider's value as its slider sets it: within its range, to its places, committed as a key's nudge is (an option over
+// VECTOR's selected shapes holds its edit open as a run, one undo step).
+const setSlider = (workspace, option, value) => {
+  const round = 10 ** (option.decimals ?? 0);
+  setOptionValue(workspace, option, Math.min(option.max, Math.max(option.min, Math.round(value * round) / round)));
+  option.commit?.({ nudge: true });
+};
+// A segmented row's or a dropdown's next or previous choice from the one the toolbar shows, past those it hides, wrapping.
+const stepChoice = (mark, by) => (ctx) => {
+  const { workspace, view } = ctx, option = markedOption(mark, ctx);
+  const choices = option.choices.filter((c) => (!c.when || c.when(workspace)) && (!c.views || c.views.includes(view)));
+  const at = choices.findIndex((c) => c.value === (option.drawn?.(workspace) ?? optionValue(workspace, option)));
+  const next = at < 0 ? (by > 0 ? 0 : choices.length - 1) : (at + by + choices.length) % choices.length;
+  setOptionValue(workspace, option, choices[next].value);
+};
+
+// ] and [ grow and shrink the tool's Size a whole step (on VECTOR, a polygon's Sides), as in Photoshop. Not with Shift,
+// which is the hardness's even where ] carries it.
 const sized = (by) => ({
   title: said(`shortcuts.commands.${by < 0 ? 'sizeDown' : 'sizeUp'}`),
-  where: (ctx) => free(ctx) && !!ctx.project.image && ctx.workspace.editMode && !ctx.typing && ART.includes(ctx.view)
-    && !ctx.workspace.isPainting && shut(ctx) && !!sizeOption(ctx),
+  where: (ctx) => optionKey('size')(ctx) && !ctx.event.shiftKey,
   run: (ctx) => {
-    const { workspace } = ctx, option = sizeOption(ctx), round = 10 ** (option.decimals ?? 0);
-    setOptionValue(workspace, option, Math.min(option.max, Math.max(option.min, Math.round((optionValue(workspace, option) + by) * round) / round)));
+    const option = markedOption('size', ctx);
+    setSlider(ctx.workspace, option, optionValue(ctx.workspace, option) + by);
   },
+});
+// The digits set the tool's amount, as in Photoshop: a digit in tens (0 is 100), and a second within a second the two
+// exactly (4 then 5 is 45, 0 then 5 is 5). The first is kept with its option, so one on another tool's starts again. The
+// command list has no key to read a digit from, so it hasn't the row.
+const DIGIT_JOINS = 1000; // ms
+let firstDigit = null; // { digit, at, key }
+const amount = {
+  where: (ctx) => /^Digit\d$/.test(ctx.event.code) && optionKey('amount')(ctx),
+  run: (ctx) => {
+    const option = markedOption('amount', ctx), digit = Number(ctx.event.code.slice(5)), now = Date.now();
+    const first = firstDigit?.key === option.key && now - firstDigit.at < DIGIT_JOINS ? firstDigit.digit : null;
+    firstDigit = first === null ? { digit, at: now, key: option.key } : null;
+    setSlider(ctx.workspace, option, first === null ? (digit || 10) * 10 : first * 10 + digit);
+  },
+};
+// Shift+[ and Shift+]: the hardness a step of 10, or a Hard and Soft row (hardest first) set to its end.
+const hardness = (by) => ({
+  title: said(`shortcuts.commands.${by < 0 ? 'softer' : 'harder'}`),
+  where: optionKey('hardness'),
+  run: (ctx) => {
+    const { workspace } = ctx, option = markedOption('hardness', ctx);
+    if (option.type === 'segmented') setOptionValue(workspace, option, option.choices.at(by > 0 ? 0 : -1).value);
+    else setSlider(workspace, option, optionValue(workspace, option) + 10 * by);
+  },
+});
+const drawWith = (by) => ({
+  title: said(`shortcuts.commands.${by < 0 ? 'drawWithPrev' : 'drawWithNext'}`), once: true,
+  where: optionKey('drawWith'), run: stepChoice('drawWith', by),
 });
 
 const drawn = ({ project }) => (project.image ? true : 'shortcuts.reasons.noDrawing');
@@ -225,6 +275,14 @@ export const COMMANDS = [
   // ] and [ grow and shrink the tool's Size a whole step, within the slider's range, as in Photoshop.
   { id: 'drawing.sizeDown', group: 'drawing', keys: '[', label: words('size'), ...sized(-1) },
   { id: 'drawing.sizeUp', group: 'drawing', keys: ']', label: words('size'), ...sized(1) },
+  // The tool's own keys: its key again steps its kind (takeKey), D and Shift+D its Draw with, a digit its amount,
+  // Shift+[ and Shift+] its hardness, by code, whatever Shift makes those keys type ({ and } on a US layout).
+  fixed('tool.kindNext', 'drawing', words('kindNext'), { shown: () => [t('shortcuts.keyAgain')] }),
+  { id: 'tool.drawWithNext', group: 'drawing', keys: DRAW_WITH_KEY.toUpperCase(), label: words('drawWith'), ...drawWith(1) },
+  { id: 'tool.drawWithPrev', group: 'drawing', keys: `Shift+${DRAW_WITH_KEY.toUpperCase()}`, label: words('drawWith'), ...drawWith(-1) },
+  { id: 'tool.amount', group: 'drawing', keys: [...'0123456789'].map((n) => `Digit${n}`), shown: ['0–9'], label: words('amount'), once: true, ...amount },
+  { id: 'tool.softer', group: 'drawing', keys: 'Shift+BracketLeft', label: words('hardness'), ...hardness(-1) },
+  { id: 'tool.harder', group: 'drawing', keys: 'Shift+BracketRight', label: words('hardness'), ...hardness(1) },
 
   // About the view's middle (EditorViewport), in place of the browser's page zoom.
   { id: 'view.zoomIn', group: 'view', keys: ['Mod++', 'Mod+='], shown: () => [keyLabel('Mod++')], label: words('zoomInOut'), ...zoom(2, 'menu.zoomIn') },
@@ -442,7 +500,7 @@ export function toolCommands(view, project) {
   return offeredTools(view, project).filter((tool) => tool.keys?.length).map((tool) => {
     const path = `shortcuts.rows.${TOOL_WORDS[tool.id] ?? tool.id}`;
     return {
-      id: `tool.${tool.id}`, group: tool.views.includes('vector') ? 'vector' : 'tools', keys: tool.keys, once: true,
+      id: `tool.${tool.id}`, tool: tool.id, group: tool.views.includes('vector') ? 'vector' : 'tools', keys: tool.keys, once: true,
       label: () => (tool.section !== 'plugin' && te(path) ? t(path, { alt: shortcut('alt') }) : tool.title),
       where: toolWhere, run: ({ workspace }) => workspace.setActiveTool(tool.id),
     };
@@ -506,7 +564,9 @@ export function takeKey(event, ctx, ids, { mac = isMac } = {}) {
     event.preventDefault();
     if (command.hidden || (event.repeat && command.once) || (command.available?.(ctx) ?? true) !== true) return true;
     if (event.altKey && ctx.workspace.heldTool?.by === 'alt') ctx.workspace.releaseTool();
-    command.run(ctx);
+    // A tool's key with the tool chosen: its next kind, where it shows one (tool.kindNext). Without, chosen again.
+    if (command.tool && command.tool === ctx.workspace.activeTool && markedOption('kind', ctx)) stepChoice('kind', 1)(ctx);
+    else command.run(ctx);
     return true;
   }
   return false;

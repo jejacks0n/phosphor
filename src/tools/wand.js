@@ -47,7 +47,7 @@ export default {
         { key: 'char', get label() { return t('tools.matchToggles.char'); }, get title() { return t('tools.matchToggles.charTitle'); } },
       ],
     },
-    { key: 'wandTolerance', get label() { return t('tools.wand.tolerance'); }, get title() { return t('tools.wand.toleranceTitle'); }, min: 0, max: 100 },
+    { key: 'wandTolerance', amount: true, get label() { return t('tools.wand.tolerance'); }, get title() { return t('tools.wand.toleranceTitle'); }, min: 0, max: 100 },
     { key: 'wandContiguous', get label() { return t('tools.wand.contiguous'); }, type: 'checkbox', get title() { return t('tools.wand.contiguousTitle'); } },
   ],
   // One click selects; there's no stroke to continue.

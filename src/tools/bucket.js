@@ -164,14 +164,14 @@ const SET_OPTIONS = [
 
 // The Paint Bucket's and the Gradient's own rows: how far a fill reaches, and (ANSI view) what it fills with.
 export const FILL_OPTIONS = [
-  { key: 'editFillTolerance', get label() { return t('tools.bucket.tolerance'); }, get title() { return t('tools.bucket.toleranceTitle'); }, min: 0, max: 100 },
+  { key: 'editFillTolerance', amount: true, get label() { return t('tools.bucket.tolerance'); }, get title() { return t('tools.bucket.toleranceTitle'); }, min: 0, max: 100 },
   { key: 'editFillContiguous', get label() { return t('tools.bucket.contiguous'); }, get title() { return t('tools.bucket.contiguousTitle'); }, type: 'checkbox' },
   { key: 'editFillAllLayers', get label() { return t('tools.bucket.allLayers'); }, get title() { return t('tools.bucket.allLayersTitle'); }, type: 'checkbox' },
   { key: 'editFillFeather', get label() { return t('tools.bucket.feather'); }, get title() { return t('tools.bucket.featherTitle'); }, min: 0, max: 100, when: (ws) => ws.editorTab === 'input' || ws.bucketFillWith !== 'cells' },
   { key: 'bucketMatch', get label() { return t('tools.bucket.match'); }, type: 'toggles', options: MATCH_OPTIONS, ...cellOptions },
 ];
 export const FILL_WITH = {
-  key: 'bucketFillWith', get label() { return t('tools.bucket.fill'); }, type: 'dropdown', views: ['output'],
+  key: 'bucketFillWith', drawWith: true, get label() { return t('tools.bucket.fill'); }, type: 'dropdown', views: ['output'],
   choices: [
     { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // the color you see, at grid resolution
     { value: 'cells', get label() { return t('tools.drawWith.cells'); }, glyph: '▒▓' },      // whole cells: their colors and characters
