@@ -11,22 +11,12 @@ import { arrowsBetween } from '@/lib/focus';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
 import { MOST_COMMENT_LINES, sauceUnmappable } from '@/lib/Sauce';
-import { fileStem, timestamped } from '@/document/projectIO';
+import { EXPORT_FORMATS as FORMATS, fileStem, timestamped } from '@/document/projectIO';
 import { canExportVideo } from '@/lib/VideoFile';
 
 // All export formats in one modal: ANS, UTF-8 ANS, XBin, PNG (Still), GIF, Video (where the browser encodes video), Animated
-// ANS, Animated UTF-8 ANS, Cast (Animated). Opened by Cmd/Ctrl+E or the Export button in ProjectActions.
-const FORMATS = [
-  { id: 'ans',             ext: 'ans',      group: 'still' },
-  { id: 'utf8ans',         ext: 'utf8ans',  group: 'still' },
-  { id: 'xb',              ext: 'xb',       group: 'still' },
-  { id: 'png',             ext: 'png',      group: 'still' },
-  { id: 'gif',             ext: 'gif',      group: 'animated', animated: true },
-  { id: 'mp4',             ext: 'mp4',      group: 'animated', animated: true },
-  { id: 'ansimation',      ext: 'ans',      group: 'animated', animated: true },
-  { id: 'utf8ansimation',  ext: 'utf8ans',  group: 'animated', animated: true },
-  { id: 'cast',            ext: 'cast',     group: 'animated', animated: true },
-];
+// ANS, Animated UTF-8 ANS, Cast (Animated). Opened by Cmd/Ctrl+E or the Export button in ProjectActions, or from the command
+// list with a format chosen (the workspace's exportModal is its id then).
 
 const emit = defineEmits(['close']);
 const { t } = useI18n();
@@ -34,7 +24,7 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 
 const formats = FORMATS.filter((f) => f.id !== 'mp4' || canExportVideo());
-const selectedId = ref(project.hasFrames && project.animate ? 'gif' : 'ans');
+const selectedId = ref(typeof workspace.exportModal === 'string' ? workspace.exportModal : project.hasFrames && project.animate ? 'gif' : 'ans');
 const selected = computed(() => FORMATS.find(f => f.id === selectedId.value));
 const name = ref(timestamped(project.filename ?? 'untitled'));
 const smooth = ref(workspace.smoothText); // default follows the workspace setting, like SaveDialog

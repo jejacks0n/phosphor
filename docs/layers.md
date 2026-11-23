@@ -1129,6 +1129,8 @@ swaps the two halves of each cell's base colors.
   ([Typing Text Directly](characters.md#typing-text-directly)). Anywhere else the art shows, **Alt+←** and **Alt+→** do
   nothing, so the browser doesn't go back a page.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
+- **Cmd + K** (Ctrl+K on Windows and Linux): Opens the command list, to find any command by name and run it
+  ([The Command List](#the-command-list)).
 
 ### Tool Keys
 
@@ -1291,6 +1293,29 @@ About's Licenses tab credits the palettes to Lospec's Palette List and their aut
   on the selection.
 - **Saving and Exporting**: **Cmd+S** (Ctrl+S) saves the project and **Cmd+E** (Ctrl+E) opens Export. In either
   dialog, **Enter** in the file name saves or exports.
+
+### The Command List
+
+**Cmd+K** (Ctrl+K on Windows and Linux) opens a box for running a command by name, so the ones you use now and then
+don't need a key or a trip to their button. In the desktop app it's also **Help > Command List…**.
+
+- **Finding**: Type a few letters of the command's words, in order but not necessarily together: **exa** finds
+  **Export .ans**, and **save as** finds **Save the project as a new file**. Whole words you type come first, then the
+  starts of words, then the rest. With nothing typed, the box shows the commands you ran from it last, then all of them
+  by group.
+- **Running**: **↑** and **↓** move between the rows while you go on typing, **Enter** runs the one picked (or click it),
+  and **Escape** closes the box. The box closes before the command runs, so one that opens a dialog (Export, Versions)
+  opens it on its own, and focus goes back where it was, Edit Mode's cursor too.
+- **What's in it**: Every command the app has a key for, each with its key at the right so you can learn it, and the
+  ones that have none: **New project**, **Versions**, **Export…** and each format on its own (**Export .ans**,
+  **Export .png**, **Export .gif**…, which open Export on that format), **Layers**, **Social**, **Plugins…**,
+  **Reload plugins** (each plugin you picked from a file or folder, read again) and **Reload with Plugins Off**. The
+  tools of the tab showing are there too, and inserting and deleting lines and columns at Edit Mode's cursor. A command that doesn't apply where you are (zooming on the start screen) isn't listed.
+- **Greyed Rows**: A command that can't run now shows greyed with the reason, such as **No drawing open**, and Enter
+  does nothing on it.
+- **Where It Opens**: From anywhere but another dialog, the color box or the character palette, while you type in Edit
+  Mode or in a field too. On a Mac it's **Cmd**+K only, as **Ctrl+K** in a text field deletes to the end of the line.
+  The commands you ran last are kept in this browser.
 
 ---
 

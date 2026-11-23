@@ -1454,9 +1454,26 @@
     "holdKey": "maintenir {key}",
     "holdSpace": "maintenir Espace",
     "macFnNote": "Sur les claviers Mac, il peut falloir maintenir Fn pour utiliser F1–F12. Pour vous en passer, activez « Utiliser les touches F1, F2, etc. comme touches de fonction standard » dans Réglages Système → Clavier → Raccourcis clavier… → Touches de fonction.",
+    "list": {
+      "title": "Commandes",
+      "search": "Trouver une commande",
+      "recent": "Récentes",
+      "none": "Aucune commande ne correspond"
+    },
+    "commands": {
+      "fgPrev": "Couleur de premier plan : précédente dans la palette",
+      "fgNext": "Couleur de premier plan : suivante dans la palette",
+      "bgPrev": "Couleur d’arrière-plan : précédente dans la palette",
+      "bgNext": "Couleur d’arrière-plan : suivante dans la palette",
+      "sizeDown": "Réduire la taille de l’outil",
+      "sizeUp": "Agrandir la taille de l’outil",
+      "reloadPlugins": "Recharger les plugins"
+    },
     "reasons": {
       "noDrawing": "Aucun dessin ouvert",
-      "noCursor": "Placez d’abord le curseur en Mode Édition"
+      "noCursor": "Placez d’abord le curseur en Mode Édition",
+      "noLinkedPlugins": "Aucun plugin n’a été choisi depuis un fichier ou un dossier",
+      "notAnimated": "Activez Animer, avec plus d’une image"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1548,7 +1565,8 @@
       "playPause": "Lire ou mettre en pause l'animation (toute autre touche met également en pause)",
       "prevNextFrame": "Aller à l'image précédente ou suivante (aussi {keys})",
       "newFrame": "Ajouter une nouvelle image du même type que l'image actuelle (maintenir pour en ajouter plusieurs)",
-      "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet"
+      "switchTabs": "Lorsqu'un onglet a le focus : changer d'onglet",
+      "commandList": "Trouver une commande et la lancer"
     }
   },
   "social": {
@@ -2209,7 +2227,8 @@
     "missing": "{name} n'est plus là.",
     "openFailed": "Ce fichier n'a pas pu être ouvert.",
     "plugins": "Plugins…",
-    "startPluginsOff": "Recharger sans les plugins"
+    "startPluginsOff": "Recharger sans les plugins",
+    "commandList": "Liste des commandes…"
   },
   "updates": {
     "check": "Rechercher les mises à jour",

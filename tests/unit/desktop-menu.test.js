@@ -10,7 +10,7 @@ const SYSTEM = { version: '1.2.3-beta', platform: 'darwin', systemVersion: '15.1
 
 const ACCELERATORS = {
   new: 'CmdOrCtrl+N', open: 'CmdOrCtrl+O', save: 'CmdOrCtrl+S', saveAs: 'Shift+CmdOrCtrl+S', export: 'CmdOrCtrl+E',
-  undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z',
+  undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', commandList: 'CmdOrCtrl+K',
 };
 
 function menu({ state = IDLE, recent = [], mac = true, packaged = true, accelerators = ACCELERATORS } = {}) {
@@ -58,7 +58,7 @@ test('each app action sends its command, with the shortcuts the page also answer
     ['<file>', '<saveAs>', 'saveAs', 'Shift+CmdOrCtrl+S'], ['<file>', '<export>', 'export', 'CmdOrCtrl+E'], ['<file>', '<versions>', 'versions', undefined],
     ['<edit>', '<undo>', 'undo', 'CmdOrCtrl+Z'], ['<edit>', '<redo>', 'redo', 'Shift+CmdOrCtrl+Z'],
     ['<room>', '<hostRoom>', 'hostRoom', undefined], ['<room>', '<joinRoom>', 'joinRoom', undefined],
-    ['<help>', '<shortcuts>', 'shortcuts', undefined], ['Phosphor', '<about>', 'about', undefined], ['Phosphor', '<checkUpdates>', 'checkUpdates', undefined],
+    ['<help>', '<commandList>', 'commandList', 'CmdOrCtrl+K'], ['<help>', '<shortcuts>', 'shortcuts', undefined], ['Phosphor', '<about>', 'about', undefined], ['Phosphor', '<checkUpdates>', 'checkUpdates', undefined],
     ['Phosphor', '<plugins>', 'plugins', undefined],
   ];
   for (const [menuLabel, label, name, accelerator] of expected) {

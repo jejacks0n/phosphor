@@ -56,7 +56,7 @@ test('the menu gets every label in the language showing, and what can be done, a
 test('the menu is sent its accelerators from the command table, as Electron writes them, none for Keyboard Shortcuts', () => {
   expect(lastMenu()[3]).toEqual({
     new: 'CmdOrCtrl+N', open: 'CmdOrCtrl+O', save: 'CmdOrCtrl+S', saveAs: 'Shift+CmdOrCtrl+S', export: 'CmdOrCtrl+E',
-    undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z',
+    undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', commandList: 'CmdOrCtrl+K',
   });
 });
 
@@ -77,6 +77,13 @@ test('the menu says the drawing’s name, for the window’s title, and its proj
 test('commands open what they name, and Undo from the menu is the drawing’s outside a text field', async () => {
   command('about');
   command('shortcuts');
+  const box = document.body.appendChild(document.createElement('dialog'));
+  box.showModal();
+  command('commandList');   // not over another dialog
+  expect(workspace.commandListOpen).toBe(false);
+  box.remove();
+  command('commandList');
+  expect(workspace.commandListOpen).toBe(true);
   command('export');   // nothing to export yet
   expect([workspace.showAboutModal, workspace.shortcutsOpen, workspace.exportModal]).toEqual([true, true, false]);
   command('plugins');

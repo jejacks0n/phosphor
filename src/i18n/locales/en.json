@@ -1454,9 +1454,26 @@
     "holdKey": "hold {key}",
     "holdSpace": "hold Space",
     "macFnNote": "On Mac keyboards, you may need to hold Fn to use F1–F12. To use them without Fn, turn on “Use F1, F2, etc. keys as standard function keys” in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.",
+    "list": {
+      "title": "Commands",
+      "search": "Find a command",
+      "recent": "Recent",
+      "none": "No command matches"
+    },
+    "commands": {
+      "fgPrev": "Foreground color: previous in the palette",
+      "fgNext": "Foreground color: next in the palette",
+      "bgPrev": "Background color: previous in the palette",
+      "bgNext": "Background color: next in the palette",
+      "sizeDown": "Shrink the tool size",
+      "sizeUp": "Grow the tool size",
+      "reloadPlugins": "Reload plugins"
+    },
     "reasons": {
       "noDrawing": "No drawing open",
-      "noCursor": "Place the cursor in Edit Mode first"
+      "noCursor": "Place the cursor in Edit Mode first",
+      "noLinkedPlugins": "No plugin was picked from a file or folder",
+      "notAnimated": "Turn on Animate, with more than one frame"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1548,7 +1565,8 @@
       "playPause": "Play or pause animation (any other key also pauses)",
       "prevNextFrame": "Go to previous or next frame (also {keys})",
       "newFrame": "Add a new frame matching current frame type (hold to add multiple)",
-      "switchTabs": "With a tab focused: switch tabs"
+      "switchTabs": "With a tab focused: switch tabs",
+      "commandList": "Find a command and run it"
     }
   },
   "social": {
@@ -2209,7 +2227,8 @@
     "missing": "{name} isn't there anymore.",
     "openFailed": "That file couldn't be opened.",
     "plugins": "Plugins…",
-    "startPluginsOff": "Reload with Plugins Off"
+    "startPluginsOff": "Reload with Plugins Off",
+    "commandList": "Command List…"
   },
   "updates": {
     "check": "Check for updates",

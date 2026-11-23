@@ -90,6 +90,7 @@ export function menuTemplate({ labels: l, accelerators = {}, state, recent, act,
       role: 'help',
       label: l.help,
       submenu: [
+        command(l.commandList, 'commandList'),
         command(l.shortcuts, 'shortcuts'),
         sep,
         link(l.github, REPO),
