@@ -423,16 +423,14 @@ export const useProjectStore = defineStore('project', {
       void this.editVersion;
       return !onGrid(this.image, this.processParams) || !!this.baseLayer?.finerThanGrid();
     },
-    // The plugin filters' groups in the settings column (plugins/filters.js): those installed, in the Plugins dialog's
-    // order and then each script's, then the drawing's saved ones that aren't. None in a room, where no filter applies.
+    // The plugin filters' groups in the settings column (plugins/filters.js): those installed, in the order of their refs
+    // (which is the order they run in), then the drawing's saved ones that aren't. None in a room, where no filter applies.
     filterGroups() {
       if (this.inRoom || useRoomStore().inRoom) return []; // hosting or drawing in one, as the panel goes by the room's role
       const plugins = usePluginStore();
       void plugins.solverStamp; // a script registered again (a Reload) is the same slice with a new hash
-      const order = new Map(plugins.plugins.map(({ id }, i) => [id, i]));
-      const installed = Object.entries(plugins.filters).map(([ref, { pluginId, index }]) => ({ ref, pluginId, index, found: filterFor(ref) }))
+      const installed = Object.entries(plugins.filters).map(([ref, { pluginId }]) => ({ ref, pluginId, found: filterFor(ref) }))
         .filter(({ found }) => found)
-        .sort((a, b) => (order.get(a.pluginId) ?? order.size) - (order.get(b.pluginId) ?? order.size) || a.index - b.index)
         .map(({ ref, pluginId, found }) => ({ ref, pluginId, hash: found.hash, def: found.def }));
       return filterGroups({ saved: this.filterOptions, installed, pluginState: plugins.pluginState, pluginsOff: plugins.off, failures: plugins.filterFailures });
     },

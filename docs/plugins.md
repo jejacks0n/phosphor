@@ -686,8 +686,10 @@ puts it back. Make each option's default the setting that changes nothing, as Ab
 part of the drawing: each change is an undo step, as a slider's is, and they go wherever the drawing's settings go
 (autosave, Versions and the file). Image filters' Reset leaves them; Reset all clears them.
 
-Filters work on the picture after Blur, Simplify and Edges, one after another in the order their groups show (the
-Plugins dialog's order, then each script's), and then come the color sliders, Sharpen and the palette. Sharpen works on
+Filters work on the picture after Blur, Simplify and Edges, one after another in the order their groups show, and then come the color sliders, Sharpen and the palette. That order
+is by id: the plugin's `id`, then the filter's, as plain text (`ann.fx`'s filters before `zed.fx`'s, and `blur` before
+`zoom`). It isn't the plugins' names or the order a script lists its filters in, so a drawing with two filters on
+looks the same after a plugin is renamed. Sharpen works on
 the filtered picture, each pixel against its filtered neighbors. With Simplify or Edges on as well, that can look a
 little different from Sharpen with no plugin filter running, which compares a pixel after those effects with its
 neighbors from before them. A filter runs wherever the picture's effects do: the canvas, exports, Bake. It changes the
@@ -786,7 +788,8 @@ So once a version is out, these stay as they are:
 
 - **The plugin's `id`, and the `id` of each theme, solver, brush, shape and filter.** Change one and the drawings that
   name the old one say it isn't installed (a solver's layer shows By shape, a filter's picture shows without it), and
-  the person's theme goes back to its base.
+  the person's theme goes back to its base. Filters also run in the order of these ids
+  ([When a filter runs](#when-a-filter-runs)).
 - **Each option's `id` and `kind`.** A value kept under an id that's gone is forgotten, and the option is at its
   default.
 - **Each option's `default`.** A solver's option nobody has touched, and every option of a filter that sits at its
