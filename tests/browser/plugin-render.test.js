@@ -452,7 +452,7 @@ test('under another busy note a solver chosen renders on the next frame, as any 
     await nextTick(); // the watcher has run
     expect(project._renderQueued).toBe(true);
     expect(pipeline).not.toHaveBeenCalled();
-    await settle(project);
+    await vi.waitFor(() => expect(project._renderQueued || project._rendering).toBe(false)); // not settle: it waits for the note to go
     expect(pipeline).toHaveBeenCalledTimes(1);
     expect(busyMessage.value).toBe('Opening x…');
   } finally {

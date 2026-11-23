@@ -13,18 +13,24 @@ export function selectMatching({ width, height, start, same, contiguous = true, 
     for (let i = 0; i < mask.length; i++) if (ok(i) && same(i)) mask[i] = 1;
     return mask;
   }
-  const queue = [first];
-  mask[first] = 1;
-  for (let head = 0; head < queue.length; head++) {
-    const i = queue[head], x = i % width, y = (i - x) / width;
-    for (const [nx, ny] of [[x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]]) {
-      if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
-      const n = ny * width + nx;
-      if (!mask[n] && ok(n) && same(n)) {
-        mask[n] = 1;
-        queue.push(n);
-      }
+  // Each unit is queued once at most: a typed array of indexes, and the neighbors looked at in place (right, left, down,
+  // up), not an array of pairs a unit.
+  const queue = new Int32Array(width * height);
+  let tail = 0;
+  const reach = (n) => {
+    if (!mask[n] && ok(n) && same(n)) {
+      mask[n] = 1;
+      queue[tail++] = n;
     }
+  };
+  mask[first] = 1;
+  queue[tail++] = first;
+  for (let head = 0; head < tail; head++) {
+    const i = queue[head], x = i % width, y = (i - x) / width;
+    if (x + 1 < width) reach(i + 1);
+    if (x > 0) reach(i - 1);
+    if (y + 1 < height) reach(i + width);
+    if (y > 0) reach(i - width);
   }
   return mask;
 }

@@ -7,6 +7,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore, followLayerPick } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { followParams } from '@/store/project/rendering';
+import { busyMessage } from '@/composables/useBusy';
 import { setGlyphRasterizer, rasterizeCoverage } from '@/lib/GlyphCoverage';
 import { setDisplayFont } from '@/lib/displayFonts';
 import { halfColors } from '@/lib/Cells';
@@ -43,11 +44,13 @@ export async function createTestApp() {
 
 const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 
-// Wait until no render is queued or running, then a frame more (views redraw on the next one).
+// Wait until no render is queued or running and no busy work (a fill waiting for its frame: useBusy) is up, then a frame
+// more (views redraw on the next one).
 export async function settle(project) {
+  const busy = () => project._renderQueued || project._rendering || busyMessage.value;
   await frame();
-  for (let i = 0; i < 600 && (project._renderQueued || project._rendering); i++) await frame();
-  if (project._renderQueued || project._rendering) throw new Error('render never settled');
+  for (let i = 0; i < 600 && busy(); i++) await frame();
+  if (busy()) throw new Error('render never settled');
   await frame();
 }
 

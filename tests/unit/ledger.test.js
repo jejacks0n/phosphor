@@ -929,3 +929,33 @@ test('dropping a layer leaves a stroke\'s other layers, and a vector layer\'s sh
   assert.deepEqual(ledger.keysOf('both'), ['1,1', 'v:two']);
   assert.deepEqual(go(ledger.undo('a', 'both')).cells, [['1,1', null], ['v:two', null]]);
 });
+
+// reader() gives a readCell for one submit, undo or redo (the store's, read once for a fill's half a million cells): the
+// ledger asks it, never readCell, while one runs, and the numbers, cells and check come out as they do with readCell alone.
+test('a ledger with a reader reads through it, once a submit or flip, and gives what readCell alone gives', () => {
+  const run = (withReader) => {
+    const { pic, ledger, go } = setup({ cells: [['0,0', START], ['1,0', START]] });
+    let readers = 0, viaReader = 0;
+    if (withReader) {
+      ledger.reader = () => {
+        readers++;
+        return (key) => { viaReader++; return pic.readCell(key); };
+      };
+      ledger.readCell = () => assert.fail('readCell asked while a reader is given');
+    }
+    const out = [
+      go(ledger.submit('a', 's1', { cells: [['0,0', X], ['1,0', Y], ['2,0', Z]], runs: [] })),
+      go(ledger.submit('b', 's2', { cells: [['0,0', Y]], runs: [] })),
+      go(ledger.undo('a', 's1')),
+      go(ledger.undo('b', 's2')),
+      go(ledger.redo('a', 's1')), // every stroke undone at '1,0' and '2,0': read again
+    ].map(({ n, cells }) => ({ n, cells }));
+    return { out, cells: [...pic.cells], sum: ledger.sum, readers, viaReader };
+  };
+  const plain = run(false), read = run(true);
+  assert.deepEqual(read.out, plain.out);
+  assert.deepEqual(read.cells, plain.cells);
+  assert.equal(read.sum, plain.sum);
+  assert.equal(read.readers, 5); // one a submit, undo or redo
+  assert.equal(read.viaReader, 6); // three new positions, and again where every stroke there was undone
+});

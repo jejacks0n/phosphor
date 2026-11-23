@@ -18,6 +18,8 @@ const painted = () => new Promise((resolve) => {
   setTimeout(go, HIDDEN_TAB_MS);
 });
 
+let endedAt = -Infinity; // when the last busy work ended (performance.now(), the clock events are stamped by)
+
 export async function busyWhile(message, work) {
   if (busyMessage.value) return work();
   busyMessage.value = message;
@@ -26,5 +28,10 @@ export async function busyWhile(message, work) {
     return await work();
   } finally {
     busyMessage.value = null;
+    endedAt = performance.now();
   }
 }
+
+// Whether a press came while busy work was up: now, or made while it ran and only dispatched after (the page can't
+// take input while a fill runs, so a click then waits, and comes once the note's gone). Such a press starts nothing.
+export const pressedWhileBusy = (event) => !!busyMessage.value || (event?.timeStamp ?? Infinity) <= endedAt;

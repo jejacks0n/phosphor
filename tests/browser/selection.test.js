@@ -470,7 +470,8 @@ test('Cut leaves the shape whole', async () => {
   app.mount(document.createElement('div'));
   workspace.selectAll(rect);
   const shapes = project.shapes;
-  key('x', { metaKey: true }); // Cut: the copy, then the cells gone from every shown layer
+  key('x', { metaKey: true }); // Cut: the copy, then the cells gone from every shown layer (on the next frame)
+  await settle(project);
   expect(workspace.clipboard.shown.some(Boolean)).toBe(true);
   expect(project.shapes).toBe(shapes);
   expect(project.cellsOf('edit').size).toBe(0);

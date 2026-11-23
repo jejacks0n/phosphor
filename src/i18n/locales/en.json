@@ -1422,7 +1422,11 @@
     "openFailed": "Could not reopen that project."
   },
   "busy": {
-    "solving": "Working out the characters…"
+    "solving": "Working out the characters…",
+    "filling": "Filling…",
+    "merging": "Merging…",
+    "deleting": "Deleting…",
+    "pasting": "Pasting…"
   },
   "document": {
     "opening": "Opening {name}…",

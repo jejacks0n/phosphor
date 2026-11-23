@@ -7,22 +7,24 @@ import { placedShapes } from '@/document/followers';
 import { isArt } from '@/document/artLayers';
 import { hex2rgb } from '@/lib/ColorUtils';
 import { onBottom } from '@/store/project/shared.js';
+import { busyMessage, busyWhile } from '@/composables/useBusy';
 import { t } from '@/i18n/index.js';
 
 // Grid pixels the fill stops at: the picked layer's edit cells showing a character with something to see through (text,
 // box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
 // paint (showsChar) isn't one: the fill covers what you see. With a selection (clip), every pixel
 // outside it is a wall too.
+// The store's fields are read once, not at each of a million pixels.
 function wallsOf(project, clip, picked) {
-  const walls = new Uint8Array(project.cols * project.rows);
-  if (clip) for (let i = 0; i < walls.length; i++) walls[i] = clip.pixel(i % project.cols, Math.floor(i / project.cols)) ? 0 : 1;
+  const { cols, rows, cells, renderStyle } = project, walls = new Uint8Array(cols * rows);
+  if (clip) for (let i = 0; i < walls.length; i++) walls[i] = clip.pixel(i % cols, Math.floor(i / cols)) ? 0 : 1;
   for (const [key, entry] of project.cellsOf(picked)) {
-    if (!ownEntry(entry, project.renderStyle)) continue; // a paint block or a frozen cell is paint (docs/model.md R1)
+    if (!ownEntry(entry, renderStyle)) continue; // a paint block or a frozen cell is paint (docs/model.md R1)
     const { col, row } = parseKey(key);
-    const cell = project.cells[cellIndex(col, row, project.cols)];
+    const cell = cells[cellIndex(col, row, cols)];
     if (!cell || isSolidGlyph(cell.char) || !showsChar(cell)) continue;
     for (const c of cell.wide === 'lead' ? [col, col + 1] : [col]) {
-      if (c < project.cols) walls[2 * row * project.cols + c] = walls[(2 * row + 1) * project.cols + c] = 1;
+      if (c < cols) walls[2 * row * cols + c] = walls[(2 * row + 1) * cols + c] = 1;
     }
   }
   return walls;
@@ -121,16 +123,19 @@ export function pixelArea(project, workspace, pos) {
 export const fillsCells = (workspace, view) => view === 'output' && workspace.bucketFillWith === 'cells';
 
 // Cells gives the area what bucketSet lights (your FG and BG, None keeps the cell's, and
-// character) as edit cells over the paint; Normal paints it in the foreground color.
-export function fillSolid({ project, workspace, view }, pos) {
-  if (fillsCells(workspace, view)) {
-    const set = workspace.bucketSet, colors = workspace.typingAttrs();
-    const attrs = { ...(set.fg ? { fg: colors.fg, fgIndex: colors.fgIndex } : {}), ...(set.bg ? { bg: colors.bg, bgIndex: colors.bgIndex } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
-    project.writeEditCells(cellArea(project, workspace, pos).map(({ x, y }) => ({ col: x, row: y, attrs })), { clearPaint: true });
-  } else {
-    project.paintStroke(pixelArea(project, workspace, pos));
-  }
-  project.commitEdit();
+// character) as edit cells over the paint; Normal paints it in the foreground color. Under the busy note ("Filling…"),
+// which a fill over most of a large drawing is long enough to show; it starts on the next frame, with the note drawn.
+export async function fillSolid({ project, workspace, view }, pos) {
+  return busyWhile(t('busy.filling'), () => {
+    if (fillsCells(workspace, view)) {
+      const set = workspace.bucketSet, colors = workspace.typingAttrs();
+      const attrs = { ...(set.fg ? { fg: colors.fg, fgIndex: colors.fgIndex } : {}), ...(set.bg ? { bg: colors.bg, bgIndex: colors.bgIndex } : {}), ...(set.char ? { char: workspace.activeChar } : {}) };
+      project.writeEditCells(cellArea(project, workspace, pos).map(({ x, y }) => ({ col: x, row: y, attrs })), { clearPaint: true });
+    } else {
+      project.paintStroke(pixelArea(project, workspace, pos));
+    }
+    project.commitEdit();
+  });
 }
 
 // A press outside the selection, where a fill has nothing to fill.
@@ -191,12 +196,13 @@ export default {
   },
   // With Char alone lit it sets no colors anyway, so None has nothing to say there.
   writesChars: ({ workspace, view }) => fillsCells(workspace, view) && workspace.bucketSet.char && (workspace.bucketSet.fg || workspace.bucketSet.bg),
-  // One click fills, with no stroke to continue; a click outside the selection does nothing.
+  // One click fills, with no stroke to continue; a click outside the selection does nothing, and so does one while the
+  // busy note's up: the fill before it, still to run or running, goes first and alone.
   begin(ctx, pos, event) {
-    if (!ctx.project.renderer.outputCanvas) return false;
+    if (!ctx.project.renderer.outputCanvas || busyMessage.value) return false;
     event.stopPropagation();
     if (outsideSelection(ctx, pos)) return false;
-    fillSolid(ctx, pos);
+    fillSolid(ctx, pos).catch((error) => console.error('The fill failed', error));
     return false;
   },
 };

@@ -328,7 +328,17 @@ long file (time the reload), and press Back from a fresh start screen.
   the steps before it), then redo both; `extremes`: 5,000 lines at 100 columns.
 - Rated: yes, wants Tab to Dimensions
 
-### 26. Memory after a long session
+### 26. Fill, merge and delete across the long file
+- Does: adds a layer, fills the whole of it with the Paint Bucket (a click on the blank layer), clicks again while it
+  fills, then Merge down; Select all, Cmd+C, Delete on the base, then Cmd+V the copy back; changes the character set.
+- Expects: each lands as one undo step; one taking over half a second says so at the bottom ("Filling…", "Merging…",
+  "Deleting…", "Pasting…", "Working out the characters…") and the note goes when it's done; the click during the fill
+  fills nothing more and draws nothing. Merge down takes several seconds; the rest about a second or less.
+- Probes: `speed`: time each from the press to the drawing redrawn; `out-of-order`: press a Pencil stroke while
+  "Merging…" is up (it draws nothing); `undo-redo`: undo each and redo it.
+- Rated: no (a check of speed)
+
+### 27. Memory after a long session
 - Does: takes `qa.memory` and compares it with step 1's; reopens the long file once more and takes it again.
 - Expects: no steady growth: reopening the same file doesn't add its size each time.
 - Probes: `again`: open and close the long file three times, taking `qa.memory` after each.

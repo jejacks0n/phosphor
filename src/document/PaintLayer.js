@@ -146,7 +146,7 @@ export default class PaintLayer {
     const rects = [];
     for (const { x, y, r, g, b, alpha } of pixels) {
       const rect = this.#cellRect(x, y);
-      if (rect) rects.push({ ...rect, r, g, b, a: Math.round(alpha * 255) });
+      if (rect) rects.push({ x: rect.x, y: rect.y, w: rect.w, h: rect.h, r, g, b, a: Math.round(alpha * 255) });
     }
     if (!rects.length) return null;
     this.hasPaint = true;
@@ -288,8 +288,31 @@ export default class PaintLayer {
   pixelAt(x, y) {
     const rect = this.#cellRect(x, y);
     if (!rect) return null;
-    const { data } = ctx2d(this.canvas).getImageData(rect.x, rect.y, rect.w, rect.h);
-    return PaintLayer.average(data, rect.w, 0, 0, rect.w, rect.h);
+    return PaintLayer.average(this.#pixels(), this.canvas.width, rect.x, rect.y, rect.w, rect.h);
+  }
+
+  // The layer's pixels as read back, kept and caught up only where they changed since (changedSince), so reads a pixel at
+  // a time (Merge down's, a fill's walls) cost one getImageData, not one each. ponytail: a copy the canvas's size (16 MB
+  // at 2000×2000); drop it when idle if memory matters.
+  #read = null; // { canvas, version, data }
+  #pixels() {
+    const { canvas, version } = this, kept = this.#read;
+    if (kept?.canvas === canvas && kept.version === version) return kept.data;
+    const ctx = ctx2d(canvas), { width, height } = canvas;
+    const area = kept?.canvas === canvas && kept.data.length === width * height * 4 ? this.changedSince(kept.version) : null;
+    if (!area) {
+      this.#read = { canvas, version, data: ctx.getImageData(0, 0, width, height).data };
+      return this.#read.data;
+    }
+    // Out to whole pixels and one more, for a drawImage's edge at a scale that isn't whole.
+    const x0 = Math.max(0, Math.floor(area.x) - 1), y0 = Math.max(0, Math.floor(area.y) - 1);
+    const x1 = Math.min(width, Math.ceil(area.x + area.w) + 1), y1 = Math.min(height, Math.ceil(area.y + area.h) + 1);
+    if (area.w && area.h && x1 > x0 && y1 > y0) {
+      const part = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data, row = (x1 - x0) * 4;
+      for (let y = y0; y < y1; y++) kept.data.set(part.subarray((y - y0) * row, (y - y0 + 1) * row), (y * width + x0) * 4);
+    }
+    kept.version = version;
+    return kept.data;
   }
 
   // The paint of grid pixels x0..x1, y0..y1 read at once: a function giving each of them as pixelAt does (null outside

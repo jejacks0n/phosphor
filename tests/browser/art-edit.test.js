@@ -547,6 +547,7 @@ test('a fill on an art layer\'s own paint stays in it, at any Tolerance and with
   workspace.bucketFillWith = 'normal';
   toastMessage.value = null;
   bucket.begin(ctx, { x: 4.5, y: 8.5 }, ev);
+  await settle(project);
   expect(toastMessage.value).toBe(null);
   fillsIn(project, key, (cell) => cell[2]);
   expect(project.shapes.get(key).m.slice(4)).toEqual([4, 8]);
@@ -556,6 +557,7 @@ test('a Cells fill on an art layer\'s own cells stays in them', async () => {
   const { project, workspace, key, ctx } = await fillInside();
   Object.assign(workspace, { bucketFillWith: 'cells', bucketMatch: { fg: true, bg: true, char: false }, bucketSet: { fg: true, bg: false, char: false } });
   bucket.begin(ctx, { x: 5.5, y: 9.5 }, ev);
+  await settle(project);
   fillsIn(project, key, (cell) => cell[3]);
 });
 
@@ -567,6 +569,7 @@ test('a gradient dragged from an art layer\'s own paint stays in it', async () =
   expect(gradient.begin(ctx, { x: 4.5, y: 8.5 }, ev)).toBe(true);
   gradient.move(ctx, { x: 4.5, y: 8.5 }, { x: 15.5, y: 18.5 });
   gradient.end(ctx);
+  await settle(project);
   fillsIn(project, key, (cell) => cell[2]);
 });
 
@@ -574,6 +577,7 @@ test('a fill started on the picture around an art layer still reads the picture,
   const { project, workspace, key, ctx } = await fillInside();
   workspace.bucketFillWith = 'normal';
   bucket.begin(ctx, { x: 15.5, y: 18.5 }, ev);
+  await settle(project);
   const { art } = project.shapes.get(key);
   expect(art.cols * art.rows).toBeGreaterThan(2);
 });
