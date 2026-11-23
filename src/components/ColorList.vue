@@ -110,21 +110,43 @@ const onSwatchKey = (event, i) => {
 };
 
 // With a mouse or a pen a swatch can be dragged to another place; a finger's drag scrolls the details, so it can't.
+// While it's dragged the swatches are shown in the order a drop would leave, with a dashed placeholder where it would
+// land: over another swatch, the placeholder takes that one's place. Each is keyed by its place in the list, so the
+// one dragged is moved, not drawn again, and its drag goes on.
 const mouse = useMediaQuery('(pointer: fine)');
 let dragged = null;
+const landing = ref(null); // where the swatch dragged would land; null when none is
+const shown = computed(() => {
+  const all = colors.value.map((hex, i) => ({ hex, i }));
+  return landing.value === null ? all : moved(all, dragged, landing.value);
+});
 const onDragStart = (event, i) => {
   dragged = i;
   event.dataTransfer?.setData('text/plain', colors.value[i]); // some browsers start no drag without data
+  // The browser takes the drag image from the swatch as it is once this returns, so the placeholder comes a moment later.
+  setTimeout(() => {
+    if (dragged === i && landing.value === null) landing.value = i;
+  });
 };
+// Over the swatches a drop is taken, and the placeholder goes to the swatch under the pointer (its place as shown). A
+// dragenter is taken too: when what's under the pointer changes (the placeholder just moved there) Chrome sends that,
+// not a dragover, and a drop let go then would be refused if it weren't.
 const onDragOver = (event) => {
-  if (dragged !== null) event.preventDefault();
+  if (dragged === null) return;
+  event.preventDefault();
+  const over = event.target.closest('div.swatch');
+  if (over) landing.value = [...event.currentTarget.children].indexOf(over);
 };
-const onDrop = (i) => {
-  if (dragged !== null && dragged !== i) {
+const onDrop = () => {
+  if (dragged !== null && landing.value !== null && landing.value !== dragged) {
     picked.value = dragged; // the swatch dragged goes where it's dropped, picked
-    move(i);
+    move(landing.value);
   }
+  endDrag();
+};
+const endDrag = () => {
   dragged = null;
+  landing.value = null;
 };
 
 // A list typed or a file imported replaces the whole list, and its toast puts back the list as it was, as it was
@@ -167,12 +189,12 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
       <button type="button" class="ghost import" :disabled="disabled" :title="t('colorList.importTitle')" @click="file.click()">{{ t('colorList.import') }}</button>
       <button type="button" class="ghost export" :disabled="disabled || !colors.length" :title="t('colorList.exportTitle')" @click="exportList">{{ t('colorList.export') }}</button>
     </div>
-    <div class="swatches">
-      <div v-for="(hex, i) in colors" :key="i" class="swatch">
+    <div class="swatches" @dragenter="onDragOver" @dragover="onDragOver" @drop.prevent="onDrop">
+      <div v-for="{ hex, i } in shown" :key="i" class="swatch" :class="{ placeholder: landing !== null && i === dragged }">
         <button
             type="button"
             class="swatch"
-            :style="{ backgroundColor: hex }"
+            :style="{ backgroundColor: landing !== null && i === dragged ? 'transparent' : hex }"
             :aria-label="t('colorList.swatch', { hex, n: i + 1, count: colors.length })"
             :title="hex"
             :aria-pressed="String(i === picked)"
@@ -183,9 +205,7 @@ const exportList = () => downloadBlob(new Blob([hexFile(colors.value)], { type: 
             @click="picked = i"
             @keydown="onSwatchKey($event, i)"
             @dragstart="onDragStart($event, i)"
-            @dragover="onDragOver"
-            @drop.prevent="onDrop(i)"
-            @dragend="dragged = null"
+            @dragend="endDrag"
         ></button>
         <span aria-hidden="true">{{ hex }}</span>
       </div>
@@ -265,6 +285,16 @@ div.color-list button.swatch:hover {
 div.color-list button.swatch[aria-pressed=true] {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
+}
+
+/* Where the swatch dragged would land: a dashed outline in its place, with no color, ring or hex. */
+div.color-list div.swatch.placeholder button.swatch {
+  border: 1px dashed var(--text-muted);
+  outline: none;
+}
+
+div.color-list div.swatch.placeholder span {
+  visibility: hidden;
 }
 
 div.color-list button.add {

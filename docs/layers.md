@@ -1216,8 +1216,9 @@ outside it or the **×** at the top right of the dialog. **↓** and **↑** wal
 - **This Drawing**: With a Custom color list it's the editor: **Import .hex** (replacing the list with a `.hex` or
   `.txt` file's colors; a file over 1 MB isn't read) and **Export .hex** as buttons, the colors as large swatches with
   their hex, a **+** that adds a copy of the picked color at the end, and under them the picked color's chip (the system
-  color picker), its hex, the move earlier and move later buttons, and **Remove**. With hundreds of colors the swatches
-  scroll inside the details, so the buttons stay in reach. The swatches are one **Tab** stop, the picked one: from there
+  color picker), its hex, the move earlier and move later buttons, and **Remove**. With a mouse a swatch can be dragged
+  to another place, and while it's dragged a dashed outline shows where it will land. With hundreds of colors the
+  swatches scroll inside the details, so the buttons stay in reach. The swatches are one **Tab** stop, the picked one: from there
   **←** and **→** pick the one before or after, **↑** and **↓** the one a row away, and **Home** and **End** the first
   and last. A hex typed takes effect on **Enter** or leaving the field, and **Escape** puts back the one in use. A list
   of two or more colors typed or pasted there replaces every color. Each replacement says so in a toast with

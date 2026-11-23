@@ -412,6 +412,37 @@ test('with a mouse a swatch dragged onto another moves there and stays picked', 
   expect(pressed()).toBe(2);
 });
 
+test('while a swatch is dragged a dashed placeholder shows where it would land, and a drag let go outside writes nothing', async () => {
+  await page.viewport(1200, 800);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerWidth).toBe(1200));
+  const { list, emitted } = await mount('#111111 #222222 #333333');
+  const cells = () => [...host.querySelectorAll('div.swatches div.swatch')];
+  const shown = () => cells().map((cell) => (cell.classList.contains('placeholder') ? 'here' : cell.querySelector('span').textContent)).join(' ');
+  swatches()[0].dispatchEvent(new DragEvent('dragstart', { bubbles: true, dataTransfer: new DataTransfer() }));
+  await vi.waitFor(() => expect(shown()).toBe('here #222222 #333333')); // after the browser has the drag image
+  const holder = host.querySelector('div.swatch.placeholder button.swatch');
+  expect(getComputedStyle(holder).borderTopStyle).toBe('dashed');
+  expect(getComputedStyle(holder).backgroundColor).toBe('rgba(0, 0, 0, 0)');
+
+  cells()[2].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+  await nextTick();
+  expect(shown()).toBe('#222222 #333333 here');
+  cells()[0].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+  await nextTick();
+  expect(shown()).toBe('here #222222 #333333');
+  cells()[1].dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true }));
+  await nextTick();
+  expect(shown()).toBe('#222222 here #333333');
+
+  const count = emitted.length;
+  swatches()[1].dispatchEvent(new DragEvent('dragend', { bubbles: true }));
+  await nextTick();
+  expect(shown()).toBe('#111111 #222222 #333333');
+  expect(emitted.length).toBe(count);
+  expect(list.value).toBe('#111111 #222222 #333333');
+});
+
 test('disabled swatches aren\'t draggable even with a mouse', async () => {
   await page.viewport(1200, 800);
   onTestFinished(() => page.viewport(414, 896));
