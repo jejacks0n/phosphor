@@ -22,10 +22,18 @@ const swatches = (page) => page.locator('.color-list button.swatch');
 // Every color the cells show is one of the list's.
 const cellColors = (page) => store(page, 'project', (p) => [...new Set(p.cells.flatMap((c) => [c.fg.hex, c.bg.hex]))].sort());
 
-test('a swatch dragged with the mouse onto another moves there, and the picture recolors', async ({ page }) => {
+test('a swatch dragged with the mouse onto another shows a placeholder there, moves there, and the picture recolors', async ({ page }) => {
   await openApp(page);
   await customList(page);
-  await swatches(page).nth(0).dragTo(swatches(page).nth(2));
+  const from = await swatches(page).nth(0).boundingBox(), to = await swatches(page).nth(2).boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 8 });
+  const placeholder = page.locator('.color-list div.swatch.placeholder');
+  await expect(placeholder).toHaveCount(1);
+  await expect(page.locator('.color-list div.swatch').nth(2)).toHaveClass(/placeholder/); // the swatch dragged, where it'd land
+  await page.mouse.up();
+  await expect(placeholder).toHaveCount(0);
   await expect.poll(() => store(page, 'project', (p) => p.palette)).toBe('#00ff00 #0000ff #ff0000');
   await settled(page);
   for (const hex of await cellColors(page)) expect(LIST.split(' ')).toContain(hex);
