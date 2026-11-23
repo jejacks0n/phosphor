@@ -208,7 +208,7 @@ export const sharingActions = {
     this.commitPending();
     this.ensureLayer();
     this.setAnimate(false);
-    this.history.dropThrough((entry) => entry.frameOp || entry.layerOp); // frames and layers' structure never travel, so nothing here can bring one back
+    this.history.dropThrough((entry) => entry.frameOp || entry.layerOp || entry.gridOp); // frames and layers' structure never travel, nor a grid change (a room's grid goes as the whole document), so nothing here can bring one back
     this.history.retain((entry) => !entry.ownChars); // nor a layer's own settings: a room has one set
     this.historyVersion = this.history.version;
     // A layer with none of its own follows the bottom's alone; an artist takes them as they are (applyLayers), so the host does too.

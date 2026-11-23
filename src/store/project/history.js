@@ -384,6 +384,7 @@ export const historyActions = {
 
   undo() {
     if (this._stroke?.pen) return this.penBack(); // while the Pen draws: its last point, as Backspace
+    this.ensureLayer(); // a grid change not followed yet (it is on the next render) is the step to undo
     this.commitPending();
     if (this._artInside && !this._artInside.entries.has(this.history.last)) return; // not past where you stepped in
     if (lockedStep(this, this.history.last)) return;
@@ -411,6 +412,7 @@ export const historyActions = {
   },
 
   redo() {
+    this.ensureLayer(); // a grid change not followed yet is a step, which drops what there was to redo
     this.commitPending();
     if (this._artInside && !this._artInside.entries.has(this.history.next)) return; // only what was done inside
     if (lockedStep(this, this.history.next)) return;

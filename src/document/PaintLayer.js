@@ -367,6 +367,7 @@ export default class PaintLayer {
   // when the scale had to drop to stay under MAX_LAYER_DIM: the content was resampled, so recorded
   // strokes no longer fit it.
   extend(cols, rows) {
+    const kept = this.keepsScale(cols, rows);
     cols = Math.max(this.cols, cols);
     rows = Math.max(this.rows, rows);
     if (cols === this.cols && rows === this.rows) return true;
@@ -376,11 +377,29 @@ export default class PaintLayer {
     ctx.imageSmoothingEnabled = this.smooth;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(this.canvas, 0, 0, this.cols * scale, this.rows * scale);
-    const kept = scale === this.scale;
     Object.assign(this, { cols, rows, scale, canvas: next });
     this.#stroke = null;
     this.#changed(null);
     return kept;
+  }
+
+  // Whether extend(cols, rows) keeps the scale, and so the content as it is.
+  keepsScale(cols, rows) {
+    cols = Math.max(this.cols, cols);
+    rows = Math.max(this.rows, rows);
+    return (cols === this.cols && rows === this.rows) || editScaleFor(Infinity, Infinity, cols, rows) >= this.scale;
+  }
+
+  // What a grid change replaces, for its undo step to put back (putGrid): extend and resize draw onto a new canvas, so
+  // the one held here stays as it was.
+  gridState() {
+    return { cols: this.cols, rows: this.rows, scale: this.scale, canvas: this.canvas, hasPaint: this.hasPaint };
+  }
+
+  putGrid(state) {
+    Object.assign(this, state);
+    this.#stroke = null;
+    this.#changed(null);
   }
 
   // Remap paint to a new grid size so it stays on the same part of the image, at `scale` layer pixels

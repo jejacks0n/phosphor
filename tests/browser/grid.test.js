@@ -2,17 +2,20 @@
 // refits, the base's pins move with it); with edits it's a canvas resize (everything stays put, the
 // grid gains or loses cells at the right and bottom, and what's past the edge comes back when it
 // grows). Random characters belong to their cell's position, so they survive a width change. A step undo could
-// bring back keeps its cells where they are too: a grid change never forgets the undo steps before it.
-import { test, expect } from 'vitest';
+// bring back keeps its cells where they are too. A grid change is an undo step itself, and never forgets the steps before it.
+import { test, expect, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
-import { createApp, nextTick } from 'vue';
+import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
-import { createTestApp, loadImage, settle } from '../support/app.js';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { ctx2d } from '@/lib/Canvas';
+import { BLANK_CANVAS_SCALE } from '@/store/project/shared.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 import EditWorkspace from '@/components/EditWorkspace.vue';
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 
 async function grid(cols = 40, rows = 40) {
   const { project, workspace } = await createTestApp();
@@ -84,6 +87,9 @@ for (const [what, to] of [['grows', 50], ['shrinks', 30]]) {
 
     await resize(project, to, to);
     expect(row(project, 5)).toBe(fixed); // a canvas resize: everything stays where it is
+    project.undo(); // the resize, a step of its own
+    await settle(project);
+    expect([project.cols, project.rows, row(project, 5)]).toEqual([40, 40, fixed]);
     project.undo();
     await settle(project);
     expect(row(project, 5)).toBe(erased);
@@ -93,15 +99,19 @@ for (const [what, to] of [['grows', 50], ['shrinks', 30]]) {
     expect(project.canUndo).toBe(false);
     project.redo();
     project.redo();
+    project.redo();
     await settle(project);
-    expect(row(project, 5)).toBe(fixed);
+    expect([project.cols, project.rows, row(project, 5)]).toEqual([to, to, fixed]);
 
     await resize(project, 40, 40);
     expect(row(project, 5)).toBe(fixed);
     project.undo();
     project.undo();
+    project.undo();
+    project.undo();
     await settle(project);
-    expect(row(project, 5)).toBe(before);
+    expect([project.cols, row(project, 5)]).toEqual([40, before]);
+    expect(project.canUndo).toBe(false);
   });
 }
 
@@ -524,4 +534,219 @@ test('after drawing, the lock keeps the grid\'s shape while the canvas grows, an
   project.updateCols(160);
   await settle(project);
   expect([project.cols, project.rows]).toEqual([160, 60]);
+});
+
+// A change of dimensions is one undo step (rendering.js: ensureLayer), and the steps before it stay. Undo puts back the
+// grid and every layer as it was, pixel for pixel: a layer's canvas held, never resized back.
+const layerPixels = (layer) => {
+  const { width, height } = layer.canvas, d = ctx2d(layer.canvas).getImageData(0, 0, width, height).data;
+  let h = 0;
+  for (let i = 0; i < d.length; i++) h = (Math.imul(h, 31) + d[i]) | 0;
+  return `${width}x${height}@${layer.scale}:${h}:${layer.hasPaint}`;
+};
+const drawn = (project) => ({
+  grid: [project.cols, project.rows], fit: { ...project.fit }, baseScale: project.baseScale, cells: cellsKey(project).join('|'),
+  paint: layerPixels(project.paintLayer), base: layerPixels(project.baseLayer), pins: [...project.baseRecords.pins],
+});
+async function dabAndType(project, workspace) {
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }, { x: 5, y: 4, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  project.typeAt(8, 3, 'A', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  workspace.pickLayer('base');
+  project.writeBaseCells([{ col: 2, row: 6, char: 'P', fg: '#ffffff', bg: '#0000aa' }]);
+  workspace.pickLayer('edit');
+  await settle(project);
+}
+
+test('a canvas resize is an undo step: undo puts the size back with the drawing on it, and undo goes on past it', async () => {
+  const { project, workspace } = await grid();
+  const clean = drawn(project);
+  await dabAndType(project, workspace);
+  const before = drawn(project);
+  await resize(project, 60, 50);
+  const after = drawn(project);
+  expect(after.grid).toEqual([60, 50]);
+  expect(project.history.last.bytes).toBe(0); // the layers only grew: nothing to hold
+  project.undo();
+  await settle(project);
+  expect(drawn(project)).toEqual({ ...before, paint: expect.any(String), base: expect.any(String) });
+  for (const k of [3, 2, 1]) {
+    project.undo();
+    await settle(project);
+    expect(project.canUndo).toBe(k > 1);
+  }
+  expect(drawn(project).cells).toBe(clean.cells); // the pin, the letter and the stroke went, one step each
+  for (let k = 0; k < 4; k++) project.redo();
+  await settle(project);
+  expect(drawn(project)).toEqual(after);
+});
+
+test('a canvas resize past MAX_LAYER_DIM resamples the layers, and undo puts their pixels back, not resized back', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 40 });
+  await settle(project);
+  await dabAndType(project, workspace);
+  const before = drawn(project);
+  project.rows = 600; // 600 rows at the scale would be past MAX_LAYER_DIM
+  await settle(project);
+  expect(project.paintLayer.scale).toBeLessThan(BLANK_CANVAS_SCALE);
+  expect(project.baseLayer.scale).toBeLessThan(BLANK_CANVAS_SCALE);
+  const after = drawn(project);
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#0000ff'); // drawn on the resampled layer, and undone first
+  project.commitEdit();
+  await settle(project);
+  project.undo();
+  await settle(project);
+  expect(drawn(project)).toEqual(after);
+  project.undo();
+  await settle(project);
+  expect(drawn(project)).toEqual(before);
+  project.undo();
+  project.undo();
+  project.undo();
+  await settle(project);
+  expect(project.paintLayer.hasPaint).toBe(false); // the first stroke too
+  expect(project.canUndo).toBe(false);
+  for (let k = 0; k < 4; k++) project.redo();
+  await settle(project);
+  expect(drawn(project)).toEqual(after);
+});
+
+test('a rescale is an undo step: undo puts back the fit and the base as they were, and the steps before it', async () => {
+  const { project } = await grid();
+  project.setSlider('brightness', 150);
+  project.commitSliders('brightness');
+  project.updateCols(30); // a rescale first, after a slider step (it isn't tied to where things are)
+  await settle(project);
+  const before = { ...drawn(project), brightness: project.brightness };
+  expect(project.resizesCanvas).toBe(false);
+  const later = Date.now() + 2000, clock = vi.spyOn(Date, 'now').mockImplementation(() => later); // not a run with the 30: a step of its own
+  await resize(project, 60, 40);
+  clock.mockRestore();
+  const after = drawn(project);
+  expect(after.fit).not.toEqual(before.fit);
+  expect(project.resizesCanvas).toBe(false); // the grid's own step doesn't count: the next change rescales too
+  project.undo();
+  await settle(project);
+  expect({ ...drawn(project), brightness: project.brightness }).toEqual(before);
+  project.undo(); // the 30 columns
+  project.undo(); // and the slider
+  await settle(project);
+  expect([project.cols, project.brightness, project.canUndo]).toEqual([40, 100, false]);
+  project.redo();
+  project.redo();
+  project.redo();
+  await settle(project);
+  expect(drawn(project)).toEqual(after);
+});
+
+test('undo pressed before the render follows a new grid takes the grid back', async () => {
+  const { project } = await grid();
+  project.typeAt(8, 3, 'A', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  await settle(project);
+  project.updateCols(50);
+  project.undo(); // the render hasn't run: the step is made first, and undone
+  await settle(project);
+  expect([project.cols, project.canUndo, project.canRedo]).toEqual([40, true, true]);
+  expect(project.cells[cellIndex(8, 3, 40)].char).toBe('A');
+});
+
+test('a grid step made alone goes when a room starts, and in a room a grid change is no step', async () => {
+  const { project } = await grid();
+  project.typeAt(8, 3, 'A', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  await resize(project, 50);
+  project.typeAt(9, 3, 'B', { fg: '#ffee00', bg: '#0044aa' });
+  project.commitEdit();
+  project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
+  expect(project.history.some((entry) => entry.gridOp)).toBe(false); // the room's grid goes as the whole document
+  await resize(project, 60);
+  expect(project.history.some((entry) => entry.gridOp)).toBe(false);
+  project.stopSharing();
+});
+
+// A run of presses a moment apart (the stepper's arrows, held) is one step, as a run of nudges on a slider is, so it
+// can't push the steps before it out of undo. One that holds the layers (past MAX_LAYER_DIM) is a step of its own, which
+// the presses after it join.
+test('a run of Dimensions presses is one undo step, past MAX_LAYER_DIM too, and presses apart are steps each', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 390 });
+  await settle(project);
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  const before = drawn(project);
+  let now = Date.now();
+  const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
+  try {
+    for (let rows = 391; rows <= 410; rows++) { // 400 rows at scale 10 is MAX_LAYER_DIM: 401 resamples
+      project.updateRows(rows);
+      await settle(project);
+      now += 100;
+    }
+    expect(project.paintLayer.scale).toBeLessThan(BLANK_CANVAS_SCALE);
+    const after = drawn(project);
+    project.undo(); // 401 to 410, the resample and the presses that joined it
+    await settle(project);
+    expect([project.rows, project.paintLayer.scale]).toEqual([400, BLANK_CANVAS_SCALE]);
+    project.undo(); // 391 to 400
+    await settle(project);
+    expect(drawn(project)).toEqual({ ...before, paint: expect.any(String), base: expect.any(String) });
+    expect(project.paintLayer.pixelAt(4, 4)).toMatchObject({ r: 255, g: 0, b: 0 });
+    project.undo();
+    await settle(project);
+    expect([project.paintLayer.hasPaint, project.canUndo]).toEqual([false, false]);
+    project.redo();
+    project.redo();
+    project.redo();
+    await settle(project);
+    expect(drawn(project)).toEqual(after);
+
+    project.updateRows(420);
+    await settle(project);
+    now += 2000; // a second apart: a step of its own
+    project.updateRows(430);
+    await settle(project);
+    project.undo();
+    await settle(project);
+    expect(project.rows).toBe(420);
+  } finally {
+    clock.mockRestore();
+  }
+});
+
+// Cmd+Z with the Dimensions field still focused after Enter takes the size back (the field holds no typing of its own
+// then), and the field shows it.
+test('Cmd+Z after a size typed in Dimensions takes it back, then the stroke before it', async () => {
+  const { project, workspace } = await grid(40, 40);
+  project.aspectLock = false;
+  project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+  await settle(project);
+  const host = document.createElement('div');
+  document.body.append(host);
+  const app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => h(ControlPanel); } }).use(getActivePinia()).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const cols = host.querySelector('#cols');
+  try {
+    cols.focus();
+    cols.select();
+    await userEvent.keyboard('50{Enter}');
+    await settle(project);
+    expect(project.cols).toBe(50);
+    await userEvent.keyboard('{Meta>}z{/Meta}');
+    await settle(project);
+    await nextTick();
+    expect([project.cols, cols.value, document.activeElement === cols]).toEqual([40, '40', true]);
+    expect(project.paintLayer.pixelAt(4, 4)).toMatchObject({ r: 255, g: 0, b: 0 });
+    await userEvent.keyboard('{Meta>}z{/Meta}');
+    await settle(project);
+    expect(project.paintLayer.hasPaint).toBe(false);
+  } finally {
+    app.unmount();
+    host.remove();
+  }
 });

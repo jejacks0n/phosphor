@@ -67,18 +67,22 @@ test('8×16 to 8×8 keeps the columns, doubles the rows and fits the picture to 
   expect(project.aspectRatio).toBe(80 / 108);
 });
 
-test('with nothing drawn a switch is a settings step: a Columns change after it refits the picture, and the switch still undoes', async () => {
+test('with nothing drawn a switch is the rescale\'s step: a Columns change after it refits the picture, and both undo', async () => {
   const { project } = await photo();
   await project.setDrawingFont(font8);
   await settle(project);
-  expect(project.history.last.settingsOnly).toBe(true);
+  expect(project.history.last.gridOp).toBe(true); // one step, the font in the rescale's
   project.updateCols(40);
   await settle(project);
   expect(grid(project)).toEqual({ cols: 40, rows: 54 });
   expect(project.resizesCanvas).toBe(false);
   expect(toRaw(project.fit)).toEqual(project.fitFor(40, 54));
   expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 40, dh: 54 });
-  project.undo(); // kept through the rescale (dropEdits keeps settings steps)
+  project.undo(); // the Columns change
+  await settle(project);
+  expect(grid(project)).toEqual({ cols: 80, rows: 108 });
+  expect(project.drawingFont.name).toBe('Eight');
+  project.undo(); // and the switch, kept before it
   await settle(project);
   expect(project.drawingFont).toBeNull();
   expect(grid(project)).toEqual({ cols: 80, rows: 54 });
@@ -358,7 +362,7 @@ test('a library font of another height sets its SAUCE font name in the same step
     if (drawn) dab(project, 10, 10);
     await project.setDrawingFont(font8, { sauceFontName: 'IBM VGA50' });
     await settle(project);
-    expect(project.history.last.settingsOnly).toBe(drawn ? undefined : true); // regrid's whole-layer step, or a settings step
+    expect(!!project.history.last.gridOp).toBe(!drawn); // regrid's whole-layer step, or the rescale's
     expect([grid(project), project.drawingFont.name, project.sauceFontName]).toEqual([{ cols: 80, rows: 108 }, 'Eight', 'IBM VGA50']);
     project.undo();
     await settle(project);
@@ -425,7 +429,7 @@ test('with nothing drawn, a width change refits the lines', async () => {
   await settle(project);
   expect(grid(project)).toEqual(fontGrid(80, rows, 7, 8));
   expect(grid(project)).toEqual({ cols: 80, rows: Math.ceil(rows * 7 / 8) });
-  expect(project.history.last.settingsOnly).toBe(true);
+  expect(project.history.last.gridOp).toBe(true); // the rescale's step, the width in it
   project.undo();
   await settle(project);
   expect(grid(project)).toEqual({ cols: 80, rows });

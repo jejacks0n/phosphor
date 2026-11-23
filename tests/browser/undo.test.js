@@ -1,5 +1,5 @@
 // Undo and redo bring back every state exactly: a seeded fuzz of random edits (typing, paint, erase,
-// selections, merges, Bake, sliders, settings) undone and redone step by step, plus the cases it
+// selections, merges, Bake, sliders, settings, Dimensions) undone and redone step by step, plus the cases it
 // found: Bake and Merge into the image racing other changes, slider steps surviving a grid resize,
 // and a removed pin no longer showing its character; and the keys that undo and redo.
 import { test, expect, beforeAll } from 'vitest';
@@ -25,13 +25,21 @@ const ids = new WeakMap();
 let nextId = 1;
 const idOf = (o) => (o ? (ids.get(o) ?? (ids.set(o, nextId++), ids.get(o))) : 0);
 
+// A layer's pixels where it has any, each with its place, and its scale: not its size, which a canvas resize undone
+// leaves grown (what's past the grid's edge is kept), with nothing there.
 function layerHash(layer) {
   if (!layer) return 'none';
   const c = layer.canvas;
   const d = c.getContext('2d', { willReadFrequently: true }).getImageData(0, 0, c.width, c.height).data;
   let h = 0;
-  for (let i = 0; i < d.length; i++) h = (Math.imul(h, 31) + d[i]) | 0;
-  return `${c.width}x${c.height}:${h}:${layer.hasPaint}`;
+  for (let i = 0; i < d.length; i += 4) {
+    if (!d[i + 3]) continue;
+    const at = i / 4;
+    h = (Math.imul(h, 31) + (at % c.width)) | 0;
+    h = (Math.imul(h, 31) + Math.floor(at / c.width)) | 0;
+    for (let k = 0; k < 4; k++) h = (Math.imul(h, 31) + d[i + k]) | 0;
+  }
+  return `@${layer.scale}:${h}:${layer.hasPaint}`;
 }
 
 // Every cells layer above the bottom, its cells and paint (an empty one is empty): adding a layer is an undo step, so an
@@ -55,6 +63,7 @@ function docState(project, workspace) {
     image: idOf(project.image),
     hasPaint: project.hasPaint,
     colors: `${workspace.editFgColor}/${workspace.editBgColor}`,
+    grid: `${project.cols}x${project.rows}:${JSON.stringify(project.fit)}:${project.baseScale}`, // a resize is a step
   };
 }
 
@@ -238,6 +247,14 @@ function makeActions(project, workspace, r, opts) {
       else while (project._stroke?.pen) project.penBack();
     },
     reset: () => (r() < 0.5 ? project.resetSliders() : project.resetGroup(pick(['transform', 'adjust', 'effects']))),
+    resize: () => { // Dimensions: a canvas resize (something's drawn), the lock on or off, now and then past MAX_LAYER_DIM
+      project.setAspectLock(r() < 0.5);
+      if (r() < 0.15) {
+        project.setAspectLock(false);
+        project.updateRows(2100); // past MAX_LAYER_DIM at the paint's scale (2): resampled, and undo puts its pixels back
+      } else if (r() < 0.5) project.updateCols(pick([30, 40, 50, 56]));
+      else project.updateRows(pick([30, 40, 50, 56]));
+    },
     addLayer: () => { // a cells layer above the pick, up to two above the bottom
       if (cellsLayers(project).length < 2) project.addLayer('cells', workspace.pickedLayer);
     },
@@ -310,7 +327,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   const t = trackDepth(project);
   const r = rng(seed);
   const actions = makeActions(project, workspace, r, { async });
-  const names = only ?? Object.keys(actions).filter((name) => name !== 'pickBase'); // the base picked: the layers fuzz's
+  const names = only ?? Object.keys(actions).filter((name) => name !== 'pickBase' && name !== 'resize'); // the base picked: the layers fuzz's; Dimensions: its own (a new action would change every seed's run)
   const stack = [await snap(project, workspace, { forceRender })];
   const log = [];
   const acc = { open: false };
@@ -380,7 +397,8 @@ function diffCells(a, b) {
 // shade apart: shapes 6; a gradient stroke drawn a shade apart from one render to the next: shapes 4; paint from
 // before a typing run shown unsnapped: count 23; an art layer made while a typing run was open, its step recorded before
 // the typing's: layers 19; a shape edit once the only cells layer was deleted, no step at all: sync 20; a typing run
-// that changed nothing, ended by a paste, counted as a step: bake+merge 1); VITE_FUZZ_SEEDS=n runs
+// that changed nothing, ended by a paste, counted as a step: bake+merge 1; a resample's undo putting back the canvases
+// it was made with, not the ones a canvas resize since had drawn them onto: Dimensions 12); VITE_FUZZ_SEEDS=n runs
 // seeds 1..n (30 takes about eight minutes), VITE_FUZZ_ONLY=6,23 just those.
 beforeAll(() => loadBooleans());
 const FUZZ_SEEDS = Number(import.meta.env?.VITE_FUZZ_SEEDS ?? 0);
@@ -412,6 +430,16 @@ test('fuzz: typing, paint and selections across two cells layers and the base, a
   const failures = [];
   const only = ['type', 'typingRun', 'paint', 'move', 'del', 'copyPaste', 'clearEdit', 'addLayer', 'addLayer', 'pickLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer', 'mergeDown', 'makeArtLayer'];
   for (const seed of seeds([1, 2, 3, 4, 19])) {
+    const f = await fuzz(seed, { async: false, steps: 20, only });
+    if (f) failures.push(f);
+  }
+  expect(failures).toEqual([]);
+}, 300_000);
+
+test('fuzz: Dimensions among typing, paint, shapes, selections, layers and merges', async () => {
+  const failures = [];
+  const only = ['resize', 'resize', 'resize', 'type', 'typingRun', 'paint', 'erasePaint', 'eraseBase', 'move', 'copyPaste', 'pasteFloat', 'addShape', 'moveShape', 'pen', 'mergeShapes', 'mergeDown', 'clearEdit', 'slider', 'addLayer', 'pickLayer', 'pickBase', 'deleteLayer', 'duplicateLayer', 'makeArtLayer'];
+  for (const seed of seeds([1, 2, 3, 4, 12])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
   }
@@ -513,7 +541,7 @@ test('the history cap: undo stops at the 50th step back, exactly there', async (
   for (const k of ['editCells', 'pins', 'paint', 'base', 'sliders', 'full']) expect(s[k], k).toBe(states[n - 50][k]);
 });
 
-test('a canvas resize (with edits) keeps undo; undoing Bake and Merge into the image across it', async () => {
+test('a canvas resize (with edits) is a step, and undo goes on past it to Merge into the image and Bake', async () => {
   const { project, workspace } = await createTestApp();
   await drawnDocument(project, workspace, { cols: 40, rows: 40 });
   dragSlider(project, 'brightness', [150]);
@@ -527,12 +555,11 @@ test('a canvas resize (with edits) keeps undo; undoing Bake and Merge into the i
   project.rows = 46;
   await settle(project);
   expect(project.canUndo).toBe(true);
+  project.undo(); // the resize
   project.undo();
   project.undo();
   await settle(project);
-  project.cols = 40;
-  project.rows = 40;
-  await settle(project);
+  expect([project.cols, project.rows]).toEqual([40, 40]);
   const s = await snap(project, workspace);
   for (const k of ['editCells', 'pins', 'sliders', 'image', 'full']) expect(s[k], k).toBe(s0[k]);
 });

@@ -1,7 +1,7 @@
 // The grid and what's drawn on it: the grid's size (rescale or canvas resize), the paint and base
 // layers following it, full renders and partial recomposites, and the cells the views show. Owns
-// _renderQueued and _rendering (a render on its way, which tests wait on), _rendered (the params it used) and _layerGrid
-// (the grid the layers were last sized to).
+// _renderQueued and _rendering (a render on its way, which tests wait on), _rendered (the params it used), _layerGrid
+// (the grid the layers were last sized to) and _gridRun (the grid step a change a moment later extends).
 // The renderer's pipeline converts the lower group (ProjectStore.lowerGroup) into lowerCells, and every layer above it is
 // laid over those cell by cell (Renderer.composeUpper): an edit on an upper layer touches only its cells (recomposeUpper),
 // and never runs the pipeline.
@@ -16,11 +16,11 @@ import { fitRect } from '@/lib/Canvas.js';
 import { charRowsOf, isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
-import { boundsOf, lowerEdits, lowerPaint, useBase } from '@/store/project/shared.js';
+import { NUDGE_MS, boundsOf, bytesHeld, lowerEdits, lowerPaint, useBase } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast.js';
 import { busyMessage, busyWhile } from '@/composables/useBusy.js';
 import { t } from '@/i18n';
-import { markRaw, watch } from 'vue';
+import { markRaw, toRaw, watch } from 'vue';
 
 // The renderer's upper layers, as the stack is now: each upper cells layer's cells and paint, each upper vector layer's
 // own ShapeLayer (none yet while it never had a shape), each with its own params (layerParams: its character settings).
@@ -101,6 +101,43 @@ export function followParams(project) {
   return () => stops.forEach((stop) => stop());
 }
 
+// Every layer a grid change reaches: each cells layer's paint (the one in use's, and those waiting in _layerData) and the base's.
+const gridPaints = (project) => [...new Set([project.paintLayer, project.baseLayer, ...[...project._layerData.values()].map((data) => data.paintLayer)])].filter(Boolean);
+
+// The grid step a change now extends (ensureLayer): the last step, made a moment ago on this frame, with nothing since.
+function gridRun(project) {
+  const run = project._gridRun;
+  return run && run.entry === project.history.last && run.version === project.history.version && run.frame === toRaw(project.currentFrame) && Date.now() - run.at < NUDGE_MS ? run : null;
+}
+
+// The grid's size as a grid step's side has it: set with _layerGrid, so ensureLayer has nothing to follow.
+function putGridSize(project, { cols, rows }) {
+  project.cols = cols;
+  project.rows = rows;
+  project._layerGrid = { cols, rows };
+}
+
+// What a grid change that resamples or rescales replaces, and what it leaves: the grid, the fit, the base's scale and
+// records, and each layer's canvas (by the layer: its object stays, whichever layer is in use).
+const paintStates = (project) => new Map(gridPaints(project).map((paint) => [paint, paint.gridState()]));
+function gridState(project, grid) {
+  return { ...grid, fit: project.fit && { ...project.fit }, baseScale: project.baseScale, records: project.baseRecords, scale: project.paintLayer.scale, paints: paintStates(project) };
+}
+
+// gridState's state put back. A layer's paint made since (picked with none, or its first paint) is empty, and follows.
+function putGridState(project, state) {
+  const fit = project.fit;
+  putGridSize(project, state);
+  for (const paint of gridPaints(project)) {
+    const held = state.paints.get(paint);
+    if (held) paint.putGrid(held);
+    else paint.resize(state.cols, state.rows, fit, state.fit, state.scale);
+  }
+  project.fit = state.fit && { ...state.fit };
+  project.baseScale = state.baseScale;
+  project.setBaseRecords(state.records);
+}
+
 function cellsUnder(pixels, cols) {
   const indexes = new Set();
   for (const { x, y } of pixels) indexes.add((y >> 1) * cols + x);
@@ -163,6 +200,11 @@ export const renderingActions = {
   // past the edge is kept, for when it grows back), so every undo step still fits. Otherwise it rescales: the image
   // refits the grid, and the base's own pixels (hard-edged) and pins move with it. The base layer is at the pipeline's processing scale
   // (the new grid's, on a rescale), and the pipeline keeps that scale while it exists.
+  // The change is one undo step (gridOp), and the steps before it stay. A canvas resize that keeps every layer's scale
+  // only adds room, so its undo puts the grid back and leaves the layers as they are. One that resamples them (past
+  // MAX_LAYER_DIM), or a rescale, holds each layer's canvas as it was (PaintLayer.gridState) to put back whole, never
+  // resized back; it's a whole-layer step, since the strokes before it don't fit the new layers. In a room the new grid
+  // goes to everyone as the whole document and isn't a step (drawing/host.js), so the steps it no longer fits go.
   ensureLayer() {
     if (!this.image) return;
     const { cols, rows } = this;
@@ -178,33 +220,70 @@ export const renderingActions = {
       return;
     }
     if (this._layerGrid.cols === cols && this._layerGrid.rows === rows) return;
+    const was = this._layerGrid;
     this._layerGrid = { cols, rows };
     if (this._artInside) this.leaveArt(); // stepped into an art layer: out first, its edits kept (on the old layers)
     this.commitPending(); // an open edit (a typing run) was recorded on the old layers
-    const paints = [this.paintLayer, ...[...this._layerData.values()].map((data) => data.paintLayer).filter(Boolean)]; // every cells layer's follows
-    if (this.resizesCanvas) {
-      let kept = true;
-      for (const paint of paints) kept = paint.extend(cols, rows) && kept;
-      this.baseLayer.extend(cols, rows);
-      this.baseScale = this.baseLayer.scale;
-      // ponytail: past MAX_LAYER_DIM the paint is resampled to a smaller scale and recorded strokes no longer fit it, so
-      // the steps go; resample the ledger's tiles (and every entry holding paint) to keep them.
-      if (!kept) this.dropEdits();
+    // A run of changes a moment apart with nothing between (the stepper's arrows, held) is one step, as a run of nudges on
+    // a slider is (sliders.js): its after goes as far as the last. One that only adds room joins either kind; one that
+    // holds the layers, only a step that holds them.
+    const paints = gridPaints(this), room = !!this._sharing, run = room ? null : gridRun(this), now = Date.now();
+    if (this.resizesCanvas && paints.every((paint) => paint.keepsScale(cols, rows)) && run?.kind !== 'whole') {
+      for (const paint of paints) paint.extend(cols, rows);
+      if (room) return;
+      const grid = (at) => () => {
+        putGridSize(this, at);
+        for (const paint of gridPaints(this)) paint.extend(at.cols, at.rows); // only grows: undone, the layers stay as they are
+        this.render();
+      };
+      if (run) {
+        run.at = now;
+        run.entry.redo = grid({ cols, rows });
+        this.editVersion++;
+        return;
+      }
+      this.pushEdit({ gridOp: true, bytes: 0, undo: grid(was), redo: grid({ cols, rows }) });
+      this._gridRun = markRaw({ kind: 'grid', entry: this.history.last, version: this.history.version, frame: toRaw(this.currentFrame), at: now });
       return;
     }
-    // Nothing to undo is tied to the old layout (resizesCanvas): only slider, settings and selection steps go with it.
-    const oldFit = this.fit, newFit = this.fitFor(cols, rows);
-    for (const paint of paints) paint.resize(cols, rows, oldFit, newFit);
-    this.baseLayer.resize(cols, rows, oldFit, newFit, this.processingScale({ fit: newFit }));
+    const joins = run?.kind === 'whole' ? run : null, before = joins?.before ?? gridState(this, was);
+    if (this.resizesCanvas) {
+      for (const paint of paints) paint.extend(cols, rows);
+    } else {
+      // Nothing to undo is tied to the old layout (resizesCanvas): the layers follow the picture's new fit.
+      const oldFit = this.fit, newFit = this.fitFor(cols, rows);
+      for (const paint of paints) if (paint !== this.baseLayer) paint.resize(cols, rows, oldFit, newFit);
+      this.baseLayer.resize(cols, rows, oldFit, newFit, this.processingScale({ fit: newFit }));
+      this.setBaseRecords(remapBaseRecords(this.baseRecords, resizeTransform(oldFit, newFit), cols, rows));
+      this.fit = newFit;
+    }
     this.baseScale = this.baseLayer.scale;
-    this.setBaseRecords(remapBaseRecords(this.baseRecords, resizeTransform(oldFit, newFit), cols, rows));
-    this.fit = newFit;
-    this.dropEdits();
+    if (room) return void this.dropEdits();
+    const after = Object.assign(joins?.after ?? {}, gridState(this, { cols, rows })), frame = this.currentFrame;
+    const bytes = bytesHeld(...[...before.paints].filter(([paint, { canvas }]) => after.paints.get(paint)?.canvas !== canvas).map(([, state]) => state));
+    if (joins) { // its undo and redo hold after: what the changes between made is let go
+      joins.at = now;
+      joins.entry.bytes = bytes;
+      this.editVersion++;
+      return;
+    }
+    // The layers are shared by the frames, holding the one that shows: undone or redone on the frame it was made on. The
+    // side left is held as the layers are then, not as they were made: a canvas resize since has drawn them onto new
+    // canvases, and the steps after it were undone there.
+    const put = (from, to) => () => {
+      if (this.frames.includes(frame)) this.showFrame(this.frames.indexOf(frame));
+      from.paints = paintStates(this);
+      putGridState(this, to);
+      this.render();
+    };
+    this.pushWholeLayer(put(after, before), put(before, after), bytes, { everyFrame: true, layerOp: true }); // layerOp: put back by the layers themselves, whichever is in use
+    this.history.last.gridOp = true;
+    this._gridRun = markRaw({ kind: 'whole', entry: this.history.last, version: this.history.version, frame: toRaw(frame), at: now, before, after });
   },
 
-  // The grid changed under the history: forget the open edit and every step but slider and settings moves (they don't
-  // depend on the grid). A rescale has only those and selection steps to drop; a canvas resize whose paint had to be
-  // resampled, everything else too.
+  // A grid change in a room: forget the open edit and every step but slider and settings moves (they don't depend on
+  // the grid). A rescale has only those and selection steps to drop; a canvas resize whose paint had to be resampled,
+  // everything else too.
   dropEdits() {
     this._stroke = null;
     this._ledger.reset(); // first: what History drops next has nothing left to forget

@@ -497,3 +497,37 @@ test('undoing a layer added in a movie leaves no keys of it on any frame, and th
   expect(file.framesLost).toBe(false);
   expect(file.animation.frames.length).toBe(3);
 });
+
+// A grid change that resamples the layers holds them as they were, and they're shared by the frames, holding the one
+// that shows: its undo goes back to the frame it was made on first, so every frame comes back as it was.
+test('a resize that resamples, undone from another frame, puts every frame back', async () => {
+  const { project } = await animated(2);
+  paint(project, 3, 3);
+  project.showFrame(1);
+  paint(project, 6, 6, '#0000ff');
+  type(project, 2, 1, 'B');
+  await settle(project);
+  const frames = async () => {
+    const shown = [];
+    for (const i of [0, 1]) {
+      project.showFrame(i);
+      await settle(project);
+      shown.push([project.rows, cellsKey(project).slice(0, 200).join('|'), paintAt(project, 3, 3), paintAt(project, 6, 6)]);
+    }
+    return shown;
+  };
+  const before = await frames(), scale = project.paintLayer.scale;
+  project.rows = 2000; // a layer 2,000 rows long can't keep the scale under MAX_LAYER_DIM
+  await settle(project);
+  expect(project.paintLayer.scale).toBeLessThan(scale);
+  const after = await frames(); // and on frame 1 again
+  project.showFrame(0);
+  project.undo();
+  await settle(project);
+  expect(project.frame).toBe(1);
+  expect(project.paintLayer.scale).toBe(scale);
+  expect(await frames()).toEqual(before);
+  project.redo();
+  await settle(project);
+  expect(await frames()).toEqual(after);
+});

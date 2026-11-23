@@ -323,8 +323,9 @@ long file (time the reload), and press Back from a fresh start screen.
 - Expects: with the lock on, the size stays at 1,600 lines and a message says the lock keeps the shape, 300 × 3200 the
   largest it fits; with it off, it stops at what 300 columns allow (1,666 lines), adding lines at the bottom; it lands
   within the `setting` budget.
-- Probes: `undo-redo`: undo after the grow and check it takes back his last cell fix and leaves
-  the size (a size change isn't an undo step, and mustn't forget the steps before it), then redo it; `extremes`: 5,000 lines at 100 columns.
+- Probes: `undo-redo`: undo after the grow and check it puts the old size back with his cells
+  where they were, and a second undo takes back his last cell fix (a size change is an undo step, and mustn't forget
+  the steps before it), then redo both; `extremes`: 5,000 lines at 100 columns.
 - Rated: yes, wants Tab to Dimensions
 
 ### 26. Memory after a long session
