@@ -889,14 +889,12 @@
       "anyFont": "Any font",
       "untie": "Use with any font",
       "tieTo": "Tie to {name}",
-      "hideBuiltins": "Hide",
-      "showBuiltins": "Show",
-      "hideBuiltinsTitle": "Hide the built-in palettes while {name} is in use",
-      "showBuiltinsTitle": "Show the built-in palettes while {name} is in use",
       "import": "Import",
       "export": "Export",
       "fontTab": "{name} · 256",
-      "unloaded": "For fonts not loaded ({n})"
+      "newPalette": "New palette",
+      "yoursMoreAria": "More for your palettes",
+      "unloaded": "For fonts not loaded"
     },
     "pages": {
       "aria": "Palettes or fonts",
@@ -974,7 +972,7 @@
         "medium": "Medium shade",
         "dark": "Dark shade"
       },
-      "width": "Width",
+      "width": "Display width",
       "widthInRoom": "Only the room’s host can change the width.",
       "widthNarrowNote": "Only Phosphor supports a width of {width}, it will be exported as 8",
       "findBlocks": "Find blocks again",

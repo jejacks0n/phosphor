@@ -889,14 +889,12 @@
       "anyFont": "Toute police",
       "untie": "Utiliser avec toute police",
       "tieTo": "Lier à {name}",
-      "hideBuiltins": "Masquer",
-      "showBuiltins": "Afficher",
-      "hideBuiltinsTitle": "Masquer les palettes intégrées quand {name} est utilisée",
-      "showBuiltinsTitle": "Afficher les palettes intégrées quand {name} est utilisée",
       "import": "Importer",
       "export": "Exporter",
       "fontTab": "{name} · 256",
-      "unloaded": "Pour des polices non chargées ({n})"
+      "newPalette": "Nouvelle palette",
+      "yoursMoreAria": "Autres actions pour vos palettes",
+      "unloaded": "Pour des polices non chargées"
     },
     "pages": {
       "aria": "Palettes ou polices",
@@ -974,7 +972,7 @@
         "medium": "Trame moyenne",
         "dark": "Trame sombre"
       },
-      "width": "Largeur",
+      "width": "Largeur d’affichage",
       "widthInRoom": "Seul l’hôte de la salle peut changer la largeur.",
       "widthNarrowNote": "Seul Phosphor prend en charge une largeur de {width}, elle sera exportée en 8",
       "findBlocks": "Retrouver les blocs",

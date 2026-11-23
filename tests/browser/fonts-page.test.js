@@ -467,6 +467,26 @@ test('shows the eight blocks, and where CP437 would put a moved one', async () =
   expect(await actions()).not.toContain('Find blocks again');
 });
 
+// A block's tile draws its glyph in the box's middle, a whole number of times the font's size: a narrow font at its own
+// width whatever the drawing's width, so its ink isn't left of the middle at 8; an 8-wide font at 9 with its ninth column.
+test('a block tile draws its glyph centered, a narrow font at its own width, at 9 with the ninth column', async () => {
+  const glyphOf = (name) => tile(name).querySelector('.glyph');
+  const ink = (name) => {
+    const range = document.createRange();
+    range.selectNodeContents(glyphOf(name));
+    const text = range.getBoundingClientRect(), box = glyphOf(name).getBoundingClientRect();
+    return { width: text.width, off: Math.abs(text.left + text.width / 2 - (box.left + box.width / 2)), inside: text.left >= box.left && text.right <= box.right };
+  };
+  const { project } = await mount({ font: { name: 'N', height: 8, bytes: new Uint8Array(2048).fill(0xf0) } }); // 4 wide: a left half
+  project.setDrawingFontWidth(8);
+  await vi.waitFor(() => expect(ink('Left')).toEqual({ width: 8, off: 0, inside: true })); // 4 pixels, twice the 8-line font's size
+  app.unmount();
+  host.remove();
+  const { project: again } = await mount({ font: cp437Font }); // 8×16
+  again.setDrawingFontWidth(9);
+  await vi.waitFor(() => expect(ink('Full')).toEqual({ width: 9, off: 0, inside: true }));
+});
+
 test('under the Blocks tab the blocks have no second Blocks heading, and are a group named Blocks', async () => {
   await mount({ font: cp437Font });
   const group = host.querySelector('.blocks');
@@ -1403,6 +1423,23 @@ test('with a block or a line piece picked, a long press on a slot shows it large
   expect(blocksOf(project.drawingFont)[1]).toBe(254);
 });
 
+test('a library font chosen shows an empty sheet while it loads, never its sample first', async () => {
+  await wide();
+  const index = FIXTURE();
+  let answer;
+  serveFile(index, 'Zeta', { response: () => new Promise((resolve) => { answer = () => resolve(new Response(new Uint8Array(2048).fill(7))); }) });
+  await mount({ library: index });
+  await chooseLibrary('Zeta');
+  await vi.waitFor(() => expect(fileFetches).toBe(1));
+  await nextTick();
+  expect(host.querySelector('.edit-side canvas.glyph-sample.big')).toBeNull();
+  expect(host.querySelectorAll('.edit-side .grid.sheet .cell')).toHaveLength(0); // its frame, empty: nothing moves when the slots come
+  expect(host.querySelector('.edit-side .grid.sheet')).toBeTruthy();
+  answer();
+  await vi.waitFor(() => expect(host.querySelectorAll('.edit-side .grid.sheet .cell')).toHaveLength(256));
+  expect(host.querySelector('.edit-side canvas.glyph-sample.big')).toBeNull();
+});
+
 test("a library font that can't be fetched shows its sample instead of its slots", async () => {
   await wide();
   const index = FIXTURE();
@@ -1410,8 +1447,7 @@ test("a library font that can't be fetched shows its sample instead of its slots
   await mount({ library: index });
   await chooseLibrary('Zeta');
   await vi.waitFor(() => expect(fileFetches).toBe(1));
-  await nextTick();
-  expect(host.querySelector('.edit-side canvas.glyph-sample.big')).toBeTruthy();
+  await vi.waitFor(() => expect(host.querySelector('.edit-side canvas.glyph-sample.big')).toBeTruthy()); // once it has failed
   expect(host.querySelector('.edit-side .grid.sheet')).toBeNull();
   expect(host.querySelector('.problem')).toBeNull(); // only a preview: nothing to say until Use this font
 });
@@ -1596,7 +1632,7 @@ test('details show tags, From and License: None given for VileR, Unknown with Te
   expect(origin()).toEqual(['From VileR', 'License None given · credits in FONTS.TXT']);
   expect(link('VileR').href).toBe('https://example.test/viler');
   expect(link('None given · credits in FONTS.TXT').href).toMatch(/fonts\/library\/viler\/FONTS\.TXT$/);
-  expect(host.querySelector('.edit-side canvas.glyph-sample')).toBeTruthy();
+  expect(host.querySelector('.edit-side .grid.sheet, .edit-side canvas.glyph-sample')).toBeTruthy(); // its sheet's frame while it loads, the sample if it can't be fetched
   await chooseLibrary('Topaz');
   expect(origin()).toEqual(['From Mœbius', 'License Unknown · Know it? Tell us']);
   expect(decodeURIComponent(link('Know it? Tell us').href)).toContain('title=License for Topaz (Mœbius)');
@@ -1630,13 +1666,13 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   expect(row('FROGBLOCK').querySelector('.credit').textContent).toBe('FROGBLOCK font by Polyducks');
 });
 
-// The Width switch: a bitmap font's own width (when narrower than 8), 8 and 9.
+// The Display width switch: a bitmap font's own width (when narrower than 8), 8 and 9.
 const slim = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...cp437Blocks] });
 const widthButtons = () => [...host.querySelectorAll('.width-switch button')];
 const pressed = () => widthButtons().filter((b) => b.getAttribute('aria-pressed') === 'true').map((b) => b.textContent.trim());
 const shown = () => widthButtons().map((b) => b.textContent.trim());
 
-test('the Width switch is a toggle group, its width lit', async () => {
+test('the Display width switch is a toggle group, its width lit', async () => {
   await mount({ font: { ...slim(), width: 7 } });
   expect(host.querySelector('.width-switch').classList.contains('toggle-group')).toBe(true);
   expect(widthButtons().map((b) => b.classList.contains('on'))).toEqual([true, false, false]);

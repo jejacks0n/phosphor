@@ -131,7 +131,7 @@ watch(tabs, () => nextTick(updateIndicator), { deep: true });
     <!-- The side panel's fold: while it's open the » is in the panel's own tabs; folded (on a narrow screen, shut), this « sits where that » was, with a count of what was said. -->
     <template v-if="!sidePanelShown">
       <span v-if="workspace.sidePanelUnread" class="unread">{{ workspace.sidePanelUnread }}</span>
-      <button class="panel link" :aria-label="t('sidePanel.openAria')" aria-expanded="false" @click="toggleSidePanel(workspace)"><ArrowIcon shape="double" :turn="180"/></button>
+      <button class="panel link" :aria-label="t('sidePanel.openAria')" aria-expanded="false" @click="toggleSidePanel(workspace)"><ArrowIcon shape="double" :size="10" :turn="180"/></button>
     </template>
   </nav>
 </template>

@@ -39,16 +39,20 @@ button.tile.missing.picked { /* still red: the accent ring says it's picked */
   border-color: var(--danger);
 }
 
+/* The glyph in the middle of its box, the box as wide as it needs (FontsPage sets the size, a whole number of times
+   the font's, and the face, so a narrow font's ink is the whole glyph). */
 span.glyph {
   grid-row: span 2;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 14px;
+  box-sizing: border-box;
+  min-width: 14px;
   height: 22px;
+  padding: 0 2px;
   border-radius: 2px;
   background: var(--surface-0);
-  font-size: 16px;
+  font-size: var(--tile-glyph-size, 16px);
   line-height: 1;
 }
 

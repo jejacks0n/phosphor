@@ -44,6 +44,7 @@ const hint = ref({ text: '', warn: false });
 const hoveredChar = ref(null);
 const tieOpen = ref(false);         // the editor head's tie menu
 const moreOpen = ref(false);        // the editor head's … menu: Duplicate and Export
+const yoursOpen = ref(false);       // Yours' … menu: New palette, Import and Export
 const importer = useTemplateRef('importer');
 const onFonts = computed(() => workspace.paletteLayerPage === 'fonts');
 const fontsPage = useTemplateRef('fontsPage');
@@ -59,9 +60,9 @@ const isUnloaded = (p) => palettes.unloaded.some(u => u.id === p.id);
 const groups = computed(() => [
   // a bitmap font's group always shows, to offer + New; another font's once a palette is tied to it
   (font.value || palettes.tied.length) && { key: 'tied', label: t('palette.layer.forFont', { name: inUse.value.name }), rows: palettes.tied.filter(matches) },
-  { key: 'builtin', label: t('common.builtIn'), rows: palettes.builtinsHidden ? [] : palettes.builtins.filter(matches) },
+  { key: 'builtin', label: t('common.builtIn'), rows: palettes.builtins.filter(matches) },
   { key: 'yours', label: t('common.yours'), rows: palettes.general.filter(matches) },
-  palettes.unloaded.length && { key: 'unloaded', label: t('palette.layer.unloaded', { n: palettes.unloaded.length }), rows: palettes.unloaded.filter(matches) },
+  palettes.unloaded.length && { key: 'unloaded', label: t('palette.layer.unloaded'), rows: palettes.unloaded.filter(matches) },
 ].filter(Boolean));
 // Every group folds on its title, as the Fonts page's do, and stays folded in this browser; For fonts not loaded starts
 // folded. A fold only tidies the list: Built-in's Hide is what takes the built-ins off the strip.
@@ -204,12 +205,6 @@ const duplicate = () => {
   const id = palettes.duplicate(current.value.id);
   if (id) currentId.value = id;
 };
-// Hiding the built-ins moves the highlight off one of them, to the palette the strip now uses.
-const hideBuiltins = (hidden) => {
-  palettes.hideBuiltins(hidden);
-  if (hidden && current.value.builtin) currentId.value = palettes.active.id;
-  keepKeys();
-};
 const remove = () => {
   palettes.remove(current.value.id);
   currentId.value = palettes.active.id;
@@ -282,7 +277,7 @@ const onKeyDown = (event) => {
   } else if (event.key === 'Backspace' && editing.value) {
     assign(target.value, '', false);
   } else if (event.key === 'Escape') {
-    if (tieOpen.value || moreOpen.value) tieOpen.value = moreOpen.value = false;
+    if (tieOpen.value || moreOpen.value || yoursOpen.value) tieOpen.value = moreOpen.value = yoursOpen.value = false;
     else if (editing.value && !fromFonts.value) editing.value = false;
     else emit('close');
   } else {
@@ -291,10 +286,11 @@ const onKeyDown = (event) => {
   event.preventDefault();
 };
 
-// A press anywhere but in the tie or … menu shuts it (a press outside the layer is FloatingPanel's: it closes the layer).
+// A press anywhere but in the tie or a … menu shuts it (a press outside the layer is FloatingPanel's: it closes the layer).
 const onPointerDown = (event) => {
   if (tieOpen.value && !event.target.closest?.('.tie')) tieOpen.value = false;
-  if (moreOpen.value && !event.target.closest?.('.more')) moreOpen.value = false;
+  if (moreOpen.value && !event.target.closest?.('.head .more')) moreOpen.value = false;
+  if (yoursOpen.value && !event.target.closest?.('.group .more')) yoursOpen.value = false;
 };
 
 // Leaving the editor unmounts whatever had focus in it: keep the keyboard on the layer.
@@ -341,7 +337,7 @@ onBeforeUnmount(() => {
       <!-- the list: choose a palette -->
       <div class="list-side">
         <div class="top">
-          <input v-model="filter" :placeholder="t('palette.layer.filterPlaceholder')" :aria-label="t('palette.layer.filterAria')">
+          <input v-model="filter" type="search" :placeholder="t('palette.layer.filterPlaceholder')" :aria-label="t('palette.layer.filterAria')">
           <button @click="toggleEditing">{{ editing ? t('palette.layer.doneBtn') : t('palette.layer.editBtn') }}</button>
         </div>
         <div class="list">
@@ -349,17 +345,18 @@ onBeforeUnmount(() => {
             <div class="group">
               <button class="group-head" :aria-expanded="open(g.key)" @click="fold(g.key)">
                 <svg class="chevron" viewBox="0 0 448 512" aria-hidden="true"><path d="M201.4 342.6c12.5 12.5 32.8 12.5 45.3 0l160-160c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L224 274.7 86.6 137.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l160 160z"/></svg>
-                <span class="label">{{ g.label }}</span>
+                <span class="label">{{ g.label }}</span><span class="n"> · {{ g.rows.length }}</span>
               </button>
-              <span v-if="g.key === 'builtin' && font" class="actions">
-                <button class="new" :title="t(palettes.builtinsHidden ? 'palette.layer.showBuiltinsTitle' : 'palette.layer.hideBuiltinsTitle', { name: font.name })" @click="hideBuiltins(!palettes.builtinsHidden)">{{ palettes.builtinsHidden ? t('palette.layer.showBuiltins') : t('palette.layer.hideBuiltins') }}</button>
+              <span v-if="g.key === 'tied'" class="actions">
+                <button class="new" @click="createPalette(true)">{{ t('palette.layer.newBtn') }}</button>
               </span>
-              <span v-if="g.key === 'tied' || g.key === 'yours'" class="actions">
-                <template v-if="g.key === 'yours'">
-                  <button class="new" @click="importer.click()">{{ t('palette.layer.import') }}</button>
-                  <button class="new" :disabled="!palettes.all.some(p => !p.builtin)" @click="exportYours">{{ t('palette.layer.export') }}</button>
-                </template>
-                <button class="new" @click="createPalette(g.key === 'tied')">{{ t('palette.layer.newBtn') }}</button>
+              <span v-if="g.key === 'yours'" class="more">
+                <button class="ghost" :title="t('palette.layer.yoursMoreAria')" :aria-label="t('palette.layer.yoursMoreAria')" :aria-expanded="yoursOpen" @click="yoursOpen = !yoursOpen">…</button>
+                <span v-if="yoursOpen" class="menu">
+                  <button @click="yoursOpen = false; createPalette(false); keepKeys()">{{ t('palette.layer.newPalette') }}</button>
+                  <button @click="yoursOpen = false; importer.click()">{{ t('palette.layer.import') }}</button>
+                  <button :disabled="!palettes.all.some(p => !p.builtin)" @click="yoursOpen = false; exportYours(); keepKeys()">{{ t('palette.layer.export') }}</button>
+                </span>
               </span>
             </div>
             <template v-if="open(g.key)">
@@ -481,6 +478,13 @@ onBeforeUnmount(() => {
    palette's row of glyphs isn't cut short. */
 div.page.editing div.row div.glyphs {
   overflow: visible;
+}
+
+/* Yours' … menu reads as the editor head's, not as the group's title it hangs from. */
+div.group span.more span.menu {
+  font-weight: normal;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 button.new {

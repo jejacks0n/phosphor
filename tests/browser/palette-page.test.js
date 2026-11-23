@@ -47,6 +47,10 @@ const group = (label) => [...host.querySelectorAll('.group')].find((g) => g.quer
 const button = (text, within = host) => [...within.querySelectorAll('button')].find((b) => b.textContent.trim() === text);
 const row = (name) => [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === name);
 const tieButton = () => host.querySelector('.head .tie > button');
+const yours = async (text) => { // an action in Yours' … menu
+  await press(group('Yours').querySelector('.more > button'));
+  return button(text, group('Yours').querySelector('.menu'));
+};
 const moreButton = () => host.querySelector('.head .more > button');
 const press = async (el) => {
   el.click();
@@ -66,34 +70,36 @@ test('the drawing\'s font\'s palettes come first', async () => {
   host.remove();
   await mount({ font: false });
   expect(headers()).toEqual(['Built-in', 'Yours']);
-  expect(button('Export', group('Yours')).disabled).toBe(true); // none of yours to export
+  expect((await yours('Export')).disabled).toBe(true); // none of yours to export
 });
 
 test('+ New under the font\'s group makes a tied palette', async () => {
   const { palettes } = await mount();
   await press(button('＋ New', group('For A')));
   expect(palettes.userPalettes.at(-1).font.id).toBe(fontId(fontA()));
-  await press(button('＋ New', group('Yours')));
+  await press(await yours('New palette'));
   expect(palettes.userPalettes).toHaveLength(2);
+  expect(group('Yours').querySelector('.menu')).toBeNull(); // the menu shuts on its choice
   expect(palettes.userPalettes.at(-1).font).toBeNull();
 });
 
-test('Hide under Built-in puts the built-ins away while the font is in use; Show brings them back', async () => {
-  const { project, palettes } = await mount();
-  await press(row('Single lines'));
-  await press(button('Hide', group('Built-in')));
-  expect(palettes.builtinsHidden).toBe(true);
-  expect(row('Shades & blocks')).toBeUndefined();
-  expect(headers()).toEqual(['For A', 'Built-in', 'Yours']); // the group stays, to bring them back
-  expect(host.querySelector('.row.current')).toBeNull(); // no hidden built-in left highlighted
-  project.setDrawingFont(null);
+test('each group\'s title counts the palettes the filter leaves; Built-in has no Hide; Yours\' actions are in a … menu', async () => {
+  await mount({ setup: (p) => named(p, 'Frogs') });
+  const counts = () => [...host.querySelectorAll('.group')].map((g) => g.querySelector('.group-head').textContent.replace(/\s+/g, ' ').trim());
+  expect(counts()).toEqual(['For A · 1', 'Built-in · 9', 'Yours · 0']);
+  expect(button('Hide', group('Built-in'))).toBeUndefined();
+  expect(button('Show', group('Built-in'))).toBeUndefined();
+  expect([...group('Yours').querySelectorAll('button')].map((b) => b.textContent.trim())).toEqual(['Yours · 0', '…']);
+  const filter = host.querySelector('.top input');
+  expect(filter.type).toBe('search'); // its × clears it
+  filter.value = 'lines';
+  filter.dispatchEvent(new Event('input'));
   await nextTick();
-  expect(row('Shades & blocks')).toBeTruthy();
-  expect(button('Hide', group('Built-in'))).toBeUndefined(); // only a bitmap font can hide them
-  project.setDrawingFont(fontA());
+  expect(counts()).toEqual(['For A · 0', 'Built-in · 2', 'Yours · 0']); // Single lines, Double lines
+  expect([...(await yours('Import')).parentElement.querySelectorAll('button')].map((b) => b.textContent.trim())).toEqual(['New palette', 'Import', 'Export']);
+  host.querySelector('.list').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
   await nextTick();
-  await press(button('Show', group('Built-in')));
-  expect(row('Shades & blocks')).toBeTruthy();
+  expect(group('Yours').querySelector('.menu')).toBeNull(); // a press elsewhere shuts it
 });
 
 test('every group folds on its title, as the Fonts page\'s do, remembered; For fonts not loaded starts folded', async () => {
@@ -103,23 +109,22 @@ test('every group folds on its title, as the Fonts page\'s do, remembered; For f
   };
   const { palettes } = await mount({ setup });
   const head = (label) => group(label).querySelector('button.group-head');
-  expect(['For A', 'Built-in', 'Yours', 'For fonts not loaded (1)'].map((label) => head(label)?.getAttribute('aria-expanded')))
+  expect(['For A', 'Built-in', 'Yours', 'For fonts not loaded'].map((label) => head(label)?.getAttribute('aria-expanded')))
     .toEqual(['true', 'true', 'true', 'false']);
   expect(head('Built-in').querySelector('svg.chevron')).toBeTruthy();
   await press(head('Built-in'));
   expect(row('Shades & blocks')).toBeUndefined();
-  expect(palettes.builtinsHidden).toBe(false); // folding only tidies the list: the strip still steps through them
-  expect(button('Hide', group('Built-in'))).toBeTruthy();
+  expect(palettes.shown.some((p) => p.builtin)).toBe(true); // folding only tidies the list: the strip still steps through them
   await press(head('For A'));
   expect(row('Frogs')).toBeUndefined(); // made with A in use, so tied to it
-  await press(head('For fonts not loaded (1)'));
+  await press(head('For fonts not loaded'));
   expect(row('Toads · TEST')).toBeTruthy();
   const kept = localStorage.getItem('phosphor.charPaletteGroups');
   expect(JSON.parse(kept)).toEqual(['builtin', 'tied']);
   app.unmount();
   host.remove();
   await mount({ setup: (p) => { setup(p); localStorage.setItem('phosphor.charPaletteGroups', kept); } }); // the test app starts with storage cleared
-  expect(['For A', 'Built-in', 'Yours', 'For fonts not loaded (1)'].map((label) => head(label).getAttribute('aria-expanded'))).toEqual(['false', 'false', 'true', 'true']);
+  expect(['For A', 'Built-in', 'Yours', 'For fonts not loaded'].map((label) => head(label).getAttribute('aria-expanded'))).toEqual(['false', 'false', 'true', 'true']);
 });
 
 test('the sources draw as the Fonts page\'s sheet does, and a long press shows a glyph large without picking it', async () => {
@@ -301,9 +306,9 @@ test('palettes for fonts not loaded are reachable', async () => {
       p.tie(id, { id: 'bitmap-deadbeef', name: 'TEST', height: 16 });
     },
   });
-  expect(headers()).toEqual(['For A', 'Built-in', 'Yours', 'For fonts not loaded (1)']);
+  expect(headers()).toEqual(['For A', 'Built-in', 'Yours', 'For fonts not loaded']);
   expect(row('Frogs · TEST')).toBeUndefined();
-  await press(group('For fonts not loaded (1)').querySelector('.label'));
+  await press(group('For fonts not loaded').querySelector('.label'));
   await edit('Frogs · TEST');
   expect(tieButton().textContent.trim()).toBe('For TEST');
   await press(tieButton());
@@ -326,7 +331,7 @@ test('export and import', async () => {
   const saved = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
-  await press(button('Export', group('Yours')));
+  await press(await yours('Export'));
   await expect.poll(() => saved.length).toBe(1);
   expect(saved[0].name).toBe('Yours.palettes.json');
   const text = await saved[0].blob.text();

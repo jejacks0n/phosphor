@@ -112,29 +112,6 @@ test('palettes saved before ties read as for any font', async () => {
   expect(palettes.all.find(p => p.id === 'old').glyphs.slice(0, 2)).toEqual(['', '☺']); // a cell holds one character
 });
 
-test('a font can hide the built-ins: not shown, not flipped to, and back with that font only', async () => {
-  const { project, palettes } = await setup();
-  project.setDrawingFont(fontA());
-  expect(palettes.builtinsHidden).toBe(false);
-  palettes.hideBuiltins(true);
-  expect(palettes.builtinsHidden).toBe(true);
-  expect(palettes.shown.some(p => p.builtin)).toBe(false);
-  expect(palettes.active.id).toBe('shades'); // nothing else to show: the strip still has something
-  palettes.flip(1); // with none shown, flipping does nothing
-  const mine = palettes.create();
-  expect(palettes.active.id).toBe(mine); // the font's own first
-  palettes.flip(1);
-  expect(palettes.active.id).toBe(mine); // the only one shown
-  project.setDrawingFont(fontB());
-  expect(palettes.builtinsHidden).toBe(false); // another font keeps them
-  expect(palettes.shown.some(p => p.builtin)).toBe(true);
-  project.setDrawingFont(null);
-  expect(palettes.builtinsHidden).toBe(false);
-  project.setDrawingFont(fontA());
-  palettes.hideBuiltins(false);
-  expect(palettes.shown.some(p => p.builtin)).toBe(true);
-});
-
 test('a palette can be tied to a TrueType or built-in font in use, by choice', async () => {
   const { palettes, workspace } = await setup();
   workspace.displayFont = 'vga';

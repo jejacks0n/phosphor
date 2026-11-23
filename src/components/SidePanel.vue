@@ -175,7 +175,7 @@ function key(e) {
           </svg>
         </button>
         <!-- The fold, at the row's right end: folded, EditTabs shows « at this same spot. -->
-        <button class="panel link" :aria-label="t('sidePanel.foldAria')" aria-expanded="true" @click="toggleSidePanel(workspace)"><ArrowIcon shape="double"/></button>
+        <button class="panel link" :aria-label="t('sidePanel.foldAria')" aria-expanded="true" @click="toggleSidePanel(workspace)"><ArrowIcon shape="double" :size="10"/></button>
       </div>
       <aside v-show="tab === 'layers'" class="layers" :aria-label="t('sidePanel.layers')">
         <LayersList/>
