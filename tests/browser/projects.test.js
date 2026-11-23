@@ -1,10 +1,11 @@
 // .phosphor projects in and out: every fixture (real older files in examples/, the older layouts the
 // loader migrates, one saved by the live site) loads to the same cells as its reference; save then
 // load gives back the same document; a broken file is reported and leaves the open one alone.
-import { describe, test, expect, afterEach, vi } from 'vitest';
+import { describe, test, expect, afterEach, onTestFinished, vi } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { matchReference } from '../support/references.js';
 import { readProject, writeProject, gunzipped, projectChunkOf } from '@/document/projectIO.js';
+import { setDisplayFont } from '@/lib/displayFonts.js';
 import { makeArt } from '@/document/artLayers.js';
 
 const fileFrom = async (url) => new File([await (await fetch(url)).blob()], url.slice(url.lastIndexOf('/') + 1));
@@ -304,16 +305,26 @@ describe('a saved project is a .pho', () => {
     expect(alert).toHaveBeenCalledTimes(1);
   });
 
-  test('a save from inside an art layer pictures the whole drawing and stays inside the art layer', async () => {
+  test('a save from inside an art layer pictures the whole drawing, with what was drawn inside it, and stays inside the art layer', async () => {
     const { project } = await createTestApp();
+    setDisplayFont('vga'); // 8×16, so the cells' pixels are easy to find
+    onTestFinished(() => setDisplayFont('jetbrains'));
     await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
-    project.typeAt(1, 1, 'X', { fg: '#00ff00' });
+    project.typeAt(1, 1, 'X', { fg: '#00ff00', bg: '#000000' }); // the drawing, away from the art layer
     project.commitEdit();
     const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 4, 4], art: { cols: 1, rows: 1, cells: [[0, 'A', null, '#ff0000']] } }));
     await settle(project);
     expect(project.enterArt(key)).toBe(true);
+    project.typeAt(8, 6, '█', { fg: '#0000ff', bg: '#0000ff' }); // inside it, a cell the layer didn't have
+    project.commitEdit();
+    await settle(project);
+    const [view, undoable] = [project.cells, project.canUndo];
     const inside = await pixels(await save(project));
-    expect(project.artInside).toBe(key);
+    expect([project.artInside, project.canUndo, project.cells]).toEqual([key, undoable, view]);
+    project.leaveArt();
     expect(inside).toEqual(await pixels(await save(project)));
+    const at = (col, row) => [...inside.slice(4 * ((16 * row + 8) * 160 + 8 * col + 4), 4 * ((16 * row + 8) * 160 + 8 * col + 4) + 3)];
+    expect(at(8, 6)).toEqual([0, 0, 255]); // what was drawn inside the art layer
+    expect(at(1, 1)).not.toEqual([0, 0, 0]); // the drawing outside it
   });
 });

@@ -467,11 +467,11 @@ export const documentActions = {
     const [settings, version] = [savedJson(this), this.editVersion];
     // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
     // before the system's save box comes up.
-    // The file is a PNG of the drawing (the cells as stepped into an art layer, never its own view, so edits made inside show in the picture once it's out) with the project inside.
+    // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside.
     const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
       const parts = await this.projectParts({ forFile: true });
       const project = new Uint8Array(await (await gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }))).arrayBuffer());
-      return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this._artInside?.snapshot ?? this.cells), project)], { type: 'image/png' });
+      return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this.artDrawingCells()), project)], { type: 'image/png' });
     });
     if (DESKTOP) {
       const bytes = new Uint8Array(await blob.arrayBuffer());

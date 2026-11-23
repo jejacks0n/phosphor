@@ -301,6 +301,27 @@ export const vectorActions = {
     if (this.shapes.has(inside.key)) useWorkspaceStore().vectorSelected = [inside.key];
   },
 
+  // The drawing's cells as a whole, with the art layer stepped into as it is now (cells are its own view inside it),
+  // for a picture of the drawing: the drawing is laid back for the moment, as leaveArt does and without its other
+  // effects (undo's reach, the selection and the layer's selection on VECTOR stay as they are), and the layer's
+  // drawing is put back as it was. A copy: the next redraw doesn't change it. What's pending is committed first.
+  // ponytail: two whole redraws; draw only the layer's box if a large grid lags on Save inside an art layer.
+  artDrawingCells() {
+    const inside = this._artInside;
+    if (!inside) return this.cells;
+    this.commitPending();
+    const { editCells, paintLayer, hasPaint } = this;
+    Object.assign(this, { editCells: inside.editCells, paintLayer: inside.paintLayer, hasPaint: inside.hasPaint, _artInside: null });
+    try {
+      redraw(this);
+      return this.cells.slice();
+    } finally {
+      Object.assign(this, { editCells, paintLayer, hasPaint, _artInside: inside });
+      this._frameSwaps++; // autosave: not an edit
+      redraw(this);
+    }
+  },
+
   // An edit inside an art layer, as commitEdit ends it: the edit cells and paint drawn on are read back into the
   // layer, trimmed to what's drawn (it grows past its edges and shrinks to its drawn cells, its cells staying where
   // they are; cells of it past the grid's edge are kept as they were), and that's setArtContent's one step. A follower
