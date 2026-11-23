@@ -1,5 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { SLOT_CHARS, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants, pixelAspectOf, drawnMaskOf } from '@/lib/BitmapFont.js';
+import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs.js';
+import { SLOT_CHARS, sampleOf, slotOf, fitFont, fontChars, fitCells, fontName, parseRawFont, glyphRows, inkOf, maskOf, fontId, encodeFont, decodeFont, parseFontSheet, fontSheet, CP437_BLOCKS, findBlocks, slotChars, fontKey, encodeBlocks, decodeBlocks, withBlock, hasQuadrants, pixelAspectOf, drawnMaskOf } from '@/lib/BitmapFont.js';
 import { cp437Font, font8, lowerAt240, noLowerHalf, solidAt220, lightAt240, slantedLike, nineRowFontWithLowerHalfRows4to8, nineRowFontWithLowerHalfRows5to8, fontWith } from '../support/blockFonts.js';
 
 const solidLowerHalf = (h) => { const b = new Uint8Array(256 * h); for (let r = h / 2; r < h; r++) b[220 * h + r] = 0xff; return b; };
@@ -116,6 +118,17 @@ describe('blocks', () => {
     expect(chars[220]).toBe('≡'); // CP437's character at 240
     expect(slotOf('▄', lowerAt240)).toBe(240);
     expect(new Set(chars).size).toBe(256);
+  });
+  it('samples a font in the slots CP437 puts the sample characters in, as the library\u2019s index does, whatever it holds there', () => {
+    const homes = [...SAMPLE_CHARS].map((c) => slotOf(c));
+    // 2001 has no blocks: CP437's block slots are blank, and its Ü and ß sit where ▄ and ▀ would.
+    const bytes = new Uint8Array(readFileSync('public/fonts/library/moebius/discmaster/2001.f08'));
+    const font2001 = { height: 8, bytes };
+    for (const font of [cp437Font, noLowerHalf, lowerAt240, font2001]) {
+      expect([...sampleOf(font)].map((c) => slotOf(c, font))).toEqual(homes); // each drawn from that slot's own glyph
+    }
+    expect(sampleOf(cp437Font)).toBe(SAMPLE_CHARS);
+    expect([...sampleOf(font2001)].filter((c) => '░▒▓█▄▀'.includes(c))).toEqual([]); // none the font's face lacks
   });
   it('holds a slot no character is left for as a private-use character', () => {
     expect(slotChars(noLowerHalf)[220]).toBe(String.fromCodePoint(0xE000 + 220));

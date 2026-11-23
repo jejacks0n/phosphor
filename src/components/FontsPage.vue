@@ -9,7 +9,7 @@ import { notSetUp } from '@/lib/fontSetup';
 import { useFontActions, FONT_FILES } from '@/composables/useFontActions';
 import { setFontWidth } from '@/composables/useFontWidth';
 import { storedBitmapFont, registerBitmapFont, releaseBitmapFont, familyOf, storeFontPart, withPart } from '@/lib/userFonts';
-import { parseRawFont, narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
+import { parseRawFont, narrowWidthOf, fontId, fontKey, encodeBlocks, blocksOf, findBlocks, sampleOf, slotChars, withBlock, BLOCKS } from '@/lib/BitmapFont';
 import { writePaletteFile, paletteFileName } from '@/lib/PaletteFile';
 import { downloadBlob } from '@/document/projectIO';
 import { SAMPLE_CHARS } from '@/lib/BitmapGlyphs';
@@ -215,6 +215,7 @@ const count = computed(() => (chosen.value ? palettes.countFor(chosen.value.id) 
 const size = (f) => (f.kind === 'bitmap' ? shapeOf(f.cellWidth ?? f.width ?? f.ownWidth, f.height) : t('palette.fonts.trueType'));
 // A row's sample drawn at the font's own height; the sheet twice that when it's too small to read.
 const keys = ref({}); // a bitmap font's id -> the key it's registered under (its blocks too: BitmapFont.fontKey)
+const samples = ref({}); // a bitmap font's id -> its sample in its face's characters (sampleOf), as the library's are drawn
 const familyFor = (f) => f.family ?? familyOf(keys.value[f.id] ?? f.id);
 const rowStyle = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.height ?? 16}px` });
 const styleOf = (f) => ({ fontFamily: familyFor(f), fontSize: `${f.kind === 'bitmap' && f.height < 12 ? 2 * f.height : f.height ?? 16}px` });
@@ -291,6 +292,7 @@ watch(() => all.value.filter((f) => f.kind === 'bitmap').map((f) => `${f.id}:${f
       const font = await bitmapOf(f);
       await registerBitmapFont(font);
       keys.value[f.id] = fontKey(font);
+      samples.value[f.id] = sampleOf(font);
     } catch {
       // it draws in the fallback font
     }
@@ -479,7 +481,7 @@ const exportPalettes = () => {
           >
             <div class="name"><span>{{ f.name }}</span><em>{{ size(f) }}</em></div>
             <div v-if="linkedOf(f.id)" class="credit">{{ linkedOf(f.id).linked.credit }}</div>
-            <div class="sample" :style="rowStyle(f)">{{ SAMPLE }}</div>
+            <div class="sample" :style="rowStyle(f)">{{ samples[f.id] ?? SAMPLE }}</div>
           </div>
         </template>
         <div class="group library-group">
