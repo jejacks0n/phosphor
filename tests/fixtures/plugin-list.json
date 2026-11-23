@@ -45,8 +45,6 @@
             "name": "Midnight",
             "base": "dark",
             "colors": {
-              "white": "#eef2ff",
-              "black": "#05070f",
               "background": "#0b1020",
               "background-highlight": "#3d59a140",
               "accent": "#7aa2f7",
@@ -66,7 +64,6 @@
               "surface-4": "#2b365e",
               "surface-light": "#c0caf5",
               "border": "#26305a",
-              "border-dark": "#161d38",
               "border-subtle": "#1d2546",
               "border-light": "#36437c",
               "text": "#c0caf5",
@@ -74,8 +71,10 @@
               "text-muted": "#6f7bb0",
               "text-faint": "#4b5684",
               "text-inverted": "#0b1020",
+              "text-on-accent": "#eef2ff",
               "shadow": "#02040c",
               "guide": "#ff9e64",
+              "tooltip": "#05070f",
               "toast": "#e0af68",
               "toast-text": "#0b1020",
               "wand-fill": "#bb9af74d"
@@ -83,7 +82,7 @@
           }
         ]
       },
-      "manifestHash": "7f9a435a42a988dfc347ea0c69f024afdf7fce92c12e141ab00f93bc95d5b16b"
+      "manifestHash": "1319e97eecef90708e185a517850c4160a64fc19844fbe7666b7818a9cf23dea"
     },
     {
       "official": true,
@@ -107,8 +106,6 @@
             "name": "Rain",
             "base": "light",
             "colors": {
-              "white": "#ffffff",
-              "black": "#1f2a33",
               "background": "#c9d3db",
               "background-highlight": "#ffffff66",
               "accent": "#3d6f95",
@@ -128,7 +125,6 @@
               "surface-4": "#c0ccd6",
               "surface-light": "#1f2a33",
               "border": "#bcc8d2",
-              "border-dark": "#aab8c4",
               "border-subtle": "#d5dee6",
               "border-light": "#9fb0bd",
               "text": "#1b2730",
@@ -136,8 +132,10 @@
               "text-muted": "#5d6f7d",
               "text-faint": "#8494a1",
               "text-inverted": "#ffffff",
+              "text-on-accent": "#ffffff",
               "shadow": "#3a4a57",
               "guide": "#d9480f",
+              "tooltip": "#1f2a33",
               "toast": "#33424e",
               "toast-text": "#eef2f5",
               "wand-fill": "#3d6f954d"
@@ -145,7 +143,7 @@
           }
         ]
       },
-      "manifestHash": "05e25cfecc2d0c5f69f3b3753a256c6af86d31670b18975c6cc9310ddfbbbea3"
+      "manifestHash": "0cab82bb2988361c4b9268c862023737817bcc04675534e633f9e27c4923a78e"
     },
     {
       "official": true,

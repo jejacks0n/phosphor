@@ -139,6 +139,6 @@ button.nav svg {
 
 button.nav.on {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 </style>

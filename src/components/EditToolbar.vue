@@ -833,8 +833,8 @@ div.tool-group > * {
 .options-more :deep(.dropdown-trigger:hover) svg,
 .snap-menu :deep(.dropdown-trigger:hover svg),
 .tools-menu button.choice.on :deep(svg) {
-  fill: var(--white);
-  color: var(--white);
+  fill: var(--text-on-accent);
+  color: var(--text-on-accent);
 }
 
 /* The active tool is in the menu: the ⋯ lights up like a tool button; so does a phone's magnet when it snaps. */
@@ -846,8 +846,8 @@ div.tool-group > * {
 
 .tools-menu.holds-active :deep(svg),
 .snap-menu.on :deep(.dropdown-trigger svg) {
-  fill: var(--white);
-  color: var(--white);
+  fill: var(--text-on-accent);
+  color: var(--text-on-accent);
 }
 
 /* Menu items are an icon (or glyph) and a label; a label that wraps stays in its own column. */
@@ -901,7 +901,7 @@ span.slot-corner {
 
 span.slot-corner.lit,
 .tool-slot :deep(.dropdown-trigger:hover) span.slot-corner {
-  border-bottom-color: var(--white);
+  border-bottom-color: var(--text-on-accent);
 }
 
 .tool-slot > button {
@@ -947,7 +947,7 @@ div.segmented {
 
 div.segmented button.on {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 span.hint,
@@ -991,7 +991,7 @@ div.vector-options > :deep(button.text) {
 /* A choice in the row (Smooth or Corner, Fill or Stroke), lit as a segmented one is. */
 div.vector-options > :deep(button.text[aria-pressed='true']) {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 /* The two dropdowns sit 4px apart (the row's 6px gap, less 2px). */
@@ -1155,12 +1155,12 @@ button.primary :deep(svg) {
 button.active {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 button.active :deep(svg) {
-  fill: var(--white);
-  color: var(--white);
+  fill: var(--text-on-accent);
+  color: var(--text-on-accent);
 }
 
 button:disabled,
@@ -1172,7 +1172,7 @@ div.vector-options > :deep(button:disabled) {
 .option-menu button.choice.on,
 .tools-menu button.choice.on {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 .option-menu span.glyph {

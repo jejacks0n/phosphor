@@ -207,10 +207,11 @@ art's own colors aren't a theme's):
 | `warning`, `success` | Notes that warn, and ones that say something worked. |
 | `surface-0` … `surface-4` | The page behind everything (`surface-0`), then panels, buttons, fields and menus, each a step up. |
 | `surface-dark`, `surface-light` | The checkerboard behind see-through art; a primary button on hover. |
-| `border`, `border-subtle`, `border-light` | Borders, from a button's to a list's lines to the dialogs' edges. (`border-dark` is a slot nothing uses yet.) |
+| `border`, `border-subtle`, `border-light` | Borders, from a button's to a list's lines to the dialogs' edges. |
 | `text`, `text-dim`, `text-muted`, `text-faint` | Words, from the brightest to hints and placeholders; a dialog's close button (`text-muted`, and `text` on hover). |
-| `text-inverted` | Words on a primary button. |
-| `white`, `black` | Words and icons on a chosen button or tab (`white`). Tooltips' ground and the rings around color swatches (`black`). |
+| `text-inverted` | Words on a primary button (Install, Export), whose ground is `accent-hot`. |
+| `text-on-accent` | Words and icons on the `accent`: a chosen button, tab or toggle, an unread count. Also a tooltip's words, a checkbox's mark, a radio's dot, a focused slider's thumb, and the light ring on a chosen swatch. It has to read on `accent` and on `tooltip`. |
+| `tooltip` | A tooltip's ground, and the dark ring around a color swatch. |
 | `accent-glow` | The glow around a focused field and behind a chosen tab's words. Left out, it's worked out from `accent`. |
 | `shadow` | Every drop shadow: under buttons, menus, panels, dialogs and the toast. Each keeps its own strength, so give the color whole (`#rrggbb`). |
 | `guide` | The guides, their ticks on the rulers, and the label while one is dragged. |

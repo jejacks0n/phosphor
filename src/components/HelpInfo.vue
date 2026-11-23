@@ -168,7 +168,7 @@ span.help-glyph {
 button.help-icon:hover span.help-glyph,
 button.help-icon:focus-visible span.help-glyph {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
   border-color: var(--accent);
 }
 
@@ -192,8 +192,8 @@ div.help-tooltip {
   transition: opacity 0.2s ease, transform 0.2s ease;
   transform: translateY(5px);
   box-shadow: 0 4px 16px color-mix(in srgb, var(--shadow) 60%, transparent);
-  background: var(--black);
-  color: var(--white);
+  background: var(--tooltip);
+  color: var(--text-on-accent);
 }
 
 div.help-tooltip::after {
@@ -204,7 +204,7 @@ div.help-tooltip::after {
   transform: translateX(-50%);
   border-width: 5px;
   border-style: solid;
-  border-color: var(--black) transparent transparent transparent;
+  border-color: var(--tooltip) transparent transparent transparent;
 }
 
 div.help-tooltip.is-bottom {
@@ -214,6 +214,6 @@ div.help-tooltip.is-bottom {
 div.help-tooltip.is-bottom::after {
   top: auto;
   bottom: 100%;
-  border-color: transparent transparent var(--black) transparent;
+  border-color: transparent transparent var(--tooltip) transparent;
 }
 </style>

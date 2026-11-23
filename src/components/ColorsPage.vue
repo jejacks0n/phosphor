@@ -362,7 +362,7 @@ div.head button.screen {
 
 div.head button.on {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 div.stroke-settings {
@@ -459,7 +459,7 @@ div.stroke-settings button.icon {
 div.stroke-settings button.icon[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 div.stroke-settings button.icon :deep(svg) {
@@ -490,7 +490,7 @@ div.kinds button {
 div.kinds button[aria-pressed='true'] {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 div.kinds button:disabled {
@@ -521,9 +521,9 @@ button.swatch:disabled {
 }
 
 button.swatch.selected {
-  outline: 2px solid var(--white);
+  outline: 2px solid var(--text-on-accent);
   outline-offset: -1px;
-  box-shadow: 0 0 0 1px var(--black);
+  box-shadow: 0 0 0 1px var(--tooltip);
 }
 
 button.swatch.small {

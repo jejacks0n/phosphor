@@ -312,7 +312,7 @@ div.floating-panel.editing.maximized :deep(div.page.fonts > div.list-side) {
 
 :deep(div.top button:hover) {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 :deep(div.list) {
@@ -574,7 +574,7 @@ div.floating-panel.editing.maximized :deep(div.page.fonts > div.list-side) {
 :deep(span.tie span.menu button:hover),
 :deep(span.more span.menu button:hover) {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 
 :deep(span.more span.menu button:disabled) {

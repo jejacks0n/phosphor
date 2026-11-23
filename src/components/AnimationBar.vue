@@ -222,7 +222,7 @@ button.play {
   height: 28px;
   border-radius: 50%;
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 button.step {
   width: 22px;
@@ -365,10 +365,10 @@ article.ghost {
 .ghost.active :deep(.dropdown-trigger) {
   background: var(--accent);
   border-color: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 .ghost.active :deep(.dropdown-trigger:hover) {
-  background: color-mix(in srgb, var(--white) 12%, var(--accent));
+  background: color-mix(in srgb, var(--text-on-accent) 12%, var(--accent));
 }
 /* The checkbox turns the ghost on and off; the slider beside it, on the same row, sets its strength. */
 div.ghost-row {
@@ -471,7 +471,7 @@ button.keys.active {
   border-color: var(--accent);
 }
 button.keys.active svg {
-  fill: var(--white);
+  fill: var(--text-on-accent);
 }
 
 @media (max-width: 768px) { /* global.css's thumb is larger here, for a finger */

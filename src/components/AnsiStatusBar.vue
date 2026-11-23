@@ -282,6 +282,6 @@ button {
 /* A setting that's on (Smooth). */
 button.on {
   background: var(--accent);
-  color: var(--white);
+  color: var(--text-on-accent);
 }
 </style>
