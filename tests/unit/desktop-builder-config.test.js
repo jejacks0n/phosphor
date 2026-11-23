@@ -93,3 +93,29 @@ test('every file the app opens is associated, and only what no other app owns be
   const linux = /mimeTypes: \[(.+)\]/.exec(section(yml, 'linux'))[1].split(', ');
   for (const type of ['text/x-nfo', 'text/plain', 'image/png', 'image/jpeg', 'image/svg+xml']) assert.ok(linux.includes(type), type);
 });
+
+// A .pho is a PNG, so each system's own PNG thumbnailer previews it once the system knows that.
+test('a .pho is declared a kind of PNG on macOS, Windows and Linux', () => {
+  const yml = read('electron-builder.yml');
+  assert.match(section(yml, 'fileAssociations'), /- ext: pho\n\s+name: Phosphor Project\n\s+role: Editor\n\s+rank: Owner\n\s+mimeType: image\/x-phosphor/);
+
+  // macOS: an exported type conforming to public.png, and the pho document type bound to it (electron-builder writes
+  // only the extension).
+  const mac = section(yml, 'mac');
+  assert.match(mac, /UTExportedTypeDeclarations:\n\s+- UTTypeIdentifier: work\.phosphor\.pho\n\s+UTTypeConformsTo: \[public\.png, public\.image\]\n\s+UTTypeDescription: Phosphor Project\n\s+UTTypeTagSpecification:\n\s+public\.filename-extension: \[pho\]\n\s+public\.mime-type: image\/x-phosphor/);
+  assert.match(mac, /CFBundleDocumentTypes:\n\s+- CFBundleTypeName: Phosphor Project\n(?:\s+\w+: .+\n)*?\s+LSItemContentTypes: \[work\.phosphor\.pho\]/);
+
+  // Windows: the installer points .pho at the system's photo thumbnail provider and takes it away on uninstall.
+  assert.match(section(yml, 'nsis'), /include: build\/installer\.nsh/);
+  const nsh = read('build/installer.nsh');
+  const macro = (name) => new RegExp(`!macro ${name}\\n([\\s\\S]*?)!macroend`).exec(nsh)?.[1] ?? '';
+  const thumbnails = 'SHCTX "Software\\Classes\\.pho\\ShellEx\\{e357fccd-a995-4576-b01f-234630154e96}"';
+  assert.ok(macro('customInstall').includes(`WriteRegStr ${thumbnails} "" "{C7657C4A-9F68-40fa-A4DF-96BC08EB3551}"`));
+  assert.ok(macro('customInstall').includes('WriteRegStr SHCTX "Software\\Classes\\.pho" "PerceivedType" "image"'));
+  assert.ok(macro('customUnInstall').includes(`DeleteRegKey ${thumbnails}`));
+
+  // Linux: the .deb installs image/x-phosphor as a subclass of image/png, beside the type electron-builder writes.
+  assert.match(section(yml, 'deb'), /- build\/phosphor-mime\.xml=\/usr\/share\/mime\/packages\/phosphor-pho\.xml/);
+  const xml = read('build/phosphor-mime.xml');
+  assert.match(xml, /<mime-type type="image\/x-phosphor">[\s\S]*<sub-class-of type="image\/png"\/>[\s\S]*<glob pattern="\*\.pho"\/>[\s\S]*<\/mime-type>/);
+});

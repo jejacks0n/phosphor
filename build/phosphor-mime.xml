@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A .pho is a PNG with a Phosphor project inside. Declared a subclass of image/png, the desktop's PNG thumbnailer
+     previews it. The .deb installs this beside the file electron-builder writes for the same type (electron-builder.yml). -->
+<mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
+  <mime-type type="image/x-phosphor">
+    <comment>Phosphor Project</comment>
+    <sub-class-of type="image/png"/>
+    <glob pattern="*.pho"/>
+  </mime-type>
+</mime-info>
