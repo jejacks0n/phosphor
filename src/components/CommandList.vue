@@ -2,7 +2,7 @@
 import { computed, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
-import { GROUPS, commandById, commandContext, listedCommands } from '@/lib/commands';
+import { GROUPS, commandById, commandContext, listedCommands, reasonWords } from '@/lib/commands';
 import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { searchCommands } from '@/lib/commandSearch';
 import { recentCommands } from '@/lib/recentCommands';
@@ -26,7 +26,7 @@ const ctx = commandContext(project, workspace);
 const shownKeys = (c) => (typeof c.shown === 'function' ? c.shown() : c.shown) ?? keysFor(c.keys ?? []).map((key) => keyLabel(key));
 const rows = listedCommands(ctx).filter((c) => c.id !== 'ui.commandList').map((c) => {
   const reason = c.available?.(ctx) ?? true;
-  return { id: c.id, group: c.group, words: (c.title ?? c.label)(), key: shownKeys(c)[0], reason: reason === true ? null : t(reason) };
+  return { id: c.id, group: c.group, words: (c.title ?? c.label)(), key: shownKeys(c)[0], reason: reason === true ? null : reasonWords(reason) };
 });
 const byId = new Map(rows.map((row) => [row.id, row]));
 

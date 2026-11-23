@@ -18,6 +18,7 @@ import { usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { groupOf } from '@/tools/groups';
 import { withKept } from '@/store/kept';
+import { snapsLate } from '@/lib/CharResolver';
 import { brushOffered, isSolverRef } from '@/plugins/solvers';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
@@ -131,6 +132,11 @@ export const useWorkspaceStore = defineStore('workspace', {
     unsavedAsk: null,        // { name, go, stay?, saving? } while UnsavedDialog asks before leaving unsaved work (confirmLeave)
     deleteLayerAsk: null,    // { id } while DeleteLayerDialog asks, in a room, before the layer with the id is deleted for everyone; going: asked, till it's gone
     exportModal: false,      // the export modal (ExportModal) open: true, or the id of the format it opens on (the command list's Export .ans)
+    baking: null,            // Bake's question (EditToolbar) while it's open: the palette's name, to lock the picture to or not (bake)
+    bakingFinal: false,      // Bake's question while others are drawing: it can't be undone (bake)
+    flattening: false,       // Flatten's question (EditToolbar): Edit artwork or Draw on top
+    renameRequest: null,     // a layer's id whose row LAYERS turns into its name box (LayersList takes it): the command list's Rename
+    dimensionsRequest: 0,    // bumped to put the cursor in Dimensions (ControlPanel): the command list's canvas size
 
     // Scroll state persistence
     inputScrollX: null,
@@ -451,6 +457,44 @@ export const useWorkspaceStore = defineStore('workspace', {
     showSocial() {
       this.toggleSidePanel(true);
       this.sidePanelTab = 'social';
+    },
+    // The side panel open on LAYERS.
+    showLayers() {
+      this.toggleSidePanel(true);
+      this.sidePanelTab = 'layers';
+    },
+    // Add layer and Add vector layer (LAYERS' header, the command list): directly above the pick, and picked (an artist's
+    // in a room when the host's stack comes, project.applyLayers). The new layer's id, or null when refused.
+    addLayerAbovePick(kind) {
+      const id = useProjectStore().addLayer(kind, this.shownPick);
+      if (id) this.pickLayer(id);
+      return id;
+    },
+    // Delete in a layer's ⋯ menu (and the command list's): an undo step alone; in a room it asks first
+    // (DeleteLayerDialog), as no one can undo it. True when it's gone now.
+    removeLayer(id) {
+      const project = useProjectStore();
+      if (project._sharing) this.deleteLayerAsk = { id };
+      else return !!project.deleteLayer(id);
+      return false;
+    },
+    // Bake (the toolbar's and the command list's). Under CGA or VGA it asks whether to lock the picture to the palette
+    // (exact, but the in-between colors are gone) or keep full color (a few cells near palette boundaries can tip);
+    // other palettes bake exactly either way, and so do CGA and VGA dithered or resolved (they snap on the grid then).
+    // Others drawing, it can't be undone, so it asks first. EditToolbar asks.
+    bake() {
+      const project = useProjectStore(), palette = !snapsLate(project.processParams) && { cga: 'CGA', vga: 'VGA' }[project.quantize];
+      if (palette) this.baking = palette;
+      else if (useDrawingStore().othersHere) this.bakingFinal = true;
+      else project.bake();
+    },
+    // The palette layer on its Fonts page, whatever tool is in hand; from SAUCE, the art is shown first. With no drawing
+    // it opens over the start screen (EditWorkspace). A phone's settings drawer shuts so the page shows whole.
+    openFonts() {
+      if (useProjectStore().image && !this.editMode) this.editorTab = 'output';
+      this.settingsOpen = false;
+      this.paletteLayerPage = 'fonts';
+      this.paletteLayerOpen = true;
     },
   }
 });

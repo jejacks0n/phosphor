@@ -272,6 +272,22 @@ test('double-click renames, Escape cancels, blank puts the default back', async 
   expect(rows()[1].querySelector('input').getAttribute('aria-label')).toBe('Rename Base');
 });
 
+// The command list's Layer: Rename asks through workspace.renameRequest: the list showing takes it, one mounted after
+// the ask too (a narrow screen's panel, opened by the row).
+test('a rename asked by the command list opens the row\'s box, in a list mounted after the ask too', async () => {
+  const { workspace } = await mount(({ workspace }) => { workspace.renameRequest = 'edit'; });
+  await nextTick();
+  const input = () => rows()[0].querySelector('input');
+  expect(input()).not.toBeNull();
+  expect(document.activeElement).toBe(input());
+  expect(workspace.renameRequest).toBe(null);
+  await key(input(), 'Escape');
+  workspace.renameRequest = 'edit';
+  await nextTick();
+  await nextTick();
+  expect(input()).not.toBeNull();
+});
+
 test('a click on the picked row\'s name renames it; on another row it only picks', async () => {
   const { workspace } = await mount();
   const nameOf = (i) => rows()[i].querySelector('.name');

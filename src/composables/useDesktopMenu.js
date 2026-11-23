@@ -10,7 +10,6 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { useRoomStore } from '@/store/RoomStore';
-import { useSocialStore } from '@/store/SocialStore';
 
 // The desktop app's menu bar (desktop/menu.js builds it): its words in the language showing, what can be done now and
 // the drawing's name and project path (the window's title, and which window has a file open), sent whenever any
@@ -44,10 +43,11 @@ export async function checkForUpdates() {
 export { reloading };
 
 // The menu's commands that are the command table's, run by id as the command list runs them (where it holds and it's
-// available), so the menu, the keys and the list share one run.
+// available), so the menu, the keys and the list share one run. Leave Room is a host's End Room.
 const TABLE = {
   new: 'file.new', open: 'file.open', save: 'file.save', saveAs: 'file.saveAs', export: 'file.export', versions: 'file.versions',
   commandList: 'ui.commandList', plugins: 'panels.plugins', pluginsOff: 'panels.pluginsOff',
+  hostRoom: 'rooms.start', joinRoom: 'rooms.join', copyAddress: 'rooms.copyAddress', leaveRoom: () => (useRoomStore().role === 'host' ? 'rooms.end' : 'rooms.leave'),
 };
 
 // The menu's accelerators: each menu command's key from the command table (the first with Cmd, Ctrl or Alt, since a bare key
@@ -61,7 +61,7 @@ export const menuAccelerators = () => ({
 });
 
 export function useDesktopMenu() {
-  const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore(), room = useRoomStore(), social = useSocialStore();
+  const project = useProjectStore(), workspace = useWorkspaceStore(), drawing = useDrawingStore(), room = useRoomStore();
 
   // Undo and Redo from the menu: a text field's own while one has focus, otherwise the drawing's (not on the room's tab,
   // as Cmd/Ctrl+Z).
@@ -71,28 +71,12 @@ export function useDesktopMenu() {
   };
 
   const commands = {
-    ...Object.fromEntries(Object.entries(TABLE).map(([name, id]) => [name, () => runCommand(id, commandContext(project, workspace))])),
+    ...Object.fromEntries(Object.entries(TABLE).map(([name, id]) => [name, () => runCommand(typeof id === 'function' ? id() : id, commandContext(project, workspace))])),
     undo: () => undoOrRedo('undo'),
     redo: () => undoOrRedo('redo'),
     about: () => { workspace.showAboutModal = true; },
     shortcuts: () => { workspace.shortcutsOpen = true; },   // always, as before: not the ? key's where (the color box open)
     checkUpdates: checkForUpdates,
-    hostRoom: () => {
-      workspace.showSocial();
-      if (social.desktopName) social.page = 'start-room';   // without a name, the page that asks for it first
-    },
-    joinRoom: () => {
-      workspace.showSocial();
-      social.page = 'lobby';
-    },
-    copyAddress: async () => {
-      if (await room.copyLink()) toast(t('menu.addressCopied'));
-    },
-    // A host is asked first, as End room asks.
-    leaveRoom: async () => {
-      if (room.role !== 'host') room.leave();
-      else if (await room.askToEnd()) room.endRoom();
-    },
   };
   desktop.onMenu((name) => commands[name]?.());
 

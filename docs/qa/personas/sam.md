@@ -177,7 +177,7 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
   its field, since SAUCE is CP437 in every ANSI file; Include SAUCE is checked, and the file ends with his SAUCE.
 - Probes: `again`: export twice and check the names differ; `back-out`: Escape from the dialog, then Cmd+S (the project
   dialog, not this one).
-- Rated: yes, wants a key for Export .utf8ans
+- Rated: yes, wants Cmd+K, then `utf8` and Enter
 
 ### 13. It prints the same in a terminal
 - Does: plays the .utf8ans in the headless terminal, one row taller than the art, and compares the art's rows with the
@@ -193,7 +193,7 @@ status bar's Col and Row as the cursor crosses wide characters, and try the Eras
   space, so the grid still lines up; an emoji still in Author is listed under it, in the SAUCE list.
 - Probes: `back-out`: read the list, press Cancel, and check nothing downloaded; `again`: export after removing every
   wide character (nothing listed).
-- Rated: yes, wants a key for Export .ans
+- Rated: yes, wants Cmd+K, then `exp ans` and Enter
 
 ### 15. The .ans lines up in a terminal
 - Does: plays the .ans in the terminal (cp437) and compares with the screen.
@@ -219,7 +219,7 @@ check the file ends with the art and opens with an empty SAUCE tab.
 - Expects: the bar shows under the canvas: play, the steps, the frame, the scrubber, Add frame, Frame actions, frames
   per second, Hold, Ghost; the shortcut list gains Animation (L, comma and period, N).
 - Probes: `again`: off and on again (the frames stay); `out-of-order`: try L and N with Animate off (nothing).
-- Rated: yes, wants a key for Animate
+- Rated: yes, wants Cmd+K, then `animate` and Enter
 
 ### 18. Add frames and change each one
 - Does: presses N three times, steps with comma and period, and types a different last character on each frame (a

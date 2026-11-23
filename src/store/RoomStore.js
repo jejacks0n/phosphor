@@ -241,6 +241,7 @@ const noRoom = () => ({
   // host's yes still to come) | 'waiting' (for the host's art) | 'connecting' | 'live' | 'failed'
   status: null,
   passwordWrong: false,
+  statsOpen: false,    // a host's Settings and stats (RoomMenu's box, and the command list's row): shut again with the room
   ...hostFields(),
   ...watcherFields(),
   chat: [],            // [{ id, ts, text, sub, name, host, mine, deleted, pass, sig, presence?, muted? }], oldest first, at most MOST_KEPT; presence is 'joined' or 'left'

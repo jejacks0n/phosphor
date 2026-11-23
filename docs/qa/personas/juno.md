@@ -162,7 +162,7 @@ script. Every section ends with Free time.
   Marketplace, pick Base, set its Distance to 3 and open Start a room. Go live is off, and the box says "This drawing
   holds settings for the plugin filter Aberration, which rooms don't use. Reset it first."; press Aberration's Reset
   and Go live is on again; remove Aberration.
-- Rated: yes, wants a key for Start a room
+- Rated: yes, wants Cmd+K, then `start room` and Enter
 
 **Free time:** she'd open Edit account and look at her name's cell and glyph, try Start a room with nothing open
 (New project first, then put her art back from "Pick up where you left off"), read the filter menu over the empty
@@ -194,7 +194,7 @@ lobby, and look at Who's here.
 - Probes: `back-out`: press Cancel at End this room? and check the room goes on; `out-of-order`: look for a way to
   change the password or make the room public while it's live (they stay as set: that's the docs' rule, not a
   finding).
-- Rated: yes, wants a key for End room, then Enter
+- Rated: yes, wants Cmd+K, then `end room`, Enter, and Enter at the question
 
 ### 6. Go live in public
 - Does: on the fake an ended room stays ended, so first makes a new `social.fakeRoom()` and fakes her page again with
@@ -241,7 +241,7 @@ and drag the panel wider.
   form if she goes to another tab before saving ([Hosting](../../social.md#hosting)).
 - Probes: `back-out`: type a new welcome, press Escape without saving, reopen, and check what's there; `again`: save
   twice within a second and check the latest one is what watchers see.
-- Rated: yes, wants a key for Settings and stats
+- Rated: yes, wants Cmd+K, then `stats` and Enter
 
 ### 10. Draw my partner's first sections live
 - Does: does the partner's sections for this step (the table in Traits), live, from that persona's file: each of their
@@ -369,7 +369,7 @@ invitation clears), then have them join again from the card (step 22 makes them 
   "Show N more" past ten rows ([Hosting](../../social.md#hosting)).
 - Probes: `again`: have a watcher send a message with the box open, and check Messages and their row count it;
   `interrupt`: close and reopen the box, and check the numbers held.
-- Rated: yes, wants a key for Settings and stats
+- Rated: yes, wants Cmd+K, then `stats` and Enter
 
 ### 19. Turn guests away
 - Does: unticks Allow guests and saves without ticking "Also remove the guest currently in the room"; then opens the guest's
@@ -463,7 +463,7 @@ comes back to her (a hand-over isn't a reconnect), undo a stroke she drew before
   ([Hosting](../../social.md#hosting)).
 - Probes: `back-out`: Cancel first; `out-of-order`: press Forward afterward and check the room isn't joined or started
   again.
-- Rated: yes, wants a key for End room, then Enter
+- Rated: yes, wants Cmd+K, then `end room`, Enter, and Enter at the question
 
 ### 27. Save the night's art
 - Measured: save-art

@@ -11,7 +11,7 @@
 //   fixed      a key that stays where it's handled (an arrow that nudges, Escape's chain, Edit Mode's typing): shown in
 //              the ? list, never matched here, never remapped (a run on one is for the command list)
 //   where      (ctx) => whether the key is the app's here at all (not in a field, the right view, not mid-drag)
-//   available  (ctx) => true, or an i18n key saying why it can't run now
+//   available  (ctx) => true, or why it can't run now: an i18n key, or [key, values] (offReasons.js; reasonWords says it)
 //   run        (ctx) => what it does
 //   held       a fixed key that works while held down (Alt for the eyedropper, Space for the hand)
 //   once       a held key's repeats are taken and do nothing (without it they run again, as a held Cmd+Z does)
@@ -37,6 +37,17 @@ import { usePluginStore } from '@/store/PluginStore';
 import { EXPORT_FORMATS } from '@/document/projectIO';
 import { canExportVideo } from '@/lib/VideoFile';
 import { recentCommands } from '@/lib/recentCommands';
+import { addOff, artLayerOff, bakeOff, flattenOff, pausedOff, reasonWords } from '@/lib/offReasons';
+import { useMergeDown } from '@/composables/useMergeDown';
+import { duplicateShapes } from '@/composables/vectorClipboard.js';
+import { toast } from '@/composables/useToast';
+import { useRoomStore } from '@/store/RoomStore';
+import { useSocialStore } from '@/store/SocialStore';
+import { MAX_ANIMATION_CELLS } from '@/lib/Cells';
+import { formatNumber } from '@/i18n/format';
+
+export { reasonWords };
+const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 
 export const GROUPS = ['general', 'tools', 'drawing', 'view', 'colors', 'editMode', 'select', 'vector', 'animation', 'tabs',
   'layers', 'panels', 'file', 'drawingCommands', 'rooms'];
@@ -134,6 +145,27 @@ export const reloading = {
 };
 
 const fixed = (id, group, label, { keys, shown }) => ({ id, group, label, keys, shown, fixed: true });
+
+// The command list's rows for buttons: a reason the button gives (offReasons.js), or true.
+const ok = (reason) => reason ?? true;
+const art = (ctx) => !!ctx.project.image && ctx.workspace.editMode; // the toolbar and LAYERS show
+const picked = ({ workspace }) => workspace.shownPick; // the row LAYERS shows picked
+const layerWords = (key) => said('shortcuts.commands.layer', () => ({ action: t(key) }));
+const notBase = (ctx) => (picked(ctx) === 'base' ? 'shortcuts.reasons.baseLayer' : null); // the base has no ⋯ menu
+const hiddenPick = (ctx) => !!ctx.project.layerById(picked(ctx))?.hidden;
+// VECTOR's buttons for the selected shapes.
+const chosenShapes = ({ project, workspace }) => workspace.vectorSelected.filter((key) => project.shapes.has(key));
+const onShapes = (id, key, run) => ({
+  id, group: 'vector', label: said('shortcuts.commands.shapes', () => ({ action: t(key) })),
+  where: (ctx) => art(ctx) && ctx.view === 'vector', available: (ctx) => (chosenShapes(ctx).length ? true : 'shortcuts.reasons.noShapes'), run,
+});
+const restack = (direction) => (ctx) => ctx.project.restackShapes(chosenShapes(ctx), direction);
+// A room's: in one (a host's own, with host), or out of one to start or join another.
+const inRoom = (host) => () => {
+  const { role } = useRoomStore();
+  return !role ? 'shortcuts.reasons.notInRoom' : host && role !== 'host' ? 'shortcuts.reasons.notHost' : true;
+};
+const outOfRoom = () => (useRoomStore().role ? 'shortcuts.reasons.inRoom' : true);
 const ARROWS = '← ↑ → ↓'; // the four, shown as one
 const shiftArrows = () => [shortcut('shift', ARROWS)];
 
@@ -266,6 +298,106 @@ export const COMMANDS = [
     },
     run: ({ workspace }) => { workspace.exportModal = format.id; },
   })),
+
+  // The drawing's: the toolbar's buttons where it shows (Bake and Flatten ask first as their buttons do: the workspace
+  // holds the question, EditToolbar asks it), and the settings'.
+  { id: 'drawing.bake', group: 'drawingCommands', label: said('toolbar.bake'), where: art,
+    available: ({ project }) => ok(bakeOff(project, useDrawingStore())), run: ({ workspace }) => workspace.bake() },
+  { id: 'drawing.flatten', group: 'drawingCommands', label: said('toolbar.flatten'), where: art,
+    available: ({ project }) => ok(flattenOff(project, useDrawingStore())), run: ({ workspace }) => { workspace.flattening = true; } },
+  // The toolbar's Merge down: the picked layer, or on VECTOR the selected shapes. Into the base it asks how (exactly, or
+  // into the image), so Blend into source image is that question's.
+  { id: 'drawing.mergeDown', group: 'drawingCommands', label: said('toolbar.mergeDown'), where: art,
+    available: ({ workspace }) => {
+      const merge = useMergeDown();
+      return ok(merge.offWhy(workspace.pickedLayer) ?? (merge.hasAny(workspace.pickedLayer) ? null : 'shortcuts.reasons.nothingToMerge'));
+    },
+    run: ({ workspace }) => useMergeDown().mergePicked(workspace) },
+  // Dimensions, as the settings lock it (only the host's in a room, and not inside an art layer).
+  { id: 'drawing.canvasSize', group: 'drawingCommands', label: said('settings.cols.label'),
+    available: (ctx) => ok(drawn(ctx) !== true ? drawn(ctx) : useDrawingStore().mayDraw ? 'social.drawing.onlyHost' : ctx.project.artInside ? 'art.settingsOff' : null),
+    run: ({ workspace }) => { workspace.dimensionsRequest++; } },
+  // The Animate switch (EditTabs): turned on as it allows, off always.
+  { id: 'drawing.animate', group: 'drawingCommands', label: said('tabs.animate'),
+    available: ({ project }) => {
+      if (project.animate) return true;
+      if (project.inRoom) return 'tabs.animateInRoom';
+      if (!project.canAnimate) return ['tabs.animateTooLargeTitle', { max: formatNumber(MAX_ANIMATION_CELLS) }];
+      return project.image ? true : 'tabs.animateNeedArt';
+    },
+    run: ({ project }) => {
+      usePlayback().pause();
+      project.setAnimate(!project.animate);
+    } },
+  { id: 'drawing.font', group: 'drawingCommands', label: said('font.manage'), run: ({ workspace }) => workspace.openFonts() },
+
+  // The layers': LAYERS' ⋯ menu's on the picked row, and the selection's Make art layer.
+  { id: 'layer.makeArt', group: 'layers', label: said('art.make'), where: (ctx) => art(ctx) && ART.includes(ctx.view),
+    available: ({ project, workspace }) => ok(artLayerOff(project)
+      ?? (workspace.selection || (workspace.activeTool === 'wand' && workspace.wand) ? null : ['toolbar.selection.selectFirstTitle', { action: t('art.make') }])),
+    run: ({ project }) => project.makeArtLayer() },
+  { id: 'layer.rename', group: 'layers', label: layerWords('layers.rename'), where: art, available: () => ok(pausedOff(useDrawingStore())),
+    run: ({ workspace }) => {
+      workspace.showLayers();
+      workspace.renameRequest = workspace.shownPick; // LayersList turns the row into its box
+    } },
+  { id: 'layer.duplicate', group: 'layers', label: layerWords('layers.duplicate'), where: art,
+    available: (ctx) => ok(notBase(ctx) ?? addOff(ctx.project, useDrawingStore())), run: (ctx) => ctx.project.duplicateLayer(picked(ctx)) },
+  { id: 'layer.delete', group: 'layers', label: layerWords('layers.delete'), where: art,
+    available: (ctx) => ok(notBase(ctx) ?? pausedOff(useDrawingStore())), run: (ctx) => ctx.workspace.removeLayer(picked(ctx)) },
+  // The base row picked, as a click picks it (off for an artist, and inside an art layer).
+  { id: 'layer.pickBase', group: 'layers', label: layerWords('layers.pickBase'), where: art,
+    available: ({ project }) => (useDrawingStore().mayDraw ? 'social.drawing.onlyHost' : project.artInside ? 'art.baseOff' : true),
+    run: ({ workspace }) => workspace.pickLayer('base') },
+  // The picked row's eye: Hide while it shows, Show while it's hidden.
+  { id: 'layer.hide', group: 'layers', label: layerWords('layers.hide'), where: (ctx) => art(ctx) && !hiddenPick(ctx),
+    run: (ctx) => ctx.project.setLayerHidden(picked(ctx), true) },
+  { id: 'layer.show', group: 'layers', label: layerWords('layers.show'), where: (ctx) => art(ctx) && hiddenPick(ctx),
+    run: (ctx) => ctx.project.setLayerHidden(picked(ctx), false) },
+
+  // VECTOR's: the stacking order (Forward and Back as their buttons, and to the front or back of the layer), and copies
+  // of the selected shapes.
+  onShapes('vector.forward', 'vector.forward', restack('forward')),
+  onShapes('vector.backward', 'vector.back', restack('back')),
+  onShapes('vector.toFront', 'vector.toFront', restack('toFront')),
+  onShapes('vector.toBack', 'vector.toBack', restack('toBack')),
+  onShapes('vector.duplicate', 'layers.duplicate', ({ project, workspace }) => duplicateShapes(project, workspace)),
+
+  // A room's: the desktop's Room menu and the room's own buttons (RoomMenu, ChatPanel). The menu runs them by id.
+  { id: 'rooms.start', group: 'rooms', label: said('social.lobby.startRoom'), available: outOfRoom,
+    run: ({ workspace }) => {
+      const social = useSocialStore();
+      workspace.showSocial();
+      // Without what starting needs (a name on the desktop; signed in, confirmed and not silenced on the web), the page
+      // that asks for it.
+      if (DESKTOP ? social.desktopName : social.signedIn && social.me?.emailVerified !== false && !(social.claims?.silencedUntil > Date.now())) social.page = 'start-room';
+    } },
+  { id: 'rooms.join', group: 'rooms', label: said('menu.joinRoom'), available: outOfRoom,
+    run: ({ workspace }) => {
+      workspace.showSocial();
+      useSocialStore().page = 'lobby';
+    } },
+  { id: 'rooms.copyAddress', group: 'rooms', label: said(DESKTOP ? 'social.desktop.copyAddress' : 'common.copyLink'), available: inRoom(true),
+    run: async () => { if (await useRoomStore().copyLink()) toast(t(DESKTOP ? 'menu.addressCopied' : 'common.copied')); } },
+  { id: 'rooms.stats', group: 'rooms', label: said('social.menu.settingsAndStats'), available: inRoom(true),
+    run: ({ workspace }) => {
+      workspace.showSocial();
+      useRoomStore().statsOpen = true;
+    } },
+  // End room asks first, as Back past going live does (App's question).
+  { id: 'rooms.end', group: 'rooms', label: said('social.host.endRoom'), available: inRoom(true),
+    run: async () => {
+      const room = useRoomStore();
+      if (await room.askToEnd()) room.endRoom();
+    } },
+  { id: 'rooms.leave', group: 'rooms', label: said('menu.leaveRoom'), where: () => useRoomStore().role !== 'host', available: inRoom(false),
+    run: () => useRoomStore().leave() },
+  { id: 'rooms.showCursors', group: 'rooms', label: said('social.chat.showCursors'),
+    available: ({ project }) => (project._sharing ? true : 'shortcuts.reasons.notSharing'),
+    run: () => {
+      const drawing = useDrawingStore();
+      drawing.showCursors = !drawing.showCursors;
+    } },
 ];
 
 const BY_ID = new Map(COMMANDS.map((command) => [command.id, command]));
@@ -286,6 +418,45 @@ export function toolCommands(view, project) {
       where: toolWhere, run: ({ workspace }) => workspace.setActiveTool(tool.id),
     };
   });
+}
+
+// A tool's options as the command list's rows, for those it shows in the view: a checkbox toggled ("Magic Wand:
+// Contiguous"), and each choice of a segmented row ("Shapes: Ellipse"), a dropdown and a toggle group ("Magic Wand: Match
+// BG") its own. Each holds where the toolbar shows it (its when, a dropdown choice's when), chooses the tool and sets
+// the value as the toolbar does. Sliders, a character and a color take a value dragged or typed: not here.
+export function optionCommands(tool, view) {
+  const rows = [];
+  for (const option of tool.options ?? []) {
+    if (option.views && !option.views.includes(view)) continue;
+    const row = (id, said, value, shows = () => true) => rows.push({
+      id: `option.${tool.id}.${id}`, group: 'tools',
+      label: () => {
+        const [words, choice] = said();
+        return t(choice ? 'shortcuts.commands.optionChoice' : 'shortcuts.commands.option', { tool: tool.title, option: words, choice });
+      },
+      where: (ctx) => toolWhere(ctx) && (!option.when || option.when(ctx.workspace)) && shows(ctx.workspace),
+      run: ({ workspace }) => {
+        workspace.setActiveTool(tool.id);
+        setOptionValue(workspace, option, value(workspace));
+      },
+    });
+    if (option.type === 'checkbox') row(option.key, () => [option.label], (workspace) => !optionValue(workspace, option));
+    else if (option.type === 'segmented') for (const choice of option.choices) row(`${option.key}.${choice.value}`, () => [choice.label], () => choice.value);
+    else if (option.type === 'dropdown') {
+      for (const choice of option.choices) row(`${option.key}.${choice.value}`, () => [option.label, choice.label], () => choice.value, (workspace) => !choice.when || choice.when(workspace));
+    } else if (option.type === 'toggles') {
+      // As ToggleGroup: a single one lights its choice alone, any other flips it, never leaving none lit.
+      for (const toggle of option.options) {
+        row(`${option.key}.${toggle.key}`, () => [option.label, toggle.label], (workspace) => {
+          const value = optionValue(workspace, option);
+          if (option.single) return value[toggle.key] ? value : Object.fromEntries(option.options.map(({ key }) => [key, key === toggle.key]));
+          const next = { ...value, [toggle.key]: !value[toggle.key] };
+          return Object.values(next).some(Boolean) ? next : value;
+        }, () => !toggle.disabled);
+      }
+    }
+  }
+  return rows;
 }
 
 // Cmd or Ctrl on every platform: the chords have always taken either, so Ctrl+Z undoes on a Mac and Cmd+Z elsewhere. A
@@ -318,8 +489,10 @@ export const commandContext = (project, workspace) => ({
   project, workspace, event: new KeyboardEvent('keydown'), view: workspace.editorTab, typing: false, uncommitted: false,
 });
 
-// The commands the list offers here: every row with a run whose where holds, the view's tools too, never a hidden one.
-export const listedCommands = (ctx) => [...COMMANDS, ...toolCommands(ctx.view, ctx.project)]
+// The commands the list offers here: every row with a run whose where holds, the view's tools and their options too,
+// never a hidden one.
+export const listedCommands = (ctx) => [...COMMANDS, ...toolCommands(ctx.view, ctx.project),
+  ...offeredTools(ctx.view, ctx.project).flatMap((tool) => optionCommands(tool, ctx.view))]
   .filter((c) => c.run && !c.hidden && (!c.where || c.where(ctx)));
 
 // Run it by id if it may run now (its where holds and it's available), giving what its run gives (a save's promise).

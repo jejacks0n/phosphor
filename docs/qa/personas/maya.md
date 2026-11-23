@@ -345,7 +345,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Probes: `out-of-order`: press Make art layer with nothing drawn in the selection; `undo-redo`: undo inside the art
   layer back to where she stepped in, then step out and undo the Make art layer; `back-out`: press Escape with the Text
   cursor showing (the first Escape puts the cursor away).
-- Rated: yes, wants M, then a key for Make art layer
+- Rated: yes, wants M, then Cmd+K, `art layer` and Enter
 
 ### 24. Paint inside the art layer
 - Does: steps into the art layer again (Edit art), paints a stroke with the Brush, fills an area with the Paint Bucket,
@@ -449,7 +449,7 @@ held.
   exactly, without asking; undo brings the original image and the sliders back
   ([Baking](../../layers.md#baking)).
 - Probes: `undo-redo`: bake, undo, redo, and compare the canvas each time; `again`: bake twice in a row.
-- Rated: yes, wants a key for Bake
+- Rated: yes, wants Cmd+K, then `bake` and Enter
 
 **Free time:** she'd look for a Merge visible (all layers into one) as Photoshop has, try Flatten to see how it differs
 from Bake, merge with a selection, and check the merges are off with Animate on and more than one frame.
@@ -539,7 +539,7 @@ back, hide the base under it all, and export the .ans after each merge to see it
   ([Characters](../../characters.md#saving-utf8ans-and-ans)); with Smooth text off, no question, and a smaller file.
 - Probes: `out-of-order`: look on every tab and in the Actions menu of a narrow window; `free`: try the browser's own
   right-click on the canvas.
-- Rated: yes, wants a key for Export PNG
+- Rated: yes, wants Cmd+K, then `exp png` and Enter
 
 ### 38. Export an .ans for the terminal
 - Does: presses Export .ans, keeps the offered name, and saves; then checks it in the headless terminal against the
@@ -549,7 +549,7 @@ back, hide the base under it all, and export the .ans after each merge to see it
   does, with hidden layers left out.
 - Probes: `again`: export twice in a row and check the two names differ; `back-out`: change the name, press Escape,
   reopen and check the offered name; `extremes`: name the file with emoji and slashes.
-- Rated: yes, wants a key for Export .ans
+- Rated: yes, wants Cmd+K, then `exp ans` and Enter
 
 ### 39. Save the project and reopen it
 - Does: presses Cmd+S, saves; starts a New project; opens the saved .pho with Choose a file.

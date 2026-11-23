@@ -51,3 +51,10 @@ export function pasteShapes(project, workspace, copied = workspace.vectorClipboa
   project.addShapes(copies, keys);
   return true;
 }
+
+// Duplicate (the command list's): the selected shapes pasted again as copies, as a paste does, without going on the
+// clipboard.
+export function duplicateShapes(project, workspace) {
+  const shapes = chosen(project, workspace);
+  return shapes.length > 0 && pasteShapes(project, workspace, shapes.map(([, shape]) => shape), shapes.map(([key]) => key));
+}

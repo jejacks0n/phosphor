@@ -469,7 +469,10 @@
     "hiddenMergeToast": "Make the layer visible to merge it",
     "noCellsLayer": "Add a drawing layer before drawing.",
     "notInRoom": "Adding a picture to a layer isn't supported in shared rooms yet.",
-    "charsHostOnly": "Only the host changes character settings in a room."
+    "charsHostOnly": "Only the host changes character settings in a room.",
+    "show": "Show",
+    "hide": "Hide",
+    "pickBase": "Pick the base"
   },
   "tools": {
     "pluginTitle": "{name} ({plugin})",
@@ -1467,13 +1470,24 @@
       "bgNext": "Background color: next in the palette",
       "sizeDown": "Shrink the tool size",
       "sizeUp": "Grow the tool size",
-      "reloadPlugins": "Reload plugins"
+      "reloadPlugins": "Reload plugins",
+      "layer": "Layer: {action}",
+      "shapes": "Selected shapes: {action}",
+      "option": "{tool}: {option}",
+      "optionChoice": "{tool}: {option} {choice}"
     },
     "reasons": {
       "noDrawing": "No drawing open",
       "noCursor": "Place the cursor in Edit Mode first",
       "noLinkedPlugins": "No plugin was picked from a file or folder",
-      "notAnimated": "Turn on Animate, with more than one frame"
+      "notAnimated": "Turn on Animate, with more than one frame",
+      "baseLayer": "Not on the base layer",
+      "nothingToMerge": "Nothing on this layer to merge",
+      "noShapes": "Select shapes first",
+      "notInRoom": "Not in a room",
+      "notHost": "Only the host can do this",
+      "inRoom": "Leave the room first",
+      "notSharing": "Only while drawing together in a room"
     },
     "groups": {
       "vector": "VECTOR",
@@ -2155,7 +2169,9 @@
     "sharp": "Sharp",
     "sharpTitle": "Sharp point: removes handles to create a sharp corner",
     "deletePointTitle": "Delete selected color stop or point",
-    "pointsHint": "Drag points, handles, or color stops. Click outline to add a point. Press Esc or click empty canvas to finish"
+    "pointsHint": "Drag points, handles, or color stops. Click outline to add a point. Press Esc or click empty canvas to finish",
+    "toFront": "To front",
+    "toBack": "To back"
   },
   "rulers": {
     "zeroOnColumn": "0 on column {n}",

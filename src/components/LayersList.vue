@@ -8,6 +8,7 @@ import { useLayerName } from '@/composables/useLayerName';
 import { useMergeDown } from '@/composables/useMergeDown';
 import { useStandIn } from '@/composables/useStandIn';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
+import { addOff as addWhy, pausedOff as pausedWhy, reasonWords } from '@/lib/offReasons';
 import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The drawing's layers, top of the stack first (project.layers, reversed), the base at the bottom. Picking a row
@@ -53,26 +54,20 @@ function pick(layer, e) {
 
 // While a room's drawing is paused, nothing changes the stack (the project refuses it too): adding, renaming, copying,
 // deleting and moving are off with this reason. Picking and the eyes, each person's own, go on working.
-const pausedOff = computed(() => (drawing.paused ? t('social.people.notWhilePaused') : null));
+const pausedOff = computed(() => reasonWords(pausedWhy(drawing)));
 
-// Add layer and Add vector layer: directly above the pick, and picked (an artist's in a room when the host's stack comes,
-// project.applyLayers). Off at the most layers.
-const full = computed(() => project.layers.length >= MOST_LAYERS);
+// Add layer and Add vector layer: directly above the pick, and picked (workspace.addLayerAbovePick). Off at the most layers.
 const ADD_BADGE = 'M11.7 9h1.6v2.7H16v1.6h-2.7V16h-1.6v-2.7H9v-1.6h2.7z';   // the + on an add button's layer icon, its bottom right
-const addOff = computed(() => pausedOff.value ?? (full.value ? t('layers.full', { n: MOST_LAYERS }) : null));
-function add(kind) {
-  const id = project.addLayer(kind, workspace.shownPick);
-  if (id) workspace.pickLayer(id);
-}
+const addOff = computed(() => reasonWords(addWhy(project, drawing)));
+const add = (kind) => workspace.addLayerAbovePick(kind);
 
 // The ⋯ menu's Duplicate (the copy goes directly above and is picked, project.duplicateLayer) and Delete, each an undo
 // step alone: Duplicate off at the most layers. In a room Delete asks first (DeleteLayerDialog): no one can undo it.
-const duplicateOff = computed(() => pausedOff.value ?? (full.value ? t('layers.full', { n: MOST_LAYERS }) : null));
+const duplicateOff = addOff;
 const duplicate = (layer) => project.duplicateLayer(layer.id);
 // Its row (and ⋯) gone, focus goes to the row picked now (the one under it) rather than the page.
 function remove(layer) {
-  if (project._sharing) workspace.deleteLayerAsk = { id: layer.id };
-  else if (project.deleteLayer(layer.id)) backToRow(workspace.pickedLayer);
+  if (workspace.removeLayer(layer.id)) backToRow(workspace.pickedLayer);
 }
 // In a room the delete is done once the layer's gone (DeleteLayerDialog's ask, going, then goes), and focus goes to the row
 // picked now as well, unless it's somewhere else by then. Watched as it changes (sync): the host's ask goes to going and
@@ -137,6 +132,14 @@ async function rename(layer) {
   await nextTick();
   list.value.querySelector('input')?.select();
 }
+// The command list's Rename (workspace.renameRequest): the row's box, here, in the list that shows it. Taken by a list
+// mounted after the ask too (a narrow screen's panel, opened by it).
+watch(() => workspace.renameRequest, (id) => {
+  const layer = id && showing.value && layers.value.find((row) => row.id === id);
+  if (!layer) return;
+  workspace.renameRequest = null;
+  rename(layer);
+}, { immediate: true, flush: 'post' });
 // Enter and Escape put focus back on the row; leaving the box (the blur Enter's own unmounting brings, too) doesn't.
 function keep() {
   if (!renaming.value) return;
