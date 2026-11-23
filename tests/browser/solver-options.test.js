@@ -148,6 +148,7 @@ test('a color option is a color input that changes as it is picked and commits w
   const input = host.querySelector('input[type=color]#solver-tint');
   expect(input.value).toBe('#ff8800');
   expect(input.closest('.field')).not.toBe(null); // beside the slider, in its field
+  expect([...host.querySelectorAll('.solver-options select, .solver-options input[type=color]')].map((el) => el.id)).toEqual(['solver-tint']); // only there: no empty choice for it after
   const version = project.history.version;
   await change(input, '#00ff00', 'input');
   expect(project.charsOf('edit').solverOptions[ref].tint).toBe('#00ff00');

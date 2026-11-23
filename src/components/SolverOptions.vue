@@ -53,7 +53,7 @@ function pick(option, value) {
             @input="set(option, $event.target.value)" @change="emit('commit', {})"
         >
       </div>
-      <div v-else class="field">
+      <div v-else-if="option.kind === 'choice'" class="field"><!-- a color in a slider's slot is drawn there, nothing here -->
         <label :for="idOf(option)">{{ option.name }}</label>
         <select :id="idOf(option)" :value="props.values[option.id]" @change="pick(option, Number($event.target.value))">
           <option v-for="(choice, i) in option.choices" :key="i" :value="i">{{ choice }}</option>
