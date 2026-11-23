@@ -86,7 +86,7 @@ test('opening the color box closes the character layer, and opening the characte
 // rather than cutting the Stroke side's last line (Miter) off. A Custom color list of 64 colors (Flatten writes up to
 // 255) makes the page taller than the frame; VGA's grids alone fit it.
 const LONG_LIST = Array.from({ length: 64 }, (_, i) => `#${(i * 0x040404).toString(16).padStart(6, '0')}`).join(' ');
-test('on a short window VECTOR\'s Stroke side scrolls inside the box, Miter reachable', async () => {
+test('on a short window VECTOR\'s Stroke side is in reach, Miter included: the swatches scroll to make room', async () => {
   await page.viewport(1400, 600);
   onTestFinished(() => page.viewport(414, 896));
   await vi.waitFor(() => expect(innerHeight).toBe(600));
@@ -97,12 +97,38 @@ test('on a short window VECTOR\'s Stroke side scrolls inside the box, Miter reac
   } });
   const box = panel().querySelector('.color-popover'), miter = box.querySelector('#vector-miter');
   expect(miter).not.toBe(null);
-  expect(box.scrollHeight).toBeGreaterThan(box.clientHeight);
-  expect(getComputedStyle(box).overflowY).toBe('auto');
+  const colors = box.querySelector('div.colors');
+  expect(colors.scrollHeight).toBeGreaterThan(colors.clientHeight);
+  expect(getComputedStyle(box).overflowY).toBe('auto'); // past the swatches' few rows, the box scrolls too
   miter.scrollIntoView({ block: 'nearest' });
   const frame = panel().getBoundingClientRect(), field = miter.getBoundingClientRect();
   expect(field.top).toBeGreaterThanOrEqual(frame.top);
   expect(field.bottom).toBeLessThanOrEqual(frame.bottom);
+});
+
+// A list of 256 colors is 32 rows of swatches: they scroll by themselves, and None and Recent under them stay in the box.
+test('with 256 colors only the swatches scroll: the head, None and Recent stay in the box', async () => {
+  await page.viewport(1400, 850);
+  onTestFinished(() => page.viewport(414, 896));
+  await vi.waitFor(() => expect(innerHeight).toBe(850));
+  const list = Array.from({ length: 256 }, (_, i) => `#${(i * 0x010101).toString(16).padStart(6, '0')}`).join(' ');
+  const { workspace, panel } = await mount({ before: async ({ project, workspace }) => {
+    Object.assign(project, { quantize: 'palette', palette: list });
+    await settle(project);
+    workspace.recentColors = ['#ff0000', '#00ff00'];
+  } });
+  workspace.setColor('fg', '#ffffff'); // the last swatch, so it's scrolled to
+  await nextTick();
+  const box = panel().querySelector('.color-popover'), colors = box.querySelector('div.colors');
+  expect(colors.querySelectorAll('button.swatch')).toHaveLength(256);
+  expect(colors.scrollHeight).toBeGreaterThan(colors.clientHeight); // the swatches scroll
+  expect(box.scrollHeight).toBeLessThanOrEqual(box.clientHeight + 1); // the box doesn't
+  const frame = panel().getBoundingClientRect();
+  for (const el of [box.querySelector('div.head'), box.querySelector('.foot .swatch.none'), ...box.querySelectorAll('.foot .swatch.small')]) {
+    const r = el.getBoundingClientRect();
+    expect(r.top).toBeGreaterThanOrEqual(frame.top);
+    expect(r.bottom).toBeLessThanOrEqual(frame.bottom);
+  }
 });
 
 // Review Focus 1: a toolbar narrower than the pair's left plus the layer's width keeps the layer 10px inside its right,
