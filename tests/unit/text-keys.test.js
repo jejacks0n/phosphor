@@ -133,3 +133,17 @@ test('Alt+X never types (the cursor cell flipped); Alt+U and Shift+Alt+U take th
   assert.equal(mac(ev('Dead', 'KeyU')), null); // the textarea starts ü itself
   assert.deepEqual(mac(ev('¨', 'KeyU', { shiftKey: true })), MAC_TYPES_OPTION_U ? { type: 'char', char: '¨' } : null);
 });
+
+test('Alt+1–4 type while typing on a Mac and Windows (Option\'s digits: a British Mac\'s Option+3 is #), and on Linux, whose browser switches its tabs on them, type nothing', () => {
+  const ev = (key, code, mods = {}) => ({ key, code, altKey: true, ctrlKey: false, metaKey: false, shiftKey: false, ...mods });
+  const mac = (e) => textKeyAction(e, { editable: false, mac: true, linux: false });
+  const windows = (e) => textKeyAction(e, { editable: false, mac: false, linux: false });
+  const linux = (e) => textKeyAction(e, { editable: false, mac: false, linux: true });
+  assert.deepEqual(mac(ev('™', 'Digit2')), { type: 'char', char: '™' });
+  assert.deepEqual(mac(ev('#', 'Digit3')), { type: 'char', char: '#' }); // a British Mac
+  assert.deepEqual(windows(ev('1', 'Digit1')), { type: 'char', char: '1' }); // as it typed before
+  for (const n of [1, 2, 3, 4]) assert.equal(linux(ev(String(n), `Digit${n}`)), null, `Alt+${n} on Linux`);
+  assert.deepEqual(linux(ev('5', 'Digit5')), { type: 'char', char: '5' }); // not a tab's
+  assert.deepEqual(linux(ev('!', 'Digit1', { shiftKey: true })), { type: 'char', char: '!' }); // Shift+Alt+1
+  assert.deepEqual(linux(ev('¹', 'Digit1', { ctrlKey: true })), { type: 'char', char: '¹' }); // AltGr types
+});

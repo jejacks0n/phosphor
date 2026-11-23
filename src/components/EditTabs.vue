@@ -58,19 +58,11 @@ const { style: indicatorStyle, update: updateIndicator } = useTabIndicator(tabLi
 
 const { shown: sidePanelShown } = useSidePanelShown(workspace);
 
-// The art tabs wait for something to show. From ROOM they're the way back to the start screen.
-const noArt = computed(() => !image.value && props.modelValue !== 'room');
-// The picked layer decides them, by its kind: a cells layer (the base among them) shows PIXEL and ANSI, a vector layer
-// VECTOR, and inside an art layer VECTOR and ANSI (shownPick is its vector layer's row then). 'vector' before the first
-// shape brings its layer is the vector layer it will be.
-const isVector = (id) => project.layerById(id)?.kind === 'vector' || id === 'vector';
-const tabs = computed(() => [
-  ...(!isVector(workspace.shownPick) ? [{ id: 'input', label: t('tabs.pixel'), disabled: noArt.value }] : []),
-  ...(isVector(workspace.shownPick) ? [{ id: 'vector', label: t('tabs.vector'), disabled: noArt.value }] : []),
-  ...(!isVector(workspace.pickedLayer) || project.artInside ? [{ id: 'output', label: renderStyle.value === 'ansi' ? t('tabs.ansi') : t('tabs.ascii'), disabled: noArt.value }] : []),
-  { id: 'sauce', label: t('tabs.sauce'), disabled: noArt.value },
-  ...(room.role === 'watch' || props.modelValue === 'room' ? [{ id: 'room', label: t('tabs.room'), disabled: false }] : []),   // the room you watch
-]);
+// The tabs the picked layer and the room give (workspace.shownTabs: Alt+1–4 read them too), in their words.
+const LABELS = { input: 'tabs.pixel', vector: 'tabs.vector', sauce: 'tabs.sauce', room: 'tabs.room' };
+const tabs = computed(() => workspace.shownTabs(project, room).map((tab) => ({
+  ...tab, label: t(tab.id === 'output' ? (renderStyle.value === 'ansi' ? 'tabs.ansi' : 'tabs.ascii') : LABELS[tab.id]),
+})));
 // With nothing open no tab is selected: the start screen isn't a view of the art. The tab stays chosen
 // underneath, for when something opens.
 const selected = computed(() => tabs.value.find((tab) => tab.id === props.modelValue && !tab.disabled)?.id);

@@ -1142,6 +1142,12 @@ the cursor, as one undo step, without leaving Edit Mode.
   nothing, so the browser doesn't go back a page.
 - **Alt + ] and Alt + [** (Option on a Mac): Select the layer above or below, in Edit Mode while you type too
   ([The Layers List](#the-layers-list)). **Shift+Alt+N** adds a drawing layer and **Shift+Alt+V** a vector layer.
+- **Alt + 1 to 4** (Option on a Mac): The editor tabs, in order, as a click on the tab chooses it, so Back goes back to
+  the one before: **Alt+1** PIXEL (VECTOR with a vector layer selected), **Alt+2** ANSI (or ASCII), **Alt+3** SAUCE, and
+  **Alt+4** ROOM while you watch a room. A tab that isn't showing or is off (with nothing open, or ANSI with a vector
+  layer selected) stays put, and the key does nothing. They work from SAUCE and ROOM too, but not from a text field, a
+  dialog, or Edit Mode while you type, where Option's digits type their characters on a Mac (on a British Mac Option+3
+  is #). On Linux, where the browser switches its own tabs on Alt+1 to 4, they do nothing while you type.
 - **?**: Opens the full keyboard shortcut list ([All the Shortcuts](#all-the-shortcuts)).
 - **Cmd + K** (Ctrl+K on Windows and Linux): Opens the command list, to find any command by name and run it
   ([The Command List](#the-command-list)).

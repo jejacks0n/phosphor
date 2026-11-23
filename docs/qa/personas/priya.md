@@ -121,8 +121,8 @@ script. Every section ends with Free time.
 - Expects: the path shows as a thin line while she draws, Enter leaves it open, stroked in its Stroke color or the
   foreground; each finished shape is selected and is one undo step ([Pen](../../vector.md#pen-p)).
 - Probes: `undo-redo`: press Backspace mid-curve to take the last point away, then undo the finished curve and redo
-  it; `interrupt`: halfway through a curve, switch to SAUCE and back (choosing another tab leaves it an open
-  curve); `extremes`: a curve of 60 points clicked quickly; `out-of-order`: with a curve just finished and still on the
+  it; `interrupt`: halfway through a curve, switch to SAUCE and back, by its tab and then by Alt+3 and Alt+1 (choosing
+  another tab leaves it an open curve, by a key as by a click); `extremes`: a curve of 60 points clicked quickly; `out-of-order`: with a curve just finished and still on the
   Pen, drag a handle of its box (it scales) and the knob above it (it turns), then click inside the box (a new
   curve starts there); mid-curve, a click where a handle would be is just a point.
 - Rated: yes, wants P (the points themselves aren't rated)
@@ -148,7 +148,9 @@ script. Every section ends with Free time.
   layer selected ([Editing an art layer](../../vector.md#editing-an-art-layer)).
 - Probes: `out-of-order`: inside, press N, L and `.` and check each does nothing and says why (the bar's title);
   `undo-redo`: undo inside back to where she stepped in, and once more (it goes no further); `interrupt`: switch to
-  SAUCE while inside, which steps out, and check what she drew stayed.
+  SAUCE while inside, which steps out, and check what she drew stayed; then, inside again with the cursor placed, press
+  Alt+3 (on a Mac it types £ at the cursor, Option's character, on Linux nothing, and the view stays), Escape, and Alt+3
+  again (SAUCE).
 - Rated: yes, wants Enter to step in and Escape to step out
 
 **Free time:** she'd duplicate Vector 1 from its ⋯ menu to see if the art layers come too, copy an art layer with

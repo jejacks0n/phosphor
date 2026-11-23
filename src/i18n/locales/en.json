@@ -1496,7 +1496,9 @@
       "inRoom": "Leave the room first",
       "notSharing": "Only while drawing together in a room",
       "noCell": "Point at a cell in the art first",
-      "ansiOnly": "Only in the ANSI art style"
+      "ansiOnly": "Only in the ANSI art style",
+      "notWatching": "Only while watching a room",
+      "vectorPicked": "Not with a vector layer picked"
     },
     "groups": {
       "vector": "VECTOR",
@@ -1593,6 +1595,11 @@
       "prevNextFrame": "Go to previous or next frame (also {keys})",
       "newFrame": "Add a new frame matching current frame type (hold to add multiple)",
       "switchTabs": "With a tab focused: switch tabs",
+      "tabPicture": "Show the PIXEL tab, or VECTOR with a vector layer picked",
+      "tabAnsi": "Show the ANSI (or ASCII) tab",
+      "tabSauce": "Show the SAUCE tab",
+      "tabRoom": "Show the ROOM tab, while watching a room",
+      "tabsKeptFromBrowser": "Nothing while typing on Linux, so the browser doesn't switch its tabs",
       "commandList": "Find a command and run it",
       "layerAboveBelow": "Select the layer above or below",
       "takeUnder": "Take the colors of the cell under the pointer, or in Edit Mode the cursor's (PIXEL: the pixel's, as the foreground)",
