@@ -83,6 +83,7 @@ button.group-head {
   color: var(--text-muted);
   font: inherit;
   font-size: 10px;
+  font-weight: 600; /* as the list's group titles (FloatingPanel's div.group) */
   letter-spacing: 0.05em;
   text-transform: uppercase;
   text-align: left;

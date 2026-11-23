@@ -120,8 +120,11 @@ div.floating-panel {
   color: var(--text);
 }
 
+/* The big size is one height, its most, whatever the page holds (a group folded, a search finding nothing), unless the
+   window is too short for it. */
 div.floating-panel.editing {
   width: var(--panel-big);
+  height: min(560px, calc(100vh - 160px));
 }
 
 /* The page's tabs over it (tabStrip.css, a dialog's too) and, at the row's right end, the full screen toggle and,

@@ -221,6 +221,22 @@ test('a font\'s sample draws the slots the library\'s samples draw, so a block t
   expect([...sample.textContent].map((c) => slotOf(c, noLowerHalf))).toEqual([...SAMPLE_CHARS].map((c) => slotOf(c)));
 });
 
+// A font 4 pixels wide, as CM-4X6: its rows draw it 4 pixels a character, as the library's row does, never with gaps.
+test('a narrow font\'s row draws at its width: In use at the drawing\'s, Yours at its own', async () => {
+  const narrow = (name, fill = 0xf0) => ({ name, height: 8, bytes: new Uint8Array(2048).fill(fill) });
+  await addBitmapFont(new File([narrow('Y', 0x90).bytes], 'Y.F08')); // another font: its bytes aren't U's
+  const { project } = await mount({ font: narrow('U') });
+  project.setDrawingFontWidth(4); // as Use this font asks it, while the page registers the font's faces
+  const advance = (name) => {
+    const range = document.createRange();
+    range.selectNodeContents(row(name).querySelector('.sample'));
+    return range.getBoundingClientRect().width / 12;
+  };
+  await vi.waitFor(() => expect([advance('U'), advance('Y')]).toEqual([4, 4]));
+  await new Promise((resolve) => setTimeout(resolve, 300)); // and it stays: no earlier pass lands after
+  expect([advance('U'), advance('Y')]).toEqual([4, 4]);
+});
+
 test('the drawing\'s font\'s actions', async () => {
   const { workspace } = await mount();
   expect(title()).toBe('A');
@@ -915,6 +931,19 @@ test('an 8×8 library row is drawn at its own size, not doubled', async () => {
   expect([canvas.width, canvas.height]).toEqual([96, 8]);
   expect(canvas.getBoundingClientRect().height).toBe(8);
 });
+test('the layer keeps its height when the list folds or a search finds nothing', async () => {
+  await wide();
+  await mount({ drawing: false, library: FIXTURE() }); // a TrueType font chosen: its details are short
+  await waitFor(() => libraryNames().length);
+  const panel = host.querySelector('.floating-panel') ?? document.querySelector('.floating-panel');
+  const height = () => panel.getBoundingClientRect().height;
+  await vi.waitFor(() => expect(height()).toBe(560)); // its most, in a window 900 tall
+  for (const name of ['Yours', 'Built-in', 'Library']) await press([...host.querySelectorAll('.list .group-head')].find((el) => el.textContent.includes(name)));
+  expect(height()).toBe(560);
+  await type('nothing by this name');
+  expect(height()).toBe(560);
+});
+
 
 test('Yours, Built-in and Library fold under their titles, which count what the search and tags leave; In use never folds', async () => {
   await wide();
