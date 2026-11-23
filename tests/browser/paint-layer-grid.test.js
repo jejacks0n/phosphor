@@ -118,3 +118,30 @@ for (const scale of [1, 4, 2.5]) {
     expect(read(6, 2)).toBe(null); // painted, but outside the region
   });
 }
+
+// pixelAt reads from a copy of the layer's pixels kept between reads, caught up where they changed (issue #231): after
+// paint, erasing, pastes, a growth and more changes than are remembered, it reads what a fresh read (pixelsIn) does.
+for (const scale of [1, 4, 2.5]) {
+  test(`pixelAt reads what's there after every kind of change, at scale ${scale}`, () => {
+    const layer = layerAt(scale);
+    const same = (step) => {
+      const fresh = layer.pixelsIn(0, 0, layer.cols - 1, layer.rows - 1);
+      for (let y = 0; y < layer.rows; y++) for (let x = 0; x < layer.cols; x++) expect(layer.pixelAt(x, y), `${step} ${x},${y}`).toEqual(fresh(x, y));
+    };
+    layer.paint([{ x: 2, y: 1, r: 200, g: 40, b: 90, alpha: 1 }, { x: 5, y: 4, r: 10, g: 20, b: 30, alpha: 0.5 }]);
+    same('paint');
+    layer.paint([{ x: 2, y: 1, r: 0, g: 255, b: 0, alpha: 0.5 }, { x: 7, y: 5, r: 1, g: 2, b: 3, alpha: 1 }]);
+    same('paint over');
+    layer.erase([{ x: 5, y: 4, alpha: 1 }]);
+    same('erase');
+    const block = layer.copyCells({ c0: 2, r0: 0, c1: 2, r1: 0 });
+    layer.pasteCells(block, 6, 1, 1, 1);
+    same('paste');
+    layer.eraseCells({ c0: 2, r0: 0, c1: 2, r1: 0 });
+    same('erase cells');
+    layer.extend(COLS + 2, ROWS + 2);
+    same('extend');
+    for (let i = 0; i < 40; i++) layer.paint([{ x: i % layer.cols, y: i % layer.rows, r: i * 6, g: 0, b: 0, alpha: 1 }]);
+    same('more changes than remembered');
+  });
+}

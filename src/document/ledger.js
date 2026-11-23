@@ -3,7 +3,8 @@
  * started with, so undo can take back one person's stroke and leave everyone else's. What it returns is
  * a Numbered, { n, by, stroke, cells, runs }, for the caller to apply and send; nothing here touches the
  * picture, it only reads it. While numbering, one too big for mostBytes takes a number per piece: it comes
- * back whole, to apply, with those pieces as parts, to send. readCell(key) gives a cell's entry, and readTile(x, y, id) a tile's RGBA pixels
+ * back whole, to apply, with those pieces as parts, to send. readCell(key) gives a cell's entry (reader(), when given, a
+ * readCell good while a submit, undo or redo runs, so one with many cells reads its picture once), and readTile(x, y, id) a tile's RGBA pixels
  * on layer id: x and y TILE-aligned, always TILE x TILE, transparent past the layer's edge. Keys and runs name their layer
  * (layerInfo.js: layerKey; a run is [x, y, length, rgba, id?], no id the edit layer's), and so do tiles: 'x,y' on the
  * edit layer, 'id:x,y' on another, so each layer's positions have stacks of their own. Both are read the first
@@ -141,9 +142,11 @@ export class Ledger {
   #stacks;
   #sum;
   #numbering; // keeping the tail and the sum, which only someone else ever asks for
+  #read = null; // reader()'s, while a submit or a flip runs
 
-  constructor({ readCell, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false, numbering = true, mostBytes = Infinity }) {
+  constructor({ readCell, reader = null, readTile, n = 0, epoch, tail = new Tail(), sum = 0, limits = false, numbering = true, mostBytes = Infinity }) {
     this.readCell = readCell;
+    this.reader = reader;
     this.readTile = readTile;
     this.n = n; // the last number used
     this.epoch = epoch;
@@ -192,7 +195,12 @@ export class Ledger {
     strokes.delete(stroke);
     strokes.set(stroke, record);
 
-    for (const [key, entry] of cells) this.#writeCell(record, key, entry ?? null);
+    this.#read = this.reader?.() ?? null;
+    try {
+      for (const [key, entry] of cells) this.#writeCell(record, key, entry ?? null);
+    } finally {
+      this.#read = null;
+    }
     let tile = null;
     eachPixel(runs, (x, y, rgba, id = 'edit') => {
       const tx = Math.floor(x / TILE) * TILE, ty = Math.floor(y / TILE) * TILE;
@@ -344,10 +352,10 @@ export class Ledger {
     return { n: this.n, epoch: this.epoch, limits: this.limits, sum: this.#sum, stacks: this.#stacks, tail: this.tail.items };
   }
 
-  static restore({ n, epoch, limits, sum, stacks, tail: items }, { readCell, readTile, mostBytes }) {
+  static restore({ n, epoch, limits, sum, stacks, tail: items }, { readCell, reader, readTile, mostBytes }) {
     const tail = new Tail();
     for (const numbered of items) tail.add(numbered);
-    const ledger = new Ledger({ readCell, readTile, n, epoch, tail, sum, limits, mostBytes });
+    const ledger = new Ledger({ readCell, reader, readTile, n, epoch, tail, sum, limits, mostBytes });
     // As frozen as a live ledger's. They're no longer the picture's own objects, which only sameCell ever meets.
     for (const stack of stacks.cells.values()) Object.freeze(stack.base);
     for (const record of stacks.strokes.values()) for (const value of record.cells.values()) Object.freeze(value);
@@ -399,7 +407,7 @@ export class Ledger {
     const { cells } = this.#stacks;
     let stack = cells.get(key);
     if (!stack) cells.set(key, stack = { base: null, strokes: [] });
-    if (stack.strokes.every((record) => record.undone)) stack.base = this.readCell(key) ?? null;
+    if (stack.strokes.every((record) => record.undone)) stack.base = (this.#read ?? this.readCell)(key) ?? null;
     return stack;
   }
 
@@ -460,14 +468,19 @@ export class Ledger {
     const record = this.#stacks.strokes.get(stroke);
     if (!record || record.by !== by || record.undone === undo) return null;
     const cells = [], runs = [];
-    for (const [key, value] of record.cells) {
-      const { strokes, base } = this.#cellStack(key), at = strokes.indexOf(record);
-      if (strokes.some((other, i) => i > at && !other.undone)) continue;
-      const below = strokes.findLast((other, i) => i < at && !other.undone), under = below ? below.cells.get(key) : base;
-      const [from, to] = undo ? [value, under] : [under, value];
-      if (sameCell(from, to)) continue;
-      cells.push([key, to]);
-      this.#sumCell(key, from, to);
+    this.#read = this.reader?.() ?? null;
+    try {
+      for (const [key, value] of record.cells) {
+        const { strokes, base } = this.#cellStack(key), at = strokes.indexOf(record);
+        if (strokes.some((other, i) => i > at && !other.undone)) continue;
+        const below = strokes.findLast((other, i) => i < at && !other.undone), under = below ? below.cells.get(key) : base;
+        const [from, to] = undo ? [value, under] : [under, value];
+        if (sameCell(from, to)) continue;
+        cells.push([key, to]);
+        this.#sumCell(key, from, to);
+      }
+    } finally {
+      this.#read = null;
     }
     for (const name of record.paint.keys()) {
       const { id, key } = keyLayer(name), [x, y] = key.split(',').map(Number);

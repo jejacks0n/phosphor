@@ -11,8 +11,12 @@ import { ownsKey, typesIn } from '@/lib/fields';
 import { usePlayback } from '@/composables/usePlayback';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { busyWhile } from '@/composables/useBusy';
+import { t } from '@/i18n';
 
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
+  // Delete and paste go under the busy note: most of a second over a whole large drawing.
+  const deleting = (sel, layers) => busyWhile(t('busy.deleting'), () => projectStore.deleteSelection(sel, layers));
   // The pair's swap: on VECTOR, the shapes' Fill and Stroke trade places.
   const vectorStyle = useVectorStyle();
   const swapColors = () => (workspaceStore.editorTab === 'vector' ? vectorStyle.swap() : workspaceStore.swapColors());
@@ -209,7 +213,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
         projectStore.changeSelection((w) => { w.selection = null; });
         if (workspaceStore.activeTool === 'select' && workspaceStore.selectFromText) workspaceStore.setActiveTool('text'); // back to typing, at the cursor
       } else if (e.key === 'Escape' && _typing()) [workspaceStore.lastTextCursor, workspaceStore.textCursor] = [workspaceStore.textCursor, null];
-      else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) projectStore.deleteSelection(sel, layers);
+      else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) deleting(sel, layers);
       else if (selecting && (key === 'c' || key === 's') && !e.repeat) workspaceStore.selection = projectStore.stampSelection(sel, layers) ?? sel;
       else if (selecting && ARROWS[e.key]) {
         // A nudge stops at the grid's edge rather than pushing contents off it.
@@ -237,7 +241,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     else if (key === 'c' && sel) copySelection(projectStore, workspaceStore, sel, layers);
     else if (key === 'x' && sel) {
       copySelection(projectStore, workspaceStore, sel, layers);
-      projectStore.deleteSelection(sel, layers);
+      deleting(sel, layers);
     } else return false;
     e.preventDefault();
     return true;
@@ -327,8 +331,10 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   let _pendingPaste = null; // { at, timer }, or { vector, timer } on VECTOR, from Cmd/Ctrl+V until its paste event
   const _pasteBlock = (at, block = workspaceStore.clipboard) => {
     if (!block) return;
-    const pasted = projectStore.pasteSelection(block, at.col, at.row);
-    if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
+    busyWhile(t('busy.pasting'), () => {
+      const pasted = projectStore.pasteSelection(block, at.col, at.row);
+      if (pasted) workspaceStore.selectAll(pasted); // selected, with the Select tool, to drag into place
+    });
   };
   const _typeText = (at, text) => {
     if (workspaceStore.activeTool !== 'text' || !workspaceStore.textCursor) workspaceStore.textCursor = at;

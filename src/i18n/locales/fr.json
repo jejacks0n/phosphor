@@ -1422,7 +1422,11 @@
     "openFailed": "Impossible de rouvrir ce projet."
   },
   "busy": {
-    "solving": "Calcul des caractères…"
+    "solving": "Calcul des caractères…",
+    "filling": "Remplissage…",
+    "merging": "Fusion…",
+    "deleting": "Suppression…",
+    "pasting": "Collage…"
   },
   "document": {
     "opening": "Ouverture de {name}…",

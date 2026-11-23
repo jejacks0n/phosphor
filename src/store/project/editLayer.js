@@ -49,7 +49,7 @@ export const editLayerActions = {
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
     if (blockChars === 'plain') this.colorsOnlyCells(inGrid);
     else if (blockChars) this.writeBlocks(cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => !isPaintBlock(this.editCellAt(col, row)))); // a block already; a frozen ▄ is a frozen cell (R5)
-    this.paintEditPixels(inGrid.map(p => ({ ...p, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
+    this.paintEditPixels(inGrid.map(({ x, y, alpha }) => ({ x, y, alpha, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
   },
 
   // Colors only's cells (docs/model.md R5, R2), before paint is laid at grid pixels ({ x, y }, on the grid): the Brush's
@@ -308,10 +308,11 @@ export const editLayerActions = {
     this.beginEdit();
     const blanks = overwritesAll(this.cells, this.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
     const next = new Map(this.editCells);
-    const pixels = [];
+    const pixels = [], keys = [], paintAt = clearPaint && paintReader(this.paintLayer, list.filter(({ attrs }) => attrs.bg === undefined));
     for (const { col, row, attrs } of list) {
       const key = cellKey(col, row);
-      const keepPaintBg = clearPaint && attrs.bg === undefined && this.paintLayer?.pixelAt(col, 2 * row);
+      keys.push(key);
+      const keepPaintBg = paintAt && attrs.bg === undefined && paintAt(col, 2 * row);
       const entry = mergeEntry(next.get(key), keepPaintBg ? { ...attrs, bg: this.underlyingAt(col, row, { evenHidden: true }).bg } : attrs);
       if (entry) next.set(key, entry);
       else next.delete(key);
@@ -321,10 +322,12 @@ export const editLayerActions = {
     const erased = clearPaint && !!this.paintLayer?.hasPaint;
     if (erased) this.paintLayer.erase(pixels);
     for (const { col, row } of blanks) {
-      next.set(cellKey(col, row), mergeEntry(next.get(cellKey(col, row)), { char: ' ' }));
+      const key = cellKey(col, row);
+      keys.push(key);
+      next.set(key, mergeEntry(next.get(key), { char: ' ' }));
       pixels.push({ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 });
     }
-    this.setEditCells(next, [...list, ...blanks].map(({ col, row }) => cellKey(col, row)));
+    this.setEditCells(next, keys);
     this.recomposeEdit(pixels, { composited: erased });
   },
 
@@ -406,14 +409,32 @@ export const editLayerActions = {
   },
 };
 
+// The paint at the top pixels of cells ([{ col, row }]) as pixelAt reads it, read in one go (a read a cell was 500k of
+// them over a fill); null with no cells or no paint layer.
+function paintReader(paint, cells) {
+  if (!paint || !cells.length) return null;
+  let c0 = Infinity, r0 = Infinity, c1 = -Infinity, r1 = -Infinity;
+  for (const { col, row } of cells) {
+    c0 = Math.min(c0, col); c1 = Math.max(c1, col); r0 = Math.min(r0, row); r1 = Math.max(r1, row);
+  }
+  return paint.pixelsIn(c0, 2 * r0, c1, 2 * r1);
+}
+
 // The frozen cells (docs/model.md R3: Merge down's pinned conversion of the paint under them) among the cells the grid
 // pixels touch lose their mark: paint written or erased there is paint again, converted as the layer converts it. With
 // painted, the laid cells among them lose theirs too: a tinted laid character is someone's own (R1, R5).
+// One look at each cell's entry, the map read once (not a store action a cell: over a fill's half a million cells that
+// took half a second); a frozen cell is cleared, so it's laid no longer.
 function unfreeze(project, pixels, { painted = false } = {}) {
-  const cells = cellsOfPixels(pixels, project.cols, project.rows);
-  const frozen = cells.filter(({ col, row }) => isFrozen(project.editCellAt(col, row)));
+  const entries = project.editCells;
+  if (!entries.size) return;
+  const frozen = [], laid = [];
+  for (const cell of cellsOfPixels(pixels, project.cols, project.rows)) {
+    const entry = entries.get(cellKey(cell.col, cell.row));
+    if (isFrozen(entry)) frozen.push(cell);
+    else if (painted && isLaid(entry)) laid.push(cell);
+  }
   if (frozen.length) project.clearEditCells(frozen);
-  const laid = painted ? cells.filter(({ col, row }) => isLaid(project.editCellAt(col, row))) : [];
   if (laid.length) project.writeEditCells(laid.map((c) => ({ ...c, attrs: { laid: null } })));
 }
 

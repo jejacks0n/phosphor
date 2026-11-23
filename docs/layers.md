@@ -719,7 +719,8 @@ In the **ANSI** view, you work with text characters, foreground colors, and back
   button in the status bar) to go between Overwrite, Insert and Partial modes. Edit Mode is only in the ANSI view.
 - **Pencil (`P`)**: Paints the foreground color, or draws box-drawing lines with **Single line** and **Double line**
   ([Draw With](#draw-with)).
-- **Paint Bucket (`G`)**: Fills the color you see, or with **Cells**, whole cells with your colors and character.
+- **Paint Bucket (`G`)**: Fills the color you see, or with **Cells**, whole cells with your colors and character. A fill
+  that takes a while says "Filling…" at the bottom, and a click while it does fills nothing more.
 - **Eyedropper (`I`)**: Picks colors from a cell: both colors at first, or the one its **FG** and **BG** toggles
   choose.
 - **Swap cell FG/BG (`F`)**: Swaps a cell's two colors ([Swap Cell FG/BG](#swap-cell-fgbg)).

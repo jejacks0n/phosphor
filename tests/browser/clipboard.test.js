@@ -101,6 +101,7 @@ test('Cmd+V with the system clipboard still holding our copy pastes the block', 
   const { project, workspace, written } = await editor();
   workspace.selection = { c0: 10, r0: 4, c1: 10, r1: 4 };
   commandV(written[0].text, written[0].html);
+  await settle(project); // a block pastes on the next frame, under the busy note
   expect(chars(project, 4, 10, 12)).toBe('ab漢');
   expect(project.cells[cellIndex(12, 4, COLS)].wide).toBe('lead');
   expect(workspace.selection).toEqual({ c0: 10, r0: 4, c1: 14, r1: 5 });
@@ -133,9 +134,11 @@ test('without clipboard access the block keeps winning, over text and over a Moe
   expect(workspace.clipboardText).toBe(null);
   workspace.selection = { c0: 10, r0: 4, c1: 10, r1: 4 };
   commandV('something from elsewhere');
+  await settle(project);
   expect(chars(project, 4, 10, 12)).toBe('ab漢');
   workspace.selection = { c0: 10, r0: 8, c1: 10, r1: 8 };
   commandV('123456\n123456', await moebius('moebius-16-colors'));
+  await settle(project);
   expect(chars(project, 8, 10, 12)).toBe('ab漢');
 });
 
@@ -183,6 +186,7 @@ test('our own block on the clipboard, copied before a Bake, pastes as Bake left 
   const paste = vi.spyOn(project, 'pasteSelection');
   workspace.selection = { c0: 0, r0: 0, c1: 0, r1: 0 };
   commandV(written[0].text, written[0].html);
+  await settle(project);
   expect(paste.mock.calls[0][0]).toBe(baked);
 });
 

@@ -24,6 +24,7 @@ export function overwrites(cells, cols, col, row, width) {
 // The same for many cells written at once ([{ col, row, char? }]: a shape): the cells to turn into
 // spaces, leaving out cells the batch writes itself. Cells written without a char break nothing.
 export function overwritesAll(cells, cols, list) {
+  if (!list.some(({ char }) => typeof char === 'string')) return []; // colors alone (a fill's), with no key made a cell
   const written = new Set(list.map(({ col, row }) => `${col},${row}`));
   const blanks = new Map();
   for (const { col, row, char } of list) {

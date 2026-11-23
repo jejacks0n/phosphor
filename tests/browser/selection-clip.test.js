@@ -127,10 +127,11 @@ test('the Bucket fills only inside the selection, and a click outside fills noth
   workspace.selection = { ...SEL };
   const ctx = { project, workspace, view: 'output' };
   bucket.begin(ctx, { x: 7.5, y: 12.5 }, { stopPropagation() {} });
-  expect([3, 5, 7, 9, 12].map((x) => project.rawColorAt(x, 12))).toEqual(['#00ff00', '#ff0000', '#ff0000', '#ff0000', '#00ff00']);
   await settle(project);
+  expect([3, 5, 7, 9, 12].map((x) => project.rawColorAt(x, 12))).toEqual(['#00ff00', '#ff0000', '#ff0000', '#ff0000', '#00ff00']);
   const version = project.history.version;
   bucket.begin(ctx, { x: 20.5, y: 12.5 }, { stopPropagation() {} });
+  await settle(project);
   expect(project.history.version).toBe(version);
   expect(project.rawColorAt(20, 12)).toBe('#00ff00');
 });

@@ -6,6 +6,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
+import { busyWhile } from '@/composables/useBusy';
 import { desktop, fileFrom } from '@/social/desktop';
 import { desktopQuery } from '@/social/config';
 import { holdsProject, loadImage, pickFile, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
@@ -233,8 +234,10 @@ async function chooseArt(choice) {
   const { col, row } = at ?? (workspace.viewTab === 'output' ? workspace.ansiViewOrigin : workspace.pixelViewOrigin);
   // A font's slot 0 (␀) is that font's own glyph; a drawing with no font has none, and CP437 shows byte 0 as a space.
   const cells = project.drawingFont ? art.cells : art.cells.map((cell) => (cell.char === SLOT_CHARS[0] ? { ...cell, char: ' ' } : cell));
-  const pasted = project.pasteSelection({ w: art.cols, h: art.rows, cells }, col, row); // a block's h is lines, as the reader's rows are
-  if (pasted) workspace.selectAll(pasted); // selected, with the Select tool, to drag into place
+  return busyWhile(t('busy.pasting'), () => {
+    const pasted = project.pasteSelection({ w: art.cols, h: art.rows, cells }, col, row); // a block's h is lines, as the reader's rows are
+    if (pasted) workspace.selectAll(pasted); // selected, with the Select tool, to drag into place
+  });
 }
 
 // An SVG added to this drawing: its shapes on VECTOR (chosen first, as addSvg picks Vector select there), or the

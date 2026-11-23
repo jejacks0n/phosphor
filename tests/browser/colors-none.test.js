@@ -138,29 +138,35 @@ test('with both colors None, typing, Pencil lines and a Character shape still wr
 
 test('the Paint Bucket\'s Cells with only None colors lit refuses and leaves the paint under it; with Char lit too it fills the characters and says so', async () => {
   const { project, workspace, ctx } = await drawing('output', { editFgNone: false, bucketFillWith: 'normal' });
-  expect(press(ctx, 'bucket')).toBe(false); // a click fills, with no stroke to continue
+  expect(press(ctx, 'bucket')).toBe(false); // a click fills (on the next frame, under the busy note), with no stroke to continue
+  await settle(project);
   expect(project.hasPaint).toBe(true);
   Object.assign(workspace, { editFgNone: true, bucketFillWith: 'cells', bucketSet: { fg: true, bg: false, char: false } });
   closeToast();
   expect(press(ctx, 'bucket')).toBe(false);
+  await settle(project);
   expect(toastMessage.value).toBe(FG_NONE);
   expect([project.hasPaint, project.editCells.size]).toEqual([true, 0]);
   Object.assign(workspace, { editBgNone: true, bucketSet: { fg: false, bg: true, char: false } });
   press(ctx, 'bucket');
+  await settle(project);
   expect(toastMessage.value).toBe(BG_NONE);
   workspace.bucketSet = { fg: true, bg: true, char: false };
   press(ctx, 'bucket');
+  await settle(project);
   expect(toastMessage.value).toBe(BOTH_NONE);
   expect(project.editCells.size).toBe(0);
   Object.assign(workspace, { activeChar: '#', bucketSet: { fg: true, bg: true, char: true } });
   closeToast();
   press(ctx, 'bucket');
+  await settle(project);
   expect(project.editCellAt(4, 2)).toMatchObject({ char: '#' }); // the cell pressed
   expect(toastMessage.value).toBe(KEPT);
   // Char alone sets no colors, so it says nothing.
   Object.assign(workspace, { activeChar: '%', bucketSet: { fg: false, bg: false, char: true } });
   closeToast();
   press(ctx, 'bucket');
+  await settle(project);
   expect(project.editCellAt(4, 2)).toMatchObject({ char: '%' });
   expect(toastMessage.value).toBe(null);
 });

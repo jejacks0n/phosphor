@@ -444,7 +444,11 @@ async function selecting({ all = true } = {}) {
   workspace.selection = { c0: 2, r0: 2, c1: 4, r1: 4 };
   mounted = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
   mounted.mount(document.createElement('div'));
-  const press = (key, extra = {}) => window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true, ...extra }));
+  // A key, and what it starts on the next frame (Delete and Paste, under the busy note) done.
+  const press = async (key, extra = {}) => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true, ...extra }));
+    await settle(project);
+  };
   return { ...app, press };
 }
 const pin = (project) => project.baseRecords.pins.get('3,3');
@@ -476,25 +480,25 @@ test('selectionIds is the picked layer, unless it\'s hidden; with All layers on,
 // the picked layer on it. All layers was only a drag's; now every selection action keeps to the picked layer without it.
 test('with All layers off, Select all then Delete, Cut and a nudge take only the picked layer\'s part', async () => {
   const { project, workspace, press } = await selecting({ all: false });
-  press('a', { ctrlKey: true });
+  await press('a', { ctrlKey: true });
   expect(workspace.selection).toEqual(project.gridRect());
-  press('Delete');
+  await press('Delete');
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe('P');   // the base under it stays
   project.undo();
-  press('x', { ctrlKey: true });
+  await press('x', { ctrlKey: true });
   expect(workspace.clipboard.base).toBeUndefined();
   expect(workspace.clipboard.parts.map((part) => part.id)).toEqual(['edit']);
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe('P');
   project.undo();
   workspace.selection = { c0: 2, r0: 2, c1: 4, r1: 4 };
-  press('ArrowRight');
+  await press('ArrowRight');
   expect(project.editCellAt(4, 3)?.char).toBe('E');
   expect(pin(project)).toBe('P');   // a nudge moves what a drag does
   project.undo();
   workspace.pickLayer('base');
-  press('Delete');
+  await press('Delete');
   expect(project.cellsOf('edit').get('3,3')?.char).toBe('E');   // and with the base picked, only the base's
   expect(pin(project)).toBe(' ');
 });
@@ -507,15 +511,15 @@ test('with All layers off, Stamp leaves the picked layer with only its own drawi
   await settle(project);
   const own = () => [...project.cellsOf('edit').keys()].sort();
   expect(own()).toEqual(['3,3']);
-  press('c', { ctrlKey: true });   // Copy takes the same: the layer's own
+  await press('c', { ctrlKey: true });   // Copy takes the same: the layer's own
   expect(workspace.clipboard.parts.map((part) => part.id)).toEqual(['edit']);
   expect([workspace.clipboard.base, workspace.clipboard.shown]).toEqual([undefined, undefined]);
-  press('s');
+  await press('s');
   expect(own()).toEqual(['3,3']);
   expect(project.hasPaint).toBe(false);
   project.undo();
   workspace.selectAllLayers = true;   // on, it stamps what shows, the base and the shapes with it
-  press('s');
+  await press('s');
   expect(own()).toContain('2,2');
   expect(project.editCellAt(2, 2).char).toBe('Q');
   expect(own()).toContain('4,4');
@@ -524,16 +528,16 @@ test('with All layers off, Stamp leaves the picked layer with only its own drawi
 test('with All layers on, Copy takes every shown layer, the base too with the edit layer picked; a hidden one is left out', async () => {
   const { project, workspace, press } = await selecting();
   const edit = () => workspace.clipboard.parts.find((part) => part.id === 'edit');
-  press('c', { ctrlKey: true });
+  await press('c', { ctrlKey: true });
   expect(edit().cells.some(Boolean)).toBe(true);
   expect(workspace.clipboard.base.pins).toContain('P');
   project.setLayerHidden('base', true);
-  press('c', { ctrlKey: true });
+  await press('c', { ctrlKey: true });
   expect(edit().cells.some(Boolean)).toBe(true);
   expect(workspace.clipboard.base).toBeUndefined();
   project.setLayerHidden('base', false);
   workspace.pickLayer('base');
-  press('c', { ctrlKey: true });
+  await press('c', { ctrlKey: true });
   expect(edit().cells.some(Boolean)).toBe(true);   // the edit layer is shown, though the base is picked
   expect(workspace.clipboard.base.pins).toContain('P');
 });
@@ -591,24 +595,24 @@ test('with All layers on, Set FG on a selection recolors every shown layer, the 
 
 test('Copy with every layer hidden leaves the clipboard as it was', async () => {
   const { project, workspace, press } = await selecting();
-  press('c', { ctrlKey: true });
+  await press('c', { ctrlKey: true });
   const kept = workspace.clipboard;
   project.setLayerHidden('base', true);
   project.setLayerHidden('edit', true);
-  press('c', { ctrlKey: true });
+  await press('c', { ctrlKey: true });
   expect(workspace.clipboard).toBe(kept);
 });
 
 test('with All layers on, Cut takes and removes every shown layer; with the base hidden, only the edit cell', async () => {
   const { project, workspace, press } = await selecting();
   project.setLayerHidden('base', true);
-  press('x', { ctrlKey: true });
+  await press('x', { ctrlKey: true });
   expect(workspace.clipboard.base).toBeUndefined();
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe('P');
   project.undo();
   project.setLayerHidden('base', false);
-  press('x', { ctrlKey: true });
+  await press('x', { ctrlKey: true });
   expect(workspace.clipboard.base.pins).toContain('P');
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe(' ');
@@ -617,12 +621,12 @@ test('with All layers on, Cut takes and removes every shown layer; with the base
 test('with All layers on, Delete with Select, and a nudge, act on the shown layers; the Wand\'s Delete too', async () => {
   const { project, workspace, press } = await selecting();
   project.setLayerHidden('base', true);
-  press('Delete');
+  await press('Delete');
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe('P');
   project.undo();
   project.setLayerHidden('base', false);
-  press('ArrowRight');   // each layer's part moves on its own layer: the edit cell on the edit layer, the pin on the base
+  await press('ArrowRight');   // each layer's part moves on its own layer: the edit cell on the edit layer, the pin on the base
   expect(project.editCellAt(4, 3)?.char).toBe('E');
   expect(project.baseRecords.pins.get('4,3')).toBe('P');
   expect(pin(project)).not.toBe('P');
@@ -634,12 +638,12 @@ test('with All layers on, Delete with Select, and a nudge, act on the shown laye
   mask[3 * 20 + 3] = 1;
   workspace.wand = markRaw({ view: 'output', width: 20, height: 10, mask, within: null });
   project.setLayerHidden('base', true);
-  press('Delete');
+  await press('Delete');
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe('P');
   project.undo();
   project.setLayerHidden('base', false);
-  press('Delete');
+  await press('Delete');
   expect(project.editCellAt(3, 3)).toBeUndefined();
   expect(pin(project)).toBe(' ');
 });
@@ -666,7 +670,7 @@ test('with All layers off, the Magic Wand\'s Delete and Set FG keep to the picke
     expect(box().checked).toBe(false);
     const row = [...box().closest('.tool-setting-group').children];
     expect(row.indexOf(box().closest('label'))).toBe(row.length - 1);   // last, after Deselect
-    press('Delete');
+    await press('Delete');
     expect(project.editCellAt(3, 3)).toBeUndefined();
     expect(pin(project)).toBe('P');   // the base under it stays
     project.undo();
@@ -679,7 +683,7 @@ test('with All layers off, the Magic Wand\'s Delete and Set FG keep to the picke
     box().click();
     await frame();
     expect(workspace.selectAllLayers).toBe(true);
-    press('Delete');
+    await press('Delete');
     expect(pin(project)).toBe(' ');   // on: the base too
   } finally {
     toolbar.unmount();

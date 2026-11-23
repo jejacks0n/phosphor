@@ -54,14 +54,24 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
     return result;
   }
 
-  // Iterative BFS for contiguous fill with smoothing
-  const visited = new Float32Array(width * height).fill(-1);
-  const queue = [startY * width + startX]; // pixel indexes, read from `head` on (shift() moves the rest every time)
-  let head = 0;
+  // Iterative BFS for contiguous fill with smoothing. Each pixel is queued once at most, so the queue is a typed array of
+  // pixel indexes read from `head` on, and the neighbors are looked at in place (right, left, down, up), not made an
+  // array of pairs a pixel.
+  const n = width * height, visited = new Float32Array(n).fill(-1), queue = new Int32Array(n);
+  let head = 0, tail = 0;
+  const reach = (nidx) => {
+    if (visited[nidx] !== -1 || walls?.[nidx]) return;
+    const dist = distanceAt(nidx * 4);
+    if (dist <= tolerance) visited[nidx] = 1.0;
+    else if (dist <= tolerance + falloff) visited[nidx] = 1.0 - (dist - tolerance) / falloff;
+    else return;
+    queue[tail++] = nidx;
+  };
 
   visited[startY * width + startX] = 1;
+  queue[tail++] = startY * width + startX;
 
-  while (head < queue.length) {
+  while (head < tail) {
     const idx = queue[head++], x = idx % width, y = (idx - x) / width;
     const currentAlpha = visited[idx];
 
@@ -70,27 +80,10 @@ export function floodFill(imageData, startX, startY, tolerance, contiguous = tru
     // Only expand from pixels that are mostly within the core tolerance
     if (currentAlpha < 0.9) continue;
 
-    const neighbors = [
-      [x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]
-    ];
-
-    for (const [nx, ny] of neighbors) {
-      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
-
-      const nidx = ny * width + nx;
-      if (visited[nidx] !== -1 || walls?.[nidx]) continue;
-
-      const dist = distanceAt(nidx * 4);
-
-      if (dist <= tolerance) {
-        visited[nidx] = 1.0;
-        queue.push(nidx);
-      } else if (dist <= tolerance + falloff) {
-        const alpha = 1.0 - (dist - tolerance) / falloff;
-        visited[nidx] = alpha;
-        queue.push(nidx);
-      }
-    }
+    if (x + 1 < width) reach(idx + 1);
+    if (x > 0) reach(idx - 1);
+    if (y + 1 < height) reach(idx + width);
+    if (y > 0) reach(idx - width);
   }
 
   return result;

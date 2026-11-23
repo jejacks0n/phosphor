@@ -4,23 +4,26 @@ import { toast } from '@/composables/useToast';
 import { snappedEnd } from './shapes';
 import { cellArea, pixelArea, fillsCells, outsideSelection, FILL_OPTIONS, FILL_WITH } from './bucket';
 import { watch } from 'vue';
+import { busyWhile } from '@/composables/useBusy';
 import { t } from '@/i18n/index.js';
 
 // Linear or Spherical, from the drag's line, over the area the Paint Bucket would fill from its start: Cells gives each
 // cell of the area its blend character in your two colors; Normal paints each pixel its blended color, at the brush
-// opacity, as a fill paints.
-function fillGradient({ project, workspace, view }, from, to) {
-  const shape = workspace.gradientShape, fg = workspace.editFgColor, bg = workspace.editBgColor;
-  if (fillsCells(workspace, view)) {
-    const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
-    const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y, project.pixelAspect), fg, bg, fgIndex, bgIndex } }));
-    project.writeEditCells(cells, { clearPaint: true });
-  } else {
-    const f = hex2rgb(fg), b = hex2rgb(bg);
-    const pixels = pixelArea(project, workspace, from).map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5, project.pixelAspect)) }));
-    project.paintEditPixels(pixels, workspace.editBrushOpacity, workspace.editBrushStack);
-  }
-  project.commitEdit();
+// opacity, as a fill paints. Under the busy note, as the Paint Bucket's fill is (bucket.js fillSolid).
+async function fillGradient({ project, workspace, view }, from, to) {
+  return busyWhile(t('busy.filling'), () => {
+    const shape = workspace.gradientShape, fg = workspace.editFgColor, bg = workspace.editBgColor;
+    if (fillsCells(workspace, view)) {
+      const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
+      const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y, project.pixelAspect), fg, bg, fgIndex, bgIndex } }));
+      project.writeEditCells(cells, { clearPaint: true });
+    } else {
+      const f = hex2rgb(fg), b = hex2rgb(bg);
+      const pixels = pixelArea(project, workspace, from).map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5, project.pixelAspect)) }));
+      project.paintEditPixels(pixels, workspace.editBrushOpacity, workspace.editBrushStack);
+    }
+    project.commitEdit();
+  });
 }
 
 // The line while it's dragged: where it started, and where the pointer is before Shift has its say.
@@ -90,7 +93,7 @@ export default {
     const to = drag.to;
     if (Math.floor(to.x) === Math.floor(from.x) && Math.floor(to.y) === Math.floor(from.y)) return;
     if (ctx.workspace.editFgNone || ctx.workspace.editBgNone) toast(t('tools.gradient.needsColors'));
-    else fillGradient(ctx, from, to);
+    else fillGradient(ctx, from, to).catch((error) => console.error('The gradient failed', error));
   },
   // A pinch took over the drag: nothing is filled.
   cancel: stopDrag,

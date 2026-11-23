@@ -138,6 +138,7 @@ export const ALONE = 'me';
 // A ledger for someone drawing alone, reading the store project() gives.
 export const newLedger = (project) => markRaw(new Ledger({
   readCell: (key) => project().readCell(key),
+  reader: () => project().cellReader(),
   readTile: (x, y, id) => project().readTile(x, y, id),
   numbering: false,
   mostBytes: MOST_CHANGE_BYTES,

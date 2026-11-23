@@ -8,6 +8,7 @@ import ArtistCursors from '@/components/social/ArtistCursors.vue';
 import PauseLayer from '@/components/social/PauseLayer.vue';
 import GuideRulers from '@/components/GuideRulers.vue';
 import { useEditorInteractions } from '@/composables/useEditorInteractions';
+import { pressedWhileBusy } from '@/composables/useBusy';
 import { getTool } from '@/tools';
 import { charRowsOf, cellAt } from '@/lib/Cells';
 import { squarePixels, squareCells } from '@/lib/Brushes';
@@ -67,7 +68,9 @@ const {
   disableZoom: !props.zoom,
   callbacks: {
     pixelCoordsAt: props.coordsAt,
-    onPaintStart: (event, pos) => (!projectStore._paused && tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
+    // Refused while the busy note's up (a fill, a file opening), or made while it was (pressedWhileBusy): what's begun
+    // goes first, alone.
+    onPaintStart: (event, pos) => (!projectStore._paused && !pressedWhileBusy(event) && tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
     onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
     onPaintEnd: () => tool.value.end?.(toolCtx()),
     // A stroke a pinch interrupted: what it drew is taken back, then the tool's cancel (or its end) runs.

@@ -776,16 +776,19 @@ export default class Renderer {
     if (!this.outputCanvas || !pixels.length) return cells;
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
-    const done = new Set();
+    const done = new Uint8Array(next.length); // a byte a cell, not a Set: a fill comes here with half a million
     const resolved = this.#resolvedFor(params), rebuilt = { x0: Infinity, x1: -1, r0: Infinity, r1: -1 }; // the cells' bounds, for #showResolved and the looks
     const pixelAt = !resolved && this.#outputPixels(pixels); // the resolved cells don't read the output
 
     for (const { x, y } of pixels) {
       const { col, row } = cellOfPixel(x, y);
       const i = cellIndex(col, row, cols);
-      if (done.has(i) || !next[i]) continue;
-      done.add(i);
-      Object.assign(rebuilt, { x0: Math.min(rebuilt.x0, col), x1: Math.max(rebuilt.x1, col), r0: Math.min(rebuilt.r0, row), r1: Math.max(rebuilt.r1, row) });
+      if (done[i] || !next[i]) continue;
+      done[i] = 1;
+      if (col < rebuilt.x0) rebuilt.x0 = col;
+      if (col > rebuilt.x1) rebuilt.x1 = col;
+      if (row < rebuilt.r0) rebuilt.r0 = row;
+      if (row > rebuilt.r1) rebuilt.r1 = row;
 
       const entry = shownEntry(editCells.get(cellKey(col, row)), renderStyle);
       if (entry) {

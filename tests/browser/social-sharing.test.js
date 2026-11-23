@@ -1228,6 +1228,7 @@ test('Fill, Connect and the picker read another\'s work like your own', async ()
   await settle(project);
   Object.assign(workspace, { editFillTolerance: 0, editFillContiguous: true, editFillFeather: 0, editorTab: 'input', editBrushOpacity: 100, editFgColor: '#00ff00' });
   bucket.begin({ project, workspace, view: 'input' }, { x: 5, y: 5 }, { stopPropagation() {} });
+  await settle(project);
   expect(project.rawColorAt(5, 5)).toBe('#00ff00');
   expect(project.rawColorAt(15, 5)).not.toBe('#00ff00');
 

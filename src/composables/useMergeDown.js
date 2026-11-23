@@ -5,11 +5,14 @@ import { useDrawingStore } from '@/store/DrawingStore';
 import { useLayerName } from '@/composables/useLayerName';
 import { refusedHidden } from '@/store/project/shared.js';
 import { sameChars } from '@/document/layerInfo.js';
+import { busyWhile } from '@/composables/useBusy';
 
 // Merge down of a layer into the one under it (project.mergeDown), from the toolbar's buttons and LAYERS' ⋯ menu: why
-// it's off, and doing it. A cells layer going into the bottom asks how first (exactly, or into the image): asking holds
-// { id, rect } while EditToolbar's dialog is open.
+// it's off, and doing it, under the busy note (seconds on a large drawing). A cells layer going into the bottom asks how
+// first (exactly, or into the image): asking holds { id, rect } while EditToolbar's dialog is open.
 export const asking = ref(null);
+
+export const mergeBusy = (t, work) => busyWhile(t('busy.merging'), work);
 
 export function useMergeDown() {
   const project = useProjectStore(), drawing = useDrawingStore(), { t } = useI18n(), layerName = useLayerName();
@@ -31,7 +34,7 @@ export function useMergeDown() {
     ? [...project.shapes.values()].some((shape) => (shape.layer ?? 'vector') === id && !shape.guide)
     : project.cellsOf(id).size > 0 || !!project.paintOf(id)?.hasPaint);
   function mergeDown(id, rect = null) {
-    if (below(id)?.id !== 'base' || project.layerById(id)?.kind !== 'cells') return project.mergeDown(id, rect);
+    if (below(id)?.id !== 'base' || project.layerById(id)?.kind !== 'cells') return mergeBusy(t, () => project.mergeDown(id, rect));
     if (refusedHidden(project, [id, 'base'])) return false; // what both merges refuse: at the press, not after the question
     asking.value = { id, rect };
     return false;

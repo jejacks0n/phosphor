@@ -184,12 +184,21 @@ export const readingActions = {
   // what's drawn in the layer goes as the layer, never as cells or paint (sendSlice).
   // Keys and tiles name their layer (layerInfo.js); the baseline is the layer in use's, the one a slice is of.
   readCell(key) {
-    const heard = this._sharing?.heardCells;
-    if (heard?.has(key)) return heard.get(key);
-    if (isShapeKey(key)) return (this._baseline?.shapes ?? this.shapes).get(key);
-    const { id, key: at } = keyLayer(key);
-    if (id !== this.editId) return this.cellsOf(id).get(at);
-    return (this._artInside?.editCells ?? this._baseline?.cells ?? this.editCells).get(at);
+    return this.cellReader()(key);
+  },
+
+  // readCell for many keys while nothing changes (the ledger's reader): the store read once, not a key at a time.
+  cellReader() {
+    const heard = this._sharing?.heardCells, shapes = this._baseline?.shapes ?? this.shapes, editId = this.editId;
+    const own = this._artInside?.editCells ?? this._baseline?.cells ?? this.editCells, others = new Map();
+    return (key) => {
+      if (heard?.has(key)) return heard.get(key);
+      if (isShapeKey(key)) return shapes.get(key);
+      const { id, key: at } = keyLayer(key);
+      if (id === editId) return own.get(at);
+      if (!others.has(id)) others.set(id, this.cellsOf(id));
+      return others.get(id).get(at);
+    };
   },
 
   readTile(x, y, id = 'edit') {
@@ -299,7 +308,8 @@ export const readingActions = {
     const looks = renderer.looksCanvas(this.processParams);
     if (looks) ctx.drawImage(looks, 0, 0);
     const image = ctx.getImageData(0, 0, cols, rows);
-    for (const i of ownIndexes(this.ownCellMaps(), cols, rows, this.renderStyle)) if (this.cells[i]) putCellPixels(image.data, cols, i, this.cells[i]);
+    const cells = this.cells; // read once: a store read a cell adds up over a grid of characters
+    for (const i of ownIndexes(this.ownCellMaps(), cols, rows, this.renderStyle)) if (cells[i]) putCellPixels(image.data, cols, i, cells[i]);
     return image;
   },
 

@@ -439,6 +439,7 @@ export function useEditorInteractions(options) {
       const touch = event.touches[0];
       _pendingTouch = {
         type: 'touchstart',
+        timeStamp: event.timeStamp, // when the finger came down (a press during busy work starts nothing)
         touches: [{ clientX: touch.clientX, clientY: touch.clientY }],
         target: event.target,
         currentTarget: event.currentTarget,

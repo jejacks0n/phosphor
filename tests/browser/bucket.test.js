@@ -115,6 +115,7 @@ test('Cells fills the matching cells it touches with what Set lights', async () 
 
   Object.assign(workspace, { editFillContiguous: false, bucketMatch: { fg: false, bg: false, char: true }, bucketSet: { fg: true, bg: false, char: false }, editFgColor: '#00ff00', editFgNone: false });
   bucket.begin(ctx, { x: 4.5, y: 4.5 }, ev); // the b: every b, anywhere
+  await settle(project); // a fill runs on the next frame, with the busy note drawn
   project.typeAt(10, 10, 'b', RED);
   project.commitEdit();
   bucket.begin(ctx, { x: 2.5, y: 6.5 }, ev); // the blue a: every a
