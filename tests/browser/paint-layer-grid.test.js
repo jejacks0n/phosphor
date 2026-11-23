@@ -145,3 +145,23 @@ for (const scale of [1, 4, 2.5]) {
     same('more changes than remembered');
   });
 }
+
+// Erasing more than a few pixels whole clears them in one read and write of their bounds, not a clearRect each
+// (issue #231): the same transparent black, soft paint and paint left outside them alike.
+for (const scale of [1, 2.5]) {
+  test(`erasing many pixels at once leaves what erasing them one at a time does, at scale ${scale}`, () => {
+    const painted = () => {
+      const layer = new PaintLayer({ cols: 20, rows: 20, scale });
+      layer.paint(Array.from({ length: 400 }, (_, i) => ({ x: i % 20, y: Math.floor(i / 20), r: i % 256, g: 40, b: 90, alpha: i % 3 ? 1 : 0.5 })));
+      return layer;
+    };
+    const many = painted(), each = painted();
+    const gone = Array.from({ length: 150 }, (_, i) => ({ x: 2 + (i % 15), y: 3 + Math.floor(i / 15) }));
+    many.erase(gone);
+    for (const pixel of gone) each.erase([pixel]);
+    const all = (layer) => [...layer.canvas.getContext('2d').getImageData(0, 0, layer.canvas.width, layer.canvas.height).data];
+    expect(all(many)).toEqual(all(each));
+    expect(many.pixelAt(5, 5)).toBe(null);
+    expect(many.pixelAt(0, 0)).not.toBe(null);
+  });
+}

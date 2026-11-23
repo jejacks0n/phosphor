@@ -140,10 +140,18 @@ function putGridState(project, state) {
   project.setBaseRecords(state.records);
 }
 
-function cellsUnder(pixels, cols) {
-  const indexes = new Set();
-  for (const { x, y } of pixels) indexes.add((y >> 1) * cols + x);
-  return [...indexes];
+// The cells under grid pixels, each once in the order the pixels first reach it, and their rows (rows, when given, gets
+// them). A byte a cell marks those seen: a fill comes with a million pixels.
+function cellsUnder(pixels, cols, rows = null) {
+  let most = 0;
+  for (const { x, y } of pixels) most = Math.max(most, (y >> 1) * cols + x, y >> 1);
+  const indexes = [], seen = new Uint8Array(most + 1), lines = new Uint8Array(most + 1);
+  for (const { x, y } of pixels) {
+    const row = y >> 1, i = row * cols + x;
+    if (rows && !lines[row]) { lines[row] = 1; rows.add(row); }
+    if (!seen[i]) { seen[i] = 1; indexes.push(i); }
+  }
+  return indexes;
 }
 
 // Whether the aspect lock holds a size change, with the grid's shape kept first (aspectRatio): the one it kept before
@@ -361,10 +369,9 @@ export const renderingActions = {
   recompose(pixels) {
     // The grid changed and its render is on its way (a font of another height, a Bake): it draws this edit too.
     if (this.lowerCells.length !== this.cols * charRowsOf(this.rows)) return void this.render();
-    const rows = new Set();
-    for (const { y } of pixels) rows.add(y >> 1);
+    const rows = new Set(), under = cellsUnder(pixels, this.cols, rows);
     this.lowerCells = this.renderer.updateCells(this.lowerCells, pixels, this.processParams, lowerEdits(this), this.renderedCells);
-    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), settledRows(this, rows));
+    this.setCells(this.overLower(under), settledRows(this, rows));
   },
 
   // The cells under grid pixels (an upper layer's edit) laid over again from the lower group's cells as they are: the
@@ -373,9 +380,8 @@ export const renderingActions = {
   recomposeUpper(pixels = null) {
     if (!this.lowerCells.length || this.lowerCells.length !== this.composedCells.length) return; // a render's on its way
     if (!pixels) return layUpper(this);
-    const rows = new Set();
-    for (const { y } of pixels) rows.add(y >> 1);
-    this.setCells(this.overLower(cellsUnder(pixels, this.cols)), settledRows(this, rows));
+    const rows = new Set(), under = cellsUnder(pixels, this.cols, rows);
+    this.setCells(this.overLower(under), settledRows(this, rows));
   },
 
   // lowerCells with the upper layers over it (Renderer.composeUpper), the cells at indexes again (every cell with null)

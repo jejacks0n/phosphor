@@ -641,9 +641,14 @@ export default class Renderer {
   #gridOf(layer, params, cached, stored) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
     const palette = (params.quantize === 'cga' || params.quantize === 'vga') && !snapsLate(params) && this.palette?.length ? this.palette : null;
-    const key = [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
+    // The key again only for other params, size or palette: baseStoredAt asks a million times for a fill's looks.
+    const asked = cached?.asked, key = asked?.params === params && asked.w === w && asked.h === h && asked.palette === palette ? cached.key
+      : [w, h, params.smoothing, palette && params.quantize, ...COLOR_KEYS.map(key => params[key])].join();
     const same = cached?.layer === layer && cached.key === key;
-    if (same && cached.version === layer.version) return cached;
+    if (same && cached.version === layer.version) {
+      cached.asked = { params, w, h, palette };
+      return cached;
+    }
 
     // With Low smoothing the grid is the browser's nearest-pixel scaling of the whole layer, which a
     // part of it doesn't reproduce exactly: that's worked out whole.
@@ -656,6 +661,7 @@ export default class Renderer {
       if (result.canvas) ctx2d(result.canvas).putImageData(result.data, 0, 0, area.x, area.y, area.w, area.h);
     }
     result.version = layer.version;
+    result.asked = { params, w, h, palette };
     return result;
   }
 
@@ -778,6 +784,7 @@ export default class Renderer {
     const { cols, chars: charset, charMode, renderStyle } = params;
     const done = new Uint8Array(next.length); // a byte a cell, not a Set: a fill comes here with half a million
     const resolved = this.#resolvedFor(params), rebuilt = { x0: Infinity, x1: -1, r0: Infinity, r1: -1 }; // the cells' bounds, for #showResolved and the looks
+    const anyEdits = editCells.size > 0; // none: no key to make a cell
     const pixelAt = !resolved && this.#outputPixels(pixels); // the resolved cells don't read the output
 
     for (const { x, y } of pixels) {
@@ -790,7 +797,7 @@ export default class Renderer {
       if (row < rebuilt.r0) rebuilt.r0 = row;
       if (row > rebuilt.r1) rebuilt.r1 = row;
 
-      const entry = shownEntry(editCells.get(cellKey(col, row)), renderStyle);
+      const entry = anyEdits && shownEntry(editCells.get(cellKey(col, row)), renderStyle);
       if (entry) {
         next[i] = this.#composeOne(col, row, params, entry, baseCells);
         continue;
@@ -1140,7 +1147,7 @@ export default class Renderer {
   // cells layer's entry (tintedEntry: shown, and not one Merge down froze, which is paint to the layers above) or the
   // base's pin.
   #exactUnder(col, row) {
-    return !!tintedEntry(this.#lowerEdits?.get(cellKey(col, row)), this.#lowerStyle) || this.pinAt(col, row) !== undefined;
+    return (!!this.#lowerEdits?.size && !!tintedEntry(this.#lowerEdits.get(cellKey(col, row)), this.#lowerStyle)) || this.pinAt(col, row) !== undefined;
   }
 
   // reads: each upper layer's pixels at grid resolution (composeUpper), or null for one with nothing to lay. Only the

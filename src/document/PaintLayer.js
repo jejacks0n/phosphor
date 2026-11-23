@@ -266,8 +266,8 @@ export default class PaintLayer {
     if (!this.#anyPaint(bounds)) return null;
     this.#record(bounds, { erasing: true });
     this.#changed(bounds);
-    const ctx = ctx2d(this.canvas);
-    if (rects.every(({ a }) => a >= 255)) {
+    const ctx = ctx2d(this.canvas), whole = rects.every(({ a }) => a >= 255);
+    if (whole && rects.length <= 64) { // a few: cleared each; more (a fill's million) in one read and write
       for (const { x, y, w, h } of rects) ctx.clearRect(x, y, w, h);
       return bounds;
     }
@@ -276,7 +276,8 @@ export default class PaintLayer {
       for (let py = y; py < y + h; py++) {
         for (let px = x; px < x + w; px++) {
           const at = ((py - bounds.y) * bounds.w + (px - bounds.x)) * 4 + 3;
-          data[at] = Math.max(0, data[at] - a);
+          if (whole) data.fill(0, at - 3, at + 1); // as clearRect: transparent black
+          else data[at] = Math.max(0, data[at] - a);
         }
       }
     }

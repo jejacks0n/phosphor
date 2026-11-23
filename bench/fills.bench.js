@@ -1,6 +1,7 @@
 // Where a Paint Bucket fill's time goes at the largest grid (500k cells, a million grid pixels), part by part, the
-// median of several runs, on a picture and on an opened ANSI file of that size (issue #231). Asserts nothing: it prints
+// fastest of several runs, on a picture and on an opened ANSI file of that size (issue #231). Asserts nothing: it prints
 // a table. Run: npx vitest run --config bench/vitest.config.js bench/fills.bench.js --silent=false
+// VITE_BENCH_ONLY=<part of a scenario's name>|... runs only those.
 // VITE_BENCH_PROFILE=<part of a scenario's name> adds a CPU profile of that scenario's first fill: its functions by
 // their own time and by their total.
 import { test } from 'vitest';
@@ -21,7 +22,7 @@ async function settled(project) {
   while (project._renderQueued || project._rendering) await frame();
   await frame();
 }
-const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+const fastest = (xs) => Math.min(...xs); // the run least slowed by other work on the machine
 const ms = (fn) => {
   const t = performance.now();
   const out = fn();
@@ -76,6 +77,18 @@ async function profiled(name, fn) { // fn may be async: what it awaits is in the
   });
   const top = (map, n, keep = () => true) => [...map].filter(([k]) => keep(k)).sort((a, b) => b[1] - a[1]).slice(0, n).map(([k, v]) => `${v.toFixed(0).padStart(6)} ms  ${k}`).join('\n');
   console.log(`--- ${name} self\n${top(self, 20)}\n--- total\n${top(total, 30, (k) => /\.js:/.test(k) && !/pinia|vue\.runtime|fills\.bench|combineActions/.test(k))}`);
+  // VITE_BENCH_LINES=<function names, |-separated>: those functions' own time by line.
+  const names = import.meta.env.VITE_BENCH_LINES?.split('|');
+  if (!names) return;
+  const interval = samples.length ? timeDeltas.reduce((a, b) => a + b, 0) / samples.length / 1000 : 0, lines = new Map();
+  for (const n of nodes) {
+    if (!names.includes(n.callFrame.functionName)) continue;
+    for (const { line, ticks } of n.positionTicks ?? []) {
+      const key = `${n.callFrame.functionName} ${n.callFrame.url.split('/').pop().split('?')[0]}:${line}`;
+      lines.set(key, (lines.get(key) ?? 0) + ticks * interval);
+    }
+  }
+  console.log(`--- lines\n${top(lines, 30)}`);
 }
 
 // One fill as fillSolid runs it, part by part, then undone so the next run starts the same.
@@ -131,7 +144,7 @@ const SCENARIOS = [
 ];
 
 test(`fills at ${COLS} cols x ${LINES} lines`, async () => {
-  const lines = [], docs = new Map(), only = import.meta.env.VITE_BENCH_PROFILE;
+  const lines = [], docs = new Map(), profile = import.meta.env.VITE_BENCH_PROFILE, only = profile ?? import.meta.env.VITE_BENCH_ONLY;
   for (const [make, name, layer, view, settings] of SCENARIOS) {
     if (only && !only.split('|').some((part) => name.includes(part))) continue;
     if (!docs.has(make)) docs.set(make, await make());
@@ -140,15 +153,15 @@ test(`fills at ${COLS} cols x ${LINES} lines`, async () => {
     Object.assign(workspace, DEFAULTS, settings);
     await settled(project);
     const all = [];
-    for (let i = 0; i < RUNS; i++) all.push(await fill(project, workspace, view, MIDDLE, only && !i && name));
-    const r = Object.fromEntries(Object.keys(all[0]).map((k) => [k, Math.round(median(all.map((run) => run[k])))]));
+    for (let i = 0; i < RUNS; i++) all.push(await fill(project, workspace, view, MIDDLE, profile && !i && name));
+    const r = Object.fromEntries(Object.keys(all[0]).map((k) => [k, Math.round(fastest(all.map((run) => run[k])))]));
     lines.push(`${name.padEnd(36)} ${project.editIsUpper ? 'upper' : 'lower'}  ${Object.entries(r).map(([k, v]) => `${k} ${v}`).join(', ')}`);
   }
-  console.log(`\n${COLS} x ${LINES}, ${charRowsOf(2 * LINES) * COLS} cells (median of ${RUNS} runs, ms)\n${lines.join('\n')}`);
+  console.log(`\n${COLS} x ${LINES}, ${charRowsOf(2 * LINES) * COLS} cells (the fastest of ${RUNS} runs, ms)\n${lines.join('\n')}`);
 });
 
 // The other edits the issue names, on the picture with Layer 1 filled: each its call and from its call until the drawing's
-// settled again (the median of 3), then undone. Asserts nothing: it prints a table.
+// settled again (the fastest of 3), then undone. Asserts nothing: it prints a table.
 test(`other edits at ${COLS} cols x ${LINES} lines`, async () => {
   const { project, workspace, lower, upper } = await picture();
   Object.assign(workspace, DEFAULTS, { editorTab: 'input' });
@@ -200,7 +213,29 @@ test(`other edits at ${COLS} cols x ${LINES} lines`, async () => {
       workspace.pickLayer(lower);
       await settled(project);
     }
-    lines.push(`${name.padEnd(24)} ${String(Math.round(median(calls))).padStart(6)} ${String(Math.round(median(times))).padStart(6)}${changed ? '' : '  (changed nothing)'}`);
+    lines.push(`${name.padEnd(24)} ${String(Math.round(fastest(calls))).padStart(6)} ${String(Math.round(fastest(times))).padStart(6)}${changed ? '' : '  (changed nothing)'}`);
   }
-  console.log(`\nOther edits, ${COLS} x ${LINES} (median of 3, ms: the call, then to settled)\n${lines.join('\n')}`);
+  // Layer 1 full of cells (a Cells fill over its paint) merged: the per-cell merges of entries.
+  workspace.pickLayer(lower);
+  Object.assign(workspace, { editorTab: 'output', bucketFillWith: 'cells' });
+  const { fg, fgIndex } = workspace.typingAttrs();
+  project.writeEditCells(cellArea(project, workspace, MIDDLE).map(({ x, y }) => ({ col: x, row: y, attrs: { fg, fgIndex, char: '░' } })), { clearPaint: true });
+  project.commitEdit();
+  await settled(project);
+  lines.push(`(Layer 1 now ${project.editCells.size} cells)`);
+  for (const [name, edit] of [['Merge down, cells, onto the base', () => project.mergeDown(lower)], ['Into the image, cells', () => project.mergeIntoPicture(null, lower)]]) {
+    const times = [];
+    for (let i = 0; i < 3; i++) {
+      const version = project.history.version, t = performance.now();
+      if (import.meta.env.VITE_BENCH_EDIT === name && !i) await profiled(name, edit);
+      else await edit();
+      await settled(project);
+      times.push(performance.now() - t);
+      if (project.history.version !== version) project.undo();
+      workspace.pickLayer(lower);
+      await settled(project);
+    }
+    lines.push(`${name.padEnd(24)} ${String(Math.round(fastest(times))).padStart(13)}`);
+  }
+  console.log(`\nOther edits, ${COLS} x ${LINES} (the fastest of 3, ms: the call, then to settled)\n${lines.join('\n')}`);
 });
