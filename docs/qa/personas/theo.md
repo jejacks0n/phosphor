@@ -107,15 +107,15 @@ script. Every section ends with Free time.
 
 ### 1. See who's live
 - Does: takes `qa.memory`; fakes the server for his page and sets the host live (What they bring); opens the Social
-  tab.
-- Expects: the lobby: at the top his name after its cell with Edit account and Sign out (signed in), or a guest
+  tab with Alt+T (Option+T on a Mac).
+- Expects: the lobby, with focus on its first control: at the top his name after its cell with Edit account and Sign out (signed in), or a guest
   nickname with a guest tag, Sign in to socialize and "No account? Create one" (a guest), and no Start a room for a
   guest; Public rooms with "3 live" and three cards, each with its name, the host's name, how long it's been live, its
   signal and Join with its count, "Join (0/12)"; signed in, the neon harbor card says "Someone you blocked is here";
   In the lobby counts who's signed in and who's a guest, him marked (you) ([The lobby](../../social.md#the-lobby)).
 - Probes: `interrupt`: reload with the lobby showing and check his guest nickname (or his name) is the same;
   `free`: point at a card's ⋯ and read what's in it.
-- Rated: yes, wants a key to reach the side panel's Social tab (Tab-walking is the path today)
+- Rated: yes, wants Alt+T
 
 ### 2. Narrow the list
 - Does: opens the filter menu at the right of Public rooms and picks Wants feedback, Open to chat, Heads down, then All.

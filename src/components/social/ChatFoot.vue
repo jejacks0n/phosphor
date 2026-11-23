@@ -3,6 +3,7 @@ import { ref, computed, watch, nextTick, useTemplateRef, onMounted, onBeforeUnmo
 import { useI18n } from 'vue-i18n';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { MOST_CHARS, silencedWords } from '@/social/chat';
 import UserName from './UserName.vue';
 import DropdownMenu from '@/components/DropdownMenu.vue';
@@ -16,7 +17,7 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 // silence ends: a minute-by-minute clock, as a silence can be longer than a timeout can wait.
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';   // no account: your name is changed on the start page, out of a room
 const { t } = useI18n();
-const room = useRoomStore(), social = useSocialStore();
+const room = useRoomStore(), social = useSocialStore(), workspace = useWorkspaceStore();
 
 const text = ref('');
 const field = useTemplateRef('field');
@@ -59,11 +60,20 @@ async function send() {
   } finally {
     sending = false;
   }
-  field.value?.focus();
+  const at = document.activeElement;
+  if (!at || at === document.body || field.value?.form?.contains(at)) field.value?.focus();   // not if Escape went back meanwhile
 }
 
+// Escape (not an IME's) goes back where Alt+T came from, the art if it didn't (workspace.leaveChat), shutting a narrow
+// screen's panel too: one press for both. Alt+T there is the table's (commands.js), as it is everywhere else.
 function onKeyDown(event) {
-  if (event.key !== 'Enter' || event.shiftKey || event.isComposing) return;
+  if (event.isComposing) return;
+  if (event.key === 'Escape') {
+    event.preventDefault();
+    workspace.leaveChat();
+    return;
+  }
+  if (event.key !== 'Enter' || event.shiftKey) return;
   event.preventDefault();
   send();
 }

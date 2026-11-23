@@ -160,6 +160,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     sidePanelOpen: false,    // a narrow screen's side panel, over the art (not kept: each load starts with it shut); a wide one's is sidePanelFolded
     sidePanelUnread: 0,      // what was said while the chat wasn't showing (SidePanel counts it)
     sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (Social out of a room, CHAT in one) | 'history' (development only)
+    chatReturn: null,        // the element Alt+T took focus from into SOCIAL, for Escape or Alt+T in the chat box to give it back (markRaw)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
     keysZoom: useLocalStorage('phosphor.keysZoom', null, { serializer: StorageSerializers.number }), // its lanes' px a frame, or null to fit (keyLanes.js)
     keysScroll: 0,           // how far along they're scrolled, in px, when they don't fit
@@ -476,6 +477,20 @@ export const useWorkspaceStore = defineStore('workspace', {
     showSocial() {
       this.toggleSidePanel(true);
       this.sidePanelTab = 'social';
+    },
+    // Out of the chat box (Escape or Alt+T there): focus back where Alt+T found it, or on the art when that's gone (off
+    // the page, in a dialog that's shut, or in a narrow screen's panel, which shuts), and with no art showing (SAUCE,
+    // ROOM) nowhere, so the keys are the app's again. A narrow screen's panel shuts too, as it's over the art.
+    leaveChat() {
+      const back = this.chatReturn, box = document.activeElement, narrow = !matchMedia(desktopQuery).matches;
+      this.chatReturn = null;
+      if (narrow) this.toggleSidePanel(false);
+      const gone = !back?.isConnected || back === document.body || back.closest('dialog:not([open])') || (narrow && back.closest('.side-panel'));
+      if (!gone) back.focus({ preventScroll: true });
+      if (document.activeElement !== box) return;
+      const art = document.querySelector('[data-art]');
+      if (art) art.focus({ preventScroll: true });
+      else box?.blur();
     },
     // The side panel open on LAYERS.
     showLayers() {

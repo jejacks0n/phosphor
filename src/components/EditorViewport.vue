@@ -393,6 +393,7 @@ defineExpose({ centerContent });
   <article
       ref="root"
       tabindex="0"
+      data-art
       :style="{ cursor: toolCursor }"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
