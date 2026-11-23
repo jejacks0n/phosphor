@@ -2,8 +2,8 @@
 import { computed, onUnmounted, ref, useTemplateRef, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
-import { GROUPS, commandContext, listedCommands } from '@/lib/commands';
-import { keyLabel, keysFor } from '@/lib/keymap';
+import { GROUPS, commandById, commandContext, listedCommands } from '@/lib/commands';
+import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { searchCommands } from '@/lib/commandSearch';
 import { recentCommands } from '@/lib/recentCommands';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -56,6 +56,8 @@ function onKey(event) {
   } else if (event.key === 'Enter') {
     event.preventDefault();
     choose(listed.value[active.value]);
+  } else if (keysFor(commandById('ui.commandList').keys).some((key) => matches(event, key))) {
+    event.preventDefault(); // its own key again: not the browser's search box
   }
 }
 </script>

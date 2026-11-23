@@ -78,6 +78,10 @@ test('with no drawing, Export… is greyed with why and Enter on it does nothing
   await nextTick();
   expect(workspace.exportModal).toBe(false);
   expect(workspace.commandListOpen).toBe(true);
+  // Its own key again is taken from the browser (Ctrl+K is its search box off a Mac).
+  const again = new KeyboardEvent('keydown', { code: 'KeyK', key: 'k', [navigator.platform.includes('Mac') ? 'metaKey' : 'ctrlKey']: true, bubbles: true, cancelable: true });
+  field().dispatchEvent(again);
+  expect(again.defaultPrevented).toBe(true);
 });
 
 test('with nothing typed, the commands run from it lead, then every command by group; a row shows its key', async () => {
