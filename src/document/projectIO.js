@@ -45,6 +45,13 @@ export function withProject(png, project) {
 // The head of a file (its first 41 bytes) says it's a .pho.
 export const startsAsProject = (head) => head.length >= 41 && isPng(head) && typeAt(head, 37) === PROJECT_CHUNK;
 
+// A file is a project by its name (.pho, .phosphor), or when it's a PNG (by name or type) that starts as one.
+export async function holdsProject(file) {
+  if (isProjectFile(file.name)) return true;
+  if (!/\.png$/i.test(file.name) && file.type !== 'image/png') return false;
+  return startsAsProject(new Uint8Array(await file.slice(0, 41).arrayBuffer()));
+}
+
 // The project a .pho's phPr chunk holds. It throws for a PNG with no such chunk after IHDR, a chunk past the end, or a
 // bad CRC.
 export function projectChunkOf(bytes) {

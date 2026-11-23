@@ -1,7 +1,7 @@
 // A file Phosphor can't open says so, naming it, whether it's dropped or chosen.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, vi, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { createTestApp } from '../support/app.js';
+import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import { i18n } from '@/i18n';
 import { toastMessage, closeToast } from '@/composables/useToast.js';
@@ -10,13 +10,13 @@ let mounted = null;
 afterEach(() => { mounted?.unmount(); mounted = null; closeToast(); });
 
 async function startScreen() {
-  const { project } = await createTestApp();
+  const { project, workspace } = await createTestApp();
   const host = document.createElement('div');
   document.body.append(host);
   mounted = createApp(EditWorkspace).use(i18n);
   mounted.mount(host);
   await new Promise((resolve) => setTimeout(resolve, 50));
-  return { project, host };
+  return { project, workspace, host };
 }
 
 const filesOf = (file) => { const data = new DataTransfer(); data.items.add(file); return data; };
@@ -81,4 +81,48 @@ test('the start screen\'s chooser is a named button, reachable by Tab, and it op
   host.querySelector('input[type=file]').addEventListener('click', (e) => { clicked++; e.preventDefault(); });
   button.click();
   expect(clicked).toBe(1);
+});
+
+// A .pho renamed to .png is still a project: it opens as one, never as a picture.
+test('a .pho renamed to .png opens as its project, not as a picture', async () => {
+  const { project, workspace, host } = await startScreen();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 10 });
+  await settle(project);
+  project.typeAt(2, 2, 'Z', { fg: '#ffffff', bg: '#000000' });
+  project.commitPending();
+  const saved = new Promise((resolve) => {
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { resolve(this.href); });
+  });
+  await project.saveProject();
+  const blob = await (await fetch(await saved)).blob();
+  vi.restoreAllMocks();
+  const cells = cellsKey(project);
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 }); // a different drawing is open
+  await settle(project);
+  project.markSaved();
+  const ask = vi.spyOn(workspace, 'askArt');
+  await choose(host, new File([blob], 'renamed.png', { type: 'image/png' }));
+  expect(ask).not.toHaveBeenCalled();
+  expect(cellsKey(project)).toEqual(cells);
+  expect(project.cols).toBe(20);
+});
+
+test('a plain .png still opens as a picture', async () => {
+  const { project, host } = await startScreen();
+  await choose(host, new File([await (await fetch('/tests/fixtures/images/gradient.png')).arrayBuffer()], 'plain.png', { type: 'image/png' }));
+  expect(project.image).toBeTruthy();
+  expect(project.fileExt).not.toBe('pho');
+});
+
+test('a .png with a broken phPr chunk says it is not a project', async () => {
+  const { project, host } = await startScreen();
+  const png = new Uint8Array(await (await fetch('/tests/fixtures/images/gradient.png')).arrayBuffer());
+  const out = new Uint8Array(png.length + 12);
+  out.set(png.subarray(0, 33));
+  out.set([0, 0, 0, 0, 0x70, 0x68, 0x50, 0x72, 0, 0, 0, 0], 33); // an empty phPr chunk with a bad CRC
+  out.set(png.subarray(33), 45);
+  const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
+  await choose(host, new File([out], 'broken.png', { type: 'image/png' }));
+  expect(alert).toHaveBeenCalled();
+  expect(project.image).toBeFalsy();
 });

@@ -7,7 +7,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { toast } from '@/composables/useToast';
 import { desktop, fileFrom } from '@/social/desktop';
-import { isProjectFile, loadImage, pickFile, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
+import { holdsProject, loadImage, pickFile, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, savesInPlace } from '@/document/projectIO';
 import { isArtFile, ART_EXTENSIONS } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { SLOT_CHARS } from '@/lib/BitmapFont';
@@ -95,9 +95,9 @@ function onChosen(e) {
 
 // Every file dropped or chosen comes through here. A picture, a project, an art file or an SVG opens; anything else
 // says so, naming the file. A file with no type (some phones give none for a photo) is tried as a picture first.
-const knownKind = (file) => isProjectFile(file.name) || isArtFile(file.name) || isSvgFile(file.name);
-async function canOpen(file) {
-  if (file.type.startsWith('image/') || knownKind(file)) return true;
+const knownKind = (file, isProject) => isProject || isArtFile(file.name) || isSvgFile(file.name);
+async function canOpen(file, isProject) {
+  if (file.type.startsWith('image/') || knownKind(file, isProject)) return true;
   if (file.type) return false;
   try {
     await loadImage(file, '');
@@ -108,24 +108,25 @@ async function canOpen(file) {
 }
 
 async function handleFileSelected(file) {
-  if (!(await canOpen(file))) return toast(t('actions.cantOpen', { name: file.name }));
+  const isProject = await holdsProject(file); // a .pho or .phosphor, or a .png with a project inside: read once
+  if (!(await canOpen(file, isProject))) return toast(t('actions.cantOpen', { name: file.name }));
   // An art or SVG file over a drawing asks whether to add it or open it (artDrop), even in a room: adding is a
   // paste. An SVG is never a picture: it's shapes.
   if (project.image && (isArtFile(file.name) || isSvgFile(file.name))) return workspace.askArt(file);
   // Desktop: nothing opens in place of a drawing. A project, or a picture where adding isn't offered (an animation, a
   // drawing shared with a room), opens in a new window without asking.
-  if (DESKTOP && project.image && (isProjectFile(file.name) || project.hasFrames || project._sharing || drawing.offWithOthers)) return openInNewWindow(file);
+  if (DESKTOP && project.image && (isProject || project.hasFrames || project._sharing || drawing.offWithOthers)) return openInNewWindow(file);
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
   // From the start screen, an art file asks whether to edit it or draw on top of it.
   if (isArtFile(file.name)) return workspace.askArt(file);
   // A picture over a still drawing (not shared with a room) asks too: added as a layer's paint, or opened in its place.
-  if (project.image && !isProjectFile(file.name) && !project.hasFrames && !project._sharing) return workspace.askArt(file, { picture: true });
-  workspace.confirmLeave(file.name, () => openFile(file)); // over unsaved work, asked first (UnsavedDialog)
+  if (project.image && !isProject && !project.hasFrames && !project._sharing) return workspace.askArt(file, { picture: true });
+  workspace.confirmLeave(file.name, () => openFile(file, isProject)); // over unsaved work, asked first (UnsavedDialog)
 }
 
-async function openFile(file) {
+async function openFile(file, isProject) {
   if (!project.image) workspace.editorTab = isSvgFile(file.name) ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
-  if (isProjectFile(file.name)) await project.loadProject(file);
+  if (isProject) await project.loadProject(file);
   else if (isArtFile(file.name) || isSvgFile(file.name)) return openArt(file);
   else { await project.setImageFromFile(file); workspace.pickLayer('base'); }
   workspace.editorTab = 'output';
