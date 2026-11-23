@@ -135,7 +135,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
   });
 
   // What look hands the JavaScript, the shader has under a name of its own: Solids and Pattern light as the same numbers
-  // (uTolerance, By shape's own, isn't Solids), the style by its place in ansi, colorAscii, ascii, and look.gray as gray().
+  // (ph_tolerance, By shape's own, isn't Solids), the style by its place in ansi, colorAscii, ascii, and look.gray as gray().
   test('uSolids, uLight and uStyle are look.solids, look.light and look.style, and gray() is look.gray', async () => {
     const STYLE = ['ansi', 'colorAscii', 'ascii'];
     const def = solver({
@@ -181,6 +181,39 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
           expect(key([cell])[0], `${size}: ${col}, ${line}`).toBe(inside ? key([whole.cells[i]])[0] : null);
         });
         expect(key(first)).toEqual(key(whole.first));
+      }
+    } finally {
+      gpu.maxSize = maxSize;
+    }
+  });
+
+  // The shader's cell is the JavaScript's cell.col and cell.line: in both passes, in a grid taken in bands, and over an
+  // area (where the samples sent up begin part way down the grid).
+  test('cell in a shader is the cell\'s column and line, as cell.col and cell.line: in bands, over an area, in both passes', async () => {
+    const def = solver({
+      solve: (cell) => ({ char: (cell.col + cell.line) % 2 ? '/' : '\\', fg: rgb(cell.col * 20, cell.line * 10, 0), bg: rgb(0, 0, 0) }),
+      refine: (cell) => ({ char: cell.char(0, 0), fg: rgb(cell.col * 20, cell.line * 10, 255), bg: rgb(cell.line * 10, cell.col * 20, 0) }),
+      shader: {
+        solve: 'put(vec3(float(cell.x) * 20.0, float(cell.y) * 10.0, 0.0), vec3(0.0), (cell.x + cell.y) % 2 == 1 ? 4 : 5);',
+        refine: 'put(vec3(float(cell.x) * 20.0, float(cell.y) * 10.0, 255.0), vec3(float(cell.y) * 10.0, float(cell.x) * 20.0, 0.0), charAt(ivec2(0)));',
+      },
+    });
+    const cols = 10, lines = 23, samples = samplesOf(cols, lines), gpu = ShapeMatcher.shared(), maxSize = gpu.maxSize;
+    const matcher = await matcherOf(def), js = resolvePlugin(samples, cols, lines, matcher, {});
+    expect([js.cells[0].fg, js.cells[cols * lines - 1].fg].map(({ r, g, b }) => [r, g, b])).toEqual([[0, 0, 255], [180, 220, 255]]);
+    try {
+      for (const size of [maxSize, 64]) {
+        gpu.maxSize = size;
+        const whole = gpu.resolve(samples, cols, lines, matcher, {});
+        expect(key(whole.cells), `${size}`).toEqual(key(js.cells));
+        expect(key(whole.first), `${size}`).toEqual(key(js.first));
+        const area = { x: 3, y: 2 * 9, w: 3, h: 2 * 5 }, cells = new Array(cols * lines).fill(null), first = whole.first.slice();
+        gpu.resolve(samples, cols, lines, matcher, { area, cells, first });
+        const { c0, c1, l0, l1 } = cellRange(grownArea(area, 2, cols, lines), cols, lines);
+        cells.forEach((cell, i) => {
+          const col = i % cols, line = (i - col) / cols, inside = col >= c0 && col < c1 && line >= l0 && line < l1;
+          expect(key([cell])[0], `${size}: ${col}, ${line}`).toBe(inside ? key([js.cells[i]])[0] : null);
+        });
       }
     } finally {
       gpu.maxSize = maxSize;
@@ -239,7 +272,8 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
   });
 
   test('a shader that writes past put() is held to the set and the palette, and switched off by the check', async () => {
-    const def = solver({ ...PASS_ONE, shader: { solve: 'outFg = vec4(0.5); outBg = vec4(0.5);' } });
+    // Phosphor's own outputs, which a pass can reach though it's told not to (the ph_ names): what it writes there is still held.
+    const def = solver({ ...PASS_ONE, shader: { solve: 'ph_outFg = vec4(0.5); ph_outBg = vec4(0.5);' } });
     const matcher = await matcherOf(def, { palette: PALETTES.cga }), samples = samplesOf(4, 3);
     const { cells } = ShapeMatcher.shared().resolve(samples, 4, 3, matcher, {});
     for (const cell of cells) {
@@ -304,7 +338,7 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     Object.assign(project, { quantize: 'cga', chars: SET });
     const def = solver({
       solve: () => ({ char: '/', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }),
-      shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), uFirst + local() == ivec2(0) ? 5 : 4);' }, // its first cell differs
+      shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), cell == ivec2(0) ? 5 : 4);' }, // its first cell differs
     });
     const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
     project.charChoice = await onSolver(def, { hash: 'near-tie' });

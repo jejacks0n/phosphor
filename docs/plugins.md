@@ -462,6 +462,7 @@ as By shape's edited cells do, over a wider area.
 A solver may also give each pass as a shader, so the graphics card does a large drawing's cells. Each string is the body
 of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts after a prelude of its own:
 
+- `cell`: this cell's column and line, an `ivec2` (`cell.x` is `cell.col`, `cell.y` is `cell.line`).
 - `sampleAt(ivec2 d, int i)`: the sample, as `cell.sample` gives it, as a `vec3` of 0 to 255.
 - `glyphCount`, `glyphMask(int g, int i)` (a character's ink at sample `i`), `paletteCount` and `paletteColor(int i)`: the
   set and the palette, as `look` has them.
@@ -479,6 +480,11 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
 - `charAt(ivec2 d)` (pass 2): pass 1's glyph index for the cell `d` away, or -1 past the border.
 - `put(vec3 fg, vec3 bg, int glyph)`: the result, the foreground first, as a pass's `{ char, fg, bg }` names them
   (`mixed` is the one that takes the background first). Glyph 255 means a solid cell.
+
+Those names are the whole of what a shader may use from Phosphor, and they keep their meaning. Your pass sits in one
+shader with Phosphor's own code, so it can see more than is listed: everything else there is Phosphor's own, begins
+`ph_`, and changes without notice. Don't use a name that begins `ph_`, and don't declare one. A name of your own can
+be anything else, a listed name included (a variable called `gray` hides the helper in your pass, no more).
 
 The JavaScript is the reference, and the shader has to agree with it. The first time a shader would be used for a set of
 characters in a visit, Phosphor runs both on a test picture of 8 x 8 cells and compares them, with the layer's
@@ -716,7 +722,8 @@ build, in a filter's pass or a solver's. Phosphor puts it after a prelude of its
   1) for a color.
 
 Passes run in order, each reading what the one before left. There's no JavaScript twin: the picture is made only on the
-graphics card.
+graphics card. As in a solver's shader, the names above are the whole of what a pass may use from Phosphor; anything
+else it can see begins `ph_` and isn't for it ([The shader](#the-shader)).
 
 A pass that doesn't build is skipped, with the rest of its filter, and the group and the plugin's row show the
 compiler's log ("Aberration's filter didn't build: …"), its line numbers counted from your pass's first line. A browser

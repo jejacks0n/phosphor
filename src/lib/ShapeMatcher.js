@@ -31,20 +31,20 @@ const COMMON = `#version 300 es
 precision highp float;
 precision highp int;
 precision highp usampler2D;
-uniform usampler2D uSamples; // the band's samples (RGBA bytes), its first cell's at (0, 0)
-uniform ivec2 uFirst;        // that cell's column and line in the grid
-uniform float uNudge[16];    // Bayer's nudge at each place in its 4 x 4 pattern
-uniform usampler2D uPalette; // uColors x 1 (RGBA bytes); none: 0
-uniform int uColors;
+uniform usampler2D ph_samples; // the band's samples (RGBA bytes), its first cell's at (0, 0)
+uniform ivec2 ph_first;        // that cell's column and line in the grid
+uniform float ph_nudges[16];    // Bayer's nudge at each place in its 4 x 4 pattern
+uniform usampler2D ph_palette; // ph_colors x 1 (RGBA bytes); none: 0
+uniform int ph_colors;
 uniform float uLight;        // Pattern light
-uniform float uTolerance;    // Solids'
-layout(location = 0) out vec4 outFg;
-layout(location = 1) out vec4 outBg;
-const float INF = 1e38;
+uniform float ph_tolerance;    // Solids'
+layout(location = 0) out vec4 ph_outFg;
+layout(location = 1) out vec4 ph_outBg;
+const float ph_INF = 1e38;
 
-ivec2 local() { return ivec2(gl_FragCoord.xy); }
-float nudge() { ivec2 c = uFirst + local(); return uNudge[(c.y & 3) * 4 + (c.x & 3)]; }
-vec3 sampleAt(ivec2 p, float n) { return clamp(vec3(texelFetch(uSamples, p, 0).rgb) + n, 0.0, 255.0); }
+ivec2 ph_local() { return ivec2(gl_FragCoord.xy); }
+float ph_nudge() { ivec2 c = ph_first + ph_local(); return ph_nudges[(c.y & 3) * 4 + (c.x & 3)]; }
+vec3 ph_sampleAt(ivec2 p, float n) { return clamp(vec3(texelFetch(ph_samples, p, 0).rgb) + n, 0.0, 255.0); }
 
 float toLinear(float v) { v /= 255.0; return v <= 0.04045 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4); }
 vec3 toLinear(vec3 v) { return vec3(toLinear(v.r), toLinear(v.g), toLinear(v.b)); }
@@ -60,15 +60,15 @@ vec3 mixed(vec3 bg, vec3 fg, vec3 lb, vec3 lf, float ink) {
   return plain + (toSrgb(lb * (1.0 - ink) + lf * ink) - plain) * uLight;
 }
 
-vec3 paletteColor(int i) { return vec3(texelFetch(uPalette, ivec2(i, 0), 0).rgb); }
+vec3 paletteColor(int i) { return vec3(texelFetch(ph_palette, ivec2(i, 0), 0).rgb); }
 
 // v rounded to bytes into c and, with a palette, its nearest color (the first of a tie): its index, else -1.
 int snap(vec3 v, out vec3 c) {
   c = floor(clamp(v, 0.0, 255.0) + 0.5);
-  if (uColors == 0) return -1;
+  if (ph_colors == 0) return -1;
   int best = 0;
-  float least = INF;
-  for (int i = 0; i < uColors; i++) {
+  float least = ph_INF;
+  for (int i = 0; i < ph_colors; i++) {
     vec3 d = paletteColor(i) - c;
     float e = dot(d, d);
     if (e < least) { least = e; best = i; }
@@ -80,66 +80,66 @@ int snap(vec3 v, out vec3 c) {
 // A byte (a color channel, a palette index, a glyph) as it's read back from an 8-bit target. A
 // quarter over it: a driver may take either integer next to v / 255 x 255, which in 32-bit floats can
 // fall just under v, and v + 0.25 rounds and truncates to v alike.
-vec3 byte(vec3 v) { return (v + 0.25) / 255.0; }
+vec3 ph_byte(vec3 v) { return (v + 0.25) / 255.0; }
 // A color as it's read back: its palette index, or itself.
-vec3 code(vec3 c, int i) { return byte(i < 0 ? c : vec3(float(i), 0, 0)); }
-void put(vec3 fg, int fi, vec3 bg, int bi, int glyph) {
-  outFg = vec4(code(fg, fi), byte(vec3(glyph)).x);
-  outBg = vec4(code(bg, bi), 0);
+vec3 ph_code(vec3 c, int i) { return ph_byte(i < 0 ? c : vec3(float(i), 0, 0)); }
+void ph_put(vec3 fg, int fi, vec3 bg, int bi, int glyph) {
+  ph_outFg = vec4(ph_code(fg, fi), ph_byte(vec3(glyph)).x);
+  ph_outBg = vec4(ph_code(bg, bi), 0);
 }
 `;
 
 // By shape (shapeMatcher): 4 x 8 samples a cell against each glyph's mask, as a function a plugin solver's shader can
-// call too. cellAt(): the cell's place in uSamples (each program has its own).
+// call too. ph_cellAt(): the cell's place in ph_samples (each program has its own).
 const BY_SHAPE = `
-uniform sampler2D uMasks; // a glyph's mask a row (32 x uGlyphs, a plugin solver's own after them)
-uniform int uGlyphs;      // the layer's set
+uniform sampler2D ph_masks; // a glyph's mask a row (32 x ph_glyphs, a plugin solver's own after them)
+uniform int ph_glyphs;      // the layer's set
 uniform int uStyle;       // 0 ANSI, 1 Color ASCII, 2 Monochrome ASCII
-const int N = 32;
+const int ph_N = 32;
 
 void byShape() {
-  ivec2 at = cellAt() * ivec2(4, 8);
-  float n = nudge();
-  vec3 s[N];
+  ivec2 at = ph_cellAt() * ivec2(4, 8);
+  float n = ph_nudge();
+  vec3 s[ph_N];
   vec3 sum = vec3(0);
-  for (int i = 0; i < N; i++) { s[i] = sampleAt(at + ivec2(i % 4, i / 4), n); sum += s[i]; }
-  float m[N];
+  for (int i = 0; i < ph_N; i++) { s[i] = ph_sampleAt(at + ivec2(i % 4, i / 4), n); sum += s[i]; }
+  float m[ph_N];
 
   if (uStyle == 2) { // against the samples' brightness, white on black
-    float lum[N];
-    for (int i = 0; i < N; i++) lum[i] = floor(0.2126 * s[i].r + 0.7152 * s[i].g + 0.0722 * s[i].b + 0.5);
-    float best = INF;
+    float lum[ph_N];
+    for (int i = 0; i < ph_N; i++) lum[i] = floor(0.2126 * s[i].r + 0.7152 * s[i].g + 0.0722 * s[i].b + 0.5);
+    float best = ph_INF;
     int won = 0;
-    for (int g = 0; g < uGlyphs; g++) {
+    for (int g = 0; g < ph_glyphs; g++) {
       float e = 0.0;
-      for (int i = 0; i < N; i++) {
-        float ink = texelFetch(uMasks, ivec2(i, g), 0).r;
+      for (int i = 0; i < ph_N; i++) {
+        float ink = texelFetch(ph_masks, ivec2(i, g), 0).r;
         float gray = ink <= 0.0 ? 0.0 : ink >= 1.0 ? 255.0 : 255.0 * ink + (toSrgb(ink) - 255.0 * ink) * uLight;
         e += (lum[i] - gray) * (lum[i] - gray);
       }
       if (e < best) { best = e; won = g; }
     }
-    put(vec3(255), -1, vec3(0), -1, won);
+    ph_put(vec3(255), -1, vec3(0), -1, won);
     return;
   }
 
   bool ansi = uStyle == 0;
-  vec3 mean = sum / float(N), solid = vec3(0);
+  vec3 mean = sum / float(ph_N), solid = vec3(0);
   int solidI = -1;
-  float best = INF;
+  float best = ph_INF;
   if (ansi) { // a glyph has to come closer than the solid less Solids' tolerance
     solidI = snap(mean, solid);
     float e = 0.0;
-    for (int i = 0; i < N; i++) { vec3 d = solid - s[i]; e += dot(d, d); }
-    best = e - uTolerance;
+    for (int i = 0; i < ph_N; i++) { vec3 d = solid - s[i]; e += dot(d, d); }
+    best = e - ph_tolerance;
   }
   int won = -1, wonF = -1, wonB = -1;
   vec3 wonFg = vec3(0), wonBg = vec3(0);
-  for (int g = 0; g < uGlyphs; g++) {
+  for (int g = 0; g < ph_glyphs; g++) {
     vec3 f = vec3(0), b = vec3(0);
     float m1 = 0.0, m0 = 0.0, m2 = 0.0;
-    for (int i = 0; i < N; i++) {
-      float k = texelFetch(uMasks, ivec2(i, g), 0).r;
+    for (int i = 0; i < ph_N; i++) {
+      float k = texelFetch(ph_masks, ivec2(i, g), 0).r;
       m[i] = k;
       f += k * s[i]; b += (1.0 - k) * s[i];
       m1 += k; m0 += 1.0 - k; m2 += k * k;
@@ -152,15 +152,15 @@ void byShape() {
     } else fi = snap(m2 != 0.0 ? f / m2 : vec3(0), fg);
     vec3 lf = toLinear(fg), lb = toLinear(bg);
     float e = 0.0;
-    for (int i = 0; i < N; i++) { vec3 d = mixed(bg, fg, lb, lf, m[i]) - s[i]; e += dot(d, d); }
+    for (int i = 0; i < ph_N; i++) { vec3 d = mixed(bg, fg, lb, lf, m[i]) - s[i]; e += dot(d, d); }
     if (e < best) { best = e; won = g; wonF = fi; wonB = bi; wonFg = fg; wonBg = bg; }
   }
-  if (won < 0) put(solid, solidI, solid, solidI, 255);
-  else put(wonFg, wonF, wonBg, wonB, won);
+  if (won < 0) ph_put(solid, solidI, solid, solidI, 255);
+  else ph_put(wonFg, wonF, wonBg, wonB, won);
 }
 `;
 const SHAPE = `${COMMON}
-ivec2 cellAt() { return local(); }
+ivec2 ph_cellAt() { return ph_local(); }
 ${BY_SHAPE}
 void main() { byShape(); }
 `;
@@ -189,10 +189,10 @@ void fit(vec3 t, vec3 b, float a, float c, out vec3 fg, out vec3 bg) {
 }
 
 void main() {
-  ivec2 at = local() * ivec2(1, 2);
-  float n = nudge();
-  vec3 t = sampleAt(at, n), b = sampleAt(at + ivec2(0, 1), n), mean = (t + b) / 2.0;
-  float bestErr = INF;
+  ivec2 at = ph_local() * ivec2(1, 2);
+  float n = ph_nudge();
+  vec3 t = ph_sampleAt(at, n), b = ph_sampleAt(at + ivec2(0, 1), n), mean = (t + b) / 2.0;
+  float bestErr = ph_INF;
   int bestGi = 1 << 30, bestF = -1, bestB = -1;
   vec3 bestFg = vec3(0), bestBg = vec3(0);
   if (uMixes) {
@@ -211,7 +211,7 @@ void main() {
     float a = g.x, c = g.y;
     vec3 fg, bg;
     int fI, bI;
-    if (uColors > 0 && g.w > 0.5) { // ▄ ▀: each half snapped on its own
+    if (ph_colors > 0 && g.w > 0.5) { // ▄ ▀: each half snapped on its own
       if (ti == -2) { ti = snap(t, nt); bi = snap(b, nb); }
       if (a != 0.0) { fg = nt; fI = ti; bg = nb; bI = bi; } else { fg = nb; fI = bi; bg = nt; bI = ti; }
     } else {
@@ -226,8 +226,8 @@ void main() {
   }
   vec3 solid;
   int si = snap(mean, solid);
-  if (halvesErr(solid, t, b) <= bestErr + uTolerance) put(solid, si, solid, si, 255);
-  else put(bestFg, bestF, bestBg, bestB, bestGi);
+  if (halvesErr(solid, t, b) <= bestErr + ph_tolerance) ph_put(solid, si, solid, si, 255);
+  else ph_put(bestFg, bestF, bestBg, bestB, bestGi);
 }
 `;
 
@@ -254,43 +254,47 @@ void main() {
 `;
 
 // A plugin solver's pass (docs/plugins.md): By shape's prelude with the helpers a solver's shader gets, its options as
-// uniforms, the author's body as solve() or refine(), and a main that calls it. The samples go up with reach cells of
-// margin (uSampleFirst: their first cell's column and line); pass 2 reads pass 1's picks (held glyph indices) in uPicks.
+// uniforms, the author's body as solve() or refine(), and a main that calls it. The author's text is pasted in after all
+// of this, so it can use any name declared here: the ones docs/plugins.md lists are the plugin API and keep their
+// names for good, and every other one, in COMMON and BY_SHAPE too, begins ph_, which authors are told never to use or
+// declare (tests/unit/plugin-shader.test.js holds that there's no third kind). The samples go up with reach cells of
+// margin (ph_sampleFirst: their first cell's column and line); pass 2 reads pass 1's picks (held glyph indices) in ph_picks.
 const PLUGIN = `
-uniform ivec2 uGrid;        // the grid's columns and lines
-uniform ivec2 uSampleFirst; // uSamples' first cell
-uniform float uSolids;      // Solids as the JavaScript's look.solids has it (0 to 1); uTolerance is By shape's own, made from it
-#define paletteCount uColors
-ivec2 cellAt() { return uFirst + local() - uSampleFirst; }
+uniform ivec2 ph_grid;        // the grid's columns and lines
+uniform ivec2 ph_sampleFirst; // ph_samples' first cell
+uniform float uSolids;      // Solids as the JavaScript's look.solids has it (0 to 1); ph_tolerance is By shape's own, made from it
+#define paletteCount ph_colors
+ivec2 cell; // this cell's column and line in the grid (main sets it), as the JavaScript's cell.col and cell.line
+ivec2 ph_cellAt() { return ph_first + ph_local() - ph_sampleFirst; }
 ${BY_SHAPE}
-float glyphMask(int g, int i) { return texelFetch(uMasks, ivec2(i, g), 0).r; }
+float glyphMask(int g, int i) { return texelFetch(ph_masks, ivec2(i, g), 0).r; }
 // A color's brightness, 0 to 255: the JavaScript's look.gray, its weights in its order.
 float gray(vec3 c) { return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b; }
 
 // Sample i of the cell d away (within reach), the edge cell's past the border, its nudge in it.
 vec3 sampleAt(ivec2 d, int i) {
-  ivec2 c = clamp(uFirst + local() + clamp(d, ivec2(-reach), ivec2(reach)), ivec2(0), uGrid - 1);
-  i = clamp(i, 0, N - 1);
-  return sampleAt((c - uSampleFirst) * ivec2(4, 8) + ivec2(i % 4, i / 4), uNudge[(c.y & 3) * 4 + (c.x & 3)]);
+  ivec2 c = clamp(ph_first + ph_local() + clamp(d, ivec2(-ph_reach), ivec2(ph_reach)), ivec2(0), ph_grid - 1);
+  i = clamp(i, 0, ph_N - 1);
+  return ph_sampleAt((c - ph_sampleFirst) * ivec2(4, 8) + ivec2(i % 4, i / 4), ph_nudges[(c.y & 3) * 4 + (c.x & 3)]);
 }
 
 // The result, held as the JavaScript holds it: a color past 0..255 is black, a glyph not in the set the first (255:
 // the solid), each color the palette's nearest.
-bool inBytes(vec3 v) { return all(greaterThanEqual(v, vec3(0))) && all(lessThanEqual(v, vec3(255))); }
+bool ph_inBytes(vec3 v) { return all(greaterThanEqual(v, vec3(0))) && all(lessThanEqual(v, vec3(255))); }
 void put(vec3 fg, vec3 bg, int glyph) {
   vec3 f, b;
-  int fi = snap(inBytes(fg) ? fg : vec3(0), f), bi = snap(inBytes(bg) ? bg : vec3(0), b);
-  put(f, fi, b, bi, glyph == 255 || (glyph >= 0 && glyph < glyphCount) ? glyph : 0);
+  int fi = snap(ph_inBytes(fg) ? fg : vec3(0), f), bi = snap(ph_inBytes(bg) ? bg : vec3(0), b);
+  ph_put(f, fi, b, bi, glyph == 255 || (glyph >= 0 && glyph < glyphCount) ? glyph : 0);
 }
 `;
 const CHAR_AT = `
-uniform usampler2D uPicks; // pass 1's picks, from uPicksFirst
-uniform ivec2 uPicksFirst;
+uniform usampler2D ph_picks; // pass 1's picks, from ph_picksFirst
+uniform ivec2 ph_picksFirst;
 // Pass 1's glyph index for the cell d away (within reach), -1 past the border.
 int charAt(ivec2 d) {
-  ivec2 c = uFirst + local() + clamp(d, ivec2(-reach), ivec2(reach));
-  if (any(lessThan(c, ivec2(0))) || any(greaterThanEqual(c, uGrid))) return -1;
-  return int(texelFetch(uPicks, c - uPicksFirst, 0).r);
+  ivec2 c = ph_first + ph_local() + clamp(d, ivec2(-ph_reach), ivec2(ph_reach));
+  if (any(lessThan(c, ivec2(0))) || any(greaterThanEqual(c, ph_grid))) return -1;
+  return int(texelFetch(ph_picks, c - ph_picksFirst, 0).r);
 }
 `;
 const UNIFORM = { slider: 'float', checkbox: 'bool', choice: 'int', color: 'vec3' };
@@ -306,7 +310,7 @@ export function pluginShaderSource(def, pass, { glyphs, reach, own = [] }) {
   const table = own.length ? `const int ownGlyph[${own.length}] = int[${own.length}](${own.join(', ')});\n` : '';
   return `${COMMON}
 const int glyphCount = ${glyphs};
-const int reach = ${reach};
+const int ph_reach = ${reach};
 ${table}${PLUGIN}${pass === 'refine' ? CHAR_AT : ''}
 ${options}
 void ${pass}() {
@@ -314,6 +318,7 @@ void ${pass}() {
 ${def.shader[pass]}
 }
 void main() {
+  cell = ph_first + ph_local();
   put(vec3(0), vec3(0), 0); // a pass that puts nothing: the first glyph, black on black
   ${pass}();
 }
@@ -350,7 +355,7 @@ export default class ShapeMatcher {
   #programs;
   #textures = {};
   #frame = null;  // { fb, w, h, fg, bg }: what the cells are drawn into
-  #palette = null; // the palette in uPalette
+  #palette = null; // the palette in ph_palette
   #core = null;    // the matcher core whose glyphs (and mixes) are in their textures
   #mixes = 0;      // how many of them
   #plugins = new Map(); // a plugin solver's pass: `ref, pass, glyph count, ownGlyphs` -> { def, program, log }, program null when it didn't build
@@ -426,11 +431,11 @@ export default class ShapeMatcher {
     const spread = nudgeSpread(palette), nudges = new Float32Array(16);
     for (let i = 0; i < 16; i++) nudges[i] = strength > 0 ? bayerNudge(i & 3, i >> 2, spread, strength) : 0;
     const u = (name) => gl.getUniformLocation(program, name);
-    gl.uniform1fv(u('uNudge'), nudges);
-    gl.uniform1i(u('uColors'), palette?.length ?? 0);
+    gl.uniform1fv(u('ph_nudges'), nudges);
+    gl.uniform1i(u('ph_colors'), palette?.length ?? 0);
     gl.uniform1f(u('uLight'), core.light);
-    gl.uniform1f(u('uTolerance'), tolerance ?? 0);
-    const units = best ? { uSamples: 0, uPalette: 1, uInks: 2, uMixLut: 3, uMixRgb: 4, uMixOf: 5 } : { uSamples: 0, uPalette: 1, uMasks: 2 };
+    gl.uniform1f(u('ph_tolerance'), tolerance ?? 0);
+    const units = best ? { ph_samples: 0, ph_palette: 1, uInks: 2, uMixLut: 3, uMixRgb: 4, uMixOf: 5 } : { ph_samples: 0, ph_palette: 1, ph_masks: 2 };
     for (const [name, unit] of Object.entries(units)) gl.uniform1i(u(name), unit);
     this.#bind(1, this.#textures.palette);
     if (best) {
@@ -438,7 +443,7 @@ export default class ShapeMatcher {
       gl.uniform1i(u('uMixes'), this.#mixes > 0);
       for (const [unit, name] of [[2, 'inks'], [3, 'mixLut'], [4, 'mixRgb'], [5, 'mixOf']]) this.#bind(unit, this.#textures[name]);
     } else {
-      gl.uniform1i(u('uGlyphs'), core.glyphs.length);
+      gl.uniform1i(u('ph_glyphs'), core.glyphs.length);
       gl.uniform1i(u('uStyle'), STYLES.indexOf(core.style));
       this.#bind(2, this.#textures.masks);
     }
@@ -453,7 +458,7 @@ export default class ShapeMatcher {
       const bh = Math.min(band, l1 - l);
       gl.pixelStorei(gl.UNPACK_SKIP_ROWS, l * sh);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8UI, w * sw, bh * sh, 0, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, bytes);
-      gl.uniform2i(u('uFirst'), c0, l);
+      gl.uniform2i(u('ph_first'), c0, l);
       gl.viewport(0, 0, w, bh);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       for (const [attachment, into] of [[gl.COLOR_ATTACHMENT0, fg], [gl.COLOR_ATTACHMENT1, bg]]) {
@@ -538,14 +543,14 @@ export default class ShapeMatcher {
     this.#upload(matcher);
     gl.useProgram(program);
     const u = (name) => gl.getUniformLocation(program, name);
-    gl.uniform1fv(u('uNudge'), nudges);
-    gl.uniform1i(u('uColors'), matcher.palette?.length ?? 0);
+    gl.uniform1fv(u('ph_nudges'), nudges);
+    gl.uniform1i(u('ph_colors'), matcher.palette?.length ?? 0);
     gl.uniform1f(u('uLight'), matcher.light);
-    gl.uniform1f(u('uTolerance'), matcher.shape.tolerance ?? 0);
+    gl.uniform1f(u('ph_tolerance'), matcher.shape.tolerance ?? 0);
     gl.uniform1f(u('uSolids'), matcher.solids);
-    gl.uniform1i(u('uGlyphs'), matcher.glyphs.filter((g) => !g.own).length);
+    gl.uniform1i(u('ph_glyphs'), matcher.glyphs.filter((g) => !g.own).length);
     gl.uniform1i(u('uStyle'), STYLES.indexOf(matcher.style));
-    gl.uniform2i(u('uGrid'), cols, lines);
+    gl.uniform2i(u('ph_grid'), cols, lines);
     for (const { id, kind } of matcher.def.options) {
       const value = matcher.options[id];
       if (kind === 'slider') gl.uniform1f(u(`opt_${id}`), value);
@@ -553,7 +558,7 @@ export default class ShapeMatcher {
       else if (kind === 'color') gl.uniform3f(u(`opt_${id}`), parseInt(value.slice(1, 3), 16), parseInt(value.slice(3, 5), 16), parseInt(value.slice(5), 16));
       else gl.uniform1i(u(`opt_${id}`), kind === 'checkbox' ? Number(value) : value);
     }
-    for (const [name, unit] of Object.entries({ uSamples: 0, uPalette: 1, uMasks: 2, uPicks: 3 })) gl.uniform1i(u(name), unit);
+    for (const [name, unit] of Object.entries({ ph_samples: 0, ph_palette: 1, ph_masks: 2, ph_picks: 3 })) gl.uniform1i(u(name), unit);
     this.#bind(1, this.#textures.palette);
     this.#bind(2, this.#textures.masks);
 
@@ -570,15 +575,15 @@ export default class ShapeMatcher {
         gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, 0);
         gl.pixelStorei(gl.UNPACK_SKIP_ROWS, t0 - picks.l0);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8UI, picks.c1 - picks.c0, t1 - t0, 0, gl.RED_INTEGER, gl.UNSIGNED_BYTE, picks.data);
-        gl.uniform2i(u('uPicksFirst'), picks.c0, t0);
+        gl.uniform2i(u('ph_picksFirst'), picks.c0, t0);
       }
       this.#bind(0, this.#textures.samples);
       gl.pixelStorei(gl.UNPACK_ROW_LENGTH, cols * sw);
       gl.pixelStorei(gl.UNPACK_SKIP_PIXELS, s0 * sw);
       gl.pixelStorei(gl.UNPACK_SKIP_ROWS, t0 * sh);
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8UI, (s1 - s0) * sw, (t1 - t0) * sh, 0, gl.RGBA_INTEGER, gl.UNSIGNED_BYTE, bytes);
-      gl.uniform2i(u('uFirst'), c0, l);
-      gl.uniform2i(u('uSampleFirst'), s0, t0);
+      gl.uniform2i(u('ph_first'), c0, l);
+      gl.uniform2i(u('ph_sampleFirst'), s0, t0);
       gl.viewport(0, 0, w, bh);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
       for (const [attachment, into] of [[gl.COLOR_ATTACHMENT0, fg], [gl.COLOR_ATTACHMENT1, bg]]) {
