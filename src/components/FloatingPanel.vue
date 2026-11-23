@@ -523,4 +523,63 @@ div.floating-panel.editing.maximized :deep(div.page.fonts > div.list-side) {
 :deep(.spacer) {
   flex: 1;
 }
+
+/* A head's tie and … menus (the character palette editor's, the Fonts page's): each button opens a small menu under it. */
+:deep(span.tie button.ghost) {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+:deep(span.tie),
+:deep(span.more) {
+  position: relative;
+}
+
+:deep(span.tie span.menu),
+:deep(span.more span.menu) {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--shadow) 50%, transparent);
+}
+
+/* The … menu sits at the head's right end, so it opens leftward. */
+:deep(span.more span.menu) {
+  left: auto;
+  right: 0;
+}
+
+:deep(span.tie span.menu button),
+:deep(span.more span.menu button) {
+  padding: 4px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+:deep(span.tie span.menu button:hover),
+:deep(span.more span.menu button:hover) {
+  background: var(--accent);
+  color: var(--white);
+}
+
+:deep(span.more span.menu button:disabled) {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
 </style>

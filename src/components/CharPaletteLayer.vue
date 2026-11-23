@@ -492,59 +492,6 @@ button.fold {
   cursor: pointer;
 }
 
-/* The editor head's tie and … menu: each button opens a small menu under it. */
-span.tie button.ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-span.tie,
-span.more {
-  position: relative;
-}
-
-span.tie span.menu,
-span.more span.menu {
-  position: absolute;
-  top: calc(100% + 2px);
-  left: 0;
-  z-index: 1;
-  display: flex;
-  flex-direction: column;
-  padding: 4px;
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 6px 18px color-mix(in srgb, var(--shadow) 50%, transparent);
-}
-
-/* The … menu sits at the head's right end, so it opens leftward. */
-span.more span.menu {
-  left: auto;
-  right: 0;
-}
-
-span.tie span.menu button,
-span.more span.menu button {
-  padding: 4px 10px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-size: 12px;
-  text-align: left;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-span.tie span.menu button:hover,
-span.more span.menu button:hover {
-  background: var(--accent);
-  color: var(--white);
-}
-
 div.glyphs {
   display: flex;
   gap: 2px;

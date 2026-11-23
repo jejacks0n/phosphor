@@ -8,7 +8,6 @@ import { createTestApp, settle } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { writeXBin } from '@/lib/XBinFile';
-import { parseFontSheet } from '@/lib/BitmapFont';
 import { addBitmapFont, loadFonts, storedBitmapFont, removeFont, storeBlocks, storeFontPart } from '@/lib/userFonts';
 import { setDisplayFont } from '@/lib/displayFonts';
 
@@ -138,43 +137,6 @@ test('choosing a bitmap font gives the drawing that font, and a built-in takes i
   expect(project.drawingFont).toBeNull();
 });
 
-test('Save .F## and Save PNG download the drawing\'s font, named for it', async () => {
-  const { project, workspace } = await createTestApp();
-  const bytes = Uint8Array.from({ length: 256 * 16 }, (_, i) => (i * 7) % 256);
-  project.setDrawingFont({ name: 'My Font.F16', height: 16, bytes });
-  const saved = [];
-  vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
-  await mountFontsPage(workspace);
-  const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
-  press('Save .F16');
-  await expect.poll(() => saved.length).toBe(1);
-  expect(saved[0].name).toBe('My Font.F16');
-  expect(new Uint8Array(await saved[0].blob.arrayBuffer())).toEqual(bytes);
-  press('Save PNG');
-  // Chrome makes a PNG in idle time, waiting up to a second for some: longer while other files' tests keep it busy.
-  await expect.poll(() => saved.length, { timeout: 5000 }).toBe(2);
-  expect(saved[1].name).toBe('My Font.png'); // its name without the .F16 it was loaded from
-  const image = await createImageBitmap(saved[1].blob), canvas = document.createElement('canvas');
-  canvas.width = image.width;
-  canvas.height = image.height;
-  const ctx = canvas.getContext('2d');
-  ctx.drawImage(image, 0, 0);
-  expect(parseFontSheet(ctx.getImageData(0, 0, image.width, image.height), 'x').bytes).toEqual(bytes);
-  // No name at all: still a file name.
-  project.setDrawingFont({ name: '', height: 16, bytes });
-  await nextTick();
-  press('Save .F16');
-  expect(saved[2].name).toBe('font.F16');
-  // Named for an XBin it came in: the file's name, less its .xb.
-  project.setDrawingFont({ name: 'ACID-55.XB', height: 16, bytes });
-  await nextTick();
-  press('Save .F16');
-  press('Save PNG');
-  await expect.poll(() => saved.length, { timeout: 5000 }).toBe(5);
-  expect(saved.slice(3).map((s) => s.name)).toEqual(['ACID-55.F16', 'ACID-55.png']);
-});
-
 test('Remove clears the browser\'s copy of the drawing\'s font and leaves the drawing drawing in it, at its size', async () => {
   const { project, workspace } = await createTestApp();
   const font = await addBitmapFont(rawFile(16, 'SIXTEEN.F16', 0x3c));
@@ -187,6 +149,8 @@ test('Remove clears the browser\'s copy of the drawing\'s font and leaves the dr
   await expect.poll(() => project.drawingFont?.height).toBe(16);
   workspace.displayFontSizes = { [font.id]: 24 };
   await setDisplayFont(workspace.displayFontSpec); // as App.vue does: the drawing's font registered and in use
+  await nextTick();
+  press('…');
   await nextTick();
   press('Remove'); // shown for the drawing's font: it's kept in this browser too
   await expect.poll(async () => (await loadFonts()).length).toBe(0);

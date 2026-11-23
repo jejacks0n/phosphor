@@ -49,7 +49,7 @@ test('the Font field chooses; Manage fonts opens the Fonts page', async () => {
   const { workspace } = await mount({ tab: 'input' });
   expect(host.querySelector('select')).toBeTruthy();
   expect(host.querySelector('input[type="file"]')).toBeNull();
-  for (const gone of ['Load font', 'Save .F08', 'Save PNG', 'Remove']) expect(labels()).not.toContain(gone);
+  for (const gone of ['Load font', 'Remove']) expect(labels()).not.toContain(gone);
   expect(manage().hasAttribute('data-palette-toggle')).toBe(true); // a click while it's open doesn't close it first
   workspace.settingsOpen = true; // a phone's settings drawer, where the field is
   manage().click();

@@ -36,7 +36,7 @@ const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const palettes = usePaletteStore();
-const { loadFile, choose, useLibraryFont, keepLibraryFont, saveRaw, savePng, remove, hostsFont } = useFontActions();
+const { loadFile, choose, useLibraryFont, keepLibraryFont, remove, hostsFont } = useFontActions();
 const fileInput = useTemplateRef('file');
 const page = useTemplateRef('page');
 const part = useTemplateRef('part'); // the Lines or Sets section, which a click on the sheet goes to
@@ -228,13 +228,7 @@ const widthOff = computed(() => isDrawn.value && project._sharing?.role === 'art
 const widthLit = computed(() => Object.fromEntries(widths.value.map((w) => [w, widthNow.value === w])));
 const widthOptions = computed(() => widths.value.map((w) => ({ key: String(w), label: String(w), disabled: widthOff.value, title: widthOff.value ? t('palette.fonts.widthInRoom') : undefined, reason: widthOff.value })));
 const setWidth = (w) => run(() => (isDrawn.value ? setFontWidth(drawn.value, w) : storePart(chosen.value.id, 'width', w)));
-const meta = computed(() => [
-  bitmap.value ? shapeOf(widthNow.value, chosen.value.height) : size(chosen.value),
-  isDrawn.value ? t(project.image ? 'palette.fonts.drawingsFont' : 'palette.fonts.nextDrawingsFont') : isInUse.value && t('palette.fonts.inUseMeta'),
-  !isDrawn.value && t(chosen.value.kind === 'builtIn' ? 'palette.fonts.builtInMeta' : 'palette.fonts.inBrowser'),
-  font.value?.blocks && t('palette.fonts.blocksSetMeta'),
-  t('palette.fonts.palettes', { n: count.value }, count.value),
-].filter(Boolean).join(' · '));
+const meta = computed(() => (bitmap.value ? shapeOf(widthNow.value, chosen.value.height) : size(chosen.value)));
 
 // A listed bitmap font as a drawing holds one: { name, height, bytes }.
 const bitmapOf = (f) => (f.id === drawnId.value ? drawn.value : storedBitmapFont(f.id));
@@ -255,6 +249,11 @@ watch(() => [bitmap.value && !isDrawn.value && chosen.value.id, stored.value], a
   if (chosen.value?.id === id) kept.value = got; // not once another font is chosen
 }, { immediate: true });
 watch([() => chosen.value?.id, section], () => { picked.value = null; });
+// The head's … menu: Export palettes, Palettes, Find blocks again and Remove, as the character palette's is. A press
+// anywhere else in the page shuts it, as does Escape or another font chosen.
+const moreOpen = ref(false);
+watch(() => chosen.value?.id, () => { moreOpen.value = false; });
+const shutMore = (event) => { if (moreOpen.value && !event.target.closest?.('.more')) moreOpen.value = false; };
 // Set up its blocks (useFontSetup): that font chosen and that block picked, once the font chosen has dropped the pick.
 watch(() => workspace.fontSetup, async (setup) => {
   if (!setup) return;
@@ -411,8 +410,6 @@ const onFile = (event) => {
   if (file) run(async () => { chosenId.value = (await loadFile(file)).id; });
 };
 const apply = () => run(() => choose(chosen.value.id, held.value?.sauce ? { sauceFontName: held.value.sauce } : undefined)); // a library font's SAUCE name, as from the library
-// The drawing's font saves at once; one only in this browser is read from it first.
-const save = (as) => run(async () => as(isDrawn.value ? drawn.value : await storedBitmapFont(chosen.value.id)));
 const forget = () => run(() => remove(chosen.value.id));
 // The next or previous font on screen, in the list's order, the library rows shown last (the layer passes its arrow
 // keys here). A library row chosen is where it steps from, though its font in Yours is current too.
@@ -434,7 +431,7 @@ const exportPalettes = () => {
 </script>
 
 <template>
-  <div ref="page" class="page fonts" :class="stage">
+  <div ref="page" class="page fonts" :class="stage" @pointerdown="shutMore">
     <!-- a phone's filters: a sheet over the layer (Escape and the arrow keys stop at it) -->
     <div
         v-if="sheetOpen"
@@ -537,17 +534,19 @@ const exportPalettes = () => {
       <div class="head">
         <span class="title">{{ chosen.name }}</span>
         <span class="meta">{{ meta }}</span>
+        <span class="spacer"></span>
+        <span class="more" @keydown.esc.stop="moreOpen = false">
+          <button class="ghost" :title="t('palette.fonts.moreAria')" :aria-label="t('palette.fonts.moreAria')" :aria-expanded="moreOpen" @click="moreOpen = !moreOpen">…</button>
+          <span v-if="moreOpen" class="menu">
+            <button :disabled="!count" @click="moreOpen = false; exportPalettes()">{{ t('palette.fonts.exportPalettes') }}</button>
+            <button v-if="isInUse" @click="moreOpen = false; workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
+            <button v-if="bitmap && font?.blocks" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="moreOpen = false; setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
+            <button v-if="isStored" :title="t('palette.fonts.removeTitle')" @click="moreOpen = false; forget()">{{ t('palette.fonts.remove') }}</button>
+          </span>
+        </span>
       </div>
-      <div class="actions">
-        <button v-if="!isInUse" class="ghost" :disabled="hostsFont || !!roomOff" :title="roomOff ?? undefined" :data-off-reason="roomOff ? '' : undefined" @click="apply">{{ t('palette.fonts.use') }}</button>
-        <template v-if="bitmap">
-          <button class="ghost" @click="save(saveRaw)">{{ t('palette.fonts.saveRaw', { height: String(chosen.height).padStart(2, '0') }) }}</button>
-          <button class="ghost" @click="save(savePng)">{{ t('palette.fonts.savePng') }}</button>
-        </template>
-        <button class="ghost" :disabled="!count" @click="exportPalettes">{{ t('palette.fonts.exportPalettes') }}</button>
-        <button v-if="isInUse" class="ghost" @click="workspace.paletteLayerPage = 'palettes'">{{ t('palette.fonts.toPalettes') }}</button>
-        <button v-if="bitmap && font?.blocks" class="ghost" :disabled="inRoom" :data-off-reason="inRoom ? '' : undefined" :title="inRoom ? t('palette.fonts.blocksInRoom') : t('palette.fonts.findBlocksTitle')" @click="setBlocks(undefined)">{{ t('palette.fonts.findBlocks') }}</button>
-        <button v-if="isStored" class="ghost" :title="t('palette.fonts.removeTitle')" @click="forget">{{ t('palette.fonts.remove') }}</button>
+      <div v-if="!isInUse" class="actions">
+        <button class="ghost" :disabled="hostsFont || !!roomOff" :title="roomOff ?? undefined" :data-off-reason="roomOff ? '' : undefined" @click="apply">{{ t('palette.fonts.use') }}</button>
       </div>
       <template v-if="bitmap && font">
         <div v-if="widths.length" class="width-row">
@@ -556,17 +555,17 @@ const exportPalettes = () => {
               class="width-switch"
               single
               :model-value="widthLit"
+              :options="widthOptions"
+              :label="t('palette.fonts.width')"
+              @update:model-value="setWidth(+Object.keys($event).find((k) => $event[k]))"
+          />
+          <span v-if="widthNow < 8" class="width-note">{{ t('palette.fonts.widthNarrowNote', { width: widthNow }) }}</span>
+        </div>
         <div class="sections" role="tablist" :aria-label="t('palette.fonts.sectionsAria')">
           <button v-for="s in sections" :key="s.key" role="tab" :class="{ on: section === s.key }" :aria-selected="section === s.key" @click="section = s.key">
             {{ s.label }} <span v-if="s.count !== undefined" class="count">{{ s.count }}</span>
           </button>
         </div>
-              :options="widthOptions"
-              :label="t('palette.fonts.width')"
-              @update:model-value="setWidth(+Object.keys($event).find((k) => $event[k]))"
-          />
-        </div>
-        <div v-if="widths.length && widthNow < 8" class="note width-note">{{ t('palette.fonts.widthNarrowNote', { width: widthNow }) }}</div>
         <FontBlocks
             v-if="section === 'blocks'"
             :font="font"
@@ -864,6 +863,7 @@ div.sections button[role='tab'].on {
 
 div.width-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
   font-size: 12px;
@@ -871,6 +871,11 @@ div.width-row {
 
 span.width-label {
   color: var(--text-muted);
+}
+
+/* Under 8 wide, beside the switch: what exports will make of it. */
+span.width-note {
+  color: var(--warning);
 }
 
 span.count {

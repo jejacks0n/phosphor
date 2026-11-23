@@ -25,7 +25,7 @@ that reopens in Phosphor with the same cells, font and palette, and that looks t
 
 ## What they lean on
 
-- Manage fonts and the Fonts page: + Load and the bitmap fonts it takes, Save .F## and Save PNG
+- Manage fonts and the Fonts page: + Load and the bitmap fonts it takes
   ([Managing Fonts](../../characters.md#managing-fonts), [Bitmap Fonts](../../characters.md#bitmap-fonts)).
 - Palettes that belong to a font, Export palettes and Import
   ([Palettes That Belong to a Font](../../characters.md#palettes-that-belong-to-a-font)).
@@ -64,9 +64,8 @@ script. Every section ends with Free time.
 ### 1. Load a raw font
 - Does: on the start screen, before any drawing is open, clicks Manage fonts beside the Font field, clicks + Load on
   the Fonts page and picks her `.F08` file; closes the layer, reloads the page and starts a blank canvas.
-- Expects: the font is chosen at once and listed under In use (its line says the next drawing's font), with its 256 slots shown when its row is chosen;
-  the reload keeps it; the blank canvas starts in it (the Font field shows it, and the art is drawn in it); Save .F08 and Save PNG
-  are offered, and save files named for hers without its `.F08` (`name.F08`, `name.png`); a failed file says why in
+- Expects: the font is chosen at once and listed under In use, with its 256 slots shown when its row is chosen;
+  the reload keeps it; the blank canvas starts in it (the Font field shows it, and the art is drawn in it); a failed file says why in
   words.
 - Probes: `back-out`: open the file box and cancel, then close the layer with Escape and check her keys work; `extremes`: a file of the wrong size (100 bytes) says why it isn't a
   font.
@@ -111,7 +110,7 @@ built-in one, and check what the Font field says while the drawing has its own.
 - Rated: yes, wants F1 to F12 for characters, as moebiusXBIN has them
 
 ### 6. A palette made in my font
-- Does: with her font as the drawing's font, opens the character palette layer on Palettes, makes a new palette with + New and fills a few slots, then picks JetBrains Mono in the Font field and looks at Palettes, then goes back to her font (undo, or Use this font on the Fonts page). Hides the built-in palettes with Hide under Built-in, flips the strip with Ctrl+, and Ctrl+., picks JetBrains Mono and comes back, then shows them again. Exports the palette (Export in the editor head's … menu, beside Duplicate, and Export palettes on the Fonts page) and imports the file with Import, then does it again with her font not loaded in the browser (Remove on the Fonts page, in a drawing without it).
+- Does: with her font as the drawing's font, opens the character palette layer on Palettes, makes a new palette with + New and fills a few slots, then picks JetBrains Mono in the Font field and looks at Palettes, then goes back to her font (undo, or Use this font on the Fonts page). Hides the built-in palettes with Hide under Built-in, flips the strip with Ctrl+, and Ctrl+., picks JetBrains Mono and comes back, then shows them again. Exports the palette (Export in the editor head's … menu, beside Duplicate, and Export palettes in the Fonts page's … menu) and imports the file with Import, then does it again with her font not loaded in the browser (Remove on the Fonts page, in a drawing without it).
 - Expects: the new palette is listed under For her font, first; it's gone in JetBrains Mono and back with her font, chosen as before; with the built-ins hidden, the list keeps Built-in with only Show under it, the strip flips only through her palettes, and JetBrains Mono still has the built-ins; the editor's head says For her font, as a menu, and offers Use with any font; the exported `name.palettes.json` imports with its name ("name (custom)" while she still has one called that), empty slots and font; with her font not loaded the import adds the palette under For fonts not loaded (N) and says "Added 1 palette for her font. Load that font to see it."; a file that isn't a palette file is refused with a reason.
 - Probes: `undo-redo`: undo Use this font and check the palette she had chosen is in use again; `extremes`: import a broken file and a file with 13 glyphs, and check what she kept is unchanged; `again`: import the same file twice.
 - Rated: no (drawing)
@@ -129,13 +128,13 @@ the same through each.
 
 ### 8. A font whose lower half is somewhere else
 - Does: builds a copy of her `.F16` in the snippet with slots 220 and 240 swapped, loads it with + Load, opens Manage fonts and chooses its row, reads the Blocks row and the note under it, then paints with the Brush and the Paint Bucket and hovers over cells. Then builds another copy with slots 176, 177 and 178 blanked, loads it with + Load, exports an XBin in it and opens that.
-- Expects: the Blocks row shows Lower at slot 240 and every other block at its CP437 slot; the note says the lower half was found at 240; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the meta line doesn't say "blocks set by you"; the copy without shades, loaded and again as the XBin opens, brings a short toast: "This font has no Light, Medium, or Dark block, so those characters draw blank." with a **Set up its blocks** button that opens the Fonts page on that font with Light picked.
+- Expects: the Blocks row shows Lower at slot 240 and every other block at its CP437 slot; the note says the lower half was found at 240; the paint shows as half blocks; the status bar's code over a painted half cell is 240; the … menu has no Find blocks again; the copy without shades, loaded and again as the XBin opens, brings a short toast: "This font has no Light, Medium, or Dark block, so those characters draw blank." with a **Set up its blocks** button that opens the Fonts page on that font with Light picked.
 - Probes: `again`: load the same file twice and check one copy is listed and the blocks are the same; `undo-redo`: undo the font change (the drawing goes back to its previous font), and check the paint stays and still shows as half blocks, then redo.
 - Rated: no (drawing)
 
 ### 9. Set a block by hand
-- Does: with that font, paints, then picks the Lower tile, presses and holds slot 220 (≡) in the sheet, lets go, and clicks it, then undoes, redoes, and clicks Find blocks again. Picks Lower again and clicks slot 223 (Upper's). Then exports an XBin (Export, then `.xb`), opens it with Choose a file while the font is loaded in the browser, and again after Remove on the Fonts page.
-- Expects: holding 220 shows its ≡ large over the sheet and letting go sets nothing; after the click on 220 the Lower tile shows 220, the paint she drew before now shows as ≡, Upper is unchanged at 223, and the meta line says "blocks set by you" (it does whenever any block differs from what the pixels say); undo and redo each undo or redo the whole change; Find blocks again puts Lower back at 240 and clears "blocks set by you"; clicking 223 with Lower picked gives Lower 223 and the Upper tile still shows 223 (the two share it, and hovering 223 names both), and clicking 220 again leaves Upper at 223; the XBin opens with the blocks as she set them while the font is loaded in the browser, and with the blocks found again after Remove.
+- Does: with that font, paints, then picks the Lower tile, presses and holds slot 220 (≡) in the sheet, lets go, and clicks it, then undoes, redoes, and clicks Find blocks again in the … menu. Picks Lower again and clicks slot 223 (Upper's). Then exports an XBin (Export, then `.xb`), opens it with Choose a file while the font is loaded in the browser, and again after Remove on the Fonts page.
+- Expects: holding 220 shows its ≡ large over the sheet and letting go sets nothing; after the click on 220 the Lower tile shows 220, the paint she drew before now shows as ≡, Upper is unchanged at 223, and the … menu has Find blocks again (it does whenever any block differs from what the pixels say); undo and redo each undo or redo the whole change; Find blocks again puts Lower back at 240 and is gone from the … menu; clicking 223 with Lower picked gives Lower 223 and the Upper tile still shows 223 (the two share it, and hovering 223 names both), and clicking 220 again leaves Upper at 223; the XBin opens with the blocks as she set them while the font is loaded in the browser, and with the blocks found again after Remove.
 - Probes: `undo-redo`: undo three times in a row and check nothing else was undone; `interrupt`: reload after setting a block and check it's still set; `extremes`: set a block to the slot that holds a space.
 - Rated: yes, wants Cmd+Z
 
@@ -299,7 +298,7 @@ change one cell on the way.
 
 ### 31. Switch a font to 9 and back
 - Does: with her 8-wide font in use, opens its details on the Fonts page, notes the Width switch, presses 9, draws a few characters, presses 8, then undoes twice and redoes once; chooses a font only in Yours and presses a width on its switch; opens an XBin in a 7-wide font that isn't in Yours, presses 8 on its switch while its question shows, and opens that XBin again; then loads a 7-wide font with no lower half block, reads the toast, and chooses another font and that one again.
-- Expects: the switch shows 8 and 9 for her font (7, 8 and 9 for a 7-wide one) with the width in use pressed, and the meta line says it (8×16); at 7 a note says only Phosphor supports a width of 7 and ANSI and XBin exports use 8, and at 8 or 9 there's no note; 9 redraws the cells 9 pixels wide with her drawn cells where they were, repeats the line and block characters into the ninth column and leaves the rest blank (the shades ░▒▓ too), and sets Letter spacing to 9px; 8 puts both back; each press is one undo; a font only in Yours changes its remembered width and not the drawing; a narrow font an XBin brought, not in Yours, joins Yours on a press, its width question closes, and the next XBin in it asks nothing; the 7-wide font with no lower half says to set up its blocks instead of asking its width, stays 7 wide, and asks its width the next time it's chosen once its blocks are set up.
+- Expects: the switch shows 8 and 9 for her font (7, 8 and 9 for a 7-wide one) with the width in use pressed, and the size beside the name says it (8×16); at 7 a warning beside the switch says only Phosphor supports a width of 7 and it will be exported as 8, and at 8 or 9 there's no warning; 9 redraws the cells 9 pixels wide with her drawn cells where they were, repeats the line and block characters into the ninth column and leaves the rest blank (the shades ░▒▓ too), and sets Letter spacing to 9px; 8 puts both back; each press is one undo; a font only in Yours changes its remembered width and not the drawing; a narrow font an XBin brought, not in Yours, joins Yours on a press, its width question closes, and the next XBin in it asks nothing; the 7-wide font with no lower half says to set up its blocks instead of asking its width, stays 7 wide, and asks its width the next time it's chosen once its blocks are set up.
 - Probes: `speed`: press 9 and 8 ten times fast; `undo-redo`: undo and redo across the width and check Letter spacing and the switch agree.
 - Rated: no (fonts)
 

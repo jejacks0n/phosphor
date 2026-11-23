@@ -106,7 +106,16 @@ const label = () => host.querySelector('.library-group .label').textContent.trim
 const button = (text) => [...host.querySelectorAll('button')].find((el) => el.textContent.trim() === text);
 const row = (name) => [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === name);
 const names = () => [...host.querySelectorAll('.row')].map((r) => r.querySelector('.name span').textContent);
-const actions = () => [...host.querySelectorAll('.edit-side .actions button')].map((el) => el.textContent.trim());
+// The chosen font's buttons: those in its row (Use this font), then those in the head's … menu, opened to read and shut.
+const more = () => press(host.querySelector('.edit-side .more > button'));
+const actions = async () => {
+  const labels = (sel) => [...host.querySelectorAll(sel)].map((el) => el.textContent.trim());
+  if (!host.querySelector('.edit-side .more')) return labels('.edit-side .actions button');
+  await more();
+  const all = [...labels('.edit-side .actions button'), ...labels('.edit-side .more .menu button')];
+  await more();
+  return all;
+};
 const title = () => host.querySelector('.edit-side .title')?.textContent.trim();
 const press = async (el) => {
   el.click();
@@ -240,8 +249,9 @@ test('a narrow font\'s row draws at its width: In use at the drawing\'s, Yours a
 test('the drawing\'s font\'s actions', async () => {
   const { workspace } = await mount();
   expect(title()).toBe('A');
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · the drawing\'s font · no palettes');
-  expect(actions()).toEqual(['Save .F08', 'Save PNG', 'Export palettes', 'Palettes']); // no Remove: A isn't kept in this browser
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8'); // its size only
+  expect(await actions()).toEqual(['Export palettes', 'Palettes']); // no Remove: A isn't kept in this browser
+  await more();
   expect(button('Export palettes').disabled).toBe(true); // it has none
   const cells = host.querySelectorAll('.sheet .cell');
   expect(cells).toHaveLength(256);
@@ -250,7 +260,7 @@ test('the drawing\'s font\'s actions', async () => {
   cells[65].dispatchEvent(new Event('mouseenter'));
   await nextTick();
   expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 65 A');
-  await press(button('Palettes'));
+  await press([...host.querySelectorAll('.edit-side .more .menu button')].find((el) => el.textContent.trim() === 'Palettes'));
   expect(workspace.paletteLayerPage).toBe('palettes');
 });
 
@@ -258,10 +268,10 @@ test('Export palettes saves the font\'s palettes', async () => {
   const { palettes } = await mount();
   palettes.rename(palettes.create(), 'Frogs'); // tied to A, the drawing's font
   await nextTick();
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · the drawing\'s font · 1 palette');
   const saved = [];
   vi.spyOn(URL, 'createObjectURL').mockImplementation((blob) => { saved.push({ blob }); return 'blob:x'; });
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () { saved.at(-1).name = this.download; });
+  await more();
   await press(button('Export palettes'));
   expect(saved[0].name).toBe('A.palettes.json');
   expect(JSON.parse(await saved[0].blob.text()).palettes.map((p) => p.name)).toEqual(['Frogs']);
@@ -271,9 +281,9 @@ test('choosing another font only shows it; Use this font applies it', async () =
   const { project, b } = await mount();
   await press(row('B'));
   expect(title()).toBe('B');
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×16 · in your browser · no palettes');
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×16');
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
-  expect(actions()).toEqual(['Use this font', 'Save .F16', 'Save PNG', 'Export palettes', 'Remove']);
+  expect(await actions()).toEqual(['Use this font', 'Export palettes', 'Remove']);
   await press(button('Use this font'));
   await expect.poll(() => project.drawingFont && fontId(project.drawingFont)).toBe(b.id);
   project.undo();
@@ -331,15 +341,15 @@ test('a TrueType font shows a sample and Use this font', async () => {
   expect(host.querySelectorAll('.edit-side .sample-text div')).toHaveLength(5);
   expect(host.querySelector('.edit-side .sample-text').style.fontFamily).toContain(tt.id);
   expect(host.querySelector('.edit-side .note').textContent).toContain('A TrueType font draws any character');
-  expect(actions()).toEqual(['Use this font', 'Export palettes', 'Remove']);
+  expect(await actions()).toEqual(['Use this font', 'Export palettes', 'Remove']);
   await press(button('Use this font'));
   await expect.poll(() => workspace.displayFont).toBe(tt.id);
   expect(project.drawingFont).toBeNull();
   // In use, as a bitmap font is once used: first, under In use, with nothing left to apply
   expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
   expect(names()).toEqual(['Tall Mono', 'B', ...BUILT_IN]);
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · in your browser · no palettes');
-  expect(actions()).toEqual(['Export palettes', 'Palettes', 'Remove']);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType');
+  expect(await actions()).toEqual(['Export palettes', 'Palettes', 'Remove']);
 });
 
 test('a built-in font shows a sample and Use this font, and is listed under In use once used', async () => {
@@ -347,14 +357,14 @@ test('a built-in font shows a sample and Use this font, and is listed under In u
   await press(row('IBM VGA'));
   expect(host.querySelector('.sheet')).toBeNull();
   expect(host.querySelector('.edit-side .sample-text').style.fontFamily).toContain('IBM VGA 8x16');
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · built in · no palettes');
-  expect(actions()).toEqual(['Use this font', 'Export palettes']); // nothing to save or remove
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType');
+  expect(await actions()).toEqual(['Use this font', 'Export palettes']); // nothing to save or remove
   await press(button('Use this font'));
   await expect.poll(() => workspace.displayFont).toBe('vga');
   expect(project.drawingFont).toBeNull();
   expect(names()).toEqual(['IBM VGA', 'B', 'Tall Mono', 'JetBrains Mono', 'Unscii', 'Unifont']);
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType · in use · built in · no palettes');
-  expect(actions()).toEqual(['Export palettes', 'Palettes']);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('TrueType');
+  expect(await actions()).toEqual(['Export palettes', 'Palettes']);
 });
 
 test('+ Load loads and applies, and says why not', async () => {
@@ -414,7 +424,7 @@ test('Remove forgets the browser\'s copy', async () => {
   const id = palettes.create();
   palettes.tie(id, { id: b.id, name: 'B', height: 16 });
   await press(row('B'));
-  expect(host.querySelector('.edit-side .meta').textContent).toBe('8×16 · in your browser · 1 palette');
+  await more();
   await press(button('Remove'));
   await expect.poll(names).toEqual(['A', 'Tall Mono', ...BUILT_IN]);
   expect(title()).toBe('A'); // the drawing's font, chosen in its place
@@ -428,7 +438,7 @@ test('in someone else\'s room, applying is off', async () => {
   workspace.roomFont = { id: 'jetbrains', name: 'JetBrains Mono', family: 'JetBrains Mono', size: 16, lineHeight: 1.2 };
   await press(row('B'));
   expect(button('Use this font').disabled).toBe(true);
-  expect(button('Save .F16').disabled).toBe(false);
+  await more();
   expect(button('Remove').disabled).toBe(false);
   await press(row('Tall Mono'));
   expect(button('Use this font').disabled).toBe(true);
@@ -437,7 +447,6 @@ test('in someone else\'s room, applying is off', async () => {
 test('before any drawing is open, the font chosen is the next drawing\'s', async () => {
   await mount({ canvas: false });
   expect([...host.querySelectorAll('.group:not(.library-group) .label')].map((el) => el.textContent.trim())).toEqual(['In use', 'Yours', 'Built-in']);
-  expect(host.querySelector('.edit-side .meta').textContent).toContain('the next drawing\'s font');
   await press(row('B'));
   expect(button('Use this font')).toBeTruthy();
 });
@@ -455,7 +464,7 @@ test('shows the eight blocks, and where CP437 would put a moved one', async () =
   expect(text()).toContain('To change a block, pick it');
   expect(slotCell(240).textContent).toBe('▄'); // the sheet shows each slot's own character
   expect(slotCell(240).classList.contains('role')).toBe(true);
-  expect(host.querySelector('.edit-side .actions').textContent).not.toContain('Find blocks again');
+  expect(await actions()).not.toContain('Find blocks again');
 });
 
 test('under the Blocks tab the blocks have no second Blocks heading, and are a group named Blocks', async () => {
@@ -479,7 +488,7 @@ test('picking Lower and clicking a slot sets it, as one undo step, and Find bloc
   expect(blocksOf(project.drawingFont)[1]).toBe(254);
   expect(tiles()[1].slot).toBe('254');
   expect(tile('Lower').getAttribute('aria-pressed')).toBe('true'); // it stays picked
-  expect(host.querySelector('.edit-side .meta').textContent).toContain('blocks set by you');
+  expect(await actions()).toContain('Find blocks again'); // blocks set by you
   slotCell(254).dispatchEvent(new Event('mouseenter'));
   await nextTick();
   expect(host.querySelector('.edit-side .info').textContent).toBe('Slot 254 ▄ · Lower half (set by you)');
@@ -489,8 +498,9 @@ test('picking Lower and clicking a slot sets it, as one undo step, and Find bloc
   project.undo();
   await nextTick();
   expect(blocksOf(project.drawingFont)[1]).toBe(240);
-  expect(host.querySelector('.edit-side .meta').textContent).not.toContain('blocks set by you');
+  expect(await actions()).not.toContain('Find blocks again');
   await press(slotCell(254)); // still picked
+  await more();
   await press(button('Find blocks again'));
   expect(project.fontBlocks).toBe('');
   expect(tiles()[1].slot).toBe('240');
@@ -513,11 +523,10 @@ test('setting a block back to the slot the pixels put it in stores it as found',
   const { project } = await mount({ font: lowerAt240 });
   await press(tile('Lower'));
   await press(slotCell(254));
-  expect(host.querySelector('.edit-side .meta').textContent).toContain('blocks set by you');
+  expect(await actions()).toContain('Find blocks again'); // blocks set by you
   await press(slotCell(240));
   expect(project.fontBlocks).toBe('');
-  expect(host.querySelector('.edit-side .meta').textContent).not.toContain('blocks set by you');
-  expect(button('Find blocks again')).toBeUndefined();
+  expect(await actions()).not.toContain('Find blocks again');
 });
 
 test('picking the slot a block already has is no change, and a tile unpicks on a second click', async () => {
@@ -549,7 +558,8 @@ test('an edit to a font only in the browser is kept with it and leaves the drawi
   await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks?.[1]).toBe(254));
   expect(project.fontBlocks).toBe(''); // the drawing's font is untouched
   expect(workspace.userFonts.find((f) => f.id === stored.id).blocks[1]).toBe(254);
-  await vi.waitFor(() => expect(button('Find blocks again')).toBeTruthy());
+  await vi.waitFor(async () => expect(await actions()).toContain('Find blocks again'));
+  await more();
   await press(button('Find blocks again'));
   await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toBeUndefined());
 });
@@ -931,6 +941,7 @@ test('an 8×8 library row is drawn at its own size, not doubled', async () => {
   expect([canvas.width, canvas.height]).toEqual([96, 8]);
   expect(canvas.getBoundingClientRect().height).toBe(8);
 });
+
 test('the layer keeps its height when the list folds or a search finds nothing', async () => {
   await wide();
   await mount({ drawing: false, library: FIXTURE() }); // a TrueType font chosen: its details are short
@@ -943,7 +954,6 @@ test('the layer keeps its height when the list folds or a search finds nothing',
   await type('nothing by this name');
   expect(height()).toBe(560);
 });
-
 
 test('Yours, Built-in and Library fold under their titles, which count what the search and tags leave; In use never folds', async () => {
   await wide();
@@ -1425,7 +1435,7 @@ test('Use this font fetches the font, keeps it in Yours and makes it the drawing
   await chooseLibrary('Zeta');
   expect(title()).toBe('Zeta');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library');
-  expect(actions()).toEqual(['Use this font', 'Add to Yours']);
+  expect(await actions()).toEqual(['Use this font', 'Add to Yours']);
   await press(button('Use this font'));
   await waitFor(() => project.drawingFont && fontId(project.drawingFont) === entry.fontId);
   expect(fileFetches).toBe(1);
@@ -1444,7 +1454,7 @@ test('Add to Yours keeps it without using it', async () => {
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));
   await waitFor(() => host.querySelector('.edit-side .sheet'));
   expect(button('Use this font')).toBeTruthy();
-  expect(button('Remove')).toBeTruthy();
+  expect(await actions()).toContain('Remove');
 });
 
 test('a library font already in Yours fetches nothing and makes no second entry', async () => {
@@ -1602,7 +1612,7 @@ test('a linked font offers Get it and + Load, and FROGBLOCK\'s loaded bytes show
   const { project } = await mount({ library: index });
   await chooseLibrary('FROGBLOCK');
   expect(host.querySelector('.edit-side .meta').textContent).toBe('8×8 · Library · not included');
-  expect(actions()).toEqual(['+ Load']);
+  expect(await actions()).toEqual(['+ Load']);
   expect(host.querySelector('.edit-side a.button').textContent).toBe('Get it (opens in a new tab)');
   expect(host.querySelector('.edit-side a.button').href).toBe('https://polyducks.itch.io/frogblock');
   expect(origin()).toContain('Credit FROGBLOCK font by Polyducks');
@@ -1636,7 +1646,7 @@ test('the drawing\'s narrow font shows Width 7 · 8 · 9, pressed at its width; 
   const { project } = await mount({ font: { ...slim(), width: 7 } });
   expect(shown()).toEqual(['7', '8', '9']);
   expect(pressed()).toEqual(['7']);
-  expect(host.querySelector('.width-note').textContent).toBe('Only Phosphor supports a width of 7. ANSI and XBin exports use 8.'); // exports can't hold 7
+  expect(host.querySelector('.width-row .width-note').textContent).toBe('Only Phosphor supports a width of 7, it will be exported as 8'); // exports can't hold 7
   await press(widthButtons()[2]);
   await waitFor(() => project.drawingFont.cellWidth === 9);
   expect(pressed()).toEqual(['9']);
@@ -1702,7 +1712,7 @@ test('the rows read each font\'s width: the drawing\'s as drawn, a stored one\'s
 
 test('the meta reads the width: 7×7', async () => {
   await mount({ font: { ...slim(), width: 7 } });
-  expect(host.querySelector('.edit-side .meta').textContent).toMatch(/^7×7 · /);
+  expect(host.querySelector('.edit-side .meta').textContent).toBe('7×7');
 });
 
 test('in a room a host can press the switch and an artist can\'t, with a reason', async () => {
