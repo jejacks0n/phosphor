@@ -1,6 +1,9 @@
 // The editor's keyboard commands, one table that the keys, the ? list, the desktop menu and the command list read. A row:
 //   id         stable, dotted by area ('file.save', 'tool.pencil')
 //   keys       its keys in keymap.js's grammar: a string, a list, or { mac, other } where the platforms differ
+//   shown      what the ? list prints in place of keys, for keys the grammar can't write (the four arrows as one, Page Up,
+//              a held key's words) or to print fewer of them: a list of words, or a function giving it (a platform's)
+//   menu       the desktop menu command that shows this key (useDesktopMenu's accelerators)
 //   group      the ? list's group it shows under (GROUPS)
 //   label      () => its words
 //   fixed      a key that stays where it's handled (an arrow that nudges, Escape's chain, Edit Mode's typing): shown in
@@ -14,7 +17,7 @@
 // field holding typing it hasn't committed (its own undo has it) }.
 import { t, te } from '@/i18n/index.js';
 import { shortcut } from '@/lib/keyLabels';
-import { keysFor, matches } from '@/lib/keymap';
+import { keyLabel, keysFor, matches } from '@/lib/keymap';
 import { ownsKey } from '@/lib/fields';
 import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
@@ -68,42 +71,43 @@ const sized = (by) => ({
   },
 });
 
-const fixed = (id, group, keys, label) => ({ id, group, keys, label, fixed: true });
+const fixed = (id, group, label, { keys, shown }) => ({ id, group, label, keys, shown, fixed: true });
 const ARROWS = '← ↑ → ↓'; // the four, shown as one
+const shiftArrows = () => [shortcut('shift', ARROWS)];
 
 export const COMMANDS = [
   // The shortcuts list: ?, or Alt+? while typing (where ? types; by physical key, as Option+? types ¿).
-  { id: 'general.help', group: 'general', keys: ['?', 'Shift+Alt+Slash'], label: words('thisList', () => ({ key: shortcut('alt', '?') })),
+  { id: 'general.help', group: 'general', keys: ['?', 'Shift+Alt+Slash'], shown: ['?'], menu: 'shortcuts', label: words('thisList', () => ({ key: shortcut('alt', '?') })),
     where: (ctx) => (!ctx.typing || ctx.event.altKey) && free(ctx) && shut(ctx),
     run: ({ workspace }) => { workspace.shortcutsOpen = true; } },
   // Not on SOCIAL's ROOM view, nor in a field with typing it hasn't committed: it undoes that itself.
-  { id: 'general.undo', group: 'general', keys: 'Mod+Z', label: words('undo'),
+  { id: 'general.undo', group: 'general', keys: 'Mod+Z', menu: 'undo', label: words('undo'),
     where: (ctx) => !ctx.uncommitted && ctx.view !== 'room', run: ({ project }) => project.undo() },
-  { id: 'general.redo', group: 'general', keys: 'Shift+Mod+Z', label: words('redo'),
+  { id: 'general.redo', group: 'general', keys: 'Shift+Mod+Z', menu: 'redo', label: words('redo'),
     where: (ctx) => !ctx.uncommitted && ctx.view !== 'room', run: ({ project }) => project.redo() },
-  { id: 'file.save', group: 'general', keys: 'Mod+S', label: words('saveProject'), run: ({ workspace }) => workspace.saveFile({ as: false }) },
-  { id: 'file.saveAs', group: 'general', keys: 'Shift+Mod+S', label: words('saveProjectAs'), run: ({ workspace }) => workspace.saveFile({ as: true }) },
-  { id: 'file.export', group: 'general', keys: 'Mod+E', label: words('export'),
+  { id: 'file.save', group: 'general', keys: 'Mod+S', menu: 'save', label: words('saveProject'), run: ({ workspace }) => workspace.saveFile({ as: false }) },
+  { id: 'file.saveAs', group: 'general', keys: 'Shift+Mod+S', menu: 'saveAs', label: words('saveProjectAs'), run: ({ workspace }) => workspace.saveFile({ as: true }) },
+  { id: 'file.export', group: 'general', keys: 'Mod+E', menu: 'export', label: words('export'),
     available: ({ project }) => (project.image ? true : 'shortcuts.reasons.noDrawing'),
     run: ({ workspace }) => { workspace.exportModal = true; } },
   // The file chooser (EditWorkspace's, the start screen's too), so the browser's own box stays shut. Not in a field.
-  { id: 'file.open', group: 'general', keys: 'Mod+O', label: words('openFile'), where: free,
+  { id: 'file.open', group: 'general', keys: 'Mod+O', menu: 'open', label: words('openFile'), where: free,
     run: ({ workspace }) => { workspace.openRequest++; } },
-  fixed('general.dialogChoices', 'general', '↑ ↓', words('dialogChoices')),
+  fixed('general.dialogChoices', 'general', words('dialogChoices'), { shown: ['↑ ↓'] }),
 
-  { ...fixed('drawing.holdAlt', 'drawing', 'Alt', words('holdAlt')), held: true },
-  { ...fixed('drawing.holdAltShift', 'drawing', 'Shift+Alt', words('holdAltShift')), held: true },
-  { ...fixed('drawing.holdSpace', 'drawing', 'Space', words('holdSpace')), held: true },
+  { ...fixed('drawing.holdAlt', 'drawing', words('holdAlt'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt') })] }), held: true },
+  { ...fixed('drawing.holdAltShift', 'drawing', words('holdAltShift'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt', 'shift') })] }), held: true },
+  { ...fixed('drawing.holdSpace', 'drawing', words('holdSpace'), { shown: () => [t('shortcuts.holdSpace')] }), held: true },
   // ] and [ grow and shrink the tool's Size a whole step, within the slider's range, as in Photoshop.
   { id: 'drawing.sizeDown', group: 'drawing', keys: '[', label: words('size'), ...sized(-1) },
   { id: 'drawing.sizeUp', group: 'drawing', keys: ']', label: words('size'), ...sized(1) },
 
   // About the view's middle (EditorViewport), in place of the browser's page zoom.
-  { id: 'view.zoomIn', group: 'view', keys: ['Mod+=', 'Mod++'], label: words('zoomInOut'), ...zoom(2) },
-  { id: 'view.zoomOut', group: 'view', keys: ['Mod+-', 'Mod+_'], label: words('zoomInOut'), ...zoom(0.5) },
+  { id: 'view.zoomIn', group: 'view', keys: ['Mod++', 'Mod+='], shown: () => [keyLabel('Mod++')], label: words('zoomInOut'), ...zoom(2) },
+  { id: 'view.zoomOut', group: 'view', keys: ['Mod+-', 'Mod+_'], shown: () => [keyLabel('Mod+-')], label: words('zoomInOut'), ...zoom(0.5) },
   { id: 'view.zoomBack', group: 'view', keys: 'Mod+0', label: words('zoomBack'), ...zoom(0) },
-  fixed('view.scrollPage', 'view', ['Page Up', 'Page Down'], words('scrollPage')),
-  fixed('view.scrollEnds', 'view', { mac: ['Home', 'End', 'Mod+ArrowUp', 'Mod+ArrowDown'], other: ['Home', 'End'] }, words('scrollEnds')),
+  fixed('view.scrollPage', 'view', words('scrollPage'), { shown: ['Page Up', 'Page Down'] }),
+  fixed('view.scrollEnds', 'view', words('scrollEnds'), { keys: { mac: ['Home', 'End', 'Mod+ArrowUp', 'Mod+ArrowDown'], other: ['Home', 'End'] } }),
 
   // Moebius's: Alt+F (or Alt+A) on the foreground, Alt+B on the background, by physical key (Option's ƒ, å, ∫ don't
   // matter). Typing too, and from a drawing tool: the held eyedropper gives way.
@@ -116,45 +120,45 @@ export const COMMANDS = [
       ? !!ctx.project.image && !ctx.workspace.paletteLayerOpen
       : ctx.workspace.activeTool !== 'text'),
     run: ({ workspace, view }) => (view === 'vector' ? useVectorStyle().swap() : workspace.swapColors()) },
-  fixed('colors.moveSwatches', 'colors', ARROWS, words('moveSwatches')),
-  fixed('colors.pickSwatch', 'colors', ['Enter', 'Space'], words('pickSwatch')),
+  fixed('colors.moveSwatches', 'colors', words('moveSwatches'), { shown: [ARROWS] }),
+  fixed('colors.pickSwatch', 'colors', words('pickSwatch'), { shown: ['Enter', 'Space'] }),
 
-  fixed('editMode.moveCursor', 'editMode', ARROWS, words('moveCursor')),
-  fixed('editMode.selectFromCursor', 'editMode', `Shift+${ARROWS}`, words('selectFromCursor')),
-  fixed('editMode.homeEnd', 'editMode', ['Home', 'End'], words('homeEnd')),
-  fixed('editMode.nextLine', 'editMode', 'Enter', words('nextLine')),
-  fixed('editMode.erase', 'editMode', ['Backspace', 'Delete'], words('erase')),
-  fixed('editMode.insertOverwrite', 'editMode', ['Insert', 'Alt+Enter'], words('insertOverwrite')),
-  fixed('editMode.typeFKey', 'editMode', 'F1–F12', words('typeFKey')),
-  fixed('editMode.grabFKey', 'editMode', 'Ctrl+Shift+F1–F12', words('grabFKey')),
-  fixed('editMode.prevNextPalette', 'editMode', ['Alt+ArrowLeft', 'Alt+ArrowRight'], words('prevNextPalette')),
-  fixed('editMode.stepFgPalette', 'editMode', ['Alt+ArrowUp', 'Alt+ArrowDown'], words('stepFgPalette')),
+  fixed('editMode.moveCursor', 'editMode', words('moveCursor'), { shown: [ARROWS] }),
+  fixed('editMode.selectFromCursor', 'editMode', words('selectFromCursor'), { shown: shiftArrows }),
+  fixed('editMode.homeEnd', 'editMode', words('homeEnd'), { keys: ['Home', 'End'] }),
+  fixed('editMode.nextLine', 'editMode', words('nextLine'), { keys: 'Enter' }),
+  fixed('editMode.erase', 'editMode', words('erase'), { keys: ['Backspace', 'Delete'] }),
+  fixed('editMode.insertOverwrite', 'editMode', words('insertOverwrite'), { keys: ['Insert', 'Alt+Enter'] }),
+  fixed('editMode.typeFKey', 'editMode', words('typeFKey'), { shown: ['F1–F12'] }),
+  fixed('editMode.grabFKey', 'editMode', words('grabFKey'), { shown: () => [shortcut('ctrl', 'shift', 'F1–F12')] }),
+  fixed('editMode.prevNextPalette', 'editMode', words('prevNextPalette'), { keys: ['Alt+ArrowLeft', 'Alt+ArrowRight'] }),
+  fixed('editMode.stepFgPalette', 'editMode', words('stepFgPalette'), { keys: ['Alt+ArrowUp', 'Alt+ArrowDown'] }),
 
-  fixed('select.all', 'select', 'Mod+A', words('selectAll')),
-  fixed('select.copyCutPaste', 'select', ['Mod+C', 'Mod+X', 'Mod+V'], words('copyCutPaste')),
-  fixed('select.nudge', 'select', ARROWS, words('nudge')),
-  fixed('select.growShrink', 'select', `Shift+${ARROWS}`, words('growShrink')),
-  fixed('select.delete', 'select', ['Delete', 'Backspace', 'E'], words('deleteSelection')),
-  fixed('select.stamp', 'select', ['S', 'C'], words('stamp')),
-  fixed('select.deselect', 'select', ['Esc', 'Enter'], words('deselect')),
+  fixed('select.all', 'select', words('selectAll'), { keys: 'Mod+A' }),
+  fixed('select.copyCutPaste', 'select', words('copyCutPaste'), { keys: ['Mod+C', 'Mod+X', 'Mod+V'] }),
+  fixed('select.nudge', 'select', words('nudge'), { shown: [ARROWS] }),
+  fixed('select.growShrink', 'select', words('growShrink'), { shown: shiftArrows }),
+  fixed('select.delete', 'select', words('deleteSelection'), { keys: ['Delete', 'Backspace', 'E'] }),
+  fixed('select.stamp', 'select', words('stamp'), { keys: ['S', 'C'] }),
+  fixed('select.deselect', 'select', words('deselect'), { shown: ['Esc', 'Enter'] }),
 
-  fixed('vector.penEnd', 'vector', ['Enter', 'Esc'], words('penEnd')),
-  fixed('vector.penBack', 'vector', 'Backspace', words('penBack')),
-  fixed('vector.nudge', 'vector', ARROWS, words('vectorNudge')),
-  fixed('vector.delete', 'vector', ['Delete', 'Backspace'], words('vectorDelete')),
-  fixed('vector.esc', 'vector', 'Esc', words('vectorEsc')),
+  fixed('vector.penEnd', 'vector', words('penEnd'), { shown: ['Enter', 'Esc'] }),
+  fixed('vector.penBack', 'vector', words('penBack'), { keys: 'Backspace' }),
+  fixed('vector.nudge', 'vector', words('vectorNudge'), { shown: [ARROWS] }),
+  fixed('vector.delete', 'vector', words('vectorDelete'), { keys: ['Delete', 'Backspace'] }),
+  fixed('vector.esc', 'vector', words('vectorEsc'), { shown: ['Esc'] }),
 
   // L plays and pauses, comma and period step, N adds a frame of the showing one's kind (held, it goes on adding them).
-  { id: 'animation.play', group: 'animation', keys: letter(PLAY_KEY), label: words('playPause'), once: true,
+  { id: 'animation.play', group: 'animation', keys: letter(PLAY_KEY), shown: [PLAY_KEY.toUpperCase()], label: words('playPause'), once: true,
     where: (ctx) => animating(ctx), run: () => usePlayback().toggle() },
-  { id: 'animation.prevFrame', group: 'animation', keys: [',', 'Alt+Comma'], label: frameWords,
+  { id: 'animation.prevFrame', group: 'animation', keys: [',', 'Alt+Comma'], shown: [','], label: frameWords,
     where: (ctx) => animating(ctx, ctx.event.altKey), run: stepFrame(-1) },
-  { id: 'animation.nextFrame', group: 'animation', keys: ['.', 'Alt+Period'], label: frameWords,
+  { id: 'animation.nextFrame', group: 'animation', keys: ['.', 'Alt+Period'], shown: ['.'], label: frameWords,
     where: (ctx) => animating(ctx, ctx.event.altKey), run: stepFrame(1) },
-  { id: 'animation.newFrame', group: 'animation', keys: letter(ADD_FRAME_KEY), label: words('newFrame'),
+  { id: 'animation.newFrame', group: 'animation', keys: letter(ADD_FRAME_KEY), shown: [ADD_FRAME_KEY.toUpperCase()], label: words('newFrame'),
     where: (ctx) => animating(ctx), run: ({ project }) => project.addFrame(project.currentFrame.kind) },
 
-  fixed('tabs.switch', 'tabs', '← →', words('switchTabs')),
+  fixed('tabs.switch', 'tabs', words('switchTabs'), { shown: ['← →'] }),
 ];
 
 const BY_ID = new Map(COMMANDS.map((command) => [command.id, command]));

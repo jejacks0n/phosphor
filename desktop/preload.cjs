@@ -40,7 +40,7 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   quitReady: () => ipcRenderer.send('phosphor:quit-ready'),
   onUnsaved: (cb) => { onUnsaved = cb; },
   // The menu's words and state, and the window's drawing: its name (the window's title) and its project's path.
-  setMenu: (labels, state, { title, file } = {}) => ipcRenderer.invoke('phosphor:set-menu', { labels, state, title, file }),
+  setMenu: (labels, state, { title, file } = {}, accelerators) => ipcRenderer.invoke('phosphor:set-menu', { labels, state, title, file, accelerators }),
   onMenu: (cb) => { onMenu = cb; },
   // Files to open come once the page says it takes them: { path, name, bytes }, or { name, missing: true }.
   onOpenedFile: (cb) => {

@@ -42,6 +42,7 @@ protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: t
 
 let quitReady = false;   // every window has said it may go: the quit goes on without asking again
 let quitting = null;   // the quit's asking and handing over, while it lasts
+let accelerators = {};   // the menu's keys, from a page's command table
 let labels = null;   // the menu's words, from a page: no menu of the app's own until one says them
 const IDLE = { hasImage: false, canChange: true, inRoom: false, hosting: false };
 let recent = null;   // the recently opened files (files.js), once the user data folder is known
@@ -196,7 +197,7 @@ function buildMenu() {
     openUrl: openOutside,
   };
   const template = menuTemplate({
-    labels, state: focusedEntry()?.menuState ?? IDLE, recent: recent?.list() ?? [], act, mac: process.platform === 'darwin', packaged: app.isPackaged,
+    labels, accelerators, state: focusedEntry()?.menuState ?? IDLE, recent: recent?.list() ?? [], act, mac: process.platform === 'darwin', packaged: app.isPackaged,
     version: VERSION, platform: process.platform, systemVersion: process.getSystemVersion(), arch: process.arch,
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
@@ -204,15 +205,17 @@ function buildMenu() {
 
 // The menu's words, what the page can do now, its drawing's name (the window's title) and its project's path. Strings
 // and booleans only. A window with a drawing is no longer waiting for a file.
-function setMenu(entry, { labels: words, state, title, file } = {}) {
+function setMenu(entry, { labels: words, accelerators: keys, state, title, file } = {}) {
   if (!words || typeof words !== 'object' || Object.values(words).some((word) => typeof word !== 'string')) throw new Error('No labels');
-  const [wereLabels, wasState] = [labels, entry.menuState];
+  if (keys !== undefined && (!keys || typeof keys !== 'object' || Object.values(keys).some((key) => typeof key !== 'string'))) throw new Error('No accelerators');   // an older page sends none
+  const [wereLabels, wereKeys, wasState] = [labels, accelerators, entry.menuState];
   labels = { ...words };
+  if (keys) accelerators = { ...keys };
   entry.menuState = Object.fromEntries(Object.keys(IDLE).map((key) => [key, !!state?.[key]]));
   try {
     buildMenu();
   } catch (error) {
-    [labels, entry.menuState] = [wereLabels, wasState];   // the menu that worked stays
+    [labels, accelerators, entry.menuState] = [wereLabels, wereKeys, wasState];   // the menu that worked stays
     throw error;
   }
   if (entry.menuState.hasImage) entry.claimed = false;

@@ -8,7 +8,12 @@ const labels = new Proxy({}, { get: (_target, key) => `<${String(key)}>` });   /
 const IDLE = { hasImage: false, canChange: true, inRoom: false, hosting: false };
 const SYSTEM = { version: '1.2.3-beta', platform: 'darwin', systemVersion: '15.1', arch: 'arm64' };
 
-function menu({ state = IDLE, recent = [], mac = true, packaged = true } = {}) {
+const ACCELERATORS = {
+  new: 'CmdOrCtrl+N', open: 'CmdOrCtrl+O', save: 'CmdOrCtrl+S', saveAs: 'Shift+CmdOrCtrl+S', export: 'CmdOrCtrl+E',
+  undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', shortcuts: 'Shift+Alt+/',
+};
+
+function menu({ state = IDLE, recent = [], mac = true, packaged = true, accelerators = ACCELERATORS } = {}) {
   const calls = [];
   const act = {
     command: (name) => calls.push(['command', name]),
@@ -17,7 +22,7 @@ function menu({ state = IDLE, recent = [], mac = true, packaged = true } = {}) {
     clearRecent: () => calls.push(['clearRecent']),
     openUrl: (url) => calls.push(['openUrl', url]),
   };
-  return { template: menuTemplate({ labels, state, recent, act, mac, packaged, ...SYSTEM }), calls };
+  return { template: menuTemplate({ labels, accelerators, state, recent, act, mac, packaged, ...SYSTEM }), calls };
 }
 const top = (template, label) => template.find((m) => m.label === label);
 const item = (template, menuLabel, label) => top(template, menuLabel).submenu.find((i) => i.label === label);
@@ -39,14 +44,21 @@ test('the menus, in the page’s words: the app menu only on macOS, where About 
   assert.equal(item(other, '<file>', '<quit>').role, 'quit');
 });
 
+test('an item has the accelerator the page sent for its command, and none when the page sent none', () => {
+  const some = menu({ accelerators: { save: 'CmdOrCtrl+S' } }).template;
+  assert.equal(item(some, '<file>', '<save>').accelerator, 'CmdOrCtrl+S');
+  assert.equal(item(some, '<edit>', '<undo>').accelerator, undefined);
+  assert.equal(item(menu({ accelerators: {} }).template, '<file>', '<open>').accelerator, undefined);
+});
+
 test('each app action sends its command, with the shortcuts the page also answers', () => {
   const { template, calls } = menu({ state: { hasImage: true, canChange: true, inRoom: false, hosting: false } });
   const expected = [
     ['<file>', '<new>', 'new', 'CmdOrCtrl+N'], ['<file>', '<open>', 'open', 'CmdOrCtrl+O'], ['<file>', '<save>', 'save', 'CmdOrCtrl+S'],
-    ['<file>', '<saveAs>', 'saveAs', 'CmdOrCtrl+Shift+S'], ['<file>', '<export>', 'export', 'CmdOrCtrl+E'], ['<file>', '<versions>', 'versions', undefined],
-    ['<edit>', '<undo>', 'undo', 'CmdOrCtrl+Z'], ['<edit>', '<redo>', 'redo', 'CmdOrCtrl+Shift+Z'],
+    ['<file>', '<saveAs>', 'saveAs', 'Shift+CmdOrCtrl+S'], ['<file>', '<export>', 'export', 'CmdOrCtrl+E'], ['<file>', '<versions>', 'versions', undefined],
+    ['<edit>', '<undo>', 'undo', 'CmdOrCtrl+Z'], ['<edit>', '<redo>', 'redo', 'Shift+CmdOrCtrl+Z'],
     ['<room>', '<hostRoom>', 'hostRoom', undefined], ['<room>', '<joinRoom>', 'joinRoom', undefined],
-    ['<help>', '<shortcuts>', 'shortcuts', undefined], ['Phosphor', '<about>', 'about', undefined], ['Phosphor', '<checkUpdates>', 'checkUpdates', undefined],
+    ['<help>', '<shortcuts>', 'shortcuts', 'Shift+Alt+/'], ['Phosphor', '<about>', 'about', undefined], ['Phosphor', '<checkUpdates>', 'checkUpdates', undefined],
     ['Phosphor', '<plugins>', 'plugins', undefined],
   ];
   for (const [menuLabel, label, name, accelerator] of expected) {

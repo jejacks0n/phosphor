@@ -6,6 +6,8 @@ import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { TOOLS, keyLabel } from '@/tools';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
+import { COMMANDS, GROUPS } from '@/lib/commands';
+import { keysFor, keyLabel as label } from '@/lib/keymap';
 
 let app = null;
 afterEach(() => {
@@ -25,6 +27,26 @@ test('each key in the Tools section is named by the tool it picks', async () => 
     (tool.keys ?? []).map(keyLabel).filter((key) => rows.has(key)).map((key) => [tool, rows.get(key)]));
   expect(named.map(([tool]) => tool.id)).toContain('flip');
   for (const [tool, row] of named) expect(row.slice(0, tool.title.length), tool.id).toBe(tool.title);
+});
+
+test('the list is the command table: its groups in order, and every row with keys on one line with its words', async () => {
+  await createTestApp();
+  app = createApp({ render: () => h(ShortcutsDialog) }).use(getActivePinia()).use(i18n);
+  app.mount(document.body.appendChild(document.createElement('div')));
+  await nextTick();
+  const sections = [...document.querySelectorAll('section')];
+  const titles = sections.map((s) => s.querySelector('h4').textContent);
+  expect(titles.slice(0, 4)).toEqual(['General', 'Tools', 'Drawing', 'View']);
+  expect(titles.indexOf('Colors')).toBeLessThan(titles.indexOf('Edit Mode'));
+  const general = sections[0].querySelectorAll('dt');
+  expect([...general].slice(0, 3).map((dt) => dt.textContent)).toEqual(['?', label('Mod+Z'), label('Shift+Mod+Z')]);
+  const lines = new Map(sections.flatMap((s) => [...s.querySelectorAll('dt')].map((dt) => [dt.nextElementSibling.textContent, dt.textContent])));
+  for (const row of COMMANDS.filter((c) => (c.run || c.fixed) && (c.keys || c.shown) && c.group !== 'animation')) {
+    expect(GROUPS, row.id).toContain(row.group);
+    const words = row.label();
+    expect(lines.has(words), row.id).toBe(true);
+    if (!row.shown) for (const key of keysFor(row.keys)) expect(lines.get(words), row.id).toContain(label(key));
+  }
 });
 
 test('it has the ×, with focus starting on Done; on a phone it is the whole window, the list taking the room over Done', async () => {

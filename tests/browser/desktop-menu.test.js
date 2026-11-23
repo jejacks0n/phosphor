@@ -53,6 +53,13 @@ test('the menu gets every label in the language showing, and what can be done, a
   expect(lastMenu()[0].file).toBe('Fichier');
 });
 
+test('the menu is sent its accelerators from the command table, as Electron writes them', () => {
+  expect(lastMenu()[3]).toEqual({
+    new: 'CmdOrCtrl+N', open: 'CmdOrCtrl+O', save: 'CmdOrCtrl+S', saveAs: 'Shift+CmdOrCtrl+S', export: 'CmdOrCtrl+E',
+    undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', shortcuts: 'Shift+Alt+/',
+  });
+});
+
 test('the menu says the drawing’s name, for the window’s title, and its project’s file, for which window has it open', async () => {
   expect(lastMenu()[2]).toEqual({ title: 'Phosphor', file: null });
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });

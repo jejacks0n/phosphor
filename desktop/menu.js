@@ -2,6 +2,7 @@
 // shows, from its menu strings) and with what it can do now (state). The app's own actions go to the page as commands;
 // cut, copy, paste, zoom and the window are the system's roles, and the links open in the browser.
 //   labels   the page's menu strings (en.json's menu)
+//   accelerators  { menu command: its Electron accelerator }, from the page's command table; a command with none has none
 //   state    { hasImage, canChange, inRoom, hosting }: a drawing open, the document free to replace (not drawing in a
 //            room someone else hosts), in a room, hosting it
 //   recent   the recently opened files' paths, newest first
@@ -15,9 +16,9 @@ export const issueUrl = ({ version, platform, systemVersion, arch }) => {
   return `${REPO}/issues/new?body=${encodeURIComponent(`\n\n---\nPhosphor ${version}, ${system}`)}`;
 };
 
-export function menuTemplate({ labels: l, state, recent, act, mac, packaged, version, platform, systemVersion, arch }) {
+export function menuTemplate({ labels: l, accelerators = {}, state, recent, act, mac, packaged, version, platform, systemVersion, arch }) {
   const sep = { type: 'separator' };
-  const command = (label, name, { accelerator, enabled = true } = {}) => ({ label, accelerator, enabled, click: () => act.command(name) });
+  const command = (label, name, { enabled = true } = {}) => ({ label, accelerator: accelerators[name], enabled, click: () => act.command(name) });
   const link = (label, url) => ({ label, click: () => act.openUrl(url) });
   const basename = (file) => file.split(/[\\/]/).pop();
 
@@ -36,14 +37,14 @@ export function menuTemplate({ labels: l, state, recent, act, mac, packaged, ver
     {
       label: l.file,
       submenu: [
-        command(l.new, 'new', { accelerator: 'CmdOrCtrl+N', enabled: state.hasImage && state.canChange }),
+        command(l.new, 'new', { enabled: state.hasImage && state.canChange }),
         { label: l.newWindow, accelerator: 'CmdOrCtrl+Shift+N', click: act.newWindow },
-        command(l.open, 'open', { accelerator: 'CmdOrCtrl+O' }),
+        command(l.open, 'open'),
         { label: l.openRecent, submenu: openRecent },
         sep,
-        command(l.save, 'save', { accelerator: 'CmdOrCtrl+S', enabled: state.hasImage }),
-        command(l.saveAs, 'saveAs', { accelerator: 'CmdOrCtrl+Shift+S', enabled: state.hasImage }),
-        command(l.export, 'export', { accelerator: 'CmdOrCtrl+E', enabled: state.hasImage }),
+        command(l.save, 'save', { enabled: state.hasImage }),
+        command(l.saveAs, 'saveAs', { enabled: state.hasImage }),
+        command(l.export, 'export', { enabled: state.hasImage }),
         command(l.versions, 'versions', { enabled: state.hasImage && state.canChange }),
         sep,
         { role: 'close', label: l.closeWindow },
@@ -53,8 +54,8 @@ export function menuTemplate({ labels: l, state, recent, act, mac, packaged, ver
     {
       label: l.edit,
       submenu: [
-        command(l.undo, 'undo', { accelerator: 'CmdOrCtrl+Z' }),
-        command(l.redo, 'redo', { accelerator: 'CmdOrCtrl+Shift+Z' }),
+        command(l.undo, 'undo'),
+        command(l.redo, 'redo'),
         sep,
         { role: 'cut', label: l.cut },
         { role: 'copy', label: l.copy },
