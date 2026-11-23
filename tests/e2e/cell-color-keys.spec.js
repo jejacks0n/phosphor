@@ -1,8 +1,9 @@
 import { test, expect } from './support.js';
-import { openApp, store, chars, editAt, cellPoint } from './support.js';
+import { openApp, store, chars, editAt, cellPoint, pixelPoint, tab, settled } from './support.js';
 
 // The cell's colors by key on the page: Option+X (Alt+X, by its code) in Edit Mode flips the cursor's cell without typing
-// Option's ≈, and Alt+U with a drawing tool takes the colors of the cell a real pointer is over, nothing once it leaves.
+// Option's ≈, and Alt+U with a drawing tool takes the colors of the cell a real pointer is over, nothing once it leaves;
+// in PIXEL, the pixel's, the half the pointer is on.
 const workspace = (page, fn) => store(page, 'workspace', fn);
 const cellColors = (page, col, row) => store(page, 'project', `(p) => { const c = p.cells[${row} * p.cols + ${col}]; return [c.fg.hex, c.bg.hex]; }`);
 
@@ -39,4 +40,22 @@ test('with the Pencil, Alt+U takes the colors of the cell under the pointer, and
   await page.mouse.move(box.x + box.width / 2, box.y - 60); // off the art, over the toolbar
   await page.keyboard.press('Alt+KeyU');
   expect(await workspace(page, (w) => w.editFgColor)).toBe('#123456');
+});
+
+test('in PIXEL, Alt+U takes the pixel under the pointer as the foreground and Shift+Alt+U as the background, either half', async ({ page }) => {
+  await openApp(page);
+  await tab(page, 'PIXEL').click();
+  await settled(page);
+  await page.getByRole('button', { name: 'Brush' }).click();
+  await store(page, 'project', (p) => { p.paintStroke([{ x: 30, y: 11, alpha: 1 }], '#ff00ff'); p.commitEdit(); }); // unlike its top half
+  const [odd, even, otherHalf] = await store(page, 'project', (p) => [p.rawColorAt(30, 11), p.rawColorAt(12, 40), p.rawColorAt(30, 10)]);
+  expect(otherHalf).not.toBe(odd); // so the half read is the one under the pointer
+  let at = await pixelPoint(page, 30, 11); // a cell's bottom half
+  await page.mouse.move(at.x, at.y);
+  await page.keyboard.press('Alt+KeyU');
+  expect(await workspace(page, (w) => w.editFgColor)).toBe(odd);
+  at = await pixelPoint(page, 12, 40); // a top half
+  await page.mouse.move(at.x, at.y);
+  await page.keyboard.press('Shift+Alt+KeyU');
+  expect(await workspace(page, (w) => [w.editFgColor, w.editBgColor])).toEqual([odd, even]);
 });
