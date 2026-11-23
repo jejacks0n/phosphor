@@ -70,15 +70,20 @@ function typeLines(project, workspace, text) {
 // hidden textarea at the cursor that has focus while the tool is in use: an input method's
 // compositions, dead keys, the emoji picker and pastes all type into cells from there; the other
 // keys (arrows, Backspace, F-keys...) still come through keydown.
+// Keys belong elsewhere while focus is in a form field or a dialog (the color picker, the palette layer). Not on a
+// button: with the cursor placed, Space and Enter there type, as everything else does (Tab only moved past it).
+const inDialog = (el) => !!el.closest?.('dialog, [role="dialog"]');
+const editableFocus = () => {
+  const el = document.activeElement;
+  return isFormField(el) || (!!el && !isTextInput(el) && inDialog(el));
+};
+// Whether the Text tool's keydown takes Edit Mode's keys now (its onKeyDown asks the same), so a command that must not
+// let a key through (Alt+←, the browser's Back) can take it when typing won't.
+export const typingTakesKeys = (workspace) => workspace.editorTab === 'output' && workspace.activeTool === 'text'
+  && !!workspace.textCursor && !workspace.paletteLayerOpen && !editableFocus();
+
 export function useTextTool(project, workspace, textInput) {
   const palettes = usePaletteStore();
-  // Keys belong elsewhere while focus is in a form field or a dialog (the color picker, the palette layer). Not on a
-  // button: with the cursor placed, Space and Enter there type, as everything else does (Tab only moved past it).
-  const inDialog = (el) => !!el.closest?.('dialog, [role="dialog"]');
-  const editableFocus = () => {
-    const el = document.activeElement;
-    return isFormField(el) || (!!el && !isTextInput(el) && inDialog(el));
-  };
 
   // Moving the cursor ends a run of typing (Backspace's move is part of it).
   const move = (dc, dr, { typing = false } = {}) => {

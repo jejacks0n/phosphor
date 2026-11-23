@@ -24,7 +24,7 @@ import { ADD_FRAME_KEY, PLAY_KEY, SWAP_COLORS_KEY } from '@/lib/TextKeys';
 import { getTool, offeredTools, optionValue, setOptionValue } from '@/tools';
 import { usePlayback } from '@/composables/usePlayback';
 import { stepColor } from '@/composables/colorSteps';
-import { lineStep } from '@/composables/useTextTool';
+import { lineStep, typingTakesKeys } from '@/composables/useTextTool';
 import { usePaletteStore } from '@/store/PaletteStore';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 
@@ -88,9 +88,11 @@ const lines = (id, label, keys, type, delta) => ({
   available: ({ workspace, view }) => (view === 'output' && workspace.activeTool === 'text' && workspace.textCursor ? true : 'shortcuts.reasons.noCursor'),
   run: ({ project, workspace }) => lineStep(project, workspace, type, delta),
 });
-// Alt+← and Alt+→ where Edit Mode's typing won't take them (useTextTool leaves a field's, a dialog's and the palettes'
-// keys alone). On a Mac a field keeps them (Option+arrows move by word), and the browser has no Back on them.
-const backKept = (ctx) => ctx.workspace.editMode && (isMac ? free(ctx) : true) && (!ctx.typing || !free(ctx) || !shut(ctx));
+// Alt+← and Alt+→ where Edit Mode's typing won't take them (useTextTool leaves a form field's, a dialog's and the
+// character palette's keys alone: typingTakesKeys is its own test). Not left to the handlers' order: taking a key typing
+// would take would lose its column. On a Mac a field that owns them keeps them (Option+arrows move by word), and the
+// browser has no Back on them.
+const backKept = (ctx) => ctx.workspace.editMode && (isMac ? free(ctx) : true) && !typingTakesKeys(ctx.workspace);
 
 const sized = (by) => ({
   where: (ctx) => free(ctx) && !!ctx.project.image && ctx.workspace.editMode && !ctx.typing && ART.includes(ctx.view)
