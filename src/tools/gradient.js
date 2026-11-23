@@ -9,19 +9,20 @@ import { t } from '@/i18n/index.js';
 
 // Linear or Spherical, from the drag's line, over the area the Paint Bucket would fill from its start: Cells gives each
 // cell of the area its blend character in your two colors; Normal paints each pixel its blended color, at the brush
-// opacity, as a fill paints. Under the busy note, as the Paint Bucket's fill is (bucket.js fillSolid).
+// opacity, as a fill paints. The area and the settings are the release's; the blending and the writing go under the busy
+// note, as the Paint Bucket's fill does (bucket.js fillSolid).
 async function fillGradient({ project, workspace, view }, from, to) {
+  const shape = workspace.gradientShape, fg = workspace.editFgColor, bg = workspace.editBgColor, aspect = project.pixelAspect;
+  let write;
+  if (fillsCells(workspace, view)) {
+    const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace, area = cellArea(project, workspace, from);
+    write = () => project.writeEditCells(area.map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y, aspect), fg, bg, fgIndex, bgIndex } })), { clearPaint: true });
+  } else {
+    const f = hex2rgb(fg), b = hex2rgb(bg), area = pixelArea(project, workspace, from), { editBrushOpacity: opacity, editBrushStack: stack } = workspace;
+    write = () => project.paintEditPixels(area.map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5, aspect)) })), opacity, stack);
+  }
   return busyWhile(t('busy.filling'), () => {
-    const shape = workspace.gradientShape, fg = workspace.editFgColor, bg = workspace.editBgColor;
-    if (fillsCells(workspace, view)) {
-      const { editFgIndex: fgIndex, editBgIndex: bgIndex } = workspace;
-      const cells = cellArea(project, workspace, from).map(({ x, y }) => ({ col: x, row: y, attrs: { char: blendChar(shape, from, to, x, y, project.pixelAspect), fg, bg, fgIndex, bgIndex } }));
-      project.writeEditCells(cells, { clearPaint: true });
-    } else {
-      const f = hex2rgb(fg), b = hex2rgb(bg);
-      const pixels = pixelArea(project, workspace, from).map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5, project.pixelAspect)) }));
-      project.paintEditPixels(pixels, workspace.editBrushOpacity, workspace.editBrushStack);
-    }
+    write();
     project.commitEdit();
   });
 }
