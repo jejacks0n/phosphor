@@ -209,7 +209,7 @@ export const editLayerActions = {
   // the bottom or right edge goes, and the layer's memory of what typing pushed past the edge goes too (forgetPastEdge).
   // One undo step each, and in a room an edit like any other; the cursor stays where it is. False when refused: no cells
   // layer, a hidden one (with its toast), a line or column off the grid, or the base for an artist; paused, the guard's
-  // undefined.
+  // undefined. Inside an art layer one too big is refused after it's made (commitArt, with its toast), and that's true.
   insertLine(row) { return lineStep(this, 'row', row, 1); },
   deleteLine(row) { return lineStep(this, 'row', row, -1); },
   insertColumn(col) { return lineStep(this, 'col', col, 1); },
@@ -450,7 +450,6 @@ function lineStep(project, axis, at, delta) {
     if (!moves.length) return false;
     project.ensureLayer();
     project.beginEdit();
-    forgetPastEdge(project);
     moveLayer(project, moves);
   }
   project.commitEdit();
@@ -471,7 +470,8 @@ function moveLayer(project, moves) {
     if (block) paint.pasteCells(block, from.c0 + dx, from.r0 + dy, from.c1 - from.c0 + 1, from.r1 - from.r0 + 1, span);
   }
   const next = moveCells(project.editCells, moves);
-  if (next === project.editCells && !painted) return;
+  if (next === project.editCells && !painted) return; // nothing moved: no step, and the memory past the edge stays
+  forgetPastEdge(project);
   project.noteDrawn(pixels);
   if (painted) project.hasPaint = paint.hasPaint;
   project.editCells = next; // the whole map: the slice scans it, as for any edit that commits at once

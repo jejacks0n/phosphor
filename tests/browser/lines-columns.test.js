@@ -3,7 +3,7 @@
 // The grid keeps its size and what's pushed past the bottom or right edge goes; the layer's memory of what typing pushed
 // past the edge (pastEdge) goes with it.
 import { test, expect } from 'vitest';
-import { createTestApp, settle } from '../support/app.js';
+import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { toastMessage } from '@/composables/useToast.js';
 import { makeArt, artBytes, MOST_ART_BYTES } from '@/document/artLayers.js';
 import { cellIndex } from '@/lib/Cells.js';
@@ -27,12 +27,17 @@ const wide = (project, r) => Array.from({ length: 4 }, (_, c) => (project.cells[
 
 test('insertLine pushes the lines below down, the last one off the bottom; one undo brings it all back', async () => {
   const { project } = await blank();
-  const version = project.history.version;
+  const version = project.history.version, before = cellsKey(project);
   expect(project.insertLine(1)).toBe(true);
   expect(column(project)).toBe('A.BC');
   expect(project.history.version).toBe(version + 1);
+  const moved = cellsKey(project);
+  project.render(); // what the views show is what a whole render shows
+  await settle(project);
+  expect(cellsKey(project)).toEqual(moved);
   project.undo();
   expect(column(project)).toBe('ABCD');
+  expect(cellsKey(project)).toEqual(before);
   project.redo();
   expect(column(project)).toBe('A.BC');
 });
@@ -63,6 +68,10 @@ test('R1: a line takes its paint with it', async () => {
   project.insertLine(1);
   expect(project.cellHasPaint(0, 2)).toBe(true);
   expect(project.cellHasPaint(0, 1)).toBe(false);
+  const moved = cellsKey(project);
+  project.render();
+  await settle(project);
+  expect(cellsKey(project)).toEqual(moved);
   project.undo();
   expect(project.cellHasPaint(0, 1)).toBe(true);
   expect(project.cellHasPaint(0, 2)).toBe(false);
@@ -81,6 +90,21 @@ test('what typing pushed past the edge is forgotten: a Backspace after a line mo
   project.commitEdit();
   expect(line(project, 0)).toBe('....');
   expect(line(project, 1)).toBe('ABC.');
+});
+
+test('a line or column that moves nothing is no step, and what typing pushed past the edge still comes back', async () => {
+  const { project } = await blank();
+  [...'BCD'].forEach((char, i) => project.typeAt(i + 1, 0, char, WHITE));
+  project.commitEdit();
+  project.clearEditCells([1, 2, 3].map((row) => ({ col: 0, row })));
+  project.commitEdit();
+  project.typeAt(0, 0, 'X', WHITE, { mode: 'insert' }); // D is past the edge of row 0
+  const version = project.history.version + 1; // the typing's step, once committed
+  expect(project.insertLine(1)).toBe(true); // nothing below row 0
+  expect(project.history.version).toBe(version);
+  project.backspaceAt(1, 0, WHITE, { mode: 'insert' });
+  project.commitEdit();
+  expect(line(project, 0)).toBe('ABCD');
 });
 
 test('R1: with the base picked, its cells move with their pins, and the line left behind is erased', async () => {
@@ -147,7 +171,7 @@ test('on a movie, the frame showing changes and the others don\'t', async () => 
   expect(column(project)).toBe('.ABC');
 });
 
-test('inside an art layer, its own drawing moves, and one made too big is refused', async () => {
+test('inside an art layer, its own drawing moves and the drawing outside it doesn\'t', async () => {
   const { project } = await blank();
   const key = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 0], art: { cols: 1, rows: 2, cells: [[0, 'X', null, RED], [1, 'Y', null, RED]] } }));
   expect(project.enterArt(key)).toBe(true);
