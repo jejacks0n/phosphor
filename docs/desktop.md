@@ -107,8 +107,9 @@ the way it previews any PNG:
 - **macOS**: Finder's icons and Quick Look show the picture.
 - **Windows**: the installer asks Explorer to show the picture as the thumbnail, and uninstalling takes that away. This
   is still to be checked on a real Windows machine.
-- **Linux**: the `.deb` tells the system a `.pho` is a kind of PNG, for file managers that preview PNGs by their type.
-  The AppImage installs nothing, so with it a `.pho` shows a plain icon.
+- **Linux**: the `.deb` tells the system a `.pho` is a kind of PNG, and installs a thumbnailer that previews it with the
+  system's PNG thumbnailer, so file managers show the picture. The AppImage installs nothing, so with it a `.pho` shows
+  a plain icon.
 
 An older `.phosphor` file isn't a picture, so it shows an icon instead.
 
