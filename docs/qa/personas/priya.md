@@ -351,7 +351,7 @@ see what happens to a Follow a path… under way.
   strength; the strength starts at 35% and this browser remembers it, as it does Frames before (1) and Frames after
   (0); on frame 5, what she drew on frame 6 shows in a cool blue tint where frame 5 shows nothing; Ghost off shows
   inherited cells solid; the ghost never plays or reaches an export ([The ghost](../../animation.md#the-ghost)).
-- Probes: `extremes`: strength at 0% and 100%; `interrupt`: reload and check the strength came back; `back-out`: open
+- Probes: `extremes`: strength at 0% and 100%, and on frame 1 Frames after still shows frame 2; `interrupt`: reload and check the strength came back; `back-out`: open
   the box and press Escape, and check where focus went.
 - Rated: yes, wants a key for Ghost on and off
 
