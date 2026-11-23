@@ -883,6 +883,7 @@
       "infoWide": "large de 2 cellules",
       "infoOnSlot": "déjà assigné à F{slot}",
       "infoDoesntFit": "ne rentre pas dans une cellule",
+      "infoBlockTook": "{char} est dessiné par l’emplacement {from} : cet emplacement n’a pas de caractère à lui",
       "forFont": "Pour {name}",
       "anyFont": "Toute police",
       "untie": "Utiliser avec toute police",

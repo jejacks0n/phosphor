@@ -265,8 +265,23 @@ test('the sources have no legend: a glyph that does not fit in a cell says so wh
   await nextTick();
   const glyph = [...host.querySelectorAll('.grid button.g')].find((b) => b.textContent === '\u0378');
   expect(glyph.classList.contains('bad')).toBe(true);
-  await userEvent.hover(glyph); // a real pointer, though the button is disabled
+  expect([glyph.disabled, glyph.getAttribute('aria-disabled')]).toEqual([false, 'true']); // Safari sends a disabled button no hover
+  await userEvent.hover(glyph);
   await expect.poll(() => host.querySelector('.info').textContent).toContain('does not fit in one cell');
+});
+
+test('a font slot whose character a block took says why it can\u2019t be used, and a click on it puts nothing in the palette', async () => {
+  const { project, palettes } = await mount();
+  project.setDrawingFont({ ...fontA(), blocks: [220, ...CP437_BLOCKS.slice(1)] }); // Full drawn from Lower's slot: 219 has no character left
+  await nextTick();
+  await press(button('Edit'));
+  const before = [...palettes.active.glyphs];
+  const glyph = host.querySelectorAll('.grid button.g')[219];
+  expect([glyph.classList.contains('bad'), glyph.disabled, glyph.getAttribute('aria-disabled')]).toEqual([true, false, 'true']);
+  await userEvent.hover(glyph);
+  await expect.poll(() => host.querySelector('.info').textContent).toBe(`Slot 219 ${glyph.textContent} · \u2588 is drawn from slot 220, so this slot has no character of its own`);
+  await press(glyph);
+  expect(palettes.active.glyphs).toEqual(before);
 });
 
 test('the Unicode tab gives way to the font tab when the drawing gets a font', async () => {
