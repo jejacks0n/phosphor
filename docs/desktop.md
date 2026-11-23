@@ -87,12 +87,12 @@ through its reloads.
 ## Opening and saving
 
 Open… is your system's own file chooser, and Save writes a project straight back to its file: the first Save of a
-drawing asks where (as Save As… always does), and after that Save writes over that `.phosphor` file without asking. A
-project opened with Open…, Open Recent, a double-click or dropped on a drawing (it opens in a new window) saves back
-to where it came from; one dropped on the start screen asks where the first time. A save is written whole: if it
+drawing asks where (as Save As… always does), and after that Save writes over that `.pho` file without asking. A
+`.pho` opened with Open…, Open Recent, a double-click or dropped on a drawing (it opens in a new window) saves back
+to where it came from; an older `.phosphor` file (or a project renamed to `.png`) asks where, beside it, and saves a `.pho`; one dropped on the start screen asks where the first time. A save is written whole: if it
 fails, the file it would have replaced is left as it was. Exports still ask where each time.
 
-Double-clicking a `.phosphor` file opens it in Phosphor. With Phosphor already open, the file opens there: in the
+Double-clicking a `.pho` (or `.phosphor`) file opens it in Phosphor. With Phosphor already open, the file opens there: in the
 window you're in when it's on the start screen, and in a new window when it shows a drawing. The rest
 of what Phosphor opens is offered under **Open With**, and you can make Phosphor the default for any of them:
 
