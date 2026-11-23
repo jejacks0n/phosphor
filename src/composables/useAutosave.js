@@ -212,6 +212,9 @@ export function useAutosave() {
     return current.value;
   };
 
+  // Waits out the write under way, and any due behind it, without starting one as flush does.
+  const settled = () => running;
+
   let swaps = project._frameSwaps, frame = project.frame;
   const CELLS = 2; // editCells' place below
   watch([
@@ -399,5 +402,5 @@ export function useAutosave() {
   start();
   setTimeout(() => { ready.value = workspace.documentSettled = true; }, READY_WAIT_MS); // a late restore still lands, unless something's opened by then
 
-  return { current, flush, ready, recent, openRecent, restoreVersion };
+  return { current, flush, settled, ready, recent, openRecent, restoreVersion };
 }

@@ -29,6 +29,7 @@ const STORAGE_FULL = 'Browser storage was full. Your oldest saved version was re
 const STORAGE_FULL_STILL = 'Browser storage is full. This project could not be saved even after clearing old versions. Please save a .pho file.';
 const KEPT_ID = 'phosphor-autosave-document';
 let app = null, autosave = null, started = null, deleteDatabase;
+const realTimeout = globalThis.setTimeout; // before any test fakes it
 
 beforeEach(async () => {
   deleteDatabase = ownDatabase('phosphor-autosave', 'composable');
@@ -53,6 +54,7 @@ async function pass(ms) {
   const before = started.mock.calls.length;
   await vi.advanceTimersByTimeAsync(ms);
   if (started.mock.calls.length > before) await autosave.flush();
+  else await autosave.settled(); // the timers' write can be due behind one under way, and starts only once that one's done
 }
 
 // A store with the composable mounted, and no document yet.
@@ -2045,11 +2047,13 @@ test('the record keeps the extension the drawing came with, then the one it last
 // Its row in Pick up where you left off then reads as the project, not as one of the exports opened beside it.
 test('an export of a drawing saved as a project keeps the project\'s name and extension', async () => {
   const { project } = await mounted();
+  const { release } = await holdWrites();
   await project.openArtFile(textFile());
   await project.saveProject('hello-fixed');
   await project.exportFile('ans', { filename: 'hello-fixed-20261118-221300' });
   await project.exportAnimation('cast', { filename: 'hello-fixed-20261118-221301' });
   expect({ filename: project.filename, fileExt: project.fileExt }).toEqual({ filename: 'hello-fixed', fileExt: 'pho' });
+  realTimeout(release, 100); // the opening write still under way after the Save's write comes due, however the timers move
   await pass(SAVE_AFTER_MS);
   expect((await readLatest(project.documentId)).record).toMatchObject({ filename: 'hello-fixed', fileExt: 'pho' });
 });
@@ -2135,7 +2139,7 @@ test('a reload after the first change, and later changes, keep no second As open
   await leave();
 
   const back = await mounted();
-  await autosave.flush(); // the restore's own write, begun while mounted waited (vi.waitUntil moves the timers): pass wouldn't see it start
+  await autosave.flush(); // the restore's own write, begun while mounted waited (vi.waitUntil moves the timers), done first
   for (const col of [1, 2]) {
     await vi.advanceTimersByTimeAsync(VERSION_EVERY_MS);
     edit(back.project, col);
@@ -2153,7 +2157,7 @@ test('an older record, written before the As opened mark, never gets one', async
   await overwriteRecord(id, { asOpened: undefined });
 
   const back = await mounted();
-  await autosave.flush(); // the restore's own write, begun while mounted waited (vi.waitUntil moves the timers): pass wouldn't see it start
+  await autosave.flush(); // the restore's own write, begun while mounted waited (vi.waitUntil moves the timers), done first
   edit(back.project);
   await pass(SAVE_AFTER_MS);
   expect(await listVersions(id)).toHaveLength(1);
