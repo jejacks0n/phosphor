@@ -9,7 +9,11 @@
  *   preview?   { shape: 'circle' | 'square' | 'cell', size?: (workspace, view) => grid pixels (the ANSI view's eraser: cells),
  *                snap?: the outline keeps to the cells or pixels covered, soft?: (workspace, view) => a circle after all }
  *   cursor?    (ctx, pos) => CSS cursor | null: the pointer over the content, at grid pixel pos
- *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox', size?: true (the one ] and [ change) }
+ *   options?   toolbar settings: { key (workspace store field), label, title, min, max, step?, decimals?, unit?, type?: 'checkbox',
+ *              and the marks a key steps it by (src/lib/commands.js), on the first such option it shows:
+ *              size?: true (] and [), kind?: true (a segmented row, the tool's own key again), drawWith?: true (a
+ *              dropdown, D and Shift+D), amount?: true (a slider the digits set: opacity, flow, strength, tolerance),
+ *              hardness?: true (a slider Shift+[ and Shift+] step by 10, or a segmented row, hardest first, they set) }
  *   begin(ctx, pos, event) -> false when there's no stroke to continue; move(ctx, from, to); end(ctx).
  *              A paint tool's (not VECTOR's, nor Select's and the Wand's, which select what shows) is refused while the
  *              picked layer is hidden (refusesHidden), and with no cells layer to draw on (an artist's, in a room with

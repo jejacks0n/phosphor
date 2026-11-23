@@ -243,7 +243,8 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Rated: yes, wants Shift+Cmd+N (Photoshop's, which the browser keeps); Shift+Alt+N (Shift+Option+N) is Phosphor's
 
 ### 16. Paint over the picture
-- Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity, and paints a few strokes on Layer 2.
+- Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity (a digit: 5 is 50%, 4 then 5 quickly is
+  45%), and paints a few strokes on Layer 2.
 - Expects: paint covers half cells and shows through each cell's character (Colors only); with Choose characters on
   Random, as the base's is, a cell that shows none (one flat color) takes it in Random's characters (solid where the
   paint covers it whole), never a row of `▄`, and on Best match or By shape it's matched to the paint; with Build up on, two strokes at 50% make it 75%, as two layers at 50% do;
@@ -282,7 +283,7 @@ dithered, and compare the dither at 80 and at 200 columns.
 - Rated: yes, wants G
 
 ### 19. Fill with a gradient
-- Does: opens the Paint Bucket's button (its corner, or a long press) and picks the Gradient, picks Linear and drags across an area, then Spherical, then holds Shift
+- Does: opens the Paint Bucket's button (its corner, or a long press) and picks the Gradient, picks Linear and drags across an area, then Spherical (Shift+G again), then holds Shift
   while dragging; then tries Cells with a gradient.
 - Expects: Linear runs from her foreground where she pressed to her background where she let go; Spherical is a
   circle; Shift snaps the line to 45°; Cells builds it from █ ▓ ▒ ░ and a space; a gradient is one undo step; a drag
@@ -290,7 +291,7 @@ dithered, and compare the dither at 80 and at 200 columns.
   Escape before letting go takes the line away, and the release fills nothing.
 - Probes: `back-out`: start a gradient drag and press Escape before letting go; `out-of-order`: set the background to
   None and drag; `undo-redo`: undo the gradient and redo it.
-- Rated: yes, wants Shift+G
+- Rated: yes, wants Shift+G, then Shift+G again for Spherical
 
 ### 20. Dodge, burn and blur the paint
 - Does: opens the Paint Bucket's neighbor, the Retouch button (its corner, or a long press), picks Dodge and strokes
@@ -461,8 +462,9 @@ afternoon. Each step she does twice: in ANSI, and in Color ASCII with Choose cha
 engineering rules behind these steps are docs/model.md (R1–R8); a finding here names the step and the view.
 
 ### 31. Paint blends the same on any layer
-- Does: on Layer 1 paints a white patch; on Layer 2, above it, a soft red stroke (Opacity 40, Hardness low) across the
-  patch's edge; then the same stroke on Layer 1 beside it. Drags Layer 2 below Layer 1 in LAYERS, then back.
+- Does: on Layer 1 paints a white patch; on Layer 2, above it, a soft red stroke (Opacity 40 with 4, Hardness low
+  with Shift+[) across the patch's edge; then the same stroke on Layer 1 beside it. Drags Layer 2 below Layer 1 in
+  LAYERS, then back.
 - Expects: the stroke on Layer 2 looks like the one on Layer 1, the same characters and colors over the white and over
   the photo, in the ANSI and PIXEL views alike, over the white's soft edge and over white at Opacity 50 too (the photo
   shows through as much); in Color ASCII, soft paint over white comes out near-white, never a darker character; a

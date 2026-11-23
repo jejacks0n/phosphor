@@ -179,7 +179,7 @@ function reachOf(pixels) {
 
 
 const RANGE = {
-  key: 'retouchRange', get label() { return t('tools.retouch.range'); }, type: 'segmented',
+  key: 'retouchRange', kind: true, get label() { return t('tools.retouch.range'); }, type: 'segmented',
   choices: ['shadows', 'midtones', 'highlights'].map((value) => ({ value, get label() { return t(`tools.retouch.${value}`); } })),
 };
 
@@ -195,8 +195,8 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
     preview: { shape: 'circle', size: (workspace) => workspace.retouchSize },
     options: [
       { key: 'retouchSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
-      { key: 'retouchStrength', get label() { return t('tools.retouch.strength'); }, get title() { return t('tools.retouch.strengthTitle'); }, min: 1, max: 100, unit: '%' },
-      { key: 'retouchHardness', get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },
+      { key: 'retouchStrength', amount: true, get label() { return t('tools.retouch.strength'); }, get title() { return t('tools.retouch.strengthTitle'); }, min: 1, max: 100, unit: '%' },
+      { key: 'retouchHardness', hardness: true, get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },
       ...(range ? [RANGE] : []),
     ],
     begin(ctx, pos, event) {

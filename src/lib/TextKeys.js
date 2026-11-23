@@ -41,10 +41,11 @@ const LINES = { ArrowUp: ['line', 1], ArrowDown: ['line', -1], ArrowRight: ['col
 const LAYER_STEPS = new Set(['BracketLeft', 'BracketRight']);
 
 // The letters the editor's own keys take before any tool's (useKeyboardShortcuts): X swaps the colors (Shift+X is
-// left to the tools), and with Animate on, L plays and pauses and N adds a frame, with Shift or without. EDITOR_KEYS are
-// them as a tool's keys are written; a plugin brush asking for one is given no key (tools/index.js's pluginTools).
-export const SWAP_COLORS_KEY = 'x', PLAY_KEY = 'l', ADD_FRAME_KEY = 'n';
-export const EDITOR_KEYS = [SWAP_COLORS_KEY, PLAY_KEY, ADD_FRAME_KEY].map((key) => key.toUpperCase())
+// left to the tools), with Animate on L plays and pauses and N adds a frame, and D steps Draw with, the last three with
+// Shift or without. EDITOR_KEYS are them as a tool's keys are written; a plugin brush asking for one is given no key
+// (tools/index.js's pluginTools).
+export const SWAP_COLORS_KEY = 'x', PLAY_KEY = 'l', ADD_FRAME_KEY = 'n', DRAW_WITH_KEY = 'd';
+export const EDITOR_KEYS = [SWAP_COLORS_KEY, PLAY_KEY, ADD_FRAME_KEY, DRAW_WITH_KEY].map((key) => key.toUpperCase())
   .flatMap((key) => (key === SWAP_COLORS_KEY.toUpperCase() ? [key] : [key, `Shift+${key}`]));
 
 export function textKeyAction(e, { editable }) {

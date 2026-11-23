@@ -140,15 +140,15 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Rated: yes, wants F1–F12 and Ctrl+.
 
 ### 6. Draw half blocks
-- Does: presses P, sets Draw with to Half-block from the keys (Tab to it, Enter, ↓ to Half-block, Enter), and draws a
-  small shape in two colors.
-- Expects: the arrows walk the menu's items and Enter picks one; each cell he paints becomes `▄`, and the half he doesn't paint keeps its color; a straight line with Shift
+- Does: presses P, then Shift+D, which steps Draw with back from Colors only round to Half-block, and draws a small
+  shape in two colors.
+- Expects: Draw with shows each step as he presses, D forward and Shift+D back, wrapping; each cell he paints becomes `▄`, and the half he doesn't paint keeps its color; a straight line with Shift
   from his last stroke.
 - Probes: `undo-redo`: undo the shape stroke by stroke; `again`: draw over the same cells twice in another color, and
   across a box of double lines he typed, with the Pencil and with the Shape tool's Half-block, Write block glyphs on
   and off, the box's edge on the line's top half and on its bottom half: each crossed cell is a `▄` with the line gone,
   not a whole cell; with the checkbox off the rest of the box is the canvas's own characters.
-- Rated: yes, wants P, then a key for Draw with
+- Rated: yes, wants P, then Shift+D
 
 ### 7. Set my colors from the keys
 - Does: presses Alt+F, arrows to a color, Enter; Alt+B, arrows, Space, Escape; X to swap; Ctrl+↑ and Ctrl+↓
@@ -178,7 +178,7 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Probes: `undo-redo`: undo Set BG, then Set FG; `out-of-order`: Set FG with the foreground set to None.
 - Rated: yes, wants M, Shift+arrows, then a key for Set FG
 
-**Free time:** he'd look for a key that toggles Draw with between modes, try the Pencil's Single line and Double line
+**Free time:** he'd press D through every Draw with mode and round, try the Pencil's Single line and Double line
 with Connect, type a box with the F-keys' line characters, and check the shortcut list names every key he used.
 
 ## Blocks: select, copy, move

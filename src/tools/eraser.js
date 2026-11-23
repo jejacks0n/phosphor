@@ -32,13 +32,13 @@ const eraser = {
     { key: 'editEraserSize', size: true, get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, when: (workspace) => inPixels(workspace, workspace.editorTab) },
     { key: 'editEraserCells', size: true, get label() { return t('tools.eraser.sizeCells'); }, get title() { return t('tools.eraser.sizeCellsTitle'); }, min: 1, max: 20, step: 1, views: ['output'], when: (workspace) => !soft(workspace) },
     {
-      key: 'editEraserSoft', get label() { return t('tools.eraser.edge'); }, type: 'segmented',
+      key: 'editEraserSoft', hardness: true, get label() { return t('tools.eraser.edge'); }, type: 'segmented',
       choices: [
         { value: false, get label() { return t('tools.eraser.hard'); } },
         { value: true, get label() { return t('tools.eraser.soft'); } },
       ],
     },
-    { key: 'editEraserFlow', get label() { return t('tools.eraser.flow'); }, get title() { return t('tools.eraser.flowTitle'); }, min: 1, max: 100, unit: '%', when: soft },
+    { key: 'editEraserFlow', amount: true, get label() { return t('tools.eraser.flow'); }, get title() { return t('tools.eraser.flowTitle'); }, min: 1, max: 100, unit: '%', when: soft },
   ],
   begin(ctx, pos) {
     eraser.move(ctx, pos, pos);

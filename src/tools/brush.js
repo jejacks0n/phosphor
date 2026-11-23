@@ -20,12 +20,12 @@ const brush = {
   nothingToLay: ({ workspace }) => (workspace.editFgNone ? 'tools.fgNone' : null), // it paints the foreground
   options: [
     { key: 'editBrushSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
-    { key: 'editBrushOpacity', get label() { return t('tools.brush.opacity'); }, get title() { return t('tools.brush.opacityTitle'); }, min: 1, max: 100, unit: '%' },
+    { key: 'editBrushOpacity', amount: true, get label() { return t('tools.brush.opacity'); }, get title() { return t('tools.brush.opacityTitle'); }, min: 1, max: 100, unit: '%' },
     { key: 'editBrushFlow', get label() { return t('tools.brush.flow'); }, get title() { return t('tools.brush.flowTitle'); }, min: 1, max: 100, unit: '%' },
-    { key: 'editBrushHardness', get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },
+    { key: 'editBrushHardness', hardness: true, get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },
     { key: 'editBrushStack', get label() { return t('tools.brush.stack'); }, get title() { return t('tools.brush.stackTitle'); }, type: 'checkbox' },
     {
-      key: 'brushDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
+      key: 'brushDrawWith', drawWith: true, get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       choices: [
         { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // paint over each cell's own character, which shows through
         { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },  // each cell painted becomes a ▄ the paint colors

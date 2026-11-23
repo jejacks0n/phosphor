@@ -302,7 +302,7 @@ export default {
   }[ws.shapeKind]),
   options: [
     {
-      key: 'shapeKind', get label() { return t('tools.shapes.shape'); }, type: 'segmented',
+      key: 'shapeKind', kind: true, get label() { return t('tools.shapes.shape'); }, type: 'segmented',
       choices: [
         { value: 'rect', get label() { return t('tools.shapes.rectangle'); }, icon: '<svg viewBox="0 0 16 16"><path d="M1 3h14v10H1zM3 5v6h10V5z"/></svg>' },
         { value: 'ellipse', get label() { return t('tools.shapes.ellipse'); }, icon: '<svg viewBox="0 0 16 16"><path d="M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11zM8 4.5a3.5 3.5 0 1 0 0 7a3.5 3.5 0 1 0 0-7z"/></svg>' },
@@ -310,7 +310,7 @@ export default {
       ],
     },
     {
-      key: 'shapeDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
+      key: 'shapeDrawWith', drawWith: true, get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       get choices() { return drawWithChoices(useProjectStore().drawingFont); },
       drawn: drawnWith,
     },

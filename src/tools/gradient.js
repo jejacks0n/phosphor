@@ -54,7 +54,7 @@ export default {
     ...FILL_OPTIONS,
     FILL_WITH,
     {
-      key: 'gradientShape', get label() { return t('tools.gradient.shape'); }, type: 'segmented',
+      key: 'gradientShape', kind: true, get label() { return t('tools.gradient.shape'); }, type: 'segmented',
       choices: [
         { value: 'linear', get label() { return t('tools.gradient.linear'); } },
         { value: 'spherical', get label() { return t('tools.gradient.spherical'); } },

@@ -26,7 +26,7 @@ const pencil = {
   altPicks: true,
   options: [
     {
-      key: 'pencilDrawWith', get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
+      key: 'pencilDrawWith', drawWith: true, get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       get choices() { return drawWithChoices(useProjectStore().drawingFont); },
       drawn: (ws) => drawnValue(ws.pencilDrawWith, useProjectStore().drawingFont, 'normal'), // Normal when the font offers no line style
     },

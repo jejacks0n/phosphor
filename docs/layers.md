@@ -496,7 +496,8 @@ under it, and the last edit to a cell wins.
 
 ### Draw With
 
-In the ANSI view, the Pencil and Brush have a **Draw with** menu:
+In the ANSI view, the Pencil and Brush have a **Draw with** menu (**D** chooses the next one, **Shift+D** the one
+before: [Tool Keys](#tool-keys)):
 
 - **Colors only** (the default): They paint over each cell's own character, which shows through. A cell that shows no
   character yet (a blank canvas's black, or the lines added when it grows) takes the paint in the character **Choose
@@ -703,7 +704,8 @@ The **Eraser** (**E**) erases the selected layer:
 - **Hard or Soft**: **Hard**, as it starts, is a square that clears everything under it at once: pixels in the PIXEL
   view, whole cells with their characters in the ANSI view. **Soft** is round with a feathered edge, like the Brush,
   and takes paint away a little with each pass: its **Flow** sets how much, so a low Flow fades paint gently and a few
-  passes clear it. On the base, where erasing is black, Soft lays the black the same way.
+  passes clear it. On the base, where erasing is black, Soft lays the black the same way. **Shift+]** makes it Hard
+  and **Shift+[** Soft ([Tool Keys](#tool-keys)).
 - **Soft in the ANSI View**: Soft is the same eraser in both views, as the Brush is the same brush: it works in pixels,
   at the PIXEL view's **Size · px** (which the ANSI view's row shows in place of **Size · cells** while Soft is on).
   It takes paint, not characters: a character you typed or drew stays where it is, as it does under the Eraser in the
@@ -1151,7 +1153,22 @@ Eyedropper, **H** Hand, **Z** Zoom, **W** Magic Wand, **T** or **K** Edit Mode, 
 in the views that have the tool (Edit Mode and Swap cell FG/BG are the ANSI view's). Each tool's tooltip shows its key.
 
 **]** and **[** grow and shrink the Size of the Brush, the Eraser (the Size its row shows: cells or pixels), Blur,
-Dodge and Burn by 1 a press, from 1 to 20, as in Photoshop. In Edit Mode, while you type, they type.
+Dodge and Burn by 1 a press, from 1 to 20, as in Photoshop, and on VECTOR the Shape tool's Polygon **Sides**, from 3 to
+12. In Edit Mode, while you type, these keys type, and so do the ones below.
+
+- **The Tool's Key Again**: With the tool chosen, its key steps the tool's kind and wraps: **U** goes from Rectangle to
+  Ellipse, then Line (on VECTOR, through its Shape row, a plugin's shapes too), **Shift+G** between Linear and
+  Spherical, and **O** and **Shift+O** through Dodge's and Burn's Range. A tool with no kind (Blur, say) stays as it
+  is. Holding the key down steps once.
+- **D and Shift+D**: The next and previous **Draw with** ([Draw With](#draw-with)): the Pencil's, the Brush's and
+  Shapes' in the ANSI view, and the Paint Bucket's and Gradient's **Fill**, past the choices the menu hides (an
+  Ellipse has no line styles), wrapping.
+- **The Digits**: Set the tool's amount, as in Photoshop: the Brush's **Opacity**, the Eraser's **Flow**, Blur's,
+  Dodge's and Burn's **Strength**, and the Paint Bucket's, Gradient's and Magic Wand's **Tolerance**. **1** is 10, **9**
+  is 90 and **0** is 100; two digits within a second set it exactly (**4** then **5** is 45, **0** then **5** is 5),
+  within the slider's range.
+- **Shift+[ and Shift+]**: Softer and harder: the Brush's and Blur's, Dodge's and Burn's **Hardness** by 10 a press,
+  and the Eraser's edge, Soft or Hard.
 
 - **Shared Buttons**: Some tools share a button: the Paint Bucket and Gradient; Blur, Dodge and Burn; Select and the
   Magic Wand; the Hand and Zoom; and on VECTOR the Vector select and Node tools. The button shows the one you chose
@@ -1335,6 +1352,8 @@ don't need a key or a trip to their button. In the desktop app it's also **Help 
   - **Tool options**: each tool's checkboxes, toggles and choices in the tab showing, with the tool's name first
     (**Magic Wand: Contiguous**, **Shapes: Ellipse**, **Magic Wand: Match BG**). Running one chooses the tool and sets
     the option, as the options row does.
+  - **The tool's keys**: **Draw with: next** and **previous** (D and Shift+D), and **Softer** and **Harder** (Shift+[
+    and Shift+]), on the chosen tool; the digits' amount is the keys' alone.
 
   The tools of the tab showing are there too, and inserting and deleting lines and columns at Edit Mode's cursor. A
   command that doesn't apply where you are (zooming on the start screen, VECTOR's on PIXEL) isn't listed.

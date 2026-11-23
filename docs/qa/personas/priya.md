@@ -92,14 +92,14 @@ script. Every section ends with Free time.
 - Rated: yes, wants a key for Animate (Tab to the switch, then Space, is the path today)
 
 ### 2. Draw the ball
-- Does: presses Add vector layer in LAYERS, picks the Shape tool (U), chooses Ellipse, drags a circle near the top with
+- Does: presses Add vector layer in LAYERS, picks the Shape tool (U), chooses Ellipse (U again), drags a circle near the top with
   Shift held, then gives it a Fill from the color box (Alt+F).
 - Expects: "Vector 1" is added directly above Base and picked, the tabs become VECTOR and SAUCE, and the Keys button (a
   diamond) appears on the bar; the circle is selected, and the color goes to it as one undo step
   ([Shape](../../vector.md#shape-u), [Fill and Stroke](../../vector.md#fill-and-stroke)).
 - Probes: `again`: draw a second circle right away, then delete it with Delete; `undo-redo`: undo the fill and the
   shape one at a time, redo both, then draw something and check redo is off.
-- Rated: yes, wants U, then a key for Ellipse
+- Rated: yes, wants U, then U again for Ellipse
 
 ### 3. Bring in my SVG
 - Does: drops `gradients.svg` on the drawing and chooses Add to this drawing; scales the import down by a corner

@@ -185,11 +185,11 @@ export default {
     const plugged = pluginShapes();
     return [
       {
-        key: 'vectorShapeKind', label: t('tools.shapes.shape'), type: 'segmented', get: shapeKind,
+        key: 'vectorShapeKind', kind: true, label: t('tools.shapes.shape'), type: 'segmented', get: shapeKind,
         choices: [...builtInChoices(), ...plugged.map(({ ref, pluginName, def }) => ({ value: ref, label: t('tools.pluginTitle', { name: def.name, plugin: pluginName }), icon: def.icon }))],
       },
       overSelected('polygon', null, {
-        key: 'vectorSides', label: t('tools.vshape.sides'), title: t('tools.vshape.sidesTitle'), min: 3, max: 12, readout: true,
+        key: 'vectorSides', size: true, label: t('tools.vshape.sides'), title: t('tools.vshape.sidesTitle'), min: 3, max: 12, readout: true,
         when: (ws) => shapeKind(ws) === 'polygon',
       }, 'sides', { get: (ws) => ws.vectorSides, set: (ws, value) => { ws.vectorSides = value; } }),
       ...plugged.flatMap((plugin) => plugin.def.options.map((declared) => {

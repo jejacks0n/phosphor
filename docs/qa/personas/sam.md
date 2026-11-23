@@ -108,12 +108,12 @@ script. Every section ends with Free time.
 - Rated: yes, wants Cmd+V
 
 ### 5. Box it in
-- Does: presses U, picks Rectangle with Draw with set to Double line and Connect on, and drags a box around the text;
-  then a Single line across under the title.
+- Does: presses U for Shapes' Rectangle, D until Draw with shows Double line, turns Connect on and drags a box around
+  the text; then presses U twice more for Line, Shift+D back to Single line, and draws one across under the title.
 - Expects: the box frame in the foreground color, joined where lines meet (`╟`, `╢` and the like with Connect);
   with the background set to None it leaves the cells' backgrounds alone.
 - Probes: `undo-redo`: undo the line and the box; `back-out`: start a drag and press Escape before letting go.
-- Rated: yes, wants U, then a key for Draw with
+- Rated: yes, wants U, U again for the kind, and D
 
 ### 6. Color it from the keys
 - Does: Alt+F, the arrows, Enter; Alt+B, the arrows, Enter; Shift+Cmd+X to swap; Set FG on a selection of the title.
