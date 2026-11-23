@@ -1812,6 +1812,7 @@
       "emailOrUsername": "Email or username",
       "passwordLabel": "Password",
       "passwordHelp": "Must be at least 10 characters and not found in known data breaches.",
+      "passwordTooLong": "Passwords can be up to {most} characters.",
       "signInHeading": "Sign in",
       "signInIntro": "Sign in to chat and start rooms.",
       "continueWith": "Continue with {provider}",

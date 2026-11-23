@@ -125,8 +125,10 @@ up.
   (each opens over the app).
 
 The username, email and password each count what you've typed against the most they take (`10 / 24`), as SAUCE's
-fields do, and stop there: 24 for a username, 254 for an email, 128 for a password. The same fields on **Pick your
-username**, **Set a new password** and **Account** count the same way.
+fields do: 24 for a username, 254 for an email, 128 for a password. The username and email stop there. A password is
+never cut: past 128 it stays as you typed or pasted it, its count turns the warning color, the form says "Passwords can
+be up to 128 characters." and can't be sent until it's shorter. The same fields on **Pick your username**, **Set a new
+password** and **Account** count the same way.
 
 Phosphor then emails you a link to confirm your address. Until you do, you can watch but not chat or start a room.
 

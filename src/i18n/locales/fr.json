@@ -1812,6 +1812,7 @@
       "emailOrUsername": "E-mail ou nom d'utilisateur",
       "passwordLabel": "Mot de passe",
       "passwordHelp": "Doit comporter au moins 10 caractères et ne pas figurer dans des fuites de données connues.",
+      "passwordTooLong": "Un mot de passe peut compter jusqu'à {most} caractères.",
       "signInHeading": "Connexion",
       "signInIntro": "Connectez-vous pour discuter et créer des salles.",
       "continueWith": "Continuer avec {provider}",
