@@ -268,8 +268,8 @@ test('.ans lists each character it replaces and what it becomes; another format 
   const { unmount } = mountModal();
   try {
     const modal = document.querySelector('.modal-dialog');
-    const rows = () => [...modal.querySelectorAll('ul[aria-label="Replacements"] li')].map((li) => li.textContent.replace(/\s+/g, ''));
-    expect(rows()).toEqual(['漢→?1cell']);
+    const rows = () => [...modal.querySelectorAll('ul[aria-label="Replacements"] li')].map((li) => [...li.children].map((span) => span.getAttribute('aria-label') ?? span.textContent.trim()).join(' '));
+    expect(rows()).toEqual(['漢 becomes ? 1 cell']); // the arrow is drawn, read by its name
     [...modal.querySelectorAll('.format-btn:not(:disabled)')].find((b) => b.textContent.includes('UTF-8 ANS')).click();
     await nextTick();
     expect(rows()).toEqual([]);
@@ -292,8 +292,8 @@ test('every format that writes SAUCE lists the SAUCE characters CP437 lacks, wit
   try {
     const modal = document.querySelector('.modal-dialog');
     const list = () => modal.querySelector('ul[aria-label="SAUCE replacements"]');
-    const rows = () => [...(list()?.querySelectorAll('li') ?? [])].map((li) => [...li.children].map((span) => span.textContent.trim()).join(' '));
-    const expected = ['ł → ? Author', '€ → ? Author, Group', 'Ï → ? Group', 'Ł → ? Group'];
+    const rows = () => [...(list()?.querySelectorAll('li') ?? [])].map((li) => [...li.children].map((span) => span.getAttribute('aria-label') ?? span.textContent.trim()).join(' '));
+    const expected = ['ł becomes ? Author', '€ becomes ? Author, Group', 'Ï becomes ? Group', 'Ł becomes ? Group'];
     expect(rows()).toEqual(expected);
     expect(modal.textContent).toContain('4 characters in SAUCE aren\'t in CP437 and will be substituted:');
     expect(modal.textContent).toContain('SAUCE is CP437 in every ANSI file. To choose your own stand-ins, change these on the SAUCE tab.');
@@ -309,7 +309,7 @@ test('every format that writes SAUCE lists the SAUCE characters CP437 lacks, wit
     project.sauceAuthor = 'Walt €';
     project.sauceGroup = '';
     await pick(modal, 'ANS');
-    expect(rows()).toEqual(['€ → ? Author']);
+    expect(rows()).toEqual(['€ becomes ? Author']);
     expect(modal.textContent).toContain('1 character in SAUCE isn\'t in CP437 and will be substituted:');
   } finally {
     unmount();

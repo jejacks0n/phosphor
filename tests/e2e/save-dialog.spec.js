@@ -66,14 +66,16 @@ test('.ans: every character that will be replaced is listed, in a list that scro
   await page.keyboard.insertText('一二三四五六七八九十百千万ąćęłńśźż'); // none of them in CP437
   await settled(page);
   const cells = await store(page, 'project', (p) => p.cells);
-  const expected = [...AnsiFile.unmappable(cells)].map(([char, { as }]) => `${char}→${as}`);
+  const expected = [...AnsiFile.unmappable(cells)].map(([char, { as }]) => `${char}${as}`); // the arrow between is drawn
 
   await page.getByRole('button', { name: 'Export…' }).click();
   const list = dialog(page).getByRole('list', { name: 'Replacements' });
   const shown = (await list.getByRole('listitem').allTextContents()).map((t) => t.replace(/\s+/g, '').replace(/\d+cells?$/, ''));
   expect(shown).toEqual(expected);
   expect(shown.length).toBe(21); // the 21 typed (the default set is all CP437)
-  await expect(list.getByRole('listitem').filter({ hasText: '一' })).toHaveText(/一\s*→\s*\?\s*1 cell$/);
+  const one = list.getByRole('listitem').filter({ hasText: '一' });
+  await expect(one).toHaveText(/一\s*\?\s*1 cell$/);
+  await expect(one.getByRole('img', { name: 'becomes' })).toBeVisible();
 
   const { scrollHeight, clientHeight } = await list.evaluate((el) => ({ scrollHeight: el.scrollHeight, clientHeight: el.clientHeight }));
   expect(scrollHeight).toBeGreaterThan(clientHeight);
