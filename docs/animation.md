@@ -307,7 +307,7 @@ What still works across frames:
 
 ## Saving
 
-- **Project files**: A `.phosphor` project keeps the frames, their holds, the frames per second, the frame you were on, the tweens, easings and motion, and which cells stay. Autosave and Versions keep them too.
+- **Project files**: A `.pho` project keeps the frames, their holds, the frames per second, the frame you were on, the tweens, easings and motion, and which cells stay. Autosave and Versions keep them too.
 - **Not an edit**: Going from frame to frame isn't an edit, so it doesn't count toward a new version.
 - **Older copies of Phosphor**: A copy from before animation opens such a file as a still, of the frame that was showing.
 - **Damaged files**: A file whose frames are damaged or too large opens as a still too, and says so. Saving it then keeps only the still.

@@ -83,7 +83,7 @@ shows while your art is showing. With nothing open, or on SAUCE, it says "Layers
 - **Inside an Art Layer**: Inside an [art layer](vector.md#art-layers), its vector layer's row shows as selected,
   and that layer's eye decides whether you can step in and draw. The base row is off. Selecting the edit layer steps
   out of the art layer.
-- **Saving**: A `.phosphor` file and autosave keep every layer with its contents, name, eye and character settings.
+- **Saving**: A `.pho` file and autosave keep every layer with its contents, name, eye and character settings.
   - A saved file is compressed, so a drawing that's mostly characters is a fraction of its size as an `.ans`.
     Project files saved before that still open. A copy of Phosphor from before compressed files (a tab left open from
     then) refuses one as an invalid project file until you reload it.

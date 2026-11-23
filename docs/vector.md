@@ -300,7 +300,7 @@ Art layers travel the same way: each one is a single shape, and every edit made 
 
 ## Saving
 
-Shapes are saved as shapes: a `.phosphor` file, autosave, and Versions keep them editable, and an animation's frames each keep their own. Exports (`.ans`, PNG, GIF, and the rest) have the shapes' converted cells, as they show.
+Shapes are saved as shapes: a `.pho` file, autosave, and Versions keep them editable, and an animation's frames each keep their own. Exports (`.ans`, PNG, GIF, and the rest) have the shapes' converted cells, as they show.
 
 ---
 
