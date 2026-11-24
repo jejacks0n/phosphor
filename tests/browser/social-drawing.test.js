@@ -88,20 +88,23 @@ async function join(room, sub, { guest = false } = {}) {
   const project = useProjectStore(), drawing = useDrawingStore();
   project.seed = 'phosphor-tests';
   toStop.push(followParams(project));
-  const person = { sub, pinia, project, drawing };
+  const person = { sub, pinia, project, drawing }, states = [];
   person.watch = new Watch({
     config, roomId: 'room', passKey,
     send: async (msg) => { await later(); room.host.signalFrom(sub, msg.data); },
     onRoom: () => {}, onArt: () => {}, onView: () => {},
-    onState: (state) => drawing.connection(state),
+    onState: (state) => { states.push(state); drawing.connection(state); },
     ...drawing.watchCallbacks(),
   });
   drawing.watching(person.watch, { me: () => sub, roomId: 'room', roomName: () => 'Night shift' });
   room.people.set(sub, person);
   toStop.push(() => { drawing.close(); person.watch.close(); });
   await room.host.peer(sub, await passFor(sub, guest));
-  await expect.poll(() => room.host.open().some((w) => w.peer === sub), PATIENT).toBe(true);
-  await expect.poll(() => person.watch.ready, PATIENT).toBe(true);
+  // Both ends open. One that isn't in time says how each end stood, so a failure names the side that didn't get there.
+  const stood = () => { const w = room.host.watchers.get(sub); return `${sub}'s states: ${states.join(', ') || 'none'}; their channel: ${person.watch.channel?.readyState ?? 'none'}, connection: ${person.watch.conn ? 'there' : 'none'}; the host's channel to them: ${w ? w.channel?.readyState ?? 'none' : 'no watcher'}`; };
+  const opens = async (check) => { try { await expect.poll(check, PATIENT).toBe(true); } catch (error) { throw new Error(stood(), { cause: error }); } };
+  await opens(() => room.host.open().some((w) => w.peer === sub));
+  await opens(() => person.watch.ready);
   return person;
 }
 
