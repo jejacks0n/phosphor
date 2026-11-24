@@ -85,6 +85,8 @@ const painted = computed(() => {
 });
 const showPainted = ref(false);
 const shown = (hex) => getEffectiveColor(hex, project, activePalette.value);
+// Without iCE colors, a bright background blinks (blink.js): its swatch says so on the BG side, where it's picked as one.
+const blinks = (color) => !vector.value && props.slotName === 'bg' && !!project.blinkingBackgrounds?.has(color.kept);
 // With a palette, a recent color is its palette color's swatch; in Full color, the color as it was kept.
 const recent = computed(() => workspace.recentColors.map((entry) => {
   const { hex, index } = recentColor(entry);
@@ -225,9 +227,9 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
           v-for="color in section.colors"
           :key="color.hex + color.c"
           class="swatch"
-          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() && currentIndex === sharedIndex(color.c, activePalette) }"
+          :class="{ selected: color.paints && !isNone && current.toLowerCase() === color.hex.toLowerCase() && currentIndex === sharedIndex(color.c, activePalette), blinks: blinks(color) }"
           :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
-          :title="color.paints ? color.hex : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
+          :title="color.paints ? (blinks(color) ? t('colors.blinksTitle', { hex: color.hex }) : color.hex) : t('colors.cantPaint', { hex: color.hex.toLowerCase() })"
           :disabled="!color.paints"
           :data-off-reason="color.paints ? undefined : ''"
           @click="choose(color.hex.toLowerCase(), true, sharedIndex(color.c, activePalette), color.kept)"
@@ -260,6 +262,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onKeyDown, true));
           v-for="color in recent"
           :key="color.entry"
           class="swatch small"
+          :class="{ blinks: blinks(color) }"
           :style="{ backgroundColor: color.paints ? shown(color.hex) : color.hex }"
           :title="color.paints ? t('colors.recentTitle', { hex: color.kept }) : t('colors.cantPaint', { hex: color.kept })"
           :disabled="!color.paints"
@@ -518,6 +521,21 @@ button.swatch:disabled {
   opacity: 1; /* not dimmed as other disabled buttons are */
   background-image: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none'><g stroke='%23000' stroke-width='3'><circle cx='8' cy='8' r='5.5'/><path d='M4.1 4.1l7.8 7.8'/></g><g stroke='%23fff' stroke-width='1.5'><circle cx='8' cy='8' r='5.5'/><path d='M4.1 4.1l7.8 7.8'/></g></svg>");
   background-size: 100% 100%;
+}
+
+/* A bright background that blinks (iCE colors off): a small spark in its corner, white edged in black. */
+button.swatch.blinks {
+  position: relative;
+}
+button.swatch.blinks::after {
+  content: "";
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: max(5px, 40%);
+  height: max(5px, 40%);
+  background: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 10'><path d='M5 0.5L6.2 3.8 9.5 5 6.2 6.2 5 9.5 3.8 6.2 0.5 5 3.8 3.8z' fill='%23fff' stroke='%23000' stroke-width='1' stroke-linejoin='round'/></svg>") center / contain no-repeat;
+  pointer-events: none;
 }
 
 button.swatch.selected {

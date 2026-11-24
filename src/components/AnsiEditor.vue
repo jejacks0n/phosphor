@@ -13,6 +13,7 @@ import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampViewZoom, dragViewZoom } from '@/lib/zoom';
 import { fitColumns } from '@/lib/DrawnWidth';
+import { BLINK_MS, blinkCell } from '@/lib/blink';
 import EditorViewport from '@/components/EditorViewport.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
@@ -157,7 +158,7 @@ const render = () => {
     const was = sizedBy.value;
     sizedBy.value = m;
     if (was && (was.cellWidth !== m.cellWidth || was.lineHeight !== m.lineHeight)) keepPlace(was);
-    cellCanvas.draw(projectStore.shownCells, { cols, rows: lines, col: win.col, row: win.row });
+    cellCanvas.draw(projectStore.shownCells, { cols, rows: lines, col: win.col, row: win.row, look: blinkLook() });
     canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
     canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
     return;
@@ -169,7 +170,8 @@ const render = () => {
     rows: charRowsOf(projectStore.rows),
   }, m);
 
-  const buffer = projectStore.shownCells.map(({ char, fg, bg, wide }) => ({
+  const look = blinkLook(), cells = look ? projectStore.shownCells.map(look) : projectStore.shownCells;
+  const buffer = cells.map(({ char, fg, bg, wide }) => ({
     char: wide === 'trail' ? '' : char, // the lead's glyph is the whole wide character
     fit: wide === 'trail' ? 0 : fitColumns(char), // held to its columns, its shape spilling over what follows
     color: fg.hex,
@@ -179,6 +181,29 @@ const render = () => {
   }));
   renderText(context, buffer);
 };
+
+// Blink: without iCE colors a 16-color drawing's bright backgrounds blink here, and only here (blink.js). The letters
+// turn over while anything can blink, and stay lit for someone who asks for less motion.
+const blinkLit = ref(true);
+let blinkTimer = null;
+const lessMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+const blinkLook = () => {
+  const under = projectStore.blinkingBackgrounds, lit = blinkLit.value;
+  return under && ((cell) => blinkCell(cell, under, lit));
+};
+const blinkWhile = (under) => {
+  clearInterval(blinkTimer);
+  blinkTimer = null;
+  blinkLit.value = true;
+  if (under && !lessMotion?.matches) blinkTimer = setInterval(() => { blinkLit.value = !blinkLit.value; }, BLINK_MS);
+};
+blinkWhile(projectStore.blinkingBackgrounds);
+watch(() => projectStore.blinkingBackgrounds, (under) => {
+  blinkWhile(under);
+  queueRender();
+});
+watch(blinkLit, () => queueRender());
+onBeforeUnmount(() => clearInterval(blinkTimer));
 
 const coordsAt = (event) => {
   const displayEl = displayRef.value;

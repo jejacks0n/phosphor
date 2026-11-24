@@ -801,6 +801,7 @@
     "painted": "Painted ({count})",
     "none": "None",
     "cantPaint": "{hex}: this color cannot be produced with current slider settings",
+    "blinksTitle": "{hex}: blinks as a background (iCE colors is off)",
     "noneTitle": "None: keep existing color",
     "recentTitle": "Recent: {hex}"
   },
@@ -1260,6 +1261,9 @@
     "spacing": "Letter spacing",
     "spacingNone": "Not set",
     "viewersHelp": "These tell other viewers how to show the file. Phosphor's view keeps your display font, except that with a bitmap font Letter spacing is the width it's drawn at.",
+    "iceColors": "iCE colors",
+    "iceHelp": "On: bright backgrounds. Off: they blink, as on DOS.",
+    "iceOnly16": "Only for 16-color drawings.",
     "commentLines": "{count} of {most} SAUCE lines",
     "commentLinesOwn": "{count} of {most} SAUCE lines ({own} are Phosphor's own)",
     "commentLinesOver": "{count} of {most} SAUCE lines. From line {line} (\"{text}\") on, comments won't be in the file.",

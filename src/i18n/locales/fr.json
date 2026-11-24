@@ -801,6 +801,7 @@
     "painted": "Peintes ({count})",
     "none": "Aucun",
     "cantPaint": "{hex} : cette couleur ne peut pas être produite avec les réglages actuels des curseurs",
+    "blinksTitle": "{hex} : clignote en fond (couleurs iCE désactivées)",
     "noneTitle": "Aucun : conserver la couleur existante",
     "recentTitle": "Récente : {hex}"
   },
@@ -1260,6 +1261,9 @@
     "spacing": "Espacement des lettres",
     "spacingNone": "Non défini",
     "viewersHelp": "Ces réglages indiquent aux autres visionneuses comment afficher le fichier. L'affichage de Phosphor garde votre police, sauf qu'avec une police matricielle, « Espacement des lettres » est la largeur à laquelle elle est dessinée.",
+    "iceColors": "Couleurs iCE",
+    "iceHelp": "Activé : fonds clairs. Désactivé : ils clignotent, comme sous DOS.",
+    "iceOnly16": "Seulement pour les dessins en 16 couleurs.",
     "commentLines": "{count} ligne SAUCE sur {most} | {count} lignes SAUCE sur {most}",
     "commentLinesOwn": "{count} lignes SAUCE sur {most} (dont {own} de Phosphor)",
     "commentLinesOver": "{count} lignes SAUCE sur {most}. À partir de la ligne {line} (« {text} »), les commentaires ne seront pas dans le fichier.",

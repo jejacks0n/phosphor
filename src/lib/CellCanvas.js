@@ -296,7 +296,8 @@ export default class CellCanvas {
   // Draw the canvas's cells from (col, row). cells: the whole grid's, row-major, cols x rows (the
   // grid's size, the canvas's own by default). Cells of another size, or a window that doesn't fit in
   // the grid (the grid changed and its render hasn't landed) draw nothing, leaving the canvas as it was.
-  draw(cells, { cols: gridCols = this.#geom?.cols, rows: gridRows = this.#geom?.rows, col = 0, row = 0 } = {}) {
+  // look(cell): the cell as it's drawn (a blink's half), asked of the window's rows only.
+  draw(cells, { cols: gridCols = this.#geom?.cols, rows: gridRows = this.#geom?.rows, col = 0, row = 0, look = null } = {}) {
     const gl = this.#gl, g = this.#geom;
     if (!g || gl.isContextLost() || cells.length !== gridCols * gridRows) return;
     if (col < 0 || row < 0 || col + g.cols > gridCols || row + g.rows > gridRows) return;
@@ -305,6 +306,7 @@ export default class CellCanvas {
     // The window's whole rows get their spills laid out, so a character left of the window still
     // spills into it; then the window takes its columns of the cells and the spills.
     const rowCells = cells.slice(row * gridCols, (row + g.rows) * gridCols);
+    if (look) for (let i = 0; i < rowCells.length; i++) rowCells[i] = look(rowCells[i]);
     const rowSpills = layoutSpills(rowCells, gridCols, (cell) => columnsOf(cell.char));
     const count = g.cols * g.rows, windowCells = new Array(count), windowSpills = new Array(count);
     for (let y = 0; y < g.rows; y++) {
