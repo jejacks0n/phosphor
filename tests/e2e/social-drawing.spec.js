@@ -47,9 +47,8 @@ const toTopOfArt = async (page) => {
 // How many pixels are painted on a row of cells.
 const paintedOnRow = (page, row) => store(page, 'project', `(p) => {
   if (!p.paintLayer) return 0;
-  const scale = p.paintLayer.scale;
-  let count = 0;
-  for (let y = ${row} * 2 * scale; y < (${row} + 1) * 2 * scale; y++) for (let x = 0; x < p.cols * scale; x++) if (p.paintLayer.pixelAt(x, y)) count++;
+  let count = 0; // pixelAt reads grid pixels: the row's two
+  for (let y = ${row} * 2; y < (${row} + 1) * 2; y++) for (let x = 0; x < p.cols; x++) if (p.paintLayer.pixelAt(x, y)) count++;
   return count;
 }`);
 
