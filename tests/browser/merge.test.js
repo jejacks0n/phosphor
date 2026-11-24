@@ -1102,6 +1102,42 @@ test.each([
   }
 });
 
+// A character in the letterbox merges exactly (mergeKind), so the question doesn't say it's picked again; one inside the
+// picture is.
+test('Blend into source image lists a letter as picked again only inside the picture, not in the letterbox', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/tall.png', { cols: 40, rows: 40 }); // pillarboxed
+  const top = project.addLayer('cells', 'base');
+  workspace.pickLayer(top);
+  const fit = project.fitFor(project.cols, project.rows); // one column wide, in the middle
+  expect(fit.dx).toBeGreaterThan(1);
+  project.typeAt(1, 5, 'Q', { fg: '#00ffff' });
+  project.commitEdit();
+  await settle(project);
+  const { asking } = await import('@/composables/useMergeDown.js');
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  const ask = async () => {
+    asking.value = null;
+    await settle(project);
+    asking.value = { id: top, rect: null };
+    await settle(project);
+    return [...document.querySelectorAll('button')].find((b) => b.textContent.includes('Blend into source image')).textContent;
+  };
+  const repicked = /Layer \d+'s characters as they are: each is drawn into the image and picked again/;
+  try {
+    expect(await ask()).not.toMatch(repicked);
+    project.typeAt(fit.dx, 10, 'Q', { fg: '#00ffff' });
+    project.commitEdit();
+    expect(await ask()).toMatch(repicked);
+  } finally {
+    asking.value = null;
+    toolbar.unmount();
+    host.remove();
+  }
+});
+
 // With a palette and Levels on, what a cell shows can be a palette color its stored colors don't show as: the frozen
 // cells are written in stored colors that do (M12: soft paint over paint recolored #aa5500 cells #aa0000).
 const filtered = async () => {
