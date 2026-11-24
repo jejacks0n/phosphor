@@ -16,7 +16,7 @@ import { sauceFont } from '@/lib/fontLibrary.js';
 import { asksWidth, fontSettingsOf } from '@/store/project/font.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
-import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
+import { vgaBitmapFont, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { drawArtCells } from '@/lib/glyphPicture.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
@@ -105,8 +105,10 @@ const saving = (name) => t('document.saving', { name });
 export const blankScale = (cols, rows) => Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
 
 // An art file's cells as a picture, each its glyph in its two colors (glyphPicture.js) in font, a blank canvas's size:
-// { image, imageBuffer }.
+// { image, imageBuffer }. A glyph the drawing font lacks is the reference font's, so that loads first (a fallback font's
+// would be baked into the picture).
 async function artPicture(art, font) {
+  await loadReferenceFont();
   const m = blankScale(art.cols, 2 * art.rows);
   const canvas = Object.assign(document.createElement('canvas'), { width: art.cols * m, height: 2 * art.rows * m });
   const ctx = ctx2d(canvas);
