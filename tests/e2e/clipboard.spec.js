@@ -22,7 +22,9 @@ test('copy and paste a block, in Edit Mode at the cursor, then paste text copied
   await expect(paste).toBeDisabled();
   await page.keyboard.press('ControlOrMeta+c');
   await expect(page.getByRole('button', { name: 'Paste copied cells at the selection' })).toBeEnabled();
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`Copy me\n${' '.repeat(7)}`); // the picked layer's cells: blank under the text
+  // The characters as they show: the text, and the picture's under it (the picked layer is blank there).
+  const under = await store(page, 'project', (p) => p.cells.slice(5 * p.cols + 2, 5 * p.cols + 9).map((cell) => cell.char).join(''));
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText())).toBe(`Copy me\n${under}`);
 
   await select(page, 20, 10, 21, 11);
   await page.keyboard.press('ControlOrMeta+v');
