@@ -140,7 +140,7 @@ async function handleFileSelected(file) {
   // drawing shared with a room), opens in a new window without asking.
   if (DESKTOP && project.image && (isProject || project.hasFrames || project._sharing || drawing.offWithOthers)) return openInNewWindow(file);
   if (drawing.offWithOthers) return toast(drawing.offWithOthers);
-  // From the start screen, an art file asks whether to edit it or draw on top of it.
+  // From the start screen, an art file asks how to open it: to edit, to draw on top of, or as an image.
   if (isArtFile(file.name)) return workspace.askArt(file);
   // A picture over a still drawing (not shared with a room) asks too: added as a layer's paint, or opened in its place.
   if (project.image && !isProject && !project.hasFrames && !project._sharing) return workspace.askArt(file, { picture: true });

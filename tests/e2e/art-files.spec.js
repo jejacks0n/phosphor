@@ -1,6 +1,6 @@
 // Opening .ans, .utf8ans, .asc and .txt files from the start screen: the file picker and the drop zone, each
-// asking whether to edit the art or draw on top of it; and dropping one on an open drawing, to add it there or
-// open it instead.
+// asking whether to edit the art, draw on top of it or open it as an image; and dropping one on an open drawing, to add
+// it there or open it instead.
 import { test, expect } from './support.js';
 import { imageInput, chars, store, tab, settled, openApp, cellPoint, editAt, fixture } from './support.js';
 import { Sauce } from '../../src/lib/Sauce.js';
