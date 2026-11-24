@@ -2,13 +2,15 @@
 // layer share one grid of pixels: moving, hiding or merging a layer never changes what the converter reads. The scale is
 // the picture's processing scale, at least 4 pixels a grid pixel (By shape's samples) where the picture has them and a
 // layer stays within MAX_LAYER_DIM.
-import { test, expect } from 'vitest';
+import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ellipseShape } from '@/document/shapes.js';
 import { MAX_LAYER_DIM, editScaleFor } from '@/document/PaintLayer.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { font8 } from '../support/blockFonts.js';
+import WebGLProcessor from '@/lib/WebGLProcessor.js';
+import { ctx2d } from '@/lib/Canvas.js';
 
 const same = (project) => {
   expect(project.paintLayer.scale).toBe(project.baseLayer.scale);
@@ -178,4 +180,55 @@ test('a file saved with its own scales keeps them', async () => {
   await settle(project);
   expect([project.baseLayer.scale, project.paintLayer.scale]).toEqual([settings.baseScale, settings.paintScale]);
   expect(project.paintLayer.scale).not.toBe(project.baseLayer.scale);
+});
+
+// The picture reduced to the working size before processing is averaged, not sampled: the main texture has no mipmaps, so
+// a picture many times the working size, sampled bilinearly, loses what falls between two samples.
+const gpuPixels = (gpu, image, w, h, params = {}) => {
+  gpu.process(image, { brightness: 100, pluginFilters: [], ...params }, w, h);
+  const copy = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const ctx = ctx2d(copy);
+  ctx.drawImage(gpu.canvas, 0, 0);
+  return ctx.getImageData(0, 0, w, h).data;
+};
+const stripes = (w, h, every) => {
+  const canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
+  const ctx = ctx2d(canvas);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = '#fff';
+  for (let x = 0; x < w; x += every) ctx.fillRect(x, 0, 1, h);
+  return canvas;
+};
+
+test('a fine pattern reduces to its average, not aliased', () => {
+  const gpu = new WebGLProcessor();
+  const out = gpuPixels(gpu, stripes(1600, 960, 10), 160, 96); // a one-pixel line every 10, ten pixels a working pixel
+  for (let i = 0; i < out.length; i += 4) expect(Math.abs(out[i] - 25.5)).toBeLessThanOrEqual(2);
+});
+
+test('sliders moved make no new upload of the picture', () => {
+  const gpu = new WebGLProcessor();
+  const picture = stripes(1600, 960, 10);
+  const upload = vi.spyOn(gpu.gl, 'texImage2D');
+  const uploads = () => upload.mock.calls.filter((call) => call.length === 6).length; // the main texture's form
+  gpuPixels(gpu, picture, 160, 96, { brightness: 110 });
+  gpuPixels(gpu, picture, 160, 96, { brightness: 130 });
+  expect(uploads()).toBe(1);
+});
+
+// A transparent pixel reads the same at every size: the color a PNG keeps under alpha 0 doesn't show at its own size and
+// go black resized.
+test('a transparent picture reads the same at its own size and enlarged', async () => {
+  const gpu = new WebGLProcessor();
+  const picture = new Image();
+  picture.src = '/tests/fixtures/images/rgba.png'; // 48 × 48, its first rows clear with a color kept under them
+  await picture.decode();
+  const own = gpuPixels(gpu, picture, 48, 48), twice = gpuPixels(gpu, picture, 96, 96);
+  for (let y = 0; y < 48; y += 4) {
+    for (let x = 0; x < 48; x += 4) {
+      const a = (y * 48 + x) * 4, b = (y * 2 * 96 + x * 2) * 4;
+      expect([...twice.slice(b, b + 3)]).toEqual([...own.slice(a, a + 3)]);
+    }
+  }
 });
