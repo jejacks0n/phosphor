@@ -69,6 +69,16 @@ test('the page asks the main process for a Lospec palette, which refuses what is
   expect(launched.refused).toEqual([]);
 });
 
+// The page's door to an issue report, through the main process to desktop/issueReport.js. One with nothing written is
+// refused before anything is asked, so this reaches no one.
+test('the page asks the main process to send an issue report, which refuses one with nothing wrong written', async () => {
+  launched = await launchApp();
+  const { page } = launched;
+  const fields = { doing: '', wrong: '  ', packageVersion: '1.0.0-beta', build: '1.0.0-beta (abc1234)', agent: 'Electron 45 on macOS' };
+  expect(await page.evaluate((report) => window.phosphorDesktop.sendIssueReport(report, { drawing: null, steps: null }), fields)).toEqual({ ok: false, error: 'bad-request' });
+  expect(launched.refused).toEqual([]);
+});
+
 test('the room service keeps its port and secret across a reload, changes mode without rebinding, and stops', async () => {
   launched = await launchApp();
   const { page } = launched;

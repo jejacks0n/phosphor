@@ -508,15 +508,8 @@ export const documentActions = {
       if (!handle) return false;
     }
     const [settings, version] = [savedJson(this), this.editVersion];
-    // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too). On desktop the note goes
-    // before the system's save box comes up.
-    // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside.
-    // Typed as bytes, as .phosphor's were: a browser could rename a download typed image/png to .png.
-    const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), async () => {
-      const parts = await this.projectParts({ forFile: true });
-      const project = new Uint8Array(await (await gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }))).arrayBuffer());
-      return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this.artDrawingCells()), project)], { type: 'application/octet-stream' });
-    });
+    // On desktop the note goes before the system's save box comes up.
+    const blob = await busyWhile(saving(`${filename}${PROJECT_EXTENSION}`), () => this.projectFile());
     if (DESKTOP) {
       const bytes = new Uint8Array(await blob.arrayBuffer());
       const saved = await desktop.saveProject({ bytes, name: `${filename}${PROJECT_EXTENSION}`, path: this.filePath, as });
@@ -541,6 +534,19 @@ export const documentActions = {
     this.markSaved();
     this.savedToFile = true;
     return true;
+  },
+
+  // The drawing as its .pho file, as Save writes it, and nothing Save does besides: nothing is renamed, marked saved,
+  // downloaded or noted as busy, and no undo step is made. An issue report carries it, if the person says so
+  // (components/IssueReportDialog.vue). Null with no drawing open.
+  // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too).
+  // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside.
+  // Typed as bytes, as .phosphor's were: a browser could rename a download typed image/png to .png.
+  async projectFile() {
+    if (!this.image || !this.imageBuffer) return null;
+    const parts = await this.projectParts({ forFile: true });
+    const project = new Uint8Array(await (await gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }))).arrayBuffer());
+    return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this.artDrawingCells()), project)], { type: 'application/octet-stream' });
   },
 
   // What a .pho file holds besides the image, all of it as of the call (a canvas is copied when

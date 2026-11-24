@@ -13,6 +13,8 @@ export const SKIPPED = new Set([
   'commitPending', 'documentNumber', 'keepLedger', 'projectParts', // autosave's (useAutosave.js)
   'buildGhost', 'syncShapeLayers', 'viewMoved', 'showGuidesFor', 'autosavedBy', // watchers' (EditWorkspace, vector.js, EditorViewport, App.vue)
   'load', 'loadMarket', 'checkFollowed', // the plugins and the marketplace's list read on their own (useTheme.js, PluginsDialog), and a followed file looked at every second
+  'projectFile', 'artDrawingCells', // the drawing made ready for an issue report as its dialog opens (IssueReportDialog.vue), and the cells its picture is drawn from: no step of the person's
+  'sliderValues', // a query, which a getter asks each time the sliders or the filters change (ProjectStore's, of whether the picture is changed)
 ]);
 
 // The SOCIAL stores, by the names Pinia knows them by (SocialStore, RoomStore, and DrawingStore with its host and artist

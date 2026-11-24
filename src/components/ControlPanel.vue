@@ -14,6 +14,7 @@ import { useSettingsLock } from '@/composables/useSettingsLock';
 
 import ProjectActions from '@/components/ProjectActions.vue';
 import ProjectFooter from '@/components/ProjectFooter.vue';
+import BetaBanner from '@/components/BetaBanner.vue';
 import HelpInfo from '@/components/HelpInfo.vue';
 import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import RangeField from '@/components/RangeField.vue';
@@ -222,6 +223,7 @@ function onKeyDown(event) {
 <template>
   <aside ref="panel" class="control-panel" @keydown="onKeyDown">
     <button class="logo" :aria-label="t('about.label')" :title="t('about.label')" @click="workspace.showAboutModal = true"></button>
+    <BetaBanner/>
     <fieldset class="drawing" :disabled="!!locked" :title="locked">
       <legend>{{ t('panel.groups.drawing') }} <span class="sub">{{ t('panel.groups.drawingSub') }}</span></legend>
 

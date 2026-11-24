@@ -26,6 +26,7 @@ import EndRoomDialog from '@/components/social/EndRoomDialog.vue';
 import SocialDialogs from '@/components/social/SocialDialogs.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import AboutPhosphor from '@/components/AboutPhosphor.vue';
+import IssueReportDialog from '@/components/IssueReportDialog.vue';
 import PluginsDialog from '@/components/PluginsDialog.vue';
 import LegalDialog from '@/components/LegalDialog.vue';
 import SaveDialog from '@/components/SaveDialog.vue';
@@ -44,7 +45,7 @@ const workspace = useWorkspaceStore();
 const room = useRoomStore();
 const { image } = storeToRefs(project);
 const wide = useMediaQuery(desktopQuery);   // a narrow screen's settings are a drawer
-const { activeTool, isPainting, isCtrlPressed, isAltPressed, isMiddleClick, showAboutModal, pluginsOpen, saveDialog, exportModal, shortcutsOpen, commandListOpen, legalPage, versionsOpen } = storeToRefs(workspace);
+const { activeTool, isPainting, isCtrlPressed, isAltPressed, isMiddleClick, showAboutModal, issueReportOpen, pluginsOpen, saveDialog, exportModal, shortcutsOpen, commandListOpen, legalPage, versionsOpen } = storeToRefs(workspace);
 
 useTheme();
 
@@ -169,6 +170,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', onBeforeUnload)
     <SocialDialogs/>
     <EndRoomDialog v-if="room.askingEnd" @end="room.answerEnd(true)" @cancel="room.answerEnd(false)"/>
     <AboutPhosphor v-if="showAboutModal" @close="showAboutModal = false"/>
+    <IssueReportDialog v-if="issueReportOpen" @close="issueReportOpen = false"/>
     <PluginsDialog v-if="pluginsOpen" @close="pluginsOpen = false"/>
     <UnsavedDialog/>
     <DeleteLayerDialog/>

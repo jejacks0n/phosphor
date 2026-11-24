@@ -94,7 +94,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
   (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
   `selfPass.js` (passes checked in Node), `lospec.js` (the Palettes page's Search Lospec: one palette asked of
-  lospec.com by its slug), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
+  lospec.com by its slug), `issueReport.js` (an issue report's one post, checked first), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
   saved and kept in Open Recent) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
   a close or quit). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join),
@@ -140,6 +140,16 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   `tests/e2e/plugins.spec.js`, with the official plugins in `plugins/` (Midnight, a dark theme; Rain, a light one; Outlines, a solver; Smear, a
   brush; Superformula, a shape; and Aberration, a filter; they aren't in the app's build, and people install them from
   the Marketplace) and, in `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
+- Issue reports: a bug report to the developer from a pre-release build, never to be confused with SOCIAL's reports of
+  a person or a room (`ReportDialog.vue`). `src/lib/buildStage.js` (which builds are an alpha or a beta: package.json's
+  version, or running on next), `src/components/BetaBanner.vue` (the line under the settings panel's logo),
+  `src/components/IssueReportDialog.vue`, and `src/lib/issueReport.js` (what's sent and what the server answers: the
+  whole contract, `POST /issue-reports`), with its error words in `src/social/messages.js`, the drawing made without
+  saving by `projectFile` (`src/store/project/document.js`), and for the desktop app `desktop/issueReport.js` behind the
+  preload's `sendIssueReport`. The session's steps it can carry are the next item's log. Its tests are
+  `build-info.test.js`, `issue-report.test.js` and `desktop-issue-report.test.js` in `tests/unit`, `beta-banner.test.js`,
+  `issue-report-dialog.test.js`, `desktop-issue-report-dialog.test.js` and `project-file.test.js` in `tests/browser`, and
+  `issue-report.spec.js` in `tests/e2e`, with `fakeIssueReports` in `tests/e2e/social-support.js`.
 - `src/dev/actionLog.js` (and `skipped.js`: the actions it leaves out, and `NAMES_ONLY`, the stores logged by name with
   nothing they were given, SOCIAL's), `src/dev/historyTab.js` and `src/components/dev/HistoryPanel.vue`: every step
   taken this session as a log, kept in every build, and the HISTORY tab that shows it, in development or once

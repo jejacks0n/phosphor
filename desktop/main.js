@@ -8,7 +8,7 @@
 // (files.js): a page writes only to a file someone picked, opened or saved this session or before (Open Recent). A file
 // opens in a window of its own when the window it's for has a drawing (windows.js), and a project already open in a
 // window brings that window forward. The Plugins dialog's marketplace fetches through here too (pluginList.js), and so
-// does the color layer's Get from Lospec (lospec.js).
+// do the color layer's Get from Lospec (lospec.js) and an issue report's one post (issueReport.js).
 import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
@@ -23,6 +23,7 @@ import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
 import { listUrl, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
 import { fetchPalette } from './lospec.js';
+import { sendIssueReport } from './issueReport.js';
 
 const ORIGIN = 'app://phosphor';
 const DIST = fileURLToPath(new URL('../dist-desktop/', import.meta.url));
@@ -463,6 +464,8 @@ else {
   handle('phosphor:plugin-file', (_entry, url, most) => fetchFile(url, most, { fetch: net.fetch }));
   // The color layer's Get from Lospec: one palette by its slug, at the address lospec.js builds.
   handle('phosphor:lospec-palette', (_entry, slug) => fetchPalette(slug, { fetch: net.fetch }));
+  // An issue report, when the page's Send asks: posted to the address issueReport.js has, checked there first.
+  handle('phosphor:issue-report', (_entry, fields, files) => sendIssueReport(fields, files, { fetch: net.fetch }));
   ipcMain.on('phosphor:files-ready', (event) => {
     const entry = entryOf(event);
     if (!fromApp(event) || !entry) return;
