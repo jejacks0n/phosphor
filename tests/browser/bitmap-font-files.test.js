@@ -22,6 +22,7 @@ afterEach(async () => {
 
 // The palette layer, on its Fonts page.
 const mountFontsPage = async (workspace) => {
+  localStorage.removeItem('phosphor.fontFilters'); // no group folded by a test before (fonts-page.test.js's folds are remembered)
   workspace.paletteLayerPage = 'fonts';
   host = document.body.appendChild(document.createElement('div'));
   app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
