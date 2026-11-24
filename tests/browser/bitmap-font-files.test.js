@@ -2,7 +2,6 @@
 // and picking one in the Font field gives the drawing that font. Saving and removing one are on the Fonts page.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import FontField from '@/components/FontField.vue';
@@ -21,11 +20,10 @@ afterEach(async () => {
 });
 
 // The palette layer, on its Fonts page.
-const mountFontsPage = async (workspace) => {
-  localStorage.removeItem('phosphor.fontFilters'); // no group folded by a test before (fonts-page.test.js's folds are remembered)
+const mountFontsPage = async (workspace, pinia) => { // the test's own Pinia: the active one after its awaits can be a late earlier test's
   workspace.paletteLayerPage = 'fonts';
   host = document.body.appendChild(document.createElement('div'));
-  app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(CharPaletteLayer) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
 };
@@ -139,10 +137,10 @@ test('choosing a bitmap font gives the drawing that font, and a built-in takes i
 });
 
 test('Remove clears the browser\'s copy of the drawing\'s font and leaves the drawing drawing in it, at its size', async () => {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   const font = await addBitmapFont(rawFile(16, 'SIXTEEN.F16', 0x3c));
   workspace.userFonts = await loadFonts();
-  await mountFontsPage(workspace);
+  await mountFontsPage(workspace, pinia);
   const press = (label) => [...host.querySelectorAll('button')].find((b) => b.textContent.trim() === label).click();
   [...host.querySelectorAll('.row')].find((r) => r.querySelector('.name span').textContent === 'SIXTEEN').click(); // the page opens on the font in use
   await nextTick();
