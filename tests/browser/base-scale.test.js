@@ -210,10 +210,10 @@ test('a base block pasted at another scale shows the colors it was copied with',
   const project = await photo({ quantize: 'cga' });
   const block = project.copySelection(RECT, ['base']);
   const copied = hexes(colorsIn(project, RECT));
-  project.cols = 18; // a rescale (no edits): the photo has 5 of its pixels a grid pixel here, against 3 (enlarged to 4)
-  project.rows = 24; // 12 lines: the pasted block's 10 rows fit
+  project.cols = 18; // a rescale (no edits)
+  project.rows = 1100; // too long for the working scale's 4 within MAX_LAYER_DIM: 3
   project.render(); await settle(project);
-  expect(project.baseLayer.scale).toBe(5);
+  expect(project.baseLayer.scale).toBe(3);
   project.pasteSelection(block, 0, 0);
   project.render(); await settle(project);
   expect(hexes(colorsIn(project, { c0: 0, r0: 0, c1: 9, r1: 9 }))).toEqual(copied);
@@ -240,7 +240,7 @@ test('a canvas resize past the layers\' largest size renders once, though the ba
   project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
   const scale = project.baseLayer.scale, pipeline = vi.spyOn(project.renderer, 'render');
-  project.rows = 600; // there's an edit: a canvas resize, and 600 rows at the scale would be past MAX_LAYER_DIM
+  project.rows = 1100; // there's an edit: a canvas resize, and 1,100 rows at the scale would be past MAX_LAYER_DIM
   await settle(project);
   expect(project.baseLayer.scale).toBeLessThan(scale);
   expect(pipeline).toHaveBeenCalledTimes(1);

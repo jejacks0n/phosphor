@@ -6,7 +6,7 @@ import { test, expect, vi } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ellipseShape } from '@/document/shapes.js';
 import { MAX_LAYER_DIM, editScaleFor } from '@/document/PaintLayer.js';
-import { workingScale } from '@/lib/ImageProcessor.js';
+import { workingScale, MOST_SCALE, LEAST_SCALE } from '@/lib/ImageProcessor.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { font8 } from '../support/blockFonts.js';
 import WebGLProcessor from '@/lib/WebGLProcessor.js';
@@ -24,33 +24,33 @@ async function scaleOf(w, h, cols, rows) {
   return workingScale(picture, { ...project.processParams, cols, rows, fit: null, workScale: null });
 }
 
-test('the working scale is 8 for a picture with 8 or more pixels a grid pixel', async () => {
-  expect(await scaleOf(800, 480, 80, 48)).toBe(8);
-  expect(await scaleOf(4000, 2400, 80, 48)).toBe(8);
+test('the working scale is MOST_SCALE for a picture with that many pixels a grid pixel or more', async () => {
+  expect(await scaleOf(80 * MOST_SCALE, 48 * MOST_SCALE, 80, 48)).toBe(MOST_SCALE);
+  expect(await scaleOf(4000, 2400, 80, 48)).toBe(MOST_SCALE);
 });
 
-test('between 4 and 8 the working scale is the picture\'s own', async () => {
-  expect(await scaleOf(480, 288, 80, 48)).toBe(6);
+test.runIf(MOST_SCALE > LEAST_SCALE)('between LEAST_SCALE and MOST_SCALE the working scale is the picture\'s own', async () => {
+  expect(await scaleOf(80 * (LEAST_SCALE + 1), 48 * (LEAST_SCALE + 1), 80, 48)).toBe(LEAST_SCALE + 1);
 });
 
-test('a small picture is enlarged to 4, one smaller than the grid too', async () => {
-  expect(await scaleOf(80, 48, 80, 48)).toBe(4);
-  expect(await scaleOf(40, 24, 80, 48)).toBe(4);
+test('a small picture is enlarged to LEAST_SCALE, one smaller than the grid too', async () => {
+  expect(await scaleOf(80, 48, 80, 48)).toBe(LEAST_SCALE);
+  expect(await scaleOf(40, 24, 80, 48)).toBe(LEAST_SCALE);
 });
 
 test('a long grid stays within MAX_LAYER_DIM', async () => {
   expect(await scaleOf(3000, 30000, 300, 3000)).toBe(editScaleFor(Infinity, Infinity, 300, 3000));
-  expect(await scaleOf(2000, 6000, 200, 600)).toBe(6);
+  expect(await scaleOf(2000, 6000, 200, 600)).toBe(Math.min(MOST_SCALE, editScaleFor(Infinity, Infinity, 200, 600)));
 });
 
-test('a new blank canvas paints at the base\'s scale, 4 or more a grid pixel, big grids too', async () => {
+test('a new blank canvas paints at the base\'s scale, LEAST_SCALE or more a grid pixel, big grids too', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ cols: 80, rows: 48 });
   await settle(project);
-  expect(same(project)).toBeGreaterThanOrEqual(4);
+  expect(same(project)).toBeGreaterThanOrEqual(LEAST_SCALE);
   await project.setBlankCanvas({ cols: 200, rows: 300 });
   await settle(project);
-  expect(same(project)).toBe(8); // the blank picture has 8 or more a grid pixel; the old rule took 2 at this size
+  expect(same(project)).toBe(MOST_SCALE); // the blank picture has that many a grid pixel; the old rule took 2 at this size
 });
 
 test('a long grid keeps every layer within MAX_LAYER_DIM, base and paint alike', async () => {
@@ -72,7 +72,7 @@ test('a new grid keeps the two together: a rescale with nothing drawn, a canvas 
   await settle(project);
   project.cols = 160; // nothing drawn: the picture refits, the base and paint at the new grid's working scale
   await settle(project);
-  expect(same(project)).toBe(8); // the rows stay 40: the picture fits 40 × 40 in the middle, at its own 10 a grid pixel
+  expect(same(project)).toBe(MOST_SCALE); // the rows stay 40: the picture fits 40 × 40 in the middle, at its own 10 a grid pixel
   workspace.pickLayer(project.addLayer('cells', 'base'));
   project.writeEditCells([{ col: 1, row: 1, attrs: { char: 'A', fg: '#ffffff', bg: '#000000' } }]);
   project.commitEdit();

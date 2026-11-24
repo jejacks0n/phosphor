@@ -7,7 +7,13 @@ import Canvas, { fitRect, ctx2d, boxFiltered, flatBlock } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import { editScaleFor } from '../document/PaintLayer.js';
 
-export const MOST_SCALE = 8;  // the working scale's most and least pixels a grid pixel (prepare)
+// The working scale's most and least pixels a grid pixel (prepare). Two settings that happen to be equal, kept apart:
+// don't merge them into one. MOST_SCALE is how much of a big picture's detail is kept, against speed (every filter pass
+// is over grid pixels times its square): 4 gives By shape's 4 samples a grid pixel one picture pixel each, 8 an even
+// 2 x 2 average each (a value between them divides them unevenly). LEAST_SCALE is what a small picture is enlarged to,
+// so that the layers drawn at the same scale (vector shapes, a picture added to a layer) keep detail inside a grid
+// pixel for By shape even when the opened picture has none; at 1 they'd be drawn in whole grid pixels.
+export const MOST_SCALE = 4;
 export const LEAST_SCALE = 4;
 import quantizeColors from './Quantizer.js';
 import { snapsLate, SAMPLES } from './CharResolver.js';
@@ -136,8 +142,8 @@ function prepare(image, params, scale = null) {
   // ponytail: so Blur, Sharpen, Flatten and Edges reach as many grid pixels down as across, which in an 8x8 font is half
   // as far down on screen; scale their vertical reach by params.fitAspect if that shows.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows, params.fitAspect);
-  // The working scale: the picture's own pixels a grid pixel, at most MOST_SCALE (twice By shape's samples a grid pixel)
-  // and at least LEAST_SCALE (a smaller picture enlarged to it), within MAX_LAYER_DIM a side, since the base and every
+  // The working scale: the picture's own pixels a grid pixel, at most MOST_SCALE and at least LEAST_SCALE
+  // (a smaller picture enlarged to it), within MAX_LAYER_DIM a side, since the base and every
   // layer's paint and shapes are drawn at this scale too (docs/model.md R7).
   const own = Math.floor(Math.min(sw / dw, sh / dh));
   const natural = Math.min(editScaleFor(Infinity, Infinity, cols, rows), Math.max(LEAST_SCALE, Math.min(MOST_SCALE, own)));
