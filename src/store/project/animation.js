@@ -5,7 +5,7 @@
 // frames. Owns _arrived (what the frame held on arrival), _noted (what noteFrame last saw) and _builder (what
 // builds frames for playing, and what it was prepared for).
 import FrameBuilder from '@/document/FrameBuilder.js';
-import { BASE, CUT, EMPTY_STATE, carriedInto, cellState, dropStrays, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, drawnKeys, staysAt, withEases } from '@/document/frames.js';
+import { BASE, CUT, EMPTY_STATE, carriedInto, cellState, dropStrays, frameDiff, isEmptyState, newFrame, paintImage, passedOn, resolveOver, sameChanges, staysAt, withEases } from '@/document/frames.js';
 import { pack } from '@/document/changes.js';
 import { cellKey, parseKey } from '@/document/editCells.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells.js';
@@ -653,25 +653,6 @@ export const animationActions = {
     if (!this.frame || !this._stroke) return;
     const drawn = (this._stroke.drawn ??= new Set());
     for (const { x, y } of pixels) drawn.add(cellKey(x, y >> 1));
-  },
-
-  // The cells the frame showing shows only because a frame before it did, by index on the grid: its ghost.
-  inheritedCells() {
-    const inherited = new Set();
-    if (!this.frame || this.currentFrame.kind !== 'blank') return inherited;
-    const previous = carried(this), { own } = ownChanges(this, previous);
-    const { cols } = this, rows = charRowsOf(this.rows);
-    for (const key of previous.keys()) {
-      if (own.has(key) || isShapeKey(key)) continue;
-      const { col, row } = parseKey(keyLayer(key).key);
-      if (col < cols && row < rows) inherited.add(cellIndex(col, row, cols));
-    }
-    // Drawn here in exactly the color it inherited: the frame doesn't own it, but it's no ghost to whoever drew it.
-    for (const key of drawnKeys(this.currentFrame)) {
-      const { col, row } = parseKey(key);
-      if (col < cols) inherited.delete(cellIndex(col, row, cols));
-    }
-    return inherited;
   },
 
   // Frame i's picture ghost, by index on the grid: what it drew itself (a frame before, only its cells that stay: the

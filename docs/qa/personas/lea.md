@@ -273,8 +273,9 @@ sticker or emoji picker.
 ### 18. Use the ghost
 - Does: taps Ghost and moves its strength, then unchecks it.
 - Expects: the box opens upward inside the screen with its checkbox, slider, Frames before and Frames after; tapping a
-  count brings up the number keyboard without zooming the page; the strength changes how dim earlier frames show; off
-  shows them solid ([The ghost](../../animation.md#the-ghost)).
+  count brings up the number keyboard without zooming the page; what the frame inherits shows solid whatever the
+  strength, and the strength changes how dim the cells that stay on the frame before show; off hides those
+  ([The ghost](../../animation.md#the-ghost)).
 - Probes: `back-out`: tap outside the box; `extremes`: strength at 0% and 100%.
 - Rated: no (touch only: no keyboard shows here)
 

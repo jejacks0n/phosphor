@@ -97,27 +97,13 @@ const drawVeil = (ctx, win, width, height) => {
   const shown = projectStore.shownCells, { cells, cols, rows } = projectStore;
   if (workspaceStore.playing || shown === cells) return;
   if (veil.shown !== shown) {
-    // Over the inherited cells, what's under them; over a picture ghost's, its frame's art (opaque as strong as that
-    // frame's ghost, and tinted for a frame after).
-    const base = projectStore.renderer.basePixels; // read only when it's needed: under Best match it's snapped on asking
-    if (!base || base.width !== cols || base.height !== rows) return;
-    const owners = projectStore._ghost.owners, inherited = [], pictured = new Map();
+    // Over a picture ghost's cells, its frame's art (opaque as strong as that frame's ghost, and tinted for a frame after).
+    const owners = projectStore._ghost.owners, pictured = new Map();
     for (let i = 0; i < cells.length; i++) {
-      if (shown[i] === cells[i]) continue;
-      const picture = owners?.get(i);
+      const picture = shown[i] !== cells[i] && owners?.get(i);
       if (picture) (pictured.get(picture) ?? pictured.set(picture, []).get(picture)).push(i);
-      else inherited.push(i);
     }
     const image = new ImageData(cols, rows);
-    veilPixels(image.data, base.data, inherited, cols, projectStore.ghostStrength);
-    // Over a character on the base, what's under is its look, as the view shows it there (docs/model.md R11).
-    // ponytail: each inherited cell is asked for its pin, every time the cells change (an animation's 40,000 cells, all
-    // inherited over a base that's all pins: 16 to 20 ms); work out only the cells that changed if that shows.
-    const params = projectStore.processParams;
-    for (const i of inherited) {
-      const col = i % cols, row = (i - col) / cols, look = projectStore.renderer.baseLook(col, row, params);
-      look?.forEach(({ r, g, b }, half) => image.data.set([r, g, b], 4 * ((2 * row + half) * cols + col)));
-    }
     for (const [{ built, strength, tint }, indexes] of pictured) {
       veilPixels(image.data, artOf(built), indexes, cols, 1 - strength, tint);
     }
