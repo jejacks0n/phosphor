@@ -1749,7 +1749,9 @@ test('pressing the switch on the drawing\'s narrow font that isn\'t in Yours add
   expect(toastMessage.value).toBe('Slim is 7 pixels wide.');
   expect(workspace.userFonts.some((f) => f.id === id)).toBe(false);
   await press(widthButtons()[1]);
-  await vi.waitFor(async () => expect((await storedBitmapFont(id))?.width).toBe(8));
+  // Two writes to the browser's storage, the font joining Yours and then its answer: past a second on a busy CI runner,
+  // where the default wait gave up while the font wasn't stored yet (That font isn't in this browser anymore).
+  await vi.waitFor(async () => expect((await storedBitmapFont(id))?.width).toBe(8), { timeout: 5000 });
   expect(project.drawingFont.cellWidth).toBe(8);
   expect(toastMessage.value).toBe(null);
 });
