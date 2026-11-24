@@ -58,7 +58,9 @@ test('a monospaced font from your computer is used and kept; a proportional one 
   await openApp(page);
   await expect(page.getByLabel('Font', { exact: true }).locator('option:checked')).toHaveText('tall');
   // Removed on the Fonts page: back to the default.
-  await (await fontsPage(page)).getByRole('button', { name: 'Remove', exact: true }).click();
+  const fonts = await fontsPage(page);
+  await fonts.getByRole('button', { name: 'More font actions' }).click(); // Remove is in the head's … menu
+  await fonts.getByRole('button', { name: 'Remove', exact: true }).click();
   await expect(page.getByLabel('Font', { exact: true })).toHaveValue('vga');
   await expect(page.getByLabel('Font', { exact: true }).locator('option', { hasText: 'tall' })).toHaveCount(0);
 });
