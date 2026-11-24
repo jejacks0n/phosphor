@@ -255,7 +255,7 @@ test('blink gives a bright background', () => {
   assert.equal(at(read('\x1b[5;25;44mX'), 0).bg, '#0000aa');
 });
 
-test('iCE colors is the record\'s flag; with no record ESC[?33h, else off for a file that blinks; on for UTF-8', () => {
+test('iCE colors is the record\'s flag; with no record ESC[?33h, else off for a file that blinks; on for UTF-8 with none', () => {
   const recorded = (flags) => readArtFile(new Sauce({ cols: 1, rows: 1 }, { flags }).appendTo(cp('\x1b[5;44mX')), 'a.ans');
   assert.deepEqual([recorded(2).iceColors, recorded(3).iceColors], [false, true]);
   assert.equal(recorded(2).cells[0].bg, '#5555ff'); // the cell's the same either way: blink is kept as bright
@@ -263,7 +263,8 @@ test('iCE colors is the record\'s flag; with no record ESC[?33h, else off for a 
   assert.equal(read('\x1b[?33l\x1b[5;44mX').iceColors, false);
   assert.equal(read('\x1b[5;44mX').iceColors, false); // DOS blinked it
   assert.equal(read('\x1b[44mX').iceColors, true); // nothing blinks
-  assert.equal(readArtFile(new Sauce({ cols: 1, rows: 1 }, { flags: 2 }).appendTo(utf('\x1b[5;44m█')), 'a.utf8ans').iceColors, true);
+  assert.equal(readArtFile(new Sauce({ cols: 1, rows: 1 }, { flags: 2 }).appendTo(utf('\x1b[5;44m█')), 'a.utf8ans').iceColors, false); // the record says, so it's written back the same
+  assert.equal(readArtFile(utf('\x1b[5;44m█'), 'a.utf8ans').iceColors, true);
 });
 
 test('inverse swaps the colors as written to the cell', () => {
