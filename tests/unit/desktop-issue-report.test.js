@@ -42,16 +42,15 @@ test('with no drawing and no steps only what was written goes', async () => {
 
 test('a report the server would turn away is refused here, and nothing is asked', async () => {
   const { calls, fetch } = answering();
-  const lines = (n) => 'a\n'.repeat(n); // each line break goes as two characters
   const bad = [
-    [{ ...FIELDS, wrong: '' }], [{ ...FIELDS, wrong: '  \n ' }], [{ ...FIELDS, wrong: 'x'.repeat(4001) }], [{ ...FIELDS, wrong: lines(1334) }],
+    [{ ...FIELDS, wrong: '' }], [{ ...FIELDS, wrong: '  \n ' }], [{ ...FIELDS, wrong: 'x'.repeat(4001) }], [{ ...FIELDS, wrong: `${'x\n'.repeat(2000)}x` }],
     [{ ...FIELDS, doing: 'x'.repeat(2001) }], [{ ...FIELDS, doing: null }], [{ ...FIELDS, wrong: ['x'] }], [{ ...FIELDS, agent: 'x'.repeat(81) }],
     [{ ...FIELDS, packageVersion: 'x'.repeat(101) }], [{ ...FIELDS, build: { toString: () => 'x' } }], [null], ['a report'], [undefined],
     [FIELDS, { drawing: 'sky.pho' }], [FIELDS, { drawing: { name: 'sky.pho', bytes: [1, 2, 3] } }], [FIELDS, { drawing: { name: 7, bytes: PNG } }], [FIELDS, { steps: 42 }],
     [FIELDS, 'files'],
   ];
   for (const [fields, files] of bad) assert.deepEqual(await sendIssueReport(fields, files, { fetch }), { ok: false, error: 'bad-request' }, JSON.stringify([fields, files])?.slice(0, 80));
-  assert.deepEqual(await sendIssueReport({ ...FIELDS, wrong: lines(1333) }, null, { fetch }), { ok: true, issue: 312 }); // 3,999 as sent
+  assert.deepEqual(await sendIssueReport({ ...FIELDS, wrong: 'x\n'.repeat(2000) }, null, { fetch }), { ok: true, issue: 312 }); // 4,000: a line break is one, as the server counts it
   assert.equal(calls.length, 1);
 });
 
@@ -81,5 +80,4 @@ test('the server\'s answers are read as the page reads them', async () => {
 test('its address and limits are the page\'s, so the two can\'t drift apart', () => {
   assert.equal(main.ISSUE_REPORTS_URL, `https://api.phosphor.work${page.ISSUE_REPORTS_PATH}`);
   for (const name of ['MOST_DOING', 'MOST_WRONG', 'MOST_AGENT', 'MOST_REQUEST_BYTES']) assert.equal(main[name], page[name], name);
-  assert.equal(main.sentLength('a\nb\r\nc\rd'), page.sentLength('a\nb\r\nc\rd'));
 });

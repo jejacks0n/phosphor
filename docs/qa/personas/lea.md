@@ -539,7 +539,7 @@ and sideways.
   `rated: false` and note it (not a finding).
 - Expects: the line under the logo says "BETA · Report an issue" ("ALPHA" on an alpha) on one line, inside the drawer's
   width, with nothing to dismiss it; the form fills the phone's screen, with focus in the first box and the phone's
-  keyboard up; each box has its count, and a line break counts as two; Send is off until **What went wrong?** has
+  keyboard up; each box has its count and stops at its most (2,000 and 4,000); Send is off until **What went wrong?** has
   words; the checkbox is ticked and its line names her drawing, its size and how many steps ("selfie.pho, 240 KB ·
   52 steps"); the note says "What you write becomes a public issue on GitHub. Your drawing and steps go only to
   Phosphor's developer.", and under it which Phosphor and browser go too; nothing is in the list before Send; after it
@@ -549,8 +549,8 @@ and sideways.
   ([Betas and reporting an issue](../../README.md#betas-and-reporting-an-issue)).
 - Probes: `back-out`: write half a line, tap × (or the phone's Back), open it again, and check the half line is still
   there; `again`: untick the checkbox, send a second report, and check it has no `drawing` and no `steps`; `extremes`:
-  paste 4,001 characters into **What went wrong?** and check the count warns, a line says it's too long and Send is
-  off; `interrupt`: answer the next Send with a refusal (`social.fakeIssueReports(page, { answer: () => [429, { error:
+  paste 5,000 characters into **What went wrong?** and check the box holds the first 4,000, its count reads 4000 / 4000
+  in its warning color, and Send still sends; `interrupt`: answer the next Send with a refusal (`social.fakeIssueReports(page, { answer: () => [429, { error:
   'rate-limited' }] })`) and check it says "Too many reports just now. Wait a while and try again." with her words
   still in the boxes.
 - Rated: no (touch only: the phone's keyboard has no key that sends the form)

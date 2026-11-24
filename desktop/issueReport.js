@@ -13,10 +13,8 @@ const MOST_LINE = 100; // of the version and the build
 const MOST_NAME = 255; // of the drawing's file name
 const TIMEOUT_MS = 60_000; // a drawing of 25 MB on a slow line
 
-// What was written as it's counted on its way: a form sends a line break as two characters.
-export const sentLength = (text) => text.replace(/\r\n?|\n/g, '\r\n').length;
-
-const text = (value, most) => typeof value === 'string' && sentLength(value) <= most;
+// A line break is one character, as the page's field and the server count it, though the form sends it as two.
+const text = (value, most) => typeof value === 'string' && value.replace(/\r\n?/g, '\n').length <= most;
 const goodFields = (fields) => !!fields && typeof fields === 'object'
   && text(fields.doing, MOST_DOING) && text(fields.wrong, MOST_WRONG) && fields.wrong.trim() !== ''
   && text(fields.packageVersion, MOST_LINE) && text(fields.build, MOST_LINE) && text(fields.agent, MOST_AGENT);
@@ -37,7 +35,7 @@ export async function sendIssueReport(fields, files, { fetch }) {
   files ??= {};
   if (!goodFields(fields) || typeof files !== 'object' || !goodFiles(files)) return { ok: false, error: 'bad-request' };
   const { drawing = null, steps = null } = files;
-  const form = new FormData();
+  const form = new FormData(); // every text field before either file, as the server takes them
   for (const name of ['doing', 'wrong', 'packageVersion', 'build']) form.append(name, fields[name]);
   form.append('platform', 'desktop');
   form.append('agent', fields.agent);
