@@ -87,7 +87,7 @@ test('Distance set in its group is one undo step, kept off its default only, run
   await slide(group.querySelector('input[type=range]'), 3);
   expect(project.filterOptions).toEqual({ [ref]: { name: 'Aberration', values: { distance: 3 } } });
   expect(project.processParams.pluginFilters).toEqual([
-    { ref, pluginId: 'jane.fx', hash: 'h', passes: ABERRATION.passes, options: ABERRATION.options, values: { distance: 3, tint: '#ffffff' } },
+    { ref, pluginId: 'jane.fx', hash: 'h', helpers: null, passes: ABERRATION.passes, options: ABERRATION.options, values: { distance: 3, tint: '#ffffff' } },
   ]);
   await settle(project);
   expect(render).toHaveBeenCalled();

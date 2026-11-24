@@ -220,6 +220,26 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
     }
   });
 
+  test('a shader\'s helpers are in both passes: functions both use, and one only pass 2 calls, give the JavaScript\'s cells', async () => {
+    const def = solver({
+      ...TWO_PASSES,
+      shader: {
+        helpers: `int glyphOf(vec3 s, vec3 n) { return s.g > 200.0 ? 255 : s.r > n.g ? 4 : 5; }
+float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
+        solve: `
+          vec3 s = sampleAt(ivec2(0, 0), 0), n = sampleAt(ivec2(1, 1), 9);
+          put(vec3(s.r, n.g, 0.0), vec3(0.0), glyphOf(s, n));`,
+        refine: `
+          put(vec3(codeOf(charAt(ivec2(-1, 0))), codeOf(charAt(ivec2(1, -1))), codeOf(charAt(ivec2(0, 1)))),
+            vec3(codeOf(charAt(ivec2(1, 1))), sampleAt(ivec2(1, 0), 3).r, 0.0), charAt(ivec2(0, 0)));`,
+      },
+    });
+    const cols = 5, lines = 4, samples = samplesOf(cols, lines), matcher = await matcherOf(def);
+    const { cells } = ShapeMatcher.shared().resolve(samples, cols, lines, matcher, {});
+    expect(key(cells)).toEqual(key(resolvePlugin(samples, cols, lines, matcher, {}).cells));
+    expect(new Set(cells.map((c) => c.char)).size).toBeGreaterThan(1);
+  });
+
   test('pass 2 on the GPU reads pass 1\'s picks, -1 past the border', async () => {
     const def = solver(TWO_PASSES), cols = 5, lines = 4, samples = samplesOf(cols, lines);
     const matcher = await matcherOf(def);

@@ -37,14 +37,30 @@ describe('pluginShaderSource', () => {
 
   it('puts the author\'s body in its pass\'s function, which main calls, with the glyph count and reach', () => {
     const solve = pluginShaderSource(def, 'solve', { glyphs: 3, reach: 2 });
-    expect(solve).toMatch(/void solve\(\) \{\n#line 1\nbyShape\(\);\n\}/);
+    expect(solve).toMatch(/void solve\(\) \{\n#line 1 0\nbyShape\(\);\n\}/);
     expect(solve).toMatch(/void main\(\) \{[^}]*solve\(\);/);
     expect(solve).toMatch(/const int glyphCount = 3;/);
     expect(solve).toMatch(/const int ph_reach = 2;/);
     const refine = pluginShaderSource(def, 'refine', { glyphs: 3, reach: 1 });
-    expect(refine).toMatch(/void refine\(\) \{\n#line 1\nif \(charAt/);
+    expect(refine).toMatch(/void refine\(\) \{\n#line 1 0\nif \(charAt/);
     expect(refine).toMatch(/void main\(\) \{[^}]*refine\(\);/);
     expect(refine.startsWith('#version 300 es')).toBe(true);
+  });
+
+  it('puts the helpers before the pass\'s function in both passes, after the options, with lines of their own in the log', () => {
+    const helpers = 'int pick(vec3 s) { return s.r > opt_threshold ? 1 : 2; }';
+    for (const pass of ['solve', 'refine']) {
+      const src = pluginShaderSource({ ...def, shader: { ...def.shader, helpers } }, pass, { glyphs: 3, reach: 1 });
+      expect(src).toContain(`uniform float opt_threshold;\nuniform bool opt_thin;\nuniform int opt_set;\n#line 1 1\n${helpers}\nvoid ${pass}() {\n#line 1 0\n`);
+    }
+    expect(pluginShaderSource(def, 'solve', { glyphs: 3, reach: 1 })).not.toContain('#line 1 1'); // no helpers: none
+  });
+
+  it('puts a filter\'s helpers after the prelude and its options, before the pass\'s function', () => {
+    const helpers = 'vec3 dim(vec3 c) { return c * opt_threshold; }';
+    expect(filterSource('return dim(pixel(vec2(0.0)));', def.options.slice(0, 1), helpers))
+      .toContain(`uniform float opt_threshold;\n#line 1 1\n${helpers}\nvec3 ph_pass() {\n#line 1 0\nreturn dim(`);
+    expect(filterSource('return pixel(vec2(0.0));', [])).not.toContain('#line 1 1');
   });
 
   it('gives the solver\'s own characters\' glyph indexes, in its order: the set\'s where the set holds one', () => {

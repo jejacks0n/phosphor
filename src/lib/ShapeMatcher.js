@@ -306,6 +306,8 @@ export const ownGlyphs = (def, glyphs) => [...def.chars].map((char) => glyphs.fi
 
 // The fragment shader for a plugin solver's pass ('solve' or 'refine') over glyphs glyphs (the layer's set, then its own),
 // own its characters' indexes (ownGlyphs) as ownGlyph[], which a solver with no chars doesn't get (GLSL has no empty array).
+// The shader's helpers, the author's for both passes, go before the pass's function. #line: the compiler's log counts
+// the author's lines, the pass's as source 0 and the helpers' as source 1.
 export function pluginShaderSource(def, pass, { glyphs, reach, own = [] }) {
   const options = def.options.map(({ id, kind }) => `uniform ${UNIFORM[kind]} opt_${id};`).join('\n');
   const table = own.length ? `const int ownGlyph[${own.length}] = int[${own.length}](${own.join(', ')});\n` : '';
@@ -314,8 +316,8 @@ const int glyphCount = ${glyphs};
 const int ph_reach = ${reach};
 ${table}${PLUGIN}${pass === 'refine' ? CHAR_AT : ''}
 ${options}
-void ${pass}() {
-#line 1
+${def.shader.helpers ? `#line 1 1\n${def.shader.helpers}\n` : ''}void ${pass}() {
+#line 1 0
 ${def.shader[pass]}
 }
 void main() {

@@ -368,7 +368,7 @@ export default {
     ],
     solve,    // pass 1: one cell
     refine,   // pass 2, optional: one cell again, after pass 1
-    shader: { solve: '…', refine: '…' },   // optional: the same passes for the graphics card
+    shader: { helpers: '…', solve: '…', refine: '…' },   // optional: the same passes for the graphics card
   }],
 };
 ```
@@ -382,7 +382,7 @@ export default {
 | `chars` | Characters of its own, added to the layer's set for it, so it can draw one the set doesn't hold. | Optional; 32 at most; no control characters, combining marks or two-column characters. |
 | `options` | What the person can set, up to 12. | Optional; below. |
 | `solve`, `refine` | The passes. | `solve` is required. |
-| `shader` | The passes for the graphics card. | Optional; each string 64 KB at most. |
+| `shader` | The passes for the graphics card, and `helpers` for both ([The shader](#the-shader)). | Optional; each string 64 KB at most. |
 
 **Options** ([Options](#options)) show under the Characters section when the solver is chosen, and are kept for each
 layer and saved with the drawing. A new drawing (a picture or a blank canvas) keeps them as it keeps the choice of
@@ -482,6 +482,14 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
 - `put(vec3 fg, vec3 bg, int glyph)`: the result, the foreground first, as a pass's `{ char, fg, bg }` names them
   (`mixed` is the one that takes the background first). Glyph 255 means a solid cell. Each color is held as the
   JavaScript's is: a channel to 0 to 255, and a color with a channel that isn't finite to black.
+
+A pass is one function's body, so it can't declare a function or a constant outside itself. `helpers` is where those go:
+GLSL that Phosphor puts after the prelude and before the pass's function, in both passes' shaders, so it can use what's
+listed above and both passes can call it. A helper both passes reach can't call `charAt`, which only pass 2 has. In the
+compiler's log a line of the helpers is counted from their first line as source 1 (`1:3` is their third line), and a
+line of a pass from its own first line as source 0 (`0:3`). Write each pass as a body, never closing its function early
+to declare things after it: `helpers` is the place for them, and a pass that leaves its function may stop building in a
+later Phosphor.
 
 Those names are the whole of what a shader may use from Phosphor, and they keep their meaning. Your pass sits in one
 shader with Phosphor's own code, so it can see more than is listed: everything else there is Phosphor's own, begins
@@ -689,7 +697,8 @@ export default {
 
 `id`, `name` and `options` are as a brush's, but a filter needs at least one option: it runs only while one is off its
 default ([When a filter runs](#when-a-filter-runs)), so with none it never would, and it's refused ("The plugin's script
-has a problem at “filters[0].options”."). `passes` is required: 1 to 4 strings, each 64 KB at most.
+has a problem at “filters[0].options”."). `passes` is required: 1 to 4 strings, each 64 KB at most. `helpers` is
+optional: one string of 64 KB at most, GLSL put before each pass's function ([The passes](#the-passes)).
 
 ### When a filter runs
 
@@ -726,12 +735,17 @@ build, in a filter's pass or a solver's. Phosphor puts it after a prelude of its
 - `opt_<id>` for each option: a `float` for a slider, a `bool` for a checkbox, an `int` for a choice, and a `vec3` (0 to
   1) for a color.
 
+`helpers` holds the functions and constants your passes share, which a pass, being one function's body, can't declare:
+Phosphor puts it after the prelude and before the function, in each of the filter's passes, as a solver's shader's
+`helpers` are ([The shader](#the-shader)).
+
 Passes run in order, each reading what the one before left. There's no JavaScript twin: the picture is made only on the
 graphics card. As in a solver's shader, the names above are the whole of what a pass may use from Phosphor; anything
 else it can see begins `ph_` and isn't for it ([The shader](#the-shader)).
 
 A pass that doesn't build is skipped, with the rest of its filter, and the group and the plugin's row show the
-compiler's log ("Aberration's filter didn't build: …"), its line numbers counted from your pass's first line. A browser
+compiler's log ("Aberration's filter didn't build: …"), its line numbers counted from your pass's first line as source 0
+(`0:3`), and the helpers' from theirs as source 1 (`1:3`). A browser
 with no WebGL 2 builds no filter, and says so the same way; the picture's own effects work there as before. A filter that loses the graphics card is off until you reload
 ("Aberration's filter lost the graphics card, and is off until you reload.").
 

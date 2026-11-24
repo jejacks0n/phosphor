@@ -14,7 +14,18 @@ describe('readScript', () => {
   it('checks a solver\'s shape and freezes it', () => {
     const [def] = readScript({ default: { solvers: [OUTLINE_LIKE] } }).solvers;
     expect(Object.isFrozen(def) && Object.isFrozen(def.options)).toBe(true);
-    expect(def).toMatchObject({ reach: 1, chars: '/\\-|', refine: null, shader: { solve: null, refine: null } });
+    expect(def).toMatchObject({ reach: 1, chars: '/\\-|', refine: null, shader: { helpers: null, solve: null, refine: null } });
+  });
+
+  it('takes a shader\'s helpers, for both passes, and a filter\'s, for all of its; each a string within the shader\'s size', () => {
+    const helpers = 'float twice(float x) { return 2.0 * x; }';
+    expect(read({ shader: { helpers, solve: 'put(vec3(twice(1.0)), vec3(0.0), 0);' } })[0].shader).toEqual({ helpers, solve: 'put(vec3(twice(1.0)), vec3(0.0), 0);', refine: null });
+    expect(readOf('filters', { ...FILTER, helpers }).filters[0].helpers).toBe(helpers);
+    expect(readOf('filters', FILTER).filters[0].helpers).toBe(null);
+    expect(() => read({ shader: { helpers: 3, solve: 'x' } })).toThrow(shape('solvers[0].shader'));
+    expect(() => read({ shader: { helpers: 'x'.repeat(64 * 1024 + 1), solve: 'x' } })).toThrow(shape('solvers[0].shader'));
+    expect(() => readOf('filters', { ...FILTER, helpers: ['x'] })).toThrow(shape('filters[0].helpers'));
+    expect(() => readOf('filters', { ...FILTER, helpers: 'x'.repeat(64 * 1024 + 1) })).toThrow(shape('filters[0].helpers'));
   });
 
   it.each([

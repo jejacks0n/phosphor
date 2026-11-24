@@ -100,16 +100,18 @@ function readChars(chars, field) {
   return chars;
 }
 
+// A solver's shader: each pass's body, and helpers, GLSL put before the pass's function in both (functions and constants
+// a body can't declare, being one function's).
 function readShader(raw, field) {
-  if (raw === undefined) return Object.freeze({ solve: null, refine: null });
+  if (raw === undefined) return Object.freeze({ helpers: null, solve: null, refine: null });
   if (!isObject(raw)) throw shape(field);
-  const { solve, refine } = pick(raw, ['solve', 'refine'], field);
+  const { helpers, solve, refine } = pick(raw, ['helpers', 'solve', 'refine'], field);
   const one = (value) => {
     if (value === undefined) return null;
     if (typeof value !== 'string' || value.length > MOST_SHADER) throw shape(field);
     return value;
   };
-  return Object.freeze({ solve: one(solve), refine: one(refine) });
+  return Object.freeze({ helpers: one(helpers), solve: one(solve), refine: one(refine) });
 }
 
 function readSolver(raw, index) {
@@ -204,7 +206,7 @@ function readFilter(raw, index) {
   const at = `filters[${index}]`;
   return guarded(at, () => {
     if (!isObject(raw)) throw shape(at);
-    const { id, name, options, passes: rawPasses } = pick(raw, ['id', 'name', 'options', 'passes'], at);
+    const { id, name, options, helpers = null, passes: rawPasses } = pick(raw, ['id', 'name', 'options', 'helpers', 'passes'], at);
     if (typeof id !== 'string' || !ID.test(id)) throw shape(`${at}.id`);
     if (!text(name)) throw shape(`${at}.name`);
     const passes = copy(rawPasses);
@@ -212,10 +214,11 @@ function readFilter(raw, index) {
     passes.forEach((pass, i) => {
       if (typeof pass !== 'string' || !pass.length || pass.length > MOST_SHADER) throw shape(`${at}.passes[${i}]`);
     });
+    if (helpers !== null && (typeof helpers !== 'string' || helpers.length > MOST_SHADER)) throw shape(`${at}.helpers`); // before every pass's function
     // A filter runs only while one of its options is off its default (plugins/filters.js), so one with none never would.
     const read = readOptions(options, at);
     if (!read.length) throw shape(`${at}.options`);
-    return Object.freeze({ id, name, options: read, passes: Object.freeze(passes) });
+    return Object.freeze({ id, name, options: read, helpers, passes: Object.freeze(passes) });
   });
 }
 
