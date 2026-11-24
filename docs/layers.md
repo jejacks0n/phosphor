@@ -669,7 +669,7 @@ the canvas changes. Undo brings it back, selected if it was.
     drawn in the bars around a picture that doesn't fill the grid. In Color ASCII and Monochrome ASCII, **Colors
     only**'s paint goes into the picture as paint, and a typed cell keeps its background as Keep crisp cells keeps it. Like Bake, the first time makes the picture the
     working-size copy the preview is made from, so growing the grid later works from that, effects like Edges can
-    shift slightly that first time, and the **Image filters** section no longer shows. With a Limited count palette,
+    shift slightly that first time, and the **Image filters** work on it as on a picture you opened. With a Limited count palette,
     the palette is worked out again from the merged picture, so some colors can shift. When the graphics card can't
     process a picture as long as the grid (most handle the full 5,000 lines; some phones stop at 2,000 or 4,000), it
     merges exactly instead. Shapes stay shapes. A layer with character settings of its own loses them here: its paint is
