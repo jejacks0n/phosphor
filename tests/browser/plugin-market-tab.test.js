@@ -59,7 +59,7 @@ const cards = () => [...document.querySelectorAll('dialog li.card')];
 const card = (name) => cards().find((one) => one.querySelector('.name').textContent === name);
 const names = () => cards().map((one) => one.querySelector('.name').textContent);
 // What the dialog showing is called: a question's title, or the Plugins dialog's name (its tabs are in a title's place).
-const heading = () => document.querySelector('dialog h3')?.textContent ?? document.querySelector('dialog').getAttribute('aria-label');
+const heading = () => document.querySelector('dialog h2')?.textContent ?? document.querySelector('dialog').getAttribute('aria-label');
 const dialogText = () => document.querySelector('dialog').textContent;
 const button = (name) => card(name).querySelector('div.foot button');
 const amber = listed({ description: 'The warm glow of a 1983 terminal.', script: 'amber.js' });

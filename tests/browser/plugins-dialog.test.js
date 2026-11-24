@@ -76,7 +76,7 @@ const pick = async (text) => {
   await vi.waitFor(() => expect(heading()).not.toBe('Plugins'));
 };
 // What the dialog showing is called: a question's title, or the Plugins dialog's name (its tabs are in a title's place).
-const heading = () => document.querySelector('dialog h3')?.textContent ?? document.querySelector('dialog').getAttribute('aria-label');
+const heading = () => document.querySelector('dialog h2')?.textContent ?? document.querySelector('dialog').getAttribute('aria-label');
 const dialogText = () => document.querySelector('dialog').textContent;
 const installed = async (text = midnight) => {
   await pick(text);
@@ -418,7 +418,7 @@ test('Marketplace and Installed are tabs: arrow keys move between them, and Inst
   await mount(async (store) => { await store.install(JSON.parse(midnight)); });
   const tabs = [...document.querySelectorAll('dialog > .head [role=tablist] [role=tab]')]; // the dialog's first line, in a title's place
   expect(tabs.map((one) => one.textContent.replace(/\s+/g, ' ').trim())).toEqual(['Marketplace', 'Installed 1']);
-  expect(document.querySelector('dialog h3')).toBeNull();
+  expect(document.querySelector('dialog h2')).toBeNull();
   expect(document.querySelector('dialog').getAttribute('aria-label')).toBe('Plugins');
   const panel = page.getByRole('tabpanel').element();
   expect(panel.getAttribute('aria-labelledby')).toBe(tabs[1].id);

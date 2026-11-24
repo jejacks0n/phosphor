@@ -106,8 +106,9 @@ test('a closable one has the thin × inside its top right corner, level with its
   expect(close.querySelector('svg')).toBeTruthy();          // the Palettes and Fonts layer's ×, drawn: not a letter
   expect(close.textContent.trim()).toBe('');
   expect(Math.round(box.right - at.right)).toBe(7); // 6px in, past the 1px border
-  const title = dialog().querySelector(':scope > .head > h3#modal-dialog-title');
+  const title = dialog().querySelector(':scope > .head > h2#modal-dialog-title');
   expect(title.textContent).toBe('Ask');
+  expect(getComputedStyle(title).fontSize).toBe('14px'); // an h2 at 14px, as the SOCIAL pages' headings
   const mid = (r) => (r.top + r.bottom) / 2;
   expect(Math.abs(mid(at) - mid(title.getBoundingClientRect()))).toBeLessThanOrEqual(1); // on the title's line, as Sign in's and the tabs' are
   const body = dialog().querySelector(':scope > .body');
@@ -143,7 +144,7 @@ async function mountTabs(props = {}) {
 
 test('tabs are its first line in a title\'s place: the chosen one marked, a press and the arrow keys choosing', async () => {
   const { dialog, tab, tabs } = await mountTabs({ closable: true });
-  expect(dialog().querySelector('h3')).toBe(null);
+  expect(dialog().querySelector('h2')).toBe(null);
   expect(dialog().querySelector('[role=tablist]').getAttribute('aria-label')).toBe('About Phosphor');
   expect(tabs().map((el) => el.textContent.replace(/\s+/g, ' ').trim())).toEqual(['About', 'Licenses 3']);
   expect(tabs()[1].querySelector('span.count').textContent).toBe('3');
@@ -325,6 +326,6 @@ test('a dialog in place of another keeps the backdrop; one opened alone fades it
   await vi.waitFor(() => expect(backdrop()).toBe(1));
   which.value = 'second';
   await nextTick();
-  expect(document.querySelector('dialog.modal-dialog h3').textContent).toBe('second');
+  expect(document.querySelector('dialog.modal-dialog h2').textContent).toBe('second');
   expect(backdrop()).toBe(1);
 });

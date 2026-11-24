@@ -69,7 +69,7 @@ test('About switches to Licenses, which lists the build\'s open-source packages 
   vi.stubGlobal('fetch', fetched);
   await mount(AboutPhosphor);
   expect(document.querySelector('section.licenses')).toBeNull();
-  expect(document.querySelector('dialog h3')).toBeNull(); // no title: the tabs say where you are
+  expect(document.querySelector('dialog h2')).toBeNull(); // no title: the tabs say where you are
   expect([aboutTab('About').getAttribute('aria-selected'), aboutTab('Licenses').getAttribute('aria-selected')]).toEqual(['true', 'false']);
   const links = () => [...document.querySelectorAll('dialog a')].map((a) => a.textContent);
   expect(links()).not.toContain('Font Awesome Free'); // the fonts' and icons' licenses are on Licenses, not About
