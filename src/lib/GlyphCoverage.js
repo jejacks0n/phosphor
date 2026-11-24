@@ -120,8 +120,8 @@ const overlap = (a0, a1, b0, b1) => Math.max(0, Math.min(a1, b1) - Math.max(a0, 
 
 const referenceMasks = new Map();
 // The ink in each of sw x sh samples of the glyph's cell, row-major from the top, 0..1 each.
-export function referenceMask(char, sw = 4, sh = 8) {
-  const key = `${sw}x${sh}${char}`;
+export function referenceMask(char, sw = 4, sh = 8, wide = false) {
+  const key = `${sw}x${sh}${wide ? 'w' : ''}${char}`;
   let mask = referenceMasks.get(key);
   if (mask) return mask;
   mask = new Float32Array(sw * sh);
@@ -138,12 +138,13 @@ export function referenceMask(char, sw = 4, sh = 8) {
       }
     }
   } else if (!EXACT.has(char)) {
-    const data = drawGlyph(char, REF_W, REF_H, 1, '#fff', true, REFERENCE);
+    const refW = wide ? 2 * REF_W : REF_W;   // a wide character is drawn across two cells' width
+    const data = drawGlyph(char, refW, REF_H, 1, '#fff', true, REFERENCE);
     const counts = new Float32Array(sw * sh);
     for (let y = 0; y < REF_H; y++) {
-      for (let x = 0; x < REF_W; x++) {
-        const at = Math.floor(y * sh / REF_H) * sw + Math.floor(x * sw / REF_W);
-        mask[at] += data[(y * REF_W + x) * 4 + 3] / 255;
+      for (let x = 0; x < refW; x++) {
+        const at = Math.floor(y * sh / REF_H) * sw + Math.floor(x * sw / refW);
+        mask[at] += data[(y * refW + x) * 4 + 3] / 255;
         counts[at]++;
       }
     }
