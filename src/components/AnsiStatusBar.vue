@@ -4,6 +4,7 @@ import { useMediaQuery, useResizeObserver } from '@vueuse/core';
 import { useI18n } from 'vue-i18n';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
+import { useDrawingStore } from '@/store/DrawingStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
 import { slotOf } from '@/lib/BitmapFont';
@@ -22,6 +23,7 @@ import { useLayerName } from '@/composables/useLayerName';
 const { t } = useI18n();
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
+const drawing = useDrawingStore();
 const layerName = useLayerName();
 const layer = computed(() => layerName(workspace.shownPick));
 const tool = computed(() => workspace.activeTool);
@@ -143,6 +145,15 @@ const backTo100 = () => {
           :title="workspace.ansiRenderer === 'dom' ? t('status.domToCanvasTitle') : t('status.canvasToDomTitle')"
           @click="workspace.ansiRenderer = workspace.ansiRenderer === 'dom' ? 'canvas' : 'dom'"
       >{{ workspace.ansiRenderer === 'dom' ? t('status.canvas') : t('status.dom') }}</button>
+      <!-- iCE colors, the SAUCE tab's checkbox, where the drawing shows: in a 16-color drawing only, the host's in a room -->
+      <button
+          v-if="project.sixteenColors"
+          :class="{ on: project.sauceIceColors }"
+          :aria-pressed="project.sauceIceColors"
+          :disabled="!!drawing.hostOnly"
+          :title="drawing.hostOnly ?? (project.sauceIceColors ? t('status.iceOnTitle') : t('status.iceOffTitle'))"
+          @click="project.setIceColors(!project.sauceIceColors)"
+      >{{ t('status.ice') }}</button>
       <button
           :class="{ on: workspace.smoothText }"
           :aria-pressed="workspace.smoothText"

@@ -201,3 +201,23 @@ test('a plain wheel over the buttons scrolls them sideways while there is more',
   expect(strip.scrollLeft).toBe(end);
   expect(host.querySelector('footer').classList.contains('tight')).toBe(true);
 });
+
+// iCE colors where the drawing shows: the SAUCE tab's checkbox as a button beside Smooth.
+test('a 16-color drawing has an iCE button before Smooth, lit while iCE colors is on; a click turns it off in one undo step, and any other drawing has none', async () => {
+  const { project } = await mount();
+  const buttons = () => [...host.querySelectorAll('.strip button')].map((b) => b.textContent), ice = () => [...host.querySelectorAll('.strip button')].find((b) => b.textContent === 'iCE');
+  expect(ice()).toBeUndefined(); // full color
+  project.quantize = 'cga';
+  await nextTick();
+  expect(buttons().slice(-2)).toEqual(['iCE', 'Smooth']);
+  expect([ice().getAttribute('aria-pressed'), ice().classList.contains('on'), ice().title]).toEqual(['true', true, 'iCE colors is on: bright backgrounds. Click to make them blink, as on DOS.']);
+  ice().click();
+  await nextTick();
+  expect([project.sauceIceColors, ice().getAttribute('aria-pressed'), ice().title]).toEqual([false, 'false', 'iCE colors is off: bright backgrounds blink, as on DOS. Click for bright backgrounds.']);
+  project.undo();
+  await nextTick();
+  expect([project.sauceIceColors, ice().getAttribute('aria-pressed')]).toEqual([true, 'true']);
+  project.quantize = 'vga';
+  await nextTick();
+  expect(ice()).toBeUndefined();
+});

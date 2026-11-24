@@ -232,6 +232,7 @@ bytes of the original and the export outside the art.
   export's record has flags 2, as it was; there's no `ESC[?33h`; the blink cells (SGR 5) are byte for byte the same.
   The brushed row shows bright red and never blinks, in the ANSI view and in the second export (no SGR 5 on that row:
   its bright red is a foreground, on `▀` or `█`); Undo after unchecking or checking iCE colors puts the box back.
+  The status bar's **iCE** button, beside Smooth, is unlit, and lights when the checkbox is checked (and the other way).
 - Probes: `out-of-order`: switch the color mode to VGA (the checkbox goes off, saying "Only for 16-color drawings.") and
   back to CGA (it's off again, and the letters blink again); `again`: turn iCE colors on, export, and check the record's
   flags are 3 and the file starts with `ESC[?33h`; `interrupt`: save the project, reload, reopen it, and check iCE
