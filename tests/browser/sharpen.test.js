@@ -8,7 +8,8 @@ import { settingDefaults } from '@/store/settings.js';
 import { ctx2d } from '@/lib/Canvas.js';
 
 const W = 160, H = 80;
-const params = (over) => ({ ...settingDefaults(), cols: 80, rows: 40, ...over });
+// 40 × 20: the picture is processed at its own size, 4 pixels a grid pixel (the working scale's least).
+const params = (over) => ({ ...settingDefaults(), cols: 40, rows: 20, ...over });
 
 function flat(hex) {
   const canvas = Object.assign(document.createElement('canvas'), { width: W, height: H });

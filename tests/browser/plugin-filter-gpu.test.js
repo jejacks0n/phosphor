@@ -63,9 +63,10 @@ const within = (a, b, most) => a.map((v, i) => Math.abs(v - b[i])).filter((d) =>
 // An identity filter against none. Byte for byte only where that holds by construction: with Simplify and Edges on, the
 // pass without a filter sharpens its center (after the effects) against neighbors from before them, while the pass
 // after a filter reads both after; so Sharpen with Simplify or Edges isn't the same, and isn't asked to be. And only
-// where the picture isn't resampled: at a processed size that isn't the picture's (as the app's almost always is), the
-// pass without a filter reads the picture's smoothed colors between 8-bit steps, which the filter's pass reads rounded
-// to 8 bits. A palette snap doesn't make that exact either: the 8-bit texture's rounding differs from round8 at ties,
+// where the picture isn't resampled: reduced by under twice (which the texture's bilinear sampling does; more is
+// averaged down by a whole factor first, and an enlargement made pixel for pixel), the pass without a filter reads the
+// picture's smoothed colors between 8-bit steps, which the filter's pass reads rounded to 8 bits. A palette snap
+// doesn't make that exact either: the 8-bit texture's rounding differs from round8 at ties,
 // and that can flip a palette pick, so under a snap there's no useful bound.
 test('an identity filter changes no byte with Simplify and Edges off: no adjustment or snap is doubled', () => {
   // At the picture's own size, with no effects, the last main pass copies its 8-bit input (every read at a pixel's

@@ -200,9 +200,9 @@ test('a block from another tab pastes as it would in its own, into a base at ano
   const { phosphor } = readClipboardHtml(written[0].html);
   const scale = project.baseLayer.scale;
 
-  // Pasted into a new document at another grid size (so another base scale).
+  // Pasted into a new document at another base scale (a tall picture with 8 pixels a grid pixel; the block's has 4).
   const into = async (block) => {
-    await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 50 });
+    await loadImage(project, '/tests/fixtures/images/tall.png', { cols: 30, rows: 50 });
     expect(project.baseLayer.scale).not.toBe(scale);
     project.pasteSelection(block, 2, 3);
     await settle(project);

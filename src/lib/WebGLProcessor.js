@@ -2,6 +2,7 @@
  * WebGL-based image processing for high-performance filters.
  */
 
+import { boxFiltered } from './Canvas.js';
 import { failFilter, optionValues, scriptOptions } from '../plugins/solvers.js';
 
 const VERTEX_SHADER = `
@@ -323,16 +324,32 @@ export default class WebGLProcessor {
     this.filterPrograms = new Map();
   }
 
-  // A picture larger than the GPU takes (it would come out black) goes up scaled down to fit; the
-  // pipeline never processes more than that anyway.
-  #fitting(image) {
-    const w = image.naturalWidth || image.width, h = image.naturalHeight || image.height;
-    const s = this.maxSide / Math.max(w, h);
-    if (s >= 1) return image;
-    const fitted = Object.assign(document.createElement('canvas'), { width: Math.max(1, Math.floor(w * s)), height: Math.max(1, Math.floor(h * s)) });
-    const ctx = fitted.getContext('2d');
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(image, 0, 0, fitted.width, fitted.height);
+  // The picture as it goes up for processing at w x h, always through a canvas, so a transparent pixel reads the same
+  // at every size (black, never the color a file keeps under alpha 0). Smaller than that (a picture with fewer pixels
+  // than the working scale's least), it's enlarged to it pixel for pixel, so a small pixel-art picture stays blocks and
+  // every pass reads its pixels at their centers. Twice that or more, it's averaged down by the whole factor
+  // (boxFiltered), so what would fall between two of the texture's bilinear samples isn't lost; the bilinear sampling
+  // then does the rest, under 2x. Past what the GPU takes (it would come out black), it's scaled down to w x h.
+  #fitting(image, w, h) {
+    const iw = image.naturalWidth || image.width, ih = image.naturalHeight || image.height;
+    const f = Math.floor(Math.min(iw / w, ih / h));
+    const canvas = (cw, ch) => Object.assign(document.createElement('canvas'), { width: cw, height: ch });
+    const enlarged = iw <= w && ih <= h && (iw < w || ih < h); // one side shorter and one longer goes up as it is
+    if (enlarged || (Math.max(iw, ih) > this.maxSide && f < 2)) {
+      const fitted = canvas(w, h), ctx = fitted.getContext('2d');
+      if (enlarged) ctx.imageSmoothingEnabled = false;
+      else ctx.imageSmoothingQuality = 'high';
+      ctx.drawImage(image, 0, 0, w, h);
+      return fitted;
+    }
+    if (f >= 2) {
+      const fitted = canvas(Math.round(iw / f), Math.round(ih / f));
+      fitted.getContext('2d').putImageData(boxFiltered(image, fitted.width, fitted.height, 0, 0, fitted.width, fitted.height), 0, 0);
+      return fitted;
+    }
+    if (typeof image.getContext === 'function') return image;
+    const fitted = canvas(iw, ih);
+    fitted.getContext('2d').drawImage(image, 0, 0);
     return fitted;
   }
 
@@ -457,7 +474,7 @@ export default class WebGLProcessor {
     }
 
     // Main Image Texture
-    if (this.lastImage !== image) {
+    if (this.lastImage !== image || this.lastSize !== `${w}x${h}`) {
       if (this.texture) gl.deleteTexture(this.texture);
       this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -465,14 +482,10 @@ export default class WebGLProcessor {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.#fitting(image));
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.#fitting(image, w, h));
       this.lastImage = image;
+      this.lastSize = `${w}x${h}`;
     }
-    // Enlarged (a picture with fewer pixels than the working scale's least), pixel for pixel, so a small pixel-art
-    // picture stays blocks rather than smears; shrunk, smoothly.
-    const iw = image.naturalWidth || image.width, ih = image.naturalHeight || image.height;
-    gl.bindTexture(gl.TEXTURE_2D, this.texture);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, iw < w || ih < h ? gl.NEAREST : gl.LINEAR);
 
     // Palette Texture
     if (this.paletteTexture) gl.deleteTexture(this.paletteTexture);

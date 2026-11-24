@@ -1228,7 +1228,9 @@ test('the settings number joins the same sequence, so the next change follows it
 test('a base message from the host writes the artist\'s base', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann');
-  room.host.sendAll({ t: 'base', n: room.project._ledger.note(), runs: [[1, 1, 2, RED]], records: { pins: [['3,3', 'P']] } });
+  const k = room.project.baseLayer.scale; // grid pixels 1 and 2 of row 1, every row of them
+  const runs = Array.from({ length: k }, (_, i) => [k, k + i, 2 * k, RED]);
+  room.host.sendAll({ t: 'base', n: room.project._ledger.note(), runs, records: { pins: [['3,3', 'P']] } });
   await expect.poll(() => ann.project.baseRecords.pins.get('3,3'), PATIENT).toBe('P');
   expect(ann.project.baseLayer.pixelAt(2, 1)).toMatchObject({ r: 255, g: 0, b: 0 });
   room.host.sendAll({ t: 'base', n: room.project._ledger.note(), runs: [[1, 1, 1, 99, BLUE]], records: {} });
@@ -5167,7 +5169,7 @@ test('an art layer: a change heard while an artist is inside one lands in the dr
   expect(ann.project.enterArt(key)).toBe(true);
   bob.project.typeAt(10, 10, 'B', { fg: '#00ff00' });
   bob.project.commitEdit();
-  dab(bob.project, 30, 30);
+  dab(bob.project, 6, 6);
   bob.project.commitEdit();
   await expect.poll(() => ann.project.readCell('10,10')?.char, PATIENT).toBe('B');
   await expect.poll(() => ann.project._sharing.pending.sum, PATIENT).toBe(room.project._ledger.sum);
@@ -5179,7 +5181,7 @@ test('an art layer: a change heard while an artist is inside one lands in the dr
   ann.project.commitEdit();
   ann.project.leaveArt();
   expect(char(ann.project, 10, 10)).toBe('B');
-  expect(painted(ann.project, 30, 30)).toEqual(painted(room.project, 30, 30));
+  expect(painted(ann.project, 6, 6)).toEqual(painted(room.project, 6, 6));
   expect(ann.project.shapes.get(key).art.cells.map(([, c]) => c)).toEqual(['A', 'Z']);
   await sameShapes(room, ann, bob);
 });
@@ -5191,7 +5193,7 @@ test('an art layer: a change heard while the host is inside one lands in the dra
   expect(room.project.enterArt(key)).toBe(true);
   ann.project.typeAt(10, 10, 'B', { fg: '#00ff00' });
   ann.project.commitEdit();
-  dab(ann.project, 30, 30);
+  dab(ann.project, 6, 6);
   ann.project.commitEdit();
   await expect.poll(() => room.project.readCell('10,10')?.char, PATIENT).toBe('B');
   await expect.poll(() => alpha(room.project.readTile(0, 0)), PATIENT).toBe(true);
@@ -5204,7 +5206,7 @@ test('an art layer: a change heard while the host is inside one lands in the dra
   room.project.commitEdit();
   room.project.leaveArt();
   expect(char(room.project, 10, 10)).toBe('B');
-  expect(painted(room.project, 30, 30)).toEqual(painted(ann.project, 30, 30));
+  expect(painted(room.project, 6, 6)).toEqual(painted(ann.project, 6, 6));
   expect(room.project.shapes.get(key).art.cells.map(([, c]) => c)).toEqual(['A', 'Z']);
   await sameShapes(room, ann);
 });

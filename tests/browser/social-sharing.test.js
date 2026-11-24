@@ -1130,7 +1130,7 @@ test('applyBase writes the base\'s pixels and pins, refreshing their cells, and 
   project.sendSlice();
   const pins = Object.freeze({ pins: new Map([['8,8', 'Q']]), indexes: new Map() });
   const edits = project.editVersion;
-  project.applyBase([[8 * k, 16 * k, k, BLUE], [8 * k, 16 * k + 1, k, BLUE]], pins);
+  project.applyBase(Array.from({ length: k }, (_, i) => [8 * k, 16 * k + i, k, BLUE]), pins); // grid pixel (8, 16), every row
   expect(project.baseRecords).toBe(pins);
   expect(project.renderer.baseRecords).toBe(pins);
   expect(project.cells[cellIndex(8, 8, 40)].char).toBe('Q');
@@ -1172,7 +1172,7 @@ test('an applied change refreshes only its cells', async () => {
   const render = vi.spyOn(project, 'render');
   const refresh = vi.spyOn(project, 'refreshCells');
   const map = vi.spyOn(project, 'applyChange');
-  project.applyNumbered(heard([['5,5', THEM], ['6,5', OTHER]], [[2 * k, 2 * k, k, RED], [2 * k, 2 * k + 1, k, RED]]));
+  project.applyNumbered(heard([['5,5', THEM], ['6,5', OTHER]], Array.from({ length: k }, (_, i) => [2 * k, 2 * k + i, k, RED])));
   await settle(project);
   expect(render).not.toHaveBeenCalled();
   expect(refresh).toHaveBeenCalledTimes(1);

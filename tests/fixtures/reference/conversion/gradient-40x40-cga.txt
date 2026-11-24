@@ -11,8 +11,8 @@
 .#0000aa#0000aa
 ▄#5555ff#0000aa
 ■#5555ff#0000aa
-▒#5555ff#5555ff
-■#5555ff#aa00aa
+▒#5555ff#0000aa
+■#aa00aa#aa00aa
 %#aa00aa#aa00aa
 ■#aa00aa#aa00aa
 ░#aa00aa#aa00aa
@@ -37,7 +37,7 @@
 ■#aa00aa#aa00aa
 ▄#aa00aa#aa00aa
 ▄#aa00aa#aa00aa
-%#ff5555#aa00aa
+%#aa00aa#aa00aa
 ▓#0000aa#0000aa
 ▄#0000aa#0000aa
 ▒#0000aa#0000aa
@@ -81,7 +81,7 @@
 %#0000aa#0000aa
 ░#0000aa#0000aa
 ▄#0000aa#0000aa
-▄#5555ff#0000aa
+▄#0000aa#0000aa
 ░#5555ff#0000aa
 ▄#5555ff#5555ff
 ▄#5555ff#5555ff
@@ -260,7 +260,7 @@
 ▄#5555ff#5555ff
 ▄#5555ff#5555ff
 %#5555ff#5555ff
-▄#5555ff#aa00aa
+▄#aa00aa#aa00aa
 ▄#aa00aa#aa00aa
 ▄#aa00aa#aa00aa
 ░#aa00aa#aa00aa
@@ -392,7 +392,7 @@
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ■#aaaaaa#aaaaaa
-■#aaaaaa#ff5555
+■#aaaaaa#aaaaaa
 ▄#ff5555#ff5555
 ▄#ff5555#ff5555
 ▄#ff5555#ff5555
@@ -516,8 +516,8 @@
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▒#aaaaaa#aaaaaa
+▄#aaaaaa#aaaaaa
 ▄#aaaaaa#ff5555
-▄#ff5555#ff5555
 ■#00aaaa#00aaaa
 ▄#00aaaa#00aaaa
 ▒#00aaaa#00aaaa
@@ -566,13 +566,13 @@
 ▄#00aaaa#00aaaa
 ■#00aaaa#00aaaa
 ■#00aaaa#00aaaa
-▄#55ffff#00aaaa
+▄#00aaaa#00aaaa
 ░#55ffff#00aaaa
 ■#55ffff#00aaaa
 *#55ffff#55ffff
 ░#55ffff#55ffff
 :#55ffff#55ffff
-▄#55ffff#aaaaaa
+▄#55ffff#55ffff
 *#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
@@ -602,9 +602,9 @@
 %#00aaaa#00aaaa
 ▄#00aaaa#00aaaa
 ▄#00aaaa#00aaaa
-▓#55ffff#00aaaa
+▓#00aaaa#00aaaa
 ▄#55ffff#00aaaa
-■#55ffff#55ffff
+■#55ffff#00aaaa
 ░#55ffff#55ffff
 ■#55ffff#55ffff
 ▄#55ffff#55ffff
@@ -674,7 +674,7 @@
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
-▄#ffff55#ffff55
+▄#ffff55#aaaaaa
 ■#ffff55#ffff55
 ▒#ffff55#ffff55
 ▄#ffff55#ffff55
@@ -696,8 +696,8 @@
 ■#55ffff#55ffff
 ▄#55ffff#55ffff
 ■#55ffff#55ffff
-▄#55ffff#aaaaaa
-:#aaaaaa#aaaaaa
+▄#55ffff#55ffff
+:#55ffff#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
 ▄#aaaaaa#aaaaaa
