@@ -364,16 +364,18 @@ test('the .bin fixture opens 8 wide from its record: DOS colors, iCE backgrounds
   assert.equal(art.binNoSauce, false);
 });
 
-test('a .bin without iCE colors takes the blink bit off the background', () => {
+test('a .bin without iCE colors keeps the blink bit as a bright background, and says iCE colors are off', () => {
   const art = readArtFile(binRecord([65, 0x9f, 66, 0x1f]), 'a.bin');
-  assert.deepEqual(art.cells.slice(0, 2).map((c) => c.bg), [CGA[4], CGA[4]]);
-  assert.equal(readArtFile(binRecord([65, 0x9f], { flags: 1 }), 'a.bin').cells[0].bg, CGA[12]);
+  assert.deepEqual(art.cells.slice(0, 2).map((c) => c.bg), [CGA[12], CGA[4]]);
+  assert.equal(art.iceColors, false);
+  const ice = readArtFile(binRecord([65, 0x9f], { flags: 1 }), 'a.bin');
+  assert.deepEqual([ice.cells[0].bg, ice.iceColors], [CGA[12], true]);
 });
 
 test('a .bin with no record is 160 wide, said so, when it\'s whole rows of that; otherwise it isn\'t BinaryText', () => {
   const row = Array.from({ length: 320 }, (_, i) => (i % 2 ? 0x07 : 65));
   const art = readArtFile(Uint8Array.from([...row, ...row, 0x1a]), 'old.bin'); // an EOF byte after it
-  assert.deepEqual([art.cols, art.rows, art.binNoSauce, art.sauce], [160, 2, true, null]);
+  assert.deepEqual([art.cols, art.rows, art.binNoSauce, art.sauce, art.iceColors], [160, 2, true, null, false]);
   for (const bytes of [Uint8Array.from(row.slice(2)), Uint8Array.from({ length: 4096 }), new Uint8Array(0)]) {
     assert.equal(error(() => readArtFile(bytes, 'FIRMWARE.BIN')).userMessage, "FIRMWARE.BIN isn't a BinaryText file.");
   }
