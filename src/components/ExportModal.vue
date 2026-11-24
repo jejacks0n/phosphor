@@ -44,8 +44,11 @@ const filtersLeftOut = computed(() => project.filterGroups.filter(({ ref, state 
 
 // Without iCE colors the ANSI view blinks bright backgrounds; only .ans and .xb have blink to write, so every other format
 // shows those cells steady, their backgrounds bright, and says so.
+// A still drawing in which something blinks has a GIF too: two frames, the letters on and off.
 const BLINK_FORMATS = ['ans', 'ansimation', 'xb'];
-const losesBlink = computed(() => !!project.blinkingBackgrounds && !BLINK_FORMATS.includes(selectedId.value));
+const moving = computed(() => project.hasFrames && project.animate);
+const blinkGif = computed(() => selectedId.value === 'gif' && !moving.value && project.blinks);
+const losesBlink = computed(() => !!project.blinkingBackgrounds && !BLINK_FORMATS.includes(selectedId.value) && !blinkGif.value);
 
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(selectedId.value) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 // .ans is CP437: the characters it can't keep and what each becomes. An animated .ans lists what every frame holds,
@@ -148,7 +151,7 @@ function cancel() {
             :key="f.id"
             class="format-btn"
             :class="{ selected: f.id === selectedId }"
-            :disabled="!project.hasFrames || !project.animate"
+            :disabled="!moving && !(f.id === 'gif' && project.blinks)"
             @click="pickFormat(f.id)"
         >
           <span class="format-name">{{ t(`export.modal.formats.${f.id}.name`) }}</span>
@@ -186,6 +189,7 @@ function cancel() {
         <p v-if="filtersLeftOut.length" class="note warn filters-left-out">{{ t('export.filtersLeftOut', { names: formatList(filtersLeftOut) }, filtersLeftOut.length) }}</p>
 
         <p v-if="losesBlink" class="note steady">{{ t('export.modal.steadyBlink') }}</p>
+        <p v-if="blinkGif" class="note blink-gif">{{ t('export.modal.blinkGif') }}</p>
 
         <!-- Animated ANS: too tall/wide warning -->
         <p v-if="tooTall" class="note warn">{{ t('export.modal.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>

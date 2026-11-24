@@ -30,7 +30,7 @@ import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, letterSpacingOf, withLetterSpacing } from '@/lib/Sauce.js';
-import { lessMotion } from '@/lib/blink.js';
+import { BLINK_MS, blinkCell, lessMotion } from '@/lib/blink.js';
 import { toast } from '@/composables/useToast.js';
 import { sayMissingBlocks } from '@/composables/useFontSetup.js';
 import { askFontWidth } from '@/composables/useFontWidth.js';
@@ -665,15 +665,21 @@ export const documentActions = {
     return cells;
   },
 
-  // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast', 'gif' or 'mp4'. Throws with userMessage
+  // The animated formats, written from every frame: 'ansimation' (.ans), 'utf8ansimation' (.utf8ans), 'cast', 'gif' or 'mp4'
+  // (and 'gif' for a still drawing that blinks: two frames, letters on and off). Throws with userMessage
   // what the save dialog should say. A GIF or video tells progress the share of its frames written, as it goes. deliver
   // takes the file (its blob and name): a download unless it's given (the Export dialog's Share). sauce: false writes
   // an animated ANSI file with no SAUCE record.
   async exportAnimation(format, { filename = this.filename, progress, deliver = downloadBlob, sauce = true } = {}) {
     const ext = { ansimation: 'ans', utf8ansimation: 'utf8ans' }[format] ?? format;
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
-      const frames = await this.animationCells(), lines = charRowsOf(this.rows);
-      const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
+      // A still drawing's GIF (offered while something blinks): the blink's two halves, each as long as the ANSI view shows it.
+      const lines = charRowsOf(this.rows), blink = format === 'gif' && !(this.hasFrames && this.animate) && this.blinkingBackgrounds;
+      if (blink && this._artInside) this.leaveArt();
+      if (blink) this.commitPending();
+      const still = blink && this.steadyCells();
+      const frames = blink ? [true, false].map((lit) => still.map((cell) => blinkCell(cell, blink, lit))) : await this.animationCells();
+      const durations = blink ? [BLINK_MS, BLINK_MS] : this.frames.map((frame) => frameDuration(frame, this.fps));
       if (format === 'ansimation' || format === 'utf8ansimation') {
         const utf8 = format === 'utf8ansimation';
         return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, iceColors: this.sauceIceColors, sauce: sauce && this.sauceFields() })], { type: 'application/octet-stream' });

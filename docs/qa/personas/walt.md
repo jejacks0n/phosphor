@@ -225,7 +225,7 @@ bytes of the original and the export outside the art.
 - Does: opens `blink.ans` (flags 2 in its record: iCE colors left off) with Edit artwork; looks at the ANSI view and the
   SAUCE tab; fixes a cell on the steady row (types over a letter of "steady"); exports .ans; then compares the export
   with `blink.ans` byte for byte outside the fixed cell's run. Then adds a layer, brushes bright red across the empty
-  row, and exports again.
+  row, and exports again. Last, exports GIF.
 - Expects: "BLINK" and the star line show on dark red and dark blue, their letters blinking; the steady row doesn't;
   PIXEL shows them bright and steady. SAUCE's iCE colors checkbox is off, and its line says "On: bright backgrounds.
   Off: they blink, as on DOS."; on the Colors page's BG side the bright swatches have a small spark (they blink). The
@@ -233,6 +233,8 @@ bytes of the original and the export outside the art.
   The brushed row shows bright red and never blinks, in the ANSI view and in the second export (no SGR 5 on that row:
   its bright red is a foreground, on `▀` or `█`); Undo after unchecking or checking iCE colors puts the box back.
   The status bar's **iCE** button, beside Smooth, is unlit, and lights when the checkbox is checked (and the other way).
+  The Export dialog offers GIF for this still drawing, saying "Two frames, looping: the cells that blink, their letters
+  on and off as in the ANSI view."; the file is two frames, "BLINK" there in one and gone in the other.
 - Probes: `out-of-order`: switch the color mode to VGA (the checkbox goes off, saying "Only for 16-color drawings.") and
   back to CGA (it's off again, and the letters blink again); `again`: turn iCE colors on, export, and check the record's
   flags are 3 and the file starts with `ESC[?33h`; `interrupt`: save the project, reload, reopen it, and check iCE

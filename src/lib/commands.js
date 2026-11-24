@@ -449,13 +449,13 @@ export const COMMANDS = [
   { id: 'file.versions', group: 'file', label: said('actions.versions'), available: alone,
     run: ({ workspace }) => { workspace.versionsOpen = true; } },
   // Export with its format chosen, one row for each (Export… is file.export). The animated ones only with Animate on and
-  // frames to animate, as Export offers them.
+  // frames to animate, as Export offers them (and GIF for a still drawing that blinks).
   ...EXPORT_FORMATS.map((format) => ({
     id: `file.export.${format.id}`, group: 'file', label: said(`save.formats.${format.id}.title`),
     where: () => format.id !== 'mp4' || canExportVideo(),
     available: (ctx) => {
       const drawing = drawn(ctx);
-      return drawing !== true || !format.animated || (ctx.project.hasFrames && ctx.project.animate) ? drawing : 'shortcuts.reasons.notAnimated';
+      return drawing !== true || !format.animated || (ctx.project.hasFrames && ctx.project.animate) || (format.id === 'gif' && ctx.project.blinks) ? drawing : 'shortcuts.reasons.notAnimated';
     },
     run: ({ workspace }) => { workspace.exportModal = format.id; },
   })),
