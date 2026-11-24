@@ -99,10 +99,13 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.ok(Object.isFrozen(baked.get('0,0')));
   const none = new Map();
   assert.equal(bakeEditCells(none, P), none);
-  // How a covered cell merges into the picture: the converter's own character goes in as it is (it comes back from the
-  // picture); a solid character in ANSI goes in as it shows, pinned to ▄; any other character, in every style, is drawn
-  // in as its glyph and picked again. A wide character and anything in the letterbox merge exactly. The cases before
-  // the glyph rule had letters, shades and lines (and every user character in the ASCII styles) merge exactly.
+});
+
+// docs/model.md R3: how a covered cell merges into the picture: the converter's own character goes in as it is (it comes
+// back from the picture); a solid character in ANSI goes in as it shows, pinned to ▄; any other character, in every
+// style, is drawn in as its glyph and picked again. A wide character and anything in the letterbox merge exactly. The
+// cases before the glyph rule had letters, shades and lines (and every user character in the ASCII styles) merge exactly.
+test('R3: mergeKind: the converter\'s own goes in as picture, a solid one in ANSI pinned to ▄, any other character as its glyph, a wide one and the letterbox exactly', () => {
   const at = (char, renderStyle = 'ansi', inPicture = true, wide = false) => mergeKind({ char, renderStyle, inPicture, wide });
   assert.equal(at(undefined), 'picture');
   for (const solid of [' ', '█', '▀', '▄']) assert.equal(at(solid), 'picture-pinned', solid);

@@ -153,13 +153,13 @@ anything in the letterbox merge exactly, pinned, as Keep crisp cells writes them
   CGA under Best match, soft Brush and Blur strokes and a dithered vector layer above); `› R3: the report: a shape
   merged into Layer 1 leaves no border …` (the soft edge stays paint, the base shown or hidden before or after) and
   `› … keeps every cell with a palette and Levels on, the soft edges paint`;
-  `› R3: Merge down of text with no background onto the base keeps the canvas with a palette and a slider moved`
-  (#201: VGA and CGA under Levels, Posterize, Contrast, Saturation, Brightness, Hue, Invert, and none; Keep crisp cells
-  keeps the canvas, and Blend into source image draws the letters in as glyphs, none pinned);
+  `› R3: Merge down of text with no background onto the base with a palette and a slider moved: …` (#201: VGA and CGA
+  under Levels, Posterize, Contrast, Saturation, Brightness, Hue, Invert, and none; Keep crisp cells keeps the canvas,
+  and Blend into source image draws the letters into the picture as glyphs, a letter's block changed, none pinned);
   `› R3: Blend into source image draws a typed letter in as its glyph …` (unpinned, its ink and background in the
   picture, Blur reaching it, undo bringing back the layer, the pins and the picture), `› R3: the report: Blend into
   source image in ASCII puts the strokes over pinned spaces where Blur reaches them` (vector-strokes-ascii.phosphor) and
-  `› at neutral: the same look but the letter …`; `tests/unit/edit-cells.test.js` (`mergeKind`);
+  `› at neutral: the same look but the letter …`; `tests/unit/edit-cells.test.js › R3: mergeKind: …`;
   `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and

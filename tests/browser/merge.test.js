@@ -1214,7 +1214,7 @@ test('Blend into source image reads a merged shape\'s soft edge as each grid pix
 // Posterize 5). Keep crisp cells writes the letters as base pixels (mergeCellOf). Blend into source image draws them into
 // the picture as glyphs, picked again (R3), so the canvas changes there: those cases held it unchanged before the glyph
 // rule, when Blend wrote the letters as Keep crisp cells does, and hold now that the letters went in, none pinned.
-describe('R3: Merge down of text with no background onto the base keeps the canvas with a palette and a slider moved', () => {
+describe('R3: Merge down of text with no background onto the base with a palette and a slider moved: Keep crisp cells keeps the canvas, Blend draws the letters into the picture', () => {
   const cases = [
     ['VGA, Midtones 2', 'vga', { levelsMid: 2 }], ['VGA, Midtones 1.4', 'vga', { levelsMid: 1.4 }], ['VGA, Midtones 0.5', 'vga', { levelsMid: 0.5 }],
     ['VGA, White point 200', 'vga', { levelsWhite: 200 }], ['VGA, Posterize 5', 'vga', { posterize: 5 }], ['VGA, Contrast 140', 'vga', { contrast: 140 }],
@@ -1252,11 +1252,13 @@ describe('R3: Merge down of text with no background onto the base keeps the canv
 
   test.each(cases)('Blend into source image, %s: the letters drawn into the picture as glyphs, none pinned', async (_, quantize, sliders) => {
     const project = await typed(quantize, sliders, { blended: true });
+    const fit = project.fitFor(project.cols, project.rows);
+    const inPicture = (key) => { const [col, row] = key.split(',').map(Number); return col >= fit.dx && col < fit.dx + fit.dw && 2 * row >= fit.dy && 2 * row + 1 < fit.dy + fit.dh; };
+    const [col, row] = [...project.editCells.keys()].find(inPicture).split(',').map(Number), under = pictureBlock(project, col, row);
     await project.mergeIntoPicture();
     await settle(project);
     expect(project.layers).toHaveLength(1); // the layer went into the picture
-    const fit = project.fitFor(project.cols, project.rows);
-    const inPicture = (key) => { const [col, row] = key.split(',').map(Number); return col >= fit.dx && col < fit.dx + fit.dw && 2 * row >= fit.dy && 2 * row + 1 < fit.dy + fit.dh; };
+    expect(pictureBlock(project, col, row)).not.toEqual(under); // its letter reached the picture
     expect([...project.baseRecords.pins.keys()].filter(inPicture)).toEqual([]); // only the letterbox's merge exactly
   });
 });

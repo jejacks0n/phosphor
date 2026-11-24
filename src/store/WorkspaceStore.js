@@ -98,7 +98,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     openRequest: 0,          // counts Cmd/Ctrl+O presses: EditWorkspace opens its file chooser for each
     fileRequest: null,       // a File to open (double-clicked, Open With, the desktop's Open Recent), which EditWorkspace takes as chosen
     zoomRequest: null,       // { by }: a zoom key, for the view showing (EditorViewport): by 2 or 0.5, or 0 for the view's own zoom
-    artDrop: null,           // { file, at: { col, row } | null, picture?, art? (an art file, as read) }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it or draw on top; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
+    artDrop: null,           // { file, at: { col, row } | null, picture?, art? (an art file, as read) }: a picture on an open still drawing, asking to add it as paint or open it; an art file opening from the start screen, asking to edit it, draw on top or open it as an image; or dropped on an open drawing, asking to add it or open it (EditWorkspace)
     ansiViewOrigin: { col: 0, row: 0 }, // the top-left whole cell on screen in the ANSI view (AnsiEditor)
     ansiViewSize: { cols: 0, rows: 0 }, // how many whole cells from there are on screen (AnsiEditor)
     ansiViewZoom: 1,         // the ansiZoom those cells were measured at (AnsiEditor)
