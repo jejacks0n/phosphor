@@ -36,6 +36,19 @@ test('resize can change the scale and keeps uniform blocks exact', () => {
   expect([...data.slice(0, 4)]).toEqual([255, 0, 0, 255]);
 });
 
+// A layer saved at another scale is loaded grid pixel by grid pixel (PaintLayer.load): each of its pixels from the saved
+// grid pixel it lies in, never blended with the next (drawImage's smoothing did, and rounded differently on another CPU).
+test('a layer saved at scale 3 loads at 4 with each grid pixel its own', () => {
+  const saved = Object.assign(document.createElement('canvas'), { width: 6, height: 6 }), ctx = ctx2d(saved);
+  ctx.fillStyle = '#ff0000'; ctx.fillRect(0, 0, 3, 6);
+  ctx.fillStyle = '#0000ff'; ctx.fillRect(3, 0, 3, 6);
+  const layer = new PaintLayer({ cols: 2, rows: 2, scale: 4 }); // smooth, as the base is
+  layer.load(saved, null, null);
+  const row = ctx2d(layer.canvas).getImageData(0, 0, 8, 1).data;
+  const colors = Array.from({ length: 8 }, (_, x) => [...row.slice(x * 4, x * 4 + 4)].join());
+  expect(colors).toEqual([...Array(4).fill('255,0,0,255'), ...Array(4).fill('0,0,255,255')]);
+});
+
 // An 800 x 800 picture (hue across, light down, with a fine checker), big enough that the processing
 // scale follows the grid (400 / the grid's longer side) rather than the image's size.
 async function bigImageUrl() {
