@@ -94,7 +94,7 @@ test('every file the app opens is associated, and only what no other app owns be
   for (const type of ['text/x-nfo', 'text/plain', 'image/png', 'image/jpeg', 'image/svg+xml']) assert.ok(linux.includes(type), type);
 });
 
-// A .pho is a PNG, so each system's own PNG thumbnailer previews it once the system knows that.
+// A .pho is a PNG, so each system's own PNG thumbnailer previews it once the system knows that (on macOS, the app's own).
 test('a .pho is declared a kind of PNG on macOS, Windows and Linux', () => {
   const yml = read('electron-builder.yml');
   assert.match(section(yml, 'fileAssociations'), /- ext: pho\n\s+name: Phosphor Project\n\s+role: Editor\n\s+rank: Owner\n\s+mimeType: image\/x-phosphor/);
@@ -104,6 +104,17 @@ test('a .pho is declared a kind of PNG on macOS, Windows and Linux', () => {
   const mac = section(yml, 'mac');
   assert.match(mac, /UTExportedTypeDeclarations:\n\s+- UTTypeIdentifier: work\.phosphor\.pho\n\s+UTTypeConformsTo: \[public\.png, public\.image\]\n\s+UTTypeDescription: Phosphor Project\n\s+UTTypeTagSpecification:\n\s+public\.filename-extension: \[pho\]\n\s+public\.mime-type: image\/x-phosphor/);
   assert.match(mac, /CFBundleDocumentTypes:\n\s+- CFBundleTypeName: Phosphor Project\n(?:\s+\w+: .+\n)*?\s+LSItemContentTypes: \[work\.phosphor\.pho\]/);
+  // Finder's thumbnail is the app's own extension's, as the system's image thumbnailer refuses a type it doesn't know:
+  // built into the app after packing and signed sandboxed before the app (build/thumbnail.mjs), for that type only.
+  assert.match(yml, /^afterPack: \.\/build\/thumbnail\.mjs$/m);
+  assert.match(mac, /^ {2}sign: \.\/build\/thumbnail\.mjs$/m);
+  const info = read('build/thumbnail/Info.plist');
+  assert.match(info, /<key>CFBundleIdentifier<\/key>\s*<string>work\.phosphor\.app\.thumbnail<\/string>/);
+  assert.match(info, /<key>NSExtensionPointIdentifier<\/key>\s*<string>com\.apple\.quicklook\.thumbnail<\/string>/);
+  assert.match(info, /<key>QLSupportedContentTypes<\/key>\s*<array>\s*<string>work\.phosphor\.pho<\/string>\s*<\/array>/);
+  assert.match(info, /<key>NSExtensionPrincipalClass<\/key>\s*<string>ThumbnailProvider<\/string>/);
+  assert.match(read('build/thumbnail/ThumbnailProvider.swift'), /@objc\(ThumbnailProvider\)/);
+  assert.match(read('build/thumbnail/entitlements.plist'), /<key>com\.apple\.security\.app-sandbox<\/key>\s*<true\/>/);
 
   // Windows: the installer points .pho at the system's photo thumbnail provider and takes it away on uninstall.
   assert.match(section(yml, 'nsis'), /include: build\/installer\.nsh/);

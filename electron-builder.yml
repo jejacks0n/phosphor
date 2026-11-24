@@ -16,6 +16,8 @@ files:
 extraMetadata:
   main: desktop/main.js
 publish: github
+# On macOS, builds the .pho thumbnail extension into the app (build/thumbnail.mjs); mac.sign signs it.
+afterPack: ./build/thumbnail.mjs
 # Double-clicked, these open in Phosphor (desktop/main.js hands them to the page): its projects, which it owns, and ANSI
 # art, which it can edit as another editor may. On Windows each one makes Phosphor the extension's default app, so only
 # extensions no other app owns are here; the rest of what it opens is under mac and linux, where Phosphor is only offered
@@ -62,12 +64,15 @@ mac:
   hardenedRuntime: true
   # Needs APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD and APPLE_TEAM_ID; without them it's skipped, with a warning.
   notarize: true
+  # Signs the thumbnail extension (sandboxed, as an app extension must be), then the app as electron-builder would.
+  sign: ./build/thumbnail.mjs
   extendInfo:
     # macOS asks the person the first time the app reaches the local network, in these words.
     NSLocalNetworkUsageDescription: "Phosphor connects to rooms on your local network."
-    # A .pho is a PNG with the project inside: declared a kind of PNG, Finder and Quick Look preview it with the
-    # system's own PNG thumbnailer. electron-builder lists pho by extension only, so this entry binds it to the type;
-    # its own pho entry, by extension, stays beside this one, which is expected.
+    # A .pho is a PNG with the project inside: declared a kind of PNG, Quick Look previews it with the system's own
+    # PNG previewer, and Finder's thumbnail is the app's extension's (build/thumbnail/), as the system's own image
+    # thumbnailer refuses a type it doesn't know. electron-builder lists pho by extension only, so this entry binds it
+    # to the type; its own pho entry, by extension, stays beside this one, which is expected.
     UTExportedTypeDeclarations:
       - UTTypeIdentifier: work.phosphor.pho
         UTTypeConformsTo: [public.png, public.image]

@@ -106,7 +106,8 @@ of what Phosphor opens is offered under **Open With**, and you can make Phosphor
 A `.pho` is a PNG picture of the drawing with the project inside, so once the app is installed your system previews it
 the way it previews any PNG:
 
-- **macOS**: Finder's icons and Quick Look show the picture.
+- **macOS**: Finder's icons and Quick Look show the picture. The icons come from Phosphor itself, so they need the app
+  installed.
 - **Windows**: the installer asks Explorer to show the picture as the thumbnail, and uninstalling takes that away. This
   is still to be checked on a real Windows machine.
 - **Linux**: the `.deb` tells the system a `.pho` is a kind of PNG, and installs a thumbnailer that previews it with the

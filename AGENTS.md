@@ -100,7 +100,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join),
   `selfPass.js` (passes signed by their own key) and `windowKey.js` (a window's identity: the computer's key for one
   window at a time, its own for the others), with `src/components/social/DesktopStartPage.vue` in the lobby's
-  place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml` (the icon, `build/icon.png`, drawn by `node build/make-icon.mjs`; `build/installer.nsh`, `build/phosphor-mime.xml` and `build/phosphor.thumbnailer`, a `.pho` previewed as the PNG it is on Windows and Linux), released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
+  place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml` (the icon, `build/icon.png`, drawn by `node build/make-icon.mjs`; `build/installer.nsh`, `build/phosphor-mime.xml` and `build/phosphor.thumbnailer`, a `.pho` previewed as the PNG it is on Windows and Linux; on macOS, Finder's thumbnail is the app's own extension, `build/thumbnail/`, built and signed by `build/thumbnail.mjs`), released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or `v1.2.3-beta` for a
   pre-release: package.json's version, higher by semver than every version tag before it, checked by
   `scripts/release-tag.mjs`, on a commit main's tests passed), which also publishes phosphor.work for a release (not a
   pre-release); every push to main publishes next.phosphor.work (`.github/workflows/deploy.yml`). Its
