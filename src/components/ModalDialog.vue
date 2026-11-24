@@ -19,10 +19,10 @@ import CloseButton from '@/components/CloseButton.vue';
 // `tabs` ([{ key, label, count, id, controls }]) puts tabs on the first line in a title's place, the Palettes and Fonts
 // layer's (tabStrip.css), with `tab` (v-model:tab) the chosen one's key: Left and Right move round them, and the body
 // starts from its top on each. A tab's `id` and `controls` are for whoever shows a tab panel.
-// `closable` adds the close button (CloseButton, the layer's thin ×) inside the top right corner, which cancels as
-// Escape does. The browser's Back cancels it too, and the page stays, unless `back` is false: a dialog the address
-// itself shows or asks about (SOCIAL's pages, its question, ending a room), or one read over another (About, the legal
-// pages), which Back moves past.
+// `closable` adds the close button (CloseButton, the layer's thin ×) inside the top right corner, on the title's line when
+// there is one, which cancels as Escape does. The browser's Back cancels it too, and the page stays, unless `back` is
+// false: a dialog the address itself shows or asks about (SOCIAL's pages, its question, ending a room), or one read over
+// another (About, the legal pages), which Back moves past.
 // At 700px wide and below a big one (long, wide or reading, or `full`: Keyboard shortcuts) is the whole window, and a
 // small one keeps its margin. `tall` gives it one height whatever it holds, so it doesn't change size as a list in it
 // is searched; a shorter window still shortens it. The <dialog> itself is useModal's.
@@ -86,7 +86,7 @@ const onMouseDown = (event) => outside(event) && still() && event.preventDefault
 <template>
   <Teleport to="body">
     <dialog :ref="open" class="modal-dialog" :class="{ long: props.long || props.wide, wide: props.wide, reading: props.reading, full: props.full || props.long || props.wide || props.reading, tall: props.tall }" :aria-label="props.title ? null : props.label" :aria-labelledby="props.title ? 'modal-dialog-title' : null" @keydown="onKeyDown" @cancel="onCancel" @close="onClose" @click="onClick" @mousedown="onMouseDown">
-      <div v-if="props.tabs || props.title || props.closable" class="head" :class="{ 'tab-strip': !!props.tabs, closable: props.closable }">
+      <div v-if="props.tabs || props.title || props.closable" class="head" :class="{ 'tab-strip': !!props.tabs, titled: !props.tabs && !!props.title, closable: props.closable }">
         <CloseButton v-if="props.closable" @click="emit('cancel')"/><!-- first, so focus starts on it when the slot has nothing to take it; drawn at the line's right end -->
         <div v-if="props.tabs" ref="strip" role="tablist" :aria-label="props.label || props.title" @keydown="onTabKey">
           <button
@@ -164,6 +164,9 @@ div.head > button.close {
   position: absolute;
   top: 6px;
   right: 6px;
+}
+div.head.titled > button.close { /* on the title's line (18px down, 18px tall), as Sign in's heading and the tabs have it */
+  top: 14px;
 }
 div.head.tab-strip > button.close { /* at the tabs' right end, in the middle of the line, as the layer's */
   position: relative;
@@ -246,6 +249,7 @@ dialog.modal-dialog.tall {
 h3 {
   margin: 0 0 4px;
   font-size: 16px;
+  line-height: 18px; /* one height in every system font, so the × stays on its line */
 }
 
 p.sub {

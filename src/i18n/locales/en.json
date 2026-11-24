@@ -1438,7 +1438,7 @@
     "macFnNote": "On Mac keyboards, you may need to hold Fn to use F1–F12. To use them without Fn, turn on “Use F1, F2, etc. keys as standard function keys” in System Settings → Keyboard → Keyboard Shortcuts… → Function Keys.",
     "list": {
       "title": "Commands",
-      "search": "Find a command",
+      "search": "Filter commands…",
       "recent": "Recent",
       "none": "No command matches"
     },
@@ -1576,7 +1576,7 @@
       "tabPicture": "Show the PIXEL tab, or VECTOR with a vector layer picked",
       "tabAnsi": "Show the ANSI (or ASCII) tab",
       "tabSauce": "Show the SAUCE tab",
-      "tabRoom": "Show the ROOM tab, while watching a room",
+      "tabRoom": "Show the ROOM tab",
       "tabsKeptFromBrowser": "On Linux, nothing where the tab keys don't apply, so the browser doesn't switch its tabs",
       "social": "Show Social, in a room with the cursor in the chat box; from the box, back where you were (Esc too)",
       "commandList": "Find a command and run it",

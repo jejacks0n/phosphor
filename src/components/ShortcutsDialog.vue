@@ -87,7 +87,7 @@ h4 {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--accent-hot);
+  color: var(--text-faint);
 }
 
 section:first-child h4 {
