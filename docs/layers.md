@@ -409,7 +409,7 @@ All three:
   background it stands for. Whether it shows bright or blinks is the file's **iCE colors**: on when its SAUCE record
   says so, off when it doesn't ([iCE colors](characters.md#ice-colors)). A file with no record is on when it starts
   with the code that says so (`ESC[?33h`, as Phosphor writes it), off when it uses blink without it, and on when
-  nothing in it blinks. A UTF-8 file's bright backgrounds are colors of their own, so it's always on.
+  nothing in it blinks; a UTF-8 file with no record is on, since its bright backgrounds are colors of their own.
 - **Characters**: A `.utf8ans` is UTF-8, even with a stray byte that isn't (shown as �). One that isn't UTF-8 at all
   (a `.ans` renamed, say) is read as CP437 at 80 columns, as a `.ans` is, and a message says so. The other types are
   read as UTF-8 when they're valid UTF-8 with characters beyond plain ASCII, and as CP437 otherwise.

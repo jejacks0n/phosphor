@@ -622,6 +622,16 @@ test('an .ans whose SAUCE leaves iCE colors off opens with it off, and exports i
   expect([latin(on).startsWith(ICE), readSauce(on).flags]).toEqual([true, 3]);
 });
 
+test('an .ans written blinking, as tests/qa/files.js writes Walt\'s blink.ans, exports untouched byte for byte', async () => {
+  const project = await afterAnotherDocument(), cga = PALETTES.cga;
+  const cells = ['B', 'L', ' ', 's', 't'].map((char, i) => ({ char, fg: cga[i < 2 ? 15 : 14], bg: cga[i < 2 ? 9 : 4] }));
+  const original = new Uint8Array(await new AnsiFile(5, 1, cells).toBlob({ colorMode: 'cga', iceColors: false, sauce: { title: 'QA Blink', flags: 2 } }).arrayBuffer());
+  await project.openArtFile(new File([original], 'blink.ans'), { layer: 'edit' });
+  await settle(project);
+  expect(project.sauceIceColors).toBe(false);
+  expect([...await exported(project)]).toEqual([...original]);
+});
+
 test('iCE colors turned off in a new CGA drawing: its .ans and animated .ans leave out ESC[?33h and the flag, its XBin NON_BLINK', async () => {
   const project = await afterAnotherDocument();
   project.quantize = 'cga';

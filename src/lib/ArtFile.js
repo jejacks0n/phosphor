@@ -215,9 +215,10 @@ export function readArtFile(bytes, name, knownBlocks) {
     const line = lines.get(r);
     for (let c = 0; c < cols; c++) cells[r * cols + c] = line?.[c] ?? { char: ' ', fg: DEFAULT_FG, bg: DEFAULT_BG };
   }
-  // iCE colors: whether a bright background (blink, SGR 5, kept as bright) shows bright or blinks. A CP437 file's record
-  // says (its flag, bit 0); with none, ESC[?33h says on, else a file that blinks is off, as on DOS, and one that never
-  // does is on (nothing in it blinks either way). A UTF-8 file's bright backgrounds are colors of their own, never blink.
-  const iceColors = !cp437 || (sauce ? sauce.iceColors : iceCode ?? !blinked);
+  // iCE colors: whether a bright background (blink, SGR 5, kept as bright) shows bright or blinks. The record says (its
+  // flag, bit 0), so an export writes it back as it came. With none, a UTF-8 file is on (its bright backgrounds are
+  // colors of their own), and a CP437 one is on with ESC[?33h, else off when it blinks, as on DOS, and on when it never
+  // does (nothing in it blinks either way).
+  const iceColors = sauce ? sauce.iceColors : !cp437 || (iceCode ?? !blinked);
   return { cols, rows, cells, sauce, palette: ['cga', 'vga', 'none'][depth], notUtf8, iceColors };
 }
