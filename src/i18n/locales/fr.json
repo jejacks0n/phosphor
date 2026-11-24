@@ -108,8 +108,8 @@
       "preparing": "Préparation de votre dessin…",
       "drawing": "{name}, {size} · {steps}",
       "room": "Le dessin de cette salle, {size} · {steps}",
-      "drawingTooBig": "{name} est trop volumineux pour être envoyé ({size} ; un signalement contient {most} au plus). Seules les étapes partiront ({steps}).",
-      "roomTooBig": "Le dessin de cette salle est trop volumineux pour être envoyé ({size} ; un signalement contient {most} au plus). Seules les étapes partiront ({steps}).",
+      "drawingTooBig": "{name} est trop volumineux pour être envoyé ({size} ; un rapport contient {most} au plus). Seules les étapes partiront ({steps}).",
+      "roomTooBig": "Le dessin de cette salle est trop volumineux pour être envoyé ({size} ; un rapport contient {most} au plus). Seules les étapes partiront ({steps}).",
       "stepsOnly": "{steps}. Aucun dessin n'est ouvert."
     },
     "public": "Ce que vous écrivez devient un ticket public sur GitHub. Votre dessin et vos étapes ne vont qu'au développeur de Phosphor.",
@@ -120,7 +120,7 @@
     "sentIssue": "Envoyé. Merci. C'est le {issue} sur GitHub.",
     "issue": "ticket n° {number}",
     "errors": {
-      "rateLimited": "Trop de signalements pour l'instant. Patientez un moment et réessayez.",
+      "rateLimited": "Trop de rapports pour l'instant. Patientez un moment et réessayez.",
       "tooBig": "C'était trop volumineux pour être envoyé. Décochez le dessin et réessayez."
     }
   },

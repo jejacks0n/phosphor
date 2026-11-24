@@ -197,7 +197,7 @@ test('the Terms, Privacy Policy and Guidelines open over the modal, the Privacy 
     },
     'Privacy Policy': async (privacy) => {
       await expect(privacy).toContainText('receives the whole project, including the original image');
-      await expect(privacy).toContainText('Last updated: November 1, 2026.');
+      await expect(privacy).toContainText('Last updated: November 24, 2026.');
     },
     'Community Guidelines': async () => {},
   };

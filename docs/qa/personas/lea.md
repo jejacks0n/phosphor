@@ -528,4 +528,35 @@ and sideways.
 
 **Free time:** she'd open Midnight's homepage link and How plugins work, switch the language with Midnight in use, and tap Remove on Outlines to see what her drawing says when its plugin is gone (the note then says "Outlines isn't installed", the plugin's name as the drawing kept it, and the choice reads "Outlines (not here)"), and remove Aberration to see its group say "Aberration isn't installed. The picture shows without it.", then press Reset on it.
 
+## Telling them something broke
+
+### 36. Report an issue from the beta
+- Does: on a beta or an alpha version (About, from the logo, shows a version ending in `-beta` or `-alpha`), opens the
+  settings from ☰ and reads the line under the logo; taps **Report an issue**; writes a line in **What were you doing?**
+  and two lines in **What went wrong?**; reads the line under the checkbox and the note above Send; taps **Send**. Fake
+  the server's answer first, so nothing leaves the computer: `await social.fakeIssueReports(page)`, which returns the
+  list the report lands in. On a version that isn't a beta there's no line under the logo: open the step with
+  `rated: false` and note it (not a finding).
+- Expects: the line under the logo says "BETA · Report an issue" ("ALPHA" on an alpha) on one line, inside the drawer's
+  width, with nothing to dismiss it; the form fills the phone's screen, with focus in the first box and the phone's
+  keyboard up; each box has its count, and a line break counts as two; Send is off until **What went wrong?** has
+  words; the checkbox is ticked and its line names her drawing, its size and how many steps ("selfie.pho, 240 KB ·
+  52 steps"); the note says "What you write becomes a public issue on GitHub. Your drawing and steps go only to
+  Phosphor's developer.", and under it which Phosphor and browser go too; nothing is in the list before Send; after it
+  the form says "Sent. Thank you. It's issue #312 on GitHub." with the number a link, and the list has one report with
+  her words, a `drawing` named for her file and a `steps` file listing what she did (her taps as steps, and no line of
+  it holding anything typed into SOCIAL); **Close** puts her back in the settings, on **Report an issue**
+  ([Betas and reporting an issue](../../README.md#betas-and-reporting-an-issue)).
+- Probes: `back-out`: write half a line, tap × (or the phone's Back), open it again, and check the half line is still
+  there; `again`: untick the checkbox, send a second report, and check it has no `drawing` and no `steps`; `extremes`:
+  paste 4,001 characters into **What went wrong?** and check the count warns, a line says it's too long and Send is
+  off; `interrupt`: answer the next Send with a refusal (`social.fakeIssueReports(page, { answer: () => [429, { error:
+  'rate-limited' }] })`) and check it says "Too many reports just now. Wait a while and try again." with her words
+  still in the boxes.
+- Rated: no (touch only: the phone's keyboard has no key that sends the form)
+
+**Free time:** she'd turn the phone sideways with the form open, switch the language and read the form again, open
+About from the logo to compare the version with the one the note names, and send a report with no drawing open from the
+start screen (the line then says only how many steps, and "No drawing is open.").
+
 ## Known

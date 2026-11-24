@@ -2,7 +2,7 @@
 
 Phosphor also comes as an app for macOS, Windows and Linux. Drawing in it works as it does in the browser. What's
 different is **SOCIAL**: there's no lobby, account or sign-in. You host a room on your own computer and give people its
-address, or you join someone's room by the address they give you. Nothing in the app goes through a Phosphor server.
+address, or you join someone's room by the address they give you. Nothing of a room goes through a Phosphor server.
 
 Rooms otherwise work as they do on the web: watching, chat, drawing together, cursors, following, **Remove**, **Make
 host** and the host's reload (see [Social](social.md)). This page covers what's different.
@@ -37,7 +37,7 @@ The app's own menus, in the language Phosphor shows:
   join at, while you host; Leave Room (End Room… for a host, which asks first).
 - **View**: Actual Size, Zoom In and Zoom Out (the whole window, as a browser's zoom) and Full Screen.
 - **Help**: Command List… (Cmd/Ctrl+K, [The Command List](layers.md#the-command-list)), Keyboard Shortcuts, Phosphor on GitHub, the Release Notes for your version, and Report an Issue…, which
-  opens a new GitHub issue with your Phosphor version and system written in. Troubleshooting has the developer tools,
+  opens a new GitHub issue with your Phosphor version and system written in (a beta's **Report an issue**, under the logo, needs no GitHub account: see [What the app connects to](#what-the-app-connects-to)). Troubleshooting has the developer tools,
   for when someone helping you asks what they say, and Reload with Plugins Off, for a plugin's theme that makes the
   window hard to read ([Plugins](plugins.md#starting-with-plugins-off)).
 - **Plugins…** (in the Phosphor menu on macOS, in Help elsewhere, after Check for Updates…) opens the Plugins dialog
@@ -243,17 +243,22 @@ coming back means asking you again, and you can **Turn away**.
 
 There's nothing to report to either: no one at Phosphor sees a desktop room.
 
-## Nothing goes to Phosphor
+## What the app connects to
 
-The app has no account and no sign-in, and sends nothing to Phosphor: no lobby, no room list, no reports, no usage.
-It connects only to these, and only then:
+The app has no account and no sign-in, and sends nothing to Phosphor on its own: no lobby, no room list, no reports of
+people or rooms, no usage. It connects only to these, and only then:
 
 - the rooms you host or join, at the addresses you give it;
 - GitHub, for Phosphor's releases, when you choose Check for Updates;
 - phosphor.work (next.phosphor.work for a pre-release, see below), for the Marketplace's plugin list, when you open
   Plugins, and raw GitHub files (`raw.githubusercontent.com`), for a plugin's files, when you install one from the
   Marketplace;
-- lospec.com, for one palette, when you search Lospec from the color layer's **Palettes** page.
+- lospec.com, for one palette, when you search Lospec from the color layer's **Palettes** page;
+- Phosphor's server (`api.phosphor.work`), for an issue report, when you press **Send** in **Report an issue**. Only a
+  beta or an alpha version has it, under the logo. It sends what you wrote, your version of Phosphor and your system, and,
+  if you leave its box ticked, your drawing and the session's steps. What you wrote becomes a public issue on GitHub;
+  the drawing and steps are seen only by Phosphor's developer and kept for 90 days
+  ([Betas and reporting an issue](README.md#betas-and-reporting-an-issue)).
 
 Its Privacy page names each of them and says who sees your IP address. Your drawings, name and settings stay on your
 computer.

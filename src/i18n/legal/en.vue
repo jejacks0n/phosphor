@@ -142,7 +142,7 @@ const emit = defineEmits(['open']);
   </div>
   <div v-else>
     <h1>Privacy Policy</h1>
-    <p class="updated">Last updated: November 1, 2026.</p>
+    <p class="updated">Last updated: November 24, 2026.</p>
 
     <p>Phosphor is an ANSI art editor that runs in your browser at phosphor.work. Its SOCIAL tab is
       optional, offering a lobby, rooms where you can watch someone draw, chat, and user accounts. This policy explains what
@@ -155,7 +155,7 @@ const emit = defineEmits(['open']);
 
     <h2>The Editor Keeps Your Art in Your Browser</h2>
     <p>Images you open, art you draw, your palettes, fonts, and settings stay entirely in your browser
-      (stored locally in local storage and IndexedDB). We never receive them unless you host a room (explained below). Clearing
+      (stored locally in local storage and IndexedDB). We never receive them unless you host a room or send an issue report with your drawing (both explained below). Clearing
       this site's data in your browser deletes them.</p>
     <p>We do not use analytics, advertising, or tracking cookies. The app itself is hosted on GitHub
       Pages, which, like any web host, receives your IP address when your browser loads the site.</p>
@@ -163,6 +163,17 @@ const emit = defineEmits(['open']);
       and your IP address. The list of plugins itself comes from our own site.</p>
     <p>When you get a palette from Lospec by name or link, your browser requests it from lospec.com, which sees the request
       and your IP address. The palettes that come with Phosphor need no request.</p>
+
+    <h2>Issue Reports</h2>
+    <p>Beta and alpha versions of Phosphor show a "Report an issue" link, for telling us about a problem with Phosphor itself. Nothing
+      is sent until you press Send. A report sends us what you wrote, your version of Phosphor, whether you use the web or the desktop
+      app, and your browser and operating system (for example, "Chrome 142 on macOS"). If you leave its box ticked, it also sends
+      your current drawing and the steps you took in Phosphor since the page loaded: the tools and commands you used, with the names of
+      your files and layers. The steps never include anything you typed into the SOCIAL tab: no password, email address, code, room
+      password, or chat.</p>
+    <p>What you wrote is published, with the version, platform, and browser, as a public issue on GitHub, where anyone can read it.
+      Do not include anything private. Your drawing and steps are not published: they are retained for 90 days and are seen only by
+      Phosphor's developer. An issue report is separate from reporting a user or a room (see Reports, below).</p>
 
     <h2>The SOCIAL Tab</h2>
     <p>Nothing from the SOCIAL tab runs until you open that tab (or follow a link from one of our emails). From
@@ -219,7 +230,8 @@ const emit = defineEmits(['open']);
       <li><strong>Rate limits:</strong> To prevent brute-force attacks and spam, we track request counts by IP address
         and by the submitted email address or username for approximately one minute.</li>
       <li><strong>Cloudflare Turnstile</strong> verifies that a real person is creating an account, requesting a
-        password reset or another confirmation email, or signing in to an account that has had too many attempts.</li>
+        password reset or another confirmation email, signing in to an account that has had too many attempts, or sending
+        an issue report.</li>
       <li><strong>Compromised passwords:</strong> When you choose a password, we send only the first five
         characters of its SHA-1 hash (never the password itself) to Have I Been Pwned, and we reject any password that
         has appeared in a known data breach.</li>
@@ -233,8 +245,8 @@ const emit = defineEmits(['open']);
     <ul>
       <li><strong>To provide SOCIAL</strong> (Art. 6(1)(b)): Managing your account, authentication, and providing access to the lobby and
         rooms.</li>
-      <li><strong>Legitimate interests</strong> (Art. 6(1)(f)): Keeping SOCIAL secure, preventing abuse, and
-        reviewing and resolving reports.</li>
+      <li><strong>Legitimate interests</strong> (Art. 6(1)(f)): Keeping SOCIAL secure, preventing abuse,
+        reviewing and resolving reports, and fixing the problems that issue reports describe.</li>
       <li><strong>Legal obligations</strong> (Art. 6(1)(c)): Complying with applicable laws when we are required to retain or disclose
         information.</li>
     </ul>
@@ -243,8 +255,9 @@ const emit = defineEmits(['open']);
     <p>We do not sell, rent, or share personal data with third parties for marketing, and we do not display advertisements.
       The following service providers process data on our behalf, solely to operate Phosphor:</p>
     <ul>
-      <li><strong>Cloudflare:</strong> Hosts and serves the web application, and operates the SOCIAL server
-        infrastructure, its database, storage, rate limits, and Turnstile.</li>
+      <li><strong>Cloudflare:</strong> Hosts and serves the web application, and operates the server
+        infrastructure for SOCIAL and issue reports, its database, storage, rate limits, and Turnstile.</li>
+      <li><strong>GitHub:</strong> Publishes what you write in an issue report as a public issue.</li>
       <li><strong>Mailjet:</strong> Delivers transactional emails.</li>
       <li><strong>Have I Been Pwned:</strong> Checks for compromised passwords (using only a five-character hash prefix).</li>
     </ul>
@@ -259,6 +272,7 @@ const emit = defineEmits(['open']);
       <li><strong>Rate-limit counts:</strong> Approximately one minute.</li>
       <li><strong>Reports:</strong> 90 days after they are resolved. If a moderator took action on
         your account, records of that action may be retained with your account for longer.</li>
+      <li><strong>Issue reports:</strong> Your drawing and steps, 90 days. What you wrote stays public as a GitHub issue.</li>
       <li><strong>The lobby and rooms:</strong> No data is retained after a room ends or after you leave.</li>
     </ul>
 

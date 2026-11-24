@@ -142,7 +142,7 @@ const emit = defineEmits(['open']);
   </div>
   <div v-else>
     <h1>Politique de confidentialité</h1>
-    <p class="updated">Dernière mise à jour : 1er novembre 2026.</p>
+    <p class="updated">Dernière mise à jour : 24 novembre 2026.</p>
 
     <p>Phosphor est un éditeur d'art ANSI fonctionnant dans votre navigateur sur phosphor.work. Son onglet SOCIAL est
       facultatif, proposant un hall, des salles où observer quelqu'un dessiner, un chat et des comptes utilisateurs. Cette politique explique quelles
@@ -155,7 +155,7 @@ const emit = defineEmits(['open']);
 
     <h2>L'éditeur conserve vos créations dans votre navigateur</h2>
     <p>Les images que vous ouvrez, les créations que vous dessinez, vos palettes, polices et paramètres restent entièrement dans votre navigateur
-      (stockés localement dans le stockage local et IndexedDB). Nous ne les recevons jamais sauf si vous hébergez une salle (expliqué ci-dessous). Effacer
+      (stockés localement dans le stockage local et IndexedDB). Nous ne les recevons jamais sauf si vous hébergez une salle ou envoyez un rapport de problème avec votre dessin (tous deux expliqués ci-dessous). Effacer
       les données de ce site dans votre navigateur les supprime.</p>
     <p>Nous n'utilisons aucun outil d'analyse d'audience, de publicité ou de cookies de suivi. L'application elle-même est hébergée sur GitHub
       Pages, qui, comme tout hébergeur web, reçoit votre adresse IP lorsque votre navigateur charge le site.</p>
@@ -163,6 +163,17 @@ const emit = defineEmits(['open']);
       et votre adresse IP. La liste des plugins elle-même provient de notre propre site.</p>
     <p>Quand vous prenez une palette sur Lospec par son nom ou son lien, votre navigateur la demande à lospec.com, qui voit
       la requête et votre adresse IP. Les palettes fournies avec Phosphor ne nécessitent aucune requête.</p>
+
+    <h2>Rapports de problème</h2>
+    <p>Les versions bêta et alpha de Phosphor affichent un lien « Signaler un problème », pour nous faire part d'un problème avec Phosphor lui-même. Rien
+      n'est envoyé tant que vous n'appuyez pas sur Envoyer. Un rapport nous envoie ce que vous avez écrit, votre version de Phosphor, si vous utilisez
+      l'application web ou de bureau, ainsi que votre navigateur et votre système d'exploitation (par exemple, « Chrome 142 on macOS »). Si vous laissez
+      la case cochée, il envoie aussi votre dessin en cours et les étapes que vous avez effectuées dans Phosphor depuis le chargement de la page : les outils
+      et les commandes utilisés, avec les noms de vos fichiers et de vos calques. Les étapes ne contiennent jamais rien de ce que vous avez saisi dans
+      l'onglet SOCIAL : ni mot de passe, ni adresse e-mail, ni code, ni mot de passe de salle, ni message de chat.</p>
+    <p>Ce que vous avez écrit est publié, avec la version, la plateforme et le navigateur, sous forme de ticket public sur GitHub, où tout le monde
+      peut le lire. N'y mettez rien de privé. Votre dessin et vos étapes ne sont pas publiés : ils sont conservés 90 jours et ne sont vus que par
+      le développeur de Phosphor. Un rapport de problème est distinct du signalement d'un utilisateur ou d'une salle (voir Signalements, ci-dessous).</p>
 
     <h2>L'onglet SOCIAL</h2>
     <p>Rien provenant de l'onglet SOCIAL ne s'exécute tant que vous n'ouvrez pas cet onglet (ou ne suivez pas un lien depuis l'un de nos e-mails). À
@@ -219,7 +230,8 @@ const emit = defineEmits(['open']);
       <li><strong>Limites de fréquence (rate limits) :</strong> Afin de prévenir les attaques par force brute et le spam, nous comptabilisons les requêtes par adresse IP
         et par adresse e-mail ou nom d'utilisateur soumis pendant environ une minute.</li>
       <li><strong>Cloudflare Turnstile</strong> vérifie qu'une personne réelle crée un compte, demande une
-        réinitialisation de mot de passe ou un nouvel e-mail de confirmation, ou se connecte à un compte ayant fait l'objet de trop nombreuses tentatives.</li>
+        réinitialisation de mot de passe ou un nouvel e-mail de confirmation, se connecte à un compte ayant fait l'objet de trop nombreuses tentatives,
+        ou envoie un rapport de problème.</li>
       <li><strong>Mots de passe compromis :</strong> Lorsque vous choisissez un mot de passe, nous envoyons uniquement les cinq premiers
         caractères de son empreinte SHA-1 (jamais le mot de passe lui-même) à Have I Been Pwned, et nous rejetons tout mot de passe
         apparu dans une fuite de données connue.</li>
@@ -233,8 +245,8 @@ const emit = defineEmits(['open']);
     <ul>
       <li><strong>Pour fournir SOCIAL</strong> (Art. 6(1)(b)) : Gestion de votre compte, authentification et fourniture de l'accès au hall et
         aux salles.</li>
-      <li><strong>Intérêts légitimes</strong> (Art. 6(1)(f)) : Maintenir SOCIAL sécurisé, prévenir les abus, et
-        examiner et résoudre les signalements.</li>
+      <li><strong>Intérêts légitimes</strong> (Art. 6(1)(f)) : Maintenir SOCIAL sécurisé, prévenir les abus,
+        examiner et résoudre les signalements, et corriger les problèmes décrits dans les rapports de problème.</li>
       <li><strong>Obligations légales</strong> (Art. 6(1)(c)) : Se conformer aux lois applicables lorsque nous sommes tenus de conserver ou de divulguer
         des informations.</li>
     </ul>
@@ -243,8 +255,9 @@ const emit = defineEmits(['open']);
     <p>Nous ne vendons, ne louons ni ne partageons de données personnelles avec des tiers à des fins marketing, et nous n'affichons aucune publicité.
       Les prestataires de services suivants traitent des données pour notre compte, uniquement pour faire fonctionner Phosphor :</p>
     <ul>
-      <li><strong>Cloudflare :</strong> Héberge et diffuse l'application web, et exploite l'infrastructure de serveurs de SOCIAL, sa base de
-        données, son stockage, ses limites de débit et Turnstile.</li>
+      <li><strong>Cloudflare :</strong> Héberge et diffuse l'application web, et exploite l'infrastructure de serveurs de SOCIAL et des rapports
+        de problème, sa base de données, son stockage, ses limites de débit et Turnstile.</li>
+      <li><strong>GitHub :</strong> Publie ce que vous écrivez dans un rapport de problème sous forme de ticket public.</li>
       <li><strong>Mailjet :</strong> Assure l'acheminement des e-mails transactionnels.</li>
       <li><strong>Have I Been Pwned :</strong> Vérifie les mots de passe compromis (en utilisant uniquement un préfixe de hachage à cinq caractères).</li>
     </ul>
@@ -259,6 +272,7 @@ const emit = defineEmits(['open']);
       <li><strong>Comptabilisation des limites de débit :</strong> Environ une minute.</li>
       <li><strong>Signalements :</strong> 90 jours après leur résolution. Si un modérateur a pris une mesure
         concernant votre compte, l'historique de cette mesure peut être conservé avec votre compte plus longtemps.</li>
+      <li><strong>Rapports de problème :</strong> Votre dessin et vos étapes, 90 jours. Ce que vous avez écrit reste public sous forme de ticket GitHub.</li>
       <li><strong>Le hall et les salles :</strong> Aucune donnée n'est conservée après la fin d'une salle ou après votre départ.</li>
     </ul>
 

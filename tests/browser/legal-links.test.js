@@ -140,6 +140,43 @@ test('the Privacy Policy (en and fr) says getting a palette from Lospec asks los
   expect(frLocale.legal.desktopPrivacy).toContain("l'application la demande à lospec.com, qui voit la requête et votre adresse IP."); // the same noun
 });
 
+test('the Privacy Policy (en and fr) says what an issue report sends, what of it is public and who handles it, apart from reports of a person or a room', async () => {
+  await mount(LegalDialog, { page: 'privacy' });
+  await vi.waitUntil(() => document.querySelector('.legal-body'));
+  const text = document.querySelector('.legal-body').textContent.replace(/\s+/g, ' ');
+  expect(text).toContain('Last updated: November 24, 2026.');
+  expect(text).toContain('We never receive them unless you host a room or send an issue report with your drawing (both explained below).');
+  expect(text).toContain('Nothing is sent until you press Send.');
+  expect(text).toContain('A report sends us what you wrote, your version of Phosphor, whether you use the web or the desktop app, and your browser and operating system');
+  expect(text).toContain('If you leave its box ticked, it also sends your current drawing and the steps you took in Phosphor since the page loaded');
+  expect(text).toContain('The steps never include anything you typed into the SOCIAL tab: no password, email address, code, room password, or chat.');
+  expect(text).toContain('published, with the version, platform, and browser, as a public issue on GitHub, where anyone can read it.');
+  expect(text).toContain('Your drawing and steps are not published: they are retained for 90 days and are seen only by Phosphor\'s developer.');
+  expect(text).toContain('An issue report is separate from reporting a user or a room');
+  expect(text).toContain('GitHub: Publishes what you write in an issue report as a public issue.');
+  expect(text).toContain('Issue reports: Your drawing and steps, 90 days. What you wrote stays public as a GitHub issue.');
+  expect(text).toContain('signing in to an account that has had too many attempts, or sending an issue report.');
+  // The section of its own comes before SOCIAL's, and Reports (of a user or a room) keeps its own words.
+  const headings = [...document.querySelectorAll('.legal-body h2')].map((h) => h.textContent);
+  expect(headings.indexOf('Issue Reports')).toBe(headings.indexOf('The SOCIAL Tab') - 1);
+  expect(headings).toContain('Reports');
+  expect(text).toContain('You can report a user or a room. A report is retained for 90 days after it is resolved.');
+
+  const fr = (await import('../../src/i18n/legal/fr.vue?raw')).default.replace(/\s+/g, ' ');
+  for (const words of [
+    '<h2>Rapports de problème</h2>', 'Rien n\'est envoyé tant que vous n\'appuyez pas sur Envoyer.', 'sous forme de ticket public sur GitHub',
+    'ils sont conservés 90 jours et ne sont vus que par le développeur de Phosphor', '<strong>GitHub :</strong> Publie ce que vous écrivez dans un rapport de problème',
+    '<strong>Rapports de problème :</strong> Votre dessin et vos étapes, 90 jours.', 'ou envoyez un rapport de problème avec votre dessin', 'Dernière mise à jour : 24 novembre 2026.',
+  ]) expect(fr, words).toContain(words);
+  // The desktop app's own privacy note, which stands in for the policy there, says the same.
+  for (const code of ['en', 'fr']) {
+    const note = JSON.parse((await import(`../../src/i18n/locales/${code}.json?raw`)).default).legal.desktopPrivacy;
+    expect(note, code).toContain('api.phosphor.work');
+    expect(note, code).toMatch(/90 (days|jours)/);
+    expect(note, code).toContain('GitHub');
+  }
+});
+
 test('the Privacy Policy (en and fr) names Cloudflare as the web application\'s host, not GitHub Pages', async () => {
   const [en, fr] = await Promise.all([import('../../src/i18n/legal/en.vue?raw'), import('../../src/i18n/legal/fr.vue?raw')]);
   expect(en.default.replace(/\s+/g, ' ')).toContain('<strong>Cloudflare:</strong> Hosts and serves the web application');
