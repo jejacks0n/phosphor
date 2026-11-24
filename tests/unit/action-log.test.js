@@ -1,5 +1,6 @@
-// The development log of store actions (src/dev/actionLog.js): a Pinia plugin that records each top-level action as a
-// line, folds repeats, summarizes arguments, keeps window errors as lines too, and keeps the newest LIMIT.
+// The log of store actions (src/dev/actionLog.js): a Pinia plugin that records each top-level action as a
+// line, folds repeats, summarizes arguments (and keeps none of a store's named so), keeps window errors as lines too, and
+// keeps the newest LIMIT.
 import { beforeEach, expect, test } from 'vitest';
 import { createApp } from 'vue';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
@@ -16,14 +17,41 @@ const useToy = defineStore('toy', {
   },
 });
 
+// A store whose arguments are never kept (the third argument names it).
+const useVault = defineStore('vault', {
+  actions: {
+    open() {},
+    read() {},
+  },
+});
+
 let store;
 beforeEach(() => {
   const pinia = createPinia();
-  installActionLog(pinia, new Set(['read', 'peek']));
+  installActionLog(pinia, new Set(['read', 'peek']), new Set(['vault']));
   createApp({}).use(pinia); // plugins wait for an app, as in main.js
   setActivePinia(pinia);
   store = useToy();
   clearLog();
+});
+
+test('a store named so is logged by its actions\' names alone: no argument is kept, a repeat still folds, a skipped one stays out', () => {
+  const vault = useVault();
+  vault.open('the combination', { pin: 1234 });
+  expect(log.entries).toMatchObject([{ text: 'vault.open', args: '', first: '', count: 1 }]);
+  vault.open('another try');
+  vault.read('the ledger');
+  expect(log.entries).toMatchObject([{ text: 'vault.open', args: '', first: '', count: 2 }]);
+  store.paint('brush');
+  expect(log.entries.at(-1)).toMatchObject({ text: 'toy.paint', args: '("brush")' });
+  expect(logText({ version: '1', sha: 'a', userAgent: 'ua', viewport: '1×1' })).not.toMatch(/combination|another|ledger|pin/);
+});
+
+test('an error line keeps the first 200 characters of its message', () => {
+  recordError('x'.repeat(500));
+  expect(log.entries[0].text).toBe(`${'x'.repeat(200)}…`);
+  recordError('short');
+  expect(log.entries[1].text).toBe('short');
 });
 
 test('a top-level action is one entry; the ones it calls are not', () => {

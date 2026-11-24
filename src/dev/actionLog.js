@@ -1,14 +1,19 @@
-// Development only: a log of every step taken this session, for a bug report (the side panel's HISTORY tab,
-// components/dev/HistoryPanel.vue). Every store action is a step, so a Pinia plugin records them: a top-level action
-// only (the ones it calls through `this` are its own business, until it returns; an async one's continuation after an await is a new
-// top level, so a step during a long open still shows), none of the names in `skip` (queries, render internals, what
-// autosave calls on its own), a repeat of the last line folded into it with a count (a stroke's per-move calls; see folds), and
-// arguments summarized, never kept. Window errors are lines too. The newest LIMIT lines stay.
+// A log of every step taken this session, in every build, for a bug report: an issue report sends it if the person says
+// so (components/IssueReportDialog.vue), and the side panel's HISTORY tab shows it (components/dev/HistoryPanel.vue; in
+// development, or once phosphor.history(true) has been run: dev/historyTab.js). Every store action is a step, so a
+// Pinia plugin records them: a top-level action only (the ones it calls through `this` are its own business, until it
+// returns; an async one's continuation after an await is a new top level, so a step during a long open still shows),
+// none of the names in `skip` (queries, render internals, what autosave calls on its own), a repeat of the last line
+// folded into it with a count (a stroke's per-move calls; see folds), and arguments summarized, never kept. A store
+// named in `namesOnly` (the SOCIAL stores: dev/skipped.js) is logged by its actions' names alone, with nothing of what
+// they were given: a password, an email address, a code, a line of chat. Window errors are lines too, the first
+// MOST_ERROR characters of each. The newest LIMIT lines stay. It's kept in memory only, and goes with the page.
 import { shallowReactive } from 'vue';
 
 export const LIMIT = 2000;
 const MOST_TEXT = 40; // of a string argument
 const MOST_KEYS = 8; // of a plain object's
+const MOST_ERROR = 200; // of an error's message
 
 // Each entry: { at (ms since the log started), kind: 'action' | 'error', text ('project.paintStroke', or the error's
 // message), args ('("brush")', or ''), first (the args of the first of a folded run), count }. Entries are replaced, never
@@ -17,7 +22,7 @@ export const log = shallowReactive({ entries: [], start: performance.now() });
 
 let busy = false;
 
-export function installActionLog(pinia, skip = new Set()) {
+export function installActionLog(pinia, skip = new Set(), namesOnly = new Set()) {
   pinia.use(({ store }) => {
     store.$onAction(({ name, args, after, onError }) => {
       if (busy) return;
@@ -26,7 +31,7 @@ export function installActionLog(pinia, skip = new Set()) {
       after(done); // a sync action: when it returns, so the next action in the same handler is its own line
       onError(done);
       queueMicrotask(done); // an async one: its continuation is a new top level
-      if (!skip.has(name)) record(store.$id, name, args.length ? `(${args.map(summarize).join(', ')})` : ''); // before it runs: a throw still leaves its line
+      if (!skip.has(name)) record(store.$id, name, args.length && !namesOnly.has(store.$id) ? `(${args.map(summarize).join(', ')})` : ''); // before it runs: a throw still leaves its line
     });
   });
   if (typeof window !== 'undefined') {
@@ -40,7 +45,8 @@ export function record(store, name, args) {
 }
 
 export function recordError(message) {
-  push('error', String(message), '');
+  const text = String(message);
+  push('error', text.length > MOST_ERROR ? `${text.slice(0, MOST_ERROR)}…` : text, '');
 }
 
 // A repeat of the last line folds into it with a count. Its arguments are the latest; when they're scalars that changed

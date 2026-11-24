@@ -240,14 +240,24 @@ tests/fixtures/reference` and commit only what you meant to change.
 
 ## Reporting a bug with the History tab
 
-In `npm run dev` the side panel has a third tab, a clock with a back arrow (History). It lists every step taken since the page
-loaded: tool picks, edits, layers, frames, files, room events, and any error the page threw, with the
-seconds since load. A run of one action is one line with a count: a stroke's moves, or a zoom's notches
-shown as its first and last amount. Steps undo can't reach are
-there too. Copy puts the whole list on the clipboard, headed by the build, browser and viewport, to
-paste into a bug report; Clear starts it over. Built apps (web, desktop, the end-to-end preview) have
-none of it: it's `src/dev/actionLog.js` (with `skipped.js`, the actions left out: queries, renders, what
-autosave and watchers call on their own) and `src/components/dev/HistoryPanel.vue`, behind `import.meta.env.DEV`.
+Every build keeps a list of the steps taken since the page loaded: tool picks, edits, layers, frames, files, room
+events, and any error the page threw, with the seconds since load. A run of one action is one line with a count: a
+stroke's moves, or a zoom's notches shown as its first and last amount. Steps undo can't reach are there too. What a
+step was given is summarized, never kept whole: a number, a tool's name, how many cells, the first 40 characters of a
+file's or a layer's name. A SOCIAL step is its name alone: nothing typed into sign-in, sign-up, a password or a code
+field, a room's password or the chat is ever in the list. It's kept in memory, the newest 2,000 lines, and goes when
+the page does.
+
+The side panel's third tab, a clock with a back arrow (History), shows the list. In `npm run dev` it's always there. A
+built app (web, desktop, the end-to-end preview) hides it until you run `phosphor.history(true)` in the browser's
+console (in the desktop app, Help > Troubleshooting has the developer tools). That browser then shows the tab through
+reloads, and `phosphor.history(false)` hides it again. Copy puts the whole list on the clipboard, headed by the build,
+browser and viewport, to paste into a bug report; Clear starts it over.
+
+It's `src/dev/actionLog.js` (with `skipped.js`: the actions left out, which are queries, renders, and what autosave and
+watchers call on their own, and the stores logged by name alone), `src/dev/historyTab.js` (whether the tab shows) and
+`src/components/dev/HistoryPanel.vue`. A new store whose actions take anything a person wouldn't want read goes in
+`skipped.js`'s `NAMES_ONLY`; `tests/browser/social-history.test.js` holds the rule for SOCIAL's.
 
 ## Turning a bug report into a test
 

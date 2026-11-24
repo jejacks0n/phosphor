@@ -16,15 +16,19 @@ import { hostCopies } from './document/autosaveStore';
 import { desktop } from './social/desktop';
 import { useDesktopMenu } from './composables/useDesktopMenu';
 import { installActionLog } from './dev/actionLog.js';
-import { SKIPPED } from './dev/skipped.js';
+import { NAMES_ONLY, SKIPPED } from './dev/skipped.js';
+import { installHistoryCommand } from './dev/historyTab.js';
 
 // An old hash address (/#/social?room=x) is the path address it means, in its place, before anything reads it.
 const pathAddress = !hashAddresses() && fromHashAddress(location.href);
 if (pathAddress) history.replaceState(history.state, '', pathAddress);
 
 const pinia = createPinia();
-// Development only: the side panel's HISTORY tab logs every step taken (src/dev/actionLog.js), but for what skipped.js names.
-if (import.meta.env.DEV) installActionLog(pinia, SKIPPED);
+// Every build logs the steps taken this session (src/dev/actionLog.js), but for what skipped.js names, and the SOCIAL
+// stores' by name alone: an issue report can carry them, and the side panel's HISTORY tab shows them, in development or
+// once phosphor.history(true) is run in the console.
+installActionLog(pinia, SKIPPED, NAMES_ONLY);
+installHistoryCommand();
 
 const app = createApp(App);
 app.use(pinia);
