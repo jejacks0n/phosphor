@@ -9,7 +9,6 @@ import { scriptOptions } from '@/plugins/solvers.js';
 const N = SAMPLES.w * SAMPLES.h;
 const clamp = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
 const byte = (v) => Math.round(clamp(Number.isFinite(v) ? v : 0));
-const inByte = (v) => typeof v === 'number' && v >= 0 && v <= 255; // NaN isn't
 const channels = (color, out) => {
   if (Array.isArray(color)) { out[0] = color[0]; out[1] = color[1]; out[2] = color[2]; } else { out[0] = color.r; out[1] = color.g; out[2] = color.b; }
   return out;
@@ -98,15 +97,16 @@ function makePluginMatcher(def, ref, palette, glyphs, solids, light, style, opti
   const lookBlack = Object.freeze({ r: 0, g: 0, b: 0 }), lookWhite = Object.freeze({ r: white.r, g: white.g, b: white.b });
   const lookColor = (c) => (c === ASCII_BG ? lookBlack : c === white ? lookWhite : lookOf?.get(c) ?? c);
 
-  // A result's color: a palette index (an integer in range) or { r, g, b } (each a number within 0..255), the
-  // palette's nearest (rounded without one). Anything else is black: holdCell has no samples to take a mean from,
-  // and a broken solver should look broken.
+  // A result's color: a palette index (an integer in range), or { r, g, b } or [r, g, b] as the helpers take, each
+  // channel a finite number held to 0..255 and rounded, as a brush's are; the palette's nearest when there is one.
+  // Anything else is black: holdCell has no samples to take a mean from, and a broken solver should look broken.
+  const rgbOf = [0, 0, 0];
   const colorFrom = (v) => {
     if (typeof v === 'number') return pal && Number.isInteger(v) && v >= 0 && v < pal.length ? pal[v] : black;
     if (v === null || typeof v !== 'object') return black;
-    const r = v.r, g = v.g, b = v.b;
-    if (!(inByte(r) && inByte(g) && inByte(b))) return black;
-    return nearest ? nearest(Math.round(r), Math.round(g), Math.round(b)) : colorOf({ r: Math.round(r), g: Math.round(g), b: Math.round(b) });
+    const [r, g, b] = channels(v, rgbOf);
+    if (![r, g, b].every(Number.isFinite)) return black; // a string, NaN or Infinity isn't
+    return nearest ? nearest(byte(r), byte(g), byte(b)) : colorOf({ r: byte(r), g: byte(g), b: byte(b) });
   };
   // One object, overwritten by the next call. A fault is a character held (a result that isn't an object
   // counts); a color held isn't one.

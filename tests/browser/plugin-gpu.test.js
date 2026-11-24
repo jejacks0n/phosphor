@@ -45,7 +45,7 @@ function samplesOf(cols, lines) {
 }
 
 // Pass 1 reads its neighbors and options, and gives every kind of result the JavaScript holds: nothing, a character
-// not in the set, the solid, a color past 0..255, and the solver's own characters. No By shape: no near-ties.
+// not in the set, the solid, a color past 0..255 each way, and the solver's own characters. No By shape: no near-ties.
 const PASS_ONE = {
   options: [
     { id: 'threshold', kind: 'slider', name: 'Threshold', min: -100, max: 100, step: 1, default: 0 },
@@ -56,7 +56,7 @@ const PASS_ONE = {
     const a = cell.sample(0, 0, 0)[0], b = cell.sample(1, 0, 5)[1], c = [...cell.sample(-1, 1, 31)];
     if (a < 20) return null;
     if (a < 40) return { char: 'Z', fg: rgb(a, b, c[2]), bg: rgb(c[0], 0, 0) };
-    if (a < 60) return { char: '/', fg: rgb(300, a, 0), bg: rgb(b, b, b) };
+    if (a < 60) return { char: '/', fg: rgb(300, a, 0), bg: rgb(b, -a, b) };
     if (a > 240) return { char: '█', fg: rgb(c[0], c[1], c[2]), bg: rgb(a, a, a) };
     const own = (a - b > look.options.threshold) !== look.options.swap;
     if (own) return { char: look.options.pick ? '\\' : '/', fg: rgb(c[0], c[1], c[2]), bg: rgb(a, b, 0) };
@@ -66,7 +66,7 @@ const PASS_ONE = {
     vec3 a = sampleAt(ivec2(0, 0), 0), b = sampleAt(ivec2(1, 0), 5), c = sampleAt(ivec2(-1, 1), 31);
     if (a.r < 20.0) return;
     if (a.r < 40.0) { put(vec3(a.r, b.g, c.b), vec3(c.r, 0.0, 0.0), 99); return; }
-    if (a.r < 60.0) { put(vec3(300.0, a.r, 0.0), vec3(b.g), 4); return; }
+    if (a.r < 60.0) { put(vec3(300.0, a.r, 0.0), vec3(b.g, -a.r, b.g), 4); return; }
     if (a.r > 240.0) { put(c, vec3(a.r), 255); return; }
     bool own = (a.r - b.g > opt_threshold) != opt_swap;
     if (own) put(c, vec3(a.r, b.g, 0.0), opt_pick == 1 ? 5 : 4);

@@ -232,13 +232,17 @@ describe('resolvePlugin', () => {
     const results = [
       undefined, { char: 'Z' }, { char: '-', fg: { r: NaN, g: 0, b: 0 }, bg: 999 },
       { char: '▀', fg: 4, bg: { r: 250, g: 3, b: 3 } }, 7, null, { char: '|', fg: { r: 300, g: 0, b: 0 }, bg: 3.5 },
+      { char: '-', fg: [0, 0, 170], bg: [Infinity, 0, 0] }, { char: '-', fg: { r: 0, g: '170', b: 0 }, bg: [170, -40, 999] },
     ];
     const def = solver({ reach: 0, solve: (cell) => results[cell.col] });
-    const r = resolvePlugin(solid(7, 1, () => [200, 200, 200]), 7, 1, matcherOf(def));
+    const r = resolvePlugin(solid(9, 1, () => [200, 200, 200]), 9, 1, matcherOf(def));
     const black = '#000000';
+    // A channel past 0..255 is held to it; one that isn't a finite number makes the color black, as an index the
+    // palette doesn't have does. A color is { r, g, b } or [r, g, b], as the helpers take.
     expect(r.cells.map(pick)).toEqual([
       ['▀', black, black], ['▀', black, black], ['-', black, black],
-      ['▀', '#0000aa', '#aa0000'], ['▀', black, black], ['▀', black, black], ['|', black, black],
+      ['▀', '#0000aa', '#aa0000'], ['▀', black, black], ['▀', black, black], ['|', '#aa0000', black],
+      ['-', '#0000aa', black], ['-', black, '#aa00aa'],
     ]);
     expect(r.cells[3].fg).toBe(CGA[4]); // the palette's own entries, for .ans export
     expect(r.cells[3].bg).toBe(CGA[1]);

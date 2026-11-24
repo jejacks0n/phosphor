@@ -226,7 +226,7 @@ test('the last put to a pixel in a stroke wins, with no build-up', async () => {
   expect(paintAt(project, 3, 4).a).toBeCloseTo(0.5, 2);
 });
 
-test('shown and own read the stroke\'s start, whatever an earlier call put; own is null where a layer is clear, and shown on the base', async () => {
+test('shown and own read the stroke\'s start, whatever an earlier call put; own is null where a layer is clear, and shown at a: 1 on the base', async () => {
   let n = 0;
   const read = [];
   const { project, workspace, stroke } = await painter({
@@ -243,8 +243,27 @@ test('shown and own read the stroke\'s start, whatever an earlier call put; own 
   read.length = 0;
   stroke([at(3, 4), at(4, 4)]);
   expect(project.baseColorAt(3, 4)).toBe('#ff0000');
-  expect(read[0][1]).toEqual(read[0][0]);
+  expect(read[0][1]).toEqual({ ...read[0][0], a: 1 }); // the base is opaque, and own has an a wherever it isn't null
   expect(read[0][0]).toEqual({ r: 0, g: 0, b: 0 });
+});
+
+test('a color is { r, g, b } or [r, g, b], each channel held to 0..255; a write with a channel that isn\'t a finite number is dropped', async () => {
+  const { project, stroke } = await painter({
+    move(from, to, paint) {
+      paint.put(1, 4, [0, 255, 0], 1);
+      paint.set(2, 4, [300.4, -20, 127.6], 1);
+      paint.put(3, 4, { r: 0, g: 0, b: 999 }, 1);
+      paint.put(4, 4, [NaN, 0, 0], 1);
+      paint.put(5, 4, { r: Infinity, g: 0, b: 0 }, 1);
+      paint.put(6, 4, { r: '255', g: 0, b: 0 }, 1);
+      paint.put(7, 4, [255, 0], 1);
+    },
+  });
+  stroke([at(1, 4)]);
+  expect(paintAt(project, 1, 4)).toMatchObject({ r: 0, g: 255, b: 0, a: 1 });
+  expect(paintAt(project, 2, 4)).toMatchObject({ r: 255, g: 0, b: 128, a: 1 });
+  expect(paintAt(project, 3, 4)).toMatchObject({ r: 0, g: 0, b: 255, a: 1 });
+  for (const x of [4, 5, 6, 7]) expect(paintAt(project, x, 4), `${x}`).toBe(null);
 });
 
 test('a put outside the selection, off the grid or at a fraction is ignored', async () => {

@@ -280,10 +280,11 @@ vec3 sampleAt(ivec2 d, int i) {
 
 // The result, held as the JavaScript holds it: a color past 0..255 is black, a glyph not in the set the first (255:
 // the solid), each color the palette's nearest.
-bool ph_inBytes(vec3 v) { return all(greaterThanEqual(v, vec3(0))) && all(lessThanEqual(v, vec3(255))); }
+// A color as the JavaScript holds one: each channel held to 0..255, or black if one isn't finite (NaN's comparisons fail).
+vec3 ph_held(vec3 v) { return all(lessThanEqual(abs(v), vec3(3.4e38))) ? clamp(v, 0.0, 255.0) : vec3(0); }
 void put(vec3 fg, vec3 bg, int glyph) {
   vec3 f, b;
-  int fi = snap(ph_inBytes(fg) ? fg : vec3(0), f), bi = snap(ph_inBytes(bg) ? bg : vec3(0), b);
+  int fi = snap(ph_held(fg), f), bi = snap(ph_held(bg), b);
   ph_put(f, fi, b, bi, glyph == 255 || (glyph >= 0 && glyph < glyphCount) ? glyph : 0);
 }
 `;
