@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
+import { outputs } from '../../scripts/release-tag.mjs';
 
 const read = (name) => readFileSync(new URL(`../../.github/workflows/${name}`, import.meta.url), 'utf8');
 const deploy = read('deploy.yml');
@@ -51,9 +52,17 @@ describe('publishing the plugin list', () => {
     expect(refresh).not.toMatch(/group: pages/);
   });
 
-  // Production is published by desktop.yml's runs for a release tag pushed to this repository, never a pre-release's
+  // Production is published by desktop.yml's runs for a release or beta tag pushed to this repository, never an alpha's
   // (whose site job is skipped) and never deploy.yml's (which publishes next).
-  const OURS = `OURS: '[.workflow_runs[] | select(.event == "push" and .head_repository.full_name == $repo and (.head_branch | test("^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+$")))]'`;
+  const TAGS = '^v[0-9]+\\\\.[0-9]+\\\\.[0-9]+(-beta(\\\\.[0-9]+)?)?$';
+  const OURS = `OURS: '[.workflow_runs[] | select(.event == "push" and .head_repository.full_name == $repo and (.head_branch | test("${TAGS}")))]'`;
+
+  it('the tags whose runs publish production are releases and betas, as the release workflow\'s tag check says', () => {
+    const tags = new RegExp(TAGS.replaceAll('\\\\', '\\')); // as jq reads the string
+    for (const tag of ['v1.0.0', 'v1.0.0-beta', 'v1.0.0-beta.2', 'v1.0.0-alpha', 'v1.0.0-alpha.2']) expect(tags.test(tag), tag).toBe(outputs(tag).prod);
+    expect(tags.test('v1.0.0-rc.1')).toBe(false);
+  });
+
   const RUNS = 'gh api "repos/$GITHUB_REPOSITORY/actions/workflows/desktop.yml/runs?event=push';
   const LAST = 'jq -r --arg repo "$GITHUB_REPOSITORY" "$OURS | .[0].head_sha // empty"';
 
@@ -173,9 +182,10 @@ describe('hosting on Cloudflare Pages', () => {
     expect(deploy).not.toContain('--branch=main');
   });
 
-  it('publishes production from a release tag only: after the builds, not for a pre-release, the tag\'s commit', () => {
+  it('publishes production from a release or beta tag only: after the builds, not for an alpha, the tag\'s commit', () => {
     const site = job(desktop, 'site');
-    expect(site).toContain("if: needs.version.outputs.prerelease == 'false'");
+    expect(site).toContain("if: needs.version.outputs.prod == 'true'");
+    expect(desktop).not.toContain("outputs.prerelease == 'false'");
     expect(site).toContain('VITE_TURNSTILE_SITE_KEY: ${{ secrets.TURNSTILE_SITE_KEY }}');
     expect(site).toContain("The TURNSTILE_SITE_KEY secret isn't set");
     expect(site).toContain('npm run build');

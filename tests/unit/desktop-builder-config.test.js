@@ -44,7 +44,7 @@ test('builder config names the Local Network usage, opens projects and ANSI art,
 
 test('the release workflow runs only on a version tag higher than the last, and a release needs the signing secrets', () => {
   const yml = read('.github/workflows/desktop.yml');
-  // A release (v1.2.3) or a pre-release (v1.2.3-beta), the second published as a GitHub pre-release.
+  // A release (v1.2.3), a beta (v1.2.3-beta) or an alpha (v1.2.3-alpha), the last two published as GitHub pre-releases.
   assert.match(yml, /tags: \['v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+', 'v\[0-9\]\+\.\[0-9\]\+\.\[0-9\]\+-\*'\]/);
   assert.match(yml, /EP_PRE_RELEASE: \$\{\{ needs\.version\.outputs\.prerelease \}\}/);
   assert.doesNotMatch(yml, /workflow_dispatch|branches:|\n {2}pull_request:/);
@@ -53,6 +53,7 @@ test('the release workflow runs only on a version tag higher than the last, and 
   assert.match(yml, /needs: version/);
   assert.match(yml, /node scripts\/release-tag\.mjs "\$GITHUB_REF_NAME"/);
   assert.match(yml, /prerelease: \$\{\{ steps\.tag\.outputs\.prerelease \}\}/);
+  assert.match(yml, /prod: \$\{\{ steps\.tag\.outputs\.prod \}\}/); // whether the tag publishes phosphor.work
   assert.match(yml, /fetch-depth: 0/);
   assert.match(yml, /os: \[macos-latest, windows-latest, ubuntu-latest\]/);
   assert.match(yml, /contents: write/);
