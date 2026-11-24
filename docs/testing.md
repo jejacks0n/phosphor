@@ -146,7 +146,10 @@ SOCIAL talks to a server that these tests never reach. Each layer stands in for 
   `page.routeWebSocket`, records every request and message, and lets a spec push lobby messages or
   drop the connection. Without it, the default `test` in `tests/e2e/support.js` aborts every request
   to `localhost:8787` and closes every socket, so a spec that forgot to fake the server fails
-  instead of reaching a real one.
+  instead of reaching a real one. An issue report's route is its own (`POST /issue-reports`, a multipart form):
+  `fakeIssueReports(page, { origin, answer })`, in the same file, records each report's fields and files.
+  `tests/e2e/issue-report.spec.js` serves the preview build as next.phosphor.work, which is how a page is a beta without
+  a beta's version, and answers the hosted server's address itself.
 
 ### The desktop app end to end
 
@@ -252,7 +255,8 @@ The side panel's third tab, a clock with a back arrow (History), shows the list.
 built app (web, desktop, the end-to-end preview) hides it until you run `phosphor.history(true)` in the browser's
 console (in the desktop app, Help > Troubleshooting has the developer tools). That browser then shows the tab through
 reloads, and `phosphor.history(false)` hides it again. Copy puts the whole list on the clipboard, headed by the build,
-browser and viewport, to paste into a bug report; Clear starts it over.
+browser and viewport, to paste into a bug report; Clear starts it over. A beta's **Report an issue** sends the same
+text, if the person leaves its box ticked ([Betas and reporting an issue](README.md#betas-and-reporting-an-issue)).
 
 It's `src/dev/actionLog.js` (with `skipped.js`: the actions left out, which are queries, renders, and what autosave and
 watchers call on their own, and the stores logged by name alone), `src/dev/historyTab.js` (whether the tab shows) and

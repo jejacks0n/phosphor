@@ -209,7 +209,7 @@ slider group says how many of its sliders are on.
 
 On a phone the settings slide out from **☰** at the left end of the tab bar, sliding the art aside. A touch on the strip
 of art still showing only shuts them: nothing is drawn until they're shut. Opened with the keys, focus goes into them,
-to the Phosphor logo, so **Tab** goes on to **Dimensions**. **Escape** shuts them and puts focus back on **☰**. In a field
+to the Phosphor logo, so **Tab** goes on to **Dimensions** (on a beta, to **Report an issue** under the logo first: [Betas and reporting an issue](README.md#betas-and-reporting-an-issue)). **Escape** shuts them and puts focus back on **☰**. In a field
 you type in, such as Dimensions or the hex of the Custom color list, Escape is the field's: it puts back what was there,
 and the settings stay open.
 

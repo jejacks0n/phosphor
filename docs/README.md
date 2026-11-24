@@ -12,7 +12,7 @@ Learn how to create art, edit layers, and animate in Phosphor.
 - [Social Rooms](social.md) — Use SOCIAL in the side panel: the lobby, accounts and guests, hosting a room or watching someone draw, drawing together, chat, and blocking and reporting.
 - [Plugins](plugins.md) — Install a plugin from a folder, a .zip or its manifest file, switch it on or off, remove it, pick the themes it adds, start with plugins off, and write a plugin of your own, a theme or a solver that chooses characters, and try it as you go.
 - [The .pho File](pho.md) — What a saved project is for anyone reading one: a PNG of the drawing with the project inside, where the project sits, and what the picture shows.
-- [The Desktop App](desktop.md) — Download Phosphor for macOS, Windows, or Linux, host a room on your computer and share its address, join a room by address, let people in, and change hosts. No account needed, and nothing is sent to Phosphor.
+- [The Desktop App](desktop.md) — Download Phosphor for macOS, Windows, or Linux, host a room on your computer and share its address, join a room by address, let people in, and change hosts. No account needed, and nothing is sent to Phosphor on its own.
 
 ## Interface Basics
 
@@ -26,6 +26,18 @@ You can choose a color theme using the theme selector at the bottom of the setti
 - **System**: Matches your computer's theme setting, and changes when it does.
 
 Your theme choice is saved in your browser. Plugins can add themes of their own, picked in a select under the icons ([Plugins](plugins.md#picking-a-plugins-theme)).
+
+### Betas and Reporting an Issue
+A beta or an alpha version of Phosphor says so under the logo at the top of the settings panel: **BETA** (or **ALPHA**), with **Report an issue** beside it. A version is one when its number ends in `-beta` or `-alpha` (About, opened from the logo, shows the number), and next.phosphor.work, where each change lands before it's released, is always a beta. A released version shows nothing there.
+
+**Report an issue** opens a short form for telling Phosphor's developer about a bug. You don't need a GitHub account.
+- **What were you doing?** and **What went wrong?**: The second is required. Each counts what you've written, up to 2,000 and 4,000 characters, a line break counting as two.
+- **Send my drawing and this session's steps**: Ticked to begin with. The line under it says exactly what goes: your drawing's file name and size and how many steps, as in "sky.pho, 1.2 MB · 340 steps". The steps are the tools and commands you've used since the page loaded, with the names of your files and layers. Nothing you typed into SOCIAL is in them: no password, email address, code, room password or chat. With no drawing open, only the steps go. A drawing too big for a report (a report holds 25 MB) isn't sent, and the line says so. In a room you host or draw in, the drawing open is the room's, and the line says "This room's drawing". Unticked, only what you wrote goes.
+- **Send**: Nothing is sent before it.
+
+What you write becomes a public issue on Phosphor's GitHub, with your version of Phosphor and your browser and system (the line above Send shows them), so leave out anything private. Your drawing and steps are never published: only Phosphor's developer sees them, and they're kept for 90 days. Sent, the form thanks you and says which issue it became, with a link; when the issue takes longer to open, it only thanks you. A report that can't be sent says why and keeps what you wrote, and so does closing the form, until the page is reloaded.
+
+The desktop app's beta and alpha versions have the same line and form ([The Desktop App](desktop.md#what-the-app-connects-to)). This isn't how you report a person or a room in SOCIAL: that's [Social](social.md)'s own **Report**.
 
 ### Navigation and URLs
 The browser address bar updates to reflect your current workspace tab and, on SOCIAL, its page, so Back and Forward move between them and a reload comes back to the same place:
