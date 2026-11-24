@@ -348,14 +348,18 @@ test('R5: in ANSI a put makes the cells Colors only would: a ▄ where a layer\'
   expect(plugin).toEqual(look());
 });
 
-test('a brush\'s first move of a visit runs under the hang mark, and later ones don\'t', async () => {
+test('a brush\'s first begin, move and end of a visit each run under the hang mark, and later ones don\'t', async () => {
   ownHangMark('plugin-brush');
   const marks = [];
-  const { stroke } = await painter({ move() { marks.push(localStorage.getItem(HANG_KEY)); } }, { hash: 'hang' });
+  const mark = (hook) => () => { marks.push([hook, JSON.parse(localStorage.getItem(HANG_KEY))?.pluginId ?? null]); };
+  const { stroke } = await painter({ begin: mark('begin'), move: mark('move'), end: mark('end') }, { hash: 'hang' });
   stroke([at(3, 4), at(4, 4)]);
   stroke([at(3, 4)]);
-  expect(JSON.parse(marks[0]).pluginId).toBe('phosphor.outlines');
-  expect(marks.slice(1)).toEqual([null, null]);
+  const marked = 'phosphor.outlines';
+  expect(marks).toEqual([
+    ['begin', marked], ['move', marked], ['move', null], ['end', marked],
+    ['begin', null], ['move', null], ['end', null],
+  ]);
   expect(localStorage.getItem(HANG_KEY)).toBe(null);
 });
 

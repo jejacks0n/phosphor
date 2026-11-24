@@ -36,9 +36,9 @@ export function toolOption(kind, ref, def, option) {
   return { ...base, type: 'dropdown', choices: option.choices.map((label, value) => ({ value, label })) };
 }
 
-// The plugin calls that have run this visit, by kind, ref and script hash: the first of each (a brush's first move, a
-// shape's first outline) runs under the hang mark (plugins/hangMark.js), so one that freezes the page is turned off next
-// time.
+// The plugin calls that have run this visit, by kind, ref and script hash: the first of each (a brush's first begin,
+// move and end, a shape's first outline) runs under the hang mark (plugins/hangMark.js), so one that freezes the page
+// is turned off next time.
 const ran = new Set();
 export function firstUnderMark(kind, ref, hash, pluginId, fn) {
   const run = `${kind}\u0000${ref}\u0000${hash}`;

@@ -117,8 +117,8 @@ memory until the page reloads, which does no harm.
 ### When a script stops Phosphor
 
 Before a plugin's script is loaded, the first time in a visit a solver works out a drawing, the cells under paint or
-the cells of a layer above the others, and the first time in a visit a brush moves, a shape gives its outline or a
-filter runs, Phosphor marks that plugin as running (in your browser's local storage, tied to
+the cells of a layer above the others, and the first time in a visit a brush is pressed, moves or is released, a
+shape gives its outline or a filter runs, Phosphor marks that plugin as running (in your browser's local storage, tied to
 the page that runs it) and takes the mark off when that's done. If a page froze there, the mark stays, and the next visit that finds the mark of a page that's gone starts that
 plugin off and says "Outlines stopped Phosphor responding last time, so it's off." You can switch it on again from the
 Plugins dialog, or remove it. `plugins=off` ([Starting with plugins off](#starting-with-plugins-off)) stays the last
