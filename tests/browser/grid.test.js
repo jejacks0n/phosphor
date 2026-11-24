@@ -11,6 +11,7 @@ import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { ctx2d } from '@/lib/Canvas';
 import { BLANK_CANVAS_SCALE } from '@/store/project/shared.js';
+import { MOST_SCALE } from '@/lib/ImageProcessor.js';
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -673,7 +674,7 @@ test('a grid step made alone goes when a room starts, and in a room a grid chang
 // the presses after it join.
 test('a run of Dimensions presses is one undo step, past MAX_LAYER_DIM too, and presses apart are steps each', async () => {
   const { project } = await createTestApp();
-  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 390 });
+  await project.setBlankCanvas({ withLayer: true, cols: 40, rows: 490 });
   await settle(project);
   project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#ff0000');
   project.commitEdit();
@@ -682,17 +683,17 @@ test('a run of Dimensions presses is one undo step, past MAX_LAYER_DIM too, and 
   let now = Date.now();
   const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
   try {
-    for (let rows = 391; rows <= 410; rows++) { // 400 rows at scale 10 is MAX_LAYER_DIM: 401 resamples
+    for (let rows = 491; rows <= 510; rows++) { // 500 rows at the working scale's most, 8, is MAX_LAYER_DIM: 501 resamples
       project.updateRows(rows);
       await settle(project);
       now += 100;
     }
-    expect(project.paintLayer.scale).toBeLessThan(BLANK_CANVAS_SCALE);
+    expect(project.paintLayer.scale).toBeLessThan(MOST_SCALE);
     const after = drawn(project);
-    project.undo(); // 401 to 410, the resample and the presses that joined it
+    project.undo(); // 501 to 510, the resample and the presses that joined it
     await settle(project);
-    expect([project.rows, project.paintLayer.scale]).toEqual([400, BLANK_CANVAS_SCALE]);
-    project.undo(); // 391 to 400
+    expect([project.rows, project.paintLayer.scale]).toEqual([500, MOST_SCALE]);
+    project.undo(); // 491 to 500
     await settle(project);
     expect(drawn(project)).toEqual({ ...before, paint: expect.any(String), base: expect.any(String) });
     expect(project.paintLayer.pixelAt(4, 4)).toMatchObject({ r: 255, g: 0, b: 0 });
@@ -705,14 +706,14 @@ test('a run of Dimensions presses is one undo step, past MAX_LAYER_DIM too, and 
     await settle(project);
     expect(drawn(project)).toEqual(after);
 
-    project.updateRows(420);
+    project.updateRows(520);
     await settle(project);
     now += 2000; // a second apart: a step of its own
-    project.updateRows(430);
+    project.updateRows(530);
     await settle(project);
     project.undo();
     await settle(project);
-    expect(project.rows).toBe(420);
+    expect(project.rows).toBe(520);
   } finally {
     clock.mockRestore();
   }

@@ -5,7 +5,7 @@
 // The renderer's pipeline converts the lower group (ProjectStore.lowerGroup) into lowerCells, and every layer above it is
 // laid over those cell by cell (Renderer.composeUpper): an edit on an upper layer touches only its cells (recomposeUpper),
 // and never runs the pipeline.
-import PaintLayer, { editScaleFor, resizeTransform } from '@/document/PaintLayer.js';
+import PaintLayer, { resizeTransform } from '@/document/PaintLayer.js';
 import ShapeLayer from '@/document/ShapeLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { shownShapes } from '@/document/followers.js';
@@ -219,11 +219,10 @@ export const renderingActions = {
     if (!this.image) return;
     const { cols, rows } = this;
     if (!this.paintLayer) {
-      const sw = this.image.naturalWidth || this.image.width;
-      const sh = this.image.naturalHeight || this.image.height;
       this.fit ??= this.fitFor(cols, rows);
-      this.paintLayer = markRaw(new PaintLayer({ cols, rows, scale: this.paintScale ?? editScaleFor(sw, sh, cols, rows) }));
       useBase(this, markRaw(new PaintLayer({ cols, rows, scale: this.baseScale ?? this.processingScale(), smooth: false })));
+      // A new drawing paints at the base's scale, so every layer is the same pixels (docs/model.md R7); a file keeps its own.
+      this.paintLayer = markRaw(new PaintLayer({ cols, rows, scale: this.paintScale ?? this.baseLayer.scale }));
       this.syncShapeLayers();
       this.baseScale = this.baseLayer.scale;
       this._layerGrid = { cols, rows };
@@ -262,8 +261,8 @@ export const renderingActions = {
     } else {
       // Nothing to undo is tied to the old layout (resizesCanvas): the layers follow the picture's new fit.
       const oldFit = this.fit, newFit = this.fitFor(cols, rows);
-      for (const paint of paints) if (paint !== this.baseLayer) paint.resize(cols, rows, oldFit, newFit);
-      this.baseLayer.resize(cols, rows, oldFit, newFit, this.processingScale({ fit: newFit }));
+      const scale = this.processingScale({ fit: newFit }); // the base's, and the paint's with it (docs/model.md R7)
+      for (const paint of paints) paint.resize(cols, rows, oldFit, newFit, scale);
       this.setBaseRecords(remapBaseRecords(this.baseRecords, resizeTransform(oldFit, newFit), cols, rows));
       this.fit = newFit;
     }

@@ -468,6 +468,11 @@ export default class WebGLProcessor {
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.#fitting(image));
       this.lastImage = image;
     }
+    // Enlarged (a picture with fewer pixels than the working scale's least), pixel for pixel, so a small pixel-art
+    // picture stays blocks rather than smears; shrunk, smoothly.
+    const iw = image.naturalWidth || image.width, ih = image.naturalHeight || image.height;
+    gl.bindTexture(gl.TEXTURE_2D, this.texture);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, iw < w || ih < h ? gl.NEAREST : gl.LINEAR);
 
     // Palette Texture
     if (this.paletteTexture) gl.deleteTexture(this.paletteTexture);

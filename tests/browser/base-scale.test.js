@@ -88,14 +88,14 @@ test('a canvas resize keeps the processing scale and the picture', async () => {
   expect(after).toEqual(before);
 });
 
-test('an image smaller than the grid keeps a scale-1 base', async () => {
+test('an image smaller than the grid is enlarged to the working scale\'s least, 4', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/tiny.gif', { cols: 80, rows: 80 });
-  expect(project.baseLayer.scale).toBe(1);
-  expect(workingScale(project.image, project.processParams)).toBe(null);
+  expect(project.baseLayer.scale).toBe(4);
+  expect(workingScale(project.image, project.processParams)).toBe(4);
 });
 
-// A block of photo.jpg (30 x 30 grid, 3 processed pixels per grid pixel) moved 15 columns right.
+// A block of photo.jpg (30 x 30 grid: 3 of its pixels a grid pixel, enlarged to 4) moved 15 columns right.
 const RECT = { c0: 2, r0: 2, c1: 11, r1: 11 };
 async function photo(settings) {
   const { project } = await createTestApp();
@@ -146,11 +146,7 @@ test('a moved block in full color stays within rounding', async () => {
 
 test('flipping a base cell under CGA with brightness swaps its two shown colors', async () => {
   const project = await photo({ quantize: 'cga', brightness: 150 });
-  const row = 5;
-  const col = [...Array(project.cols).keys()].find((c) => {
-    const { fg, bg } = project.cells[cellIndex(c, row, project.cols)];
-    return fg.hex !== bg.hex;
-  });
+  const at = project.cells.findIndex(({ fg, bg }) => fg.hex !== bg.hex), col = at % project.cols, row = (at - col) / project.cols;
   const { fg, bg } = project.cells[cellIndex(col, row, project.cols)];
   project.useLayer('base'); // the tools draw on the base
   project.flipCell(col, row);
@@ -162,8 +158,8 @@ test('flipping a base cell under CGA with brightness swaps its two shown colors'
 
 test('a moved block of an image smaller than the grid keeps its colors', async () => {
   const { project } = await createTestApp();
-  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 80, rows: 80 }); // processed at its own 64 x 64
-  expect(workingScale(project.image, project.processParams)).toBe(null);
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 80, rows: 80 }); // 64 x 64, enlarged to 4 a grid pixel
+  expect(workingScale(project.image, project.processParams)).toBe(4);
   const rect = { c0: 2, r0: 3, c1: 4, r1: 4 };
   const before = hexes(colorsIn(project, rect));
   project.floatSelection(rect, ['base', 'edit'], 6, 0);
@@ -206,18 +202,18 @@ test('an image smaller than the grid isn\'t pinned: merging into the picture twi
     await project.mergeIntoPicture();
     await settle(project);
   }
-  expect(project.image.width).toBe(400); // the working-size copy: 5 processed pixels per grid pixel
-  expect(workingScale(project.image, project.processParams)).toBe(5);
+  expect(project.image.width).toBe(320); // the working-size copy: 4 processed pixels per grid pixel
+  expect(workingScale(project.image, project.processParams)).toBe(4);
 });
 
 test('a base block pasted at another scale shows the colors it was copied with', async () => {
   const project = await photo({ quantize: 'cga' });
   const block = project.copySelection(RECT, ['base']);
   const copied = hexes(colorsIn(project, RECT));
-  project.cols = 45; // a rescale (no edits): 2 processed pixels per grid pixel instead of 3
-  project.rows = 45;
+  project.cols = 18; // a rescale (no edits): the photo has 5 of its pixels a grid pixel here, against 3 (enlarged to 4)
+  project.rows = 24; // 12 lines: the pasted block's 10 rows fit
   project.render(); await settle(project);
-  expect(project.baseLayer.scale).toBe(2);
+  expect(project.baseLayer.scale).toBe(5);
   project.pasteSelection(block, 0, 0);
   project.render(); await settle(project);
   expect(hexes(colorsIn(project, { c0: 0, r0: 0, c1: 9, r1: 9 }))).toEqual(copied);
