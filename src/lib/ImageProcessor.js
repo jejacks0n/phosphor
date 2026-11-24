@@ -5,6 +5,10 @@
 import { rgb2hex, hex2rgb, parseColorList, PALETTES } from './ColorUtils.js';
 import Canvas, { fitRect, ctx2d, boxFiltered, flatBlock } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
+import { editScaleFor } from '../document/PaintLayer.js';
+
+export const MOST_SCALE = 8;  // the working scale's most and least pixels a grid pixel (prepare)
+export const LEAST_SCALE = 4;
 import quantizeColors from './Quantizer.js';
 import { snapsLate, SAMPLES } from './CharResolver.js';
 import { beginRun, endRun } from '../plugins/hangMark.js';
@@ -125,16 +129,18 @@ function prepare(image, params, scale = null) {
   // a fractional ratio lets cells straddle pixels and blurs merged paint into its neighbors.
   // m comes from the grid (not the fit), so an image that fills the grid gets the same m as its fit.
   // While the base layer exists, m is its scale (params.workScale): its pixels are processed pixels,
-  // and a canvas resize keeps both. Not a scale of 1: that base was made for an image smaller than
-  // the grid (processed at its own size, no whole pixels to keep), and holding a working-size copy
-  // of it (Into the image) to 1 would shrink the picture to the grid.
-  const maxDim = 400;
+  // and a canvas resize keeps both. Not a scale of 1: a grid that long gets 1 from the rule anyway, and one under the
+  // GPU's cap is processed as large as it can be.
   // Where the image sits in the grid: params.fit when it's fixed (a canvas resize), else fitted in the cell's shape.
   // The fit alone resamples the picture to grid pixels, however tall they show: a grid pixel is m x m processed pixels.
   // ponytail: so Blur, Sharpen, Flatten and Edges reach as many grid pixels down as across, which in an 8x8 font is half
   // as far down on screen; scale their vertical reach by params.fitAspect if that shows.
   const { dx, dy, dw, dh } = params.fit ?? fitRect(sw, sh, cols, rows, params.fitAspect);
-  const natural = Math.min(Math.max(2, Math.floor(maxDim / Math.max(cols, rows))), Math.floor(Math.min(sw / dw, sh / dh)));
+  // The working scale: the picture's own pixels a grid pixel, at most MOST_SCALE (twice By shape's samples a grid pixel)
+  // and at least LEAST_SCALE (a smaller picture enlarged to it), within MAX_LAYER_DIM a side, since the base and every
+  // layer's paint and shapes are drawn at this scale too (docs/model.md R7).
+  const own = Math.floor(Math.min(sw / dw, sh / dh));
+  const natural = Math.min(editScaleFor(Infinity, Infinity, cols, rows), Math.max(LEAST_SCALE, Math.min(MOST_SCALE, own)));
   let m = scale ?? (params.workScale > 1 && natural >= 1 ? params.workScale : natural);
   // A long grid at m pixels a grid pixel can be more than the GPU draws (the picture would come out
   // black): m drops to fit, to below 1 if it must, and the picture is processed as large as it can be.
@@ -143,9 +149,9 @@ function prepare(image, params, scale = null) {
   let pw = dw * m;
   let ph = dh * m;
   if (m < 1) {
-    // Source smaller than the grid: keep it at native size rather than upscaling (blurring) it, in grid pixels: its rows
+    // A grid longer than the GPU draws at a pixel a grid pixel: the picture as large as it can be, in grid pixels: its rows
     // stretched by the cell's shape (fitAspect), so a Bake of it is a picture of grid pixels, as one at m >= 1 is.
-    const tall = sh / (params.fitAspect ?? 1), s = Math.min(1, (capped ? limit : maxDim) / Math.max(sw, tall));
+    const tall = sh / (params.fitAspect ?? 1), s = Math.min(1, limit / Math.max(sw, tall));
     pw = Math.floor(sw * s);
     ph = Math.floor(tall * s);
   }
