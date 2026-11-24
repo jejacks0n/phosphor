@@ -14,8 +14,8 @@ import { blur } from '@/tools/retouch';
 import { getTool } from '@/tools';
 import { isFrozen, ownEntry } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { coverageOf } from '@/lib/GlyphCoverage.js';
-import { glyphMask } from '@/lib/glyphPicture.js';
+import { coverageOf, loadReferenceFont } from '@/lib/GlyphCoverage.js';
+import { glyphMask, drawGlyphCell } from '@/lib/glyphPicture.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
 
 const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
@@ -85,6 +85,28 @@ const drawnCells = (project, rect) => {
     .filter(([c, r]) => !rect || (c >= rect.c0 && c <= rect.c1 && r >= rect.r0 && r <= rect.r1))
     .map(([c, r]) => r * project.cols + c);
 };
+
+// First in the file: the reference font (IBM VGA) hasn't loaded yet, and Brightness never asks for it. Blend waits for it
+// before drawing a letter in, so the glyph is IBM VGA's, not a fallback font's baked into the picture.
+test('Blend into source image draws a letter in the reference font, waiting for it to load', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  project.renderStyle = 'ascii';
+  await settle(project);
+  workspace.pickLayer('edit');
+  project.typeAt(5, 5, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  await settle(project);
+  await project.mergeIntoPicture();
+  await settle(project);
+  await loadReferenceFont();
+  const m = project.image.width / project.fitFor(project.cols, project.rows).dw;
+  const ctx = ctx2d(Object.assign(document.createElement('canvas'), { width: m, height: 2 * m }));
+  drawGlyphCell(ctx, { char: 'A', fg: '#ffffff', bg: '#000000' }, 0, 0, m);
+  const data = ctx.getImageData(0, 0, m, 2 * m).data, want = [];
+  for (let i = 0; i < data.length; i += 4) want.push(`#${[0, 1, 2].map((k) => data[i + k].toString(16).padStart(2, '0')).join('')}`);
+  expect(pictureBlock(project, 5, 5)).toEqual(want);
+});
 
 describe('exactly', () => {
   test('the whole edit layer: nothing on the canvas changes, and undo/redo are exact', async () => {

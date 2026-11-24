@@ -16,7 +16,7 @@ import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { cellIndex, charRowsOf, halfColors, isWideChar, mix } from '@/lib/Cells.js';
 import { drawGlyphCell } from '@/lib/glyphPicture.js';
-import { coverageOf } from '@/lib/GlyphCoverage.js';
+import { coverageOf, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { findUniform, processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
@@ -639,6 +639,7 @@ export const mergingActions = {
       // render through the pipeline would round them a level here and there.
       const atSize = width === fitNow.dw * m && height === fitNow.dh * m;
       const canvas = atSize ? copyOf(this.image, width, height) : await processedImage(this.image, neutral, { m });
+      await loadReferenceFont(); // a glyph the drawing font lacks is drawn in it: a fallback font's would be baked in
       // Meanwhile: another document is left alone; a change to this one means merging what shows now.
       if (this._document !== doc) return;
       this.commitPending();

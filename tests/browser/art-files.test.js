@@ -17,6 +17,8 @@ import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
 import { blankScale } from '@/store/project/document';
+import { loadReferenceFont } from '@/lib/GlyphCoverage';
+import { drawGlyphCell } from '@/lib/glyphPicture';
 
 const plain = (hex) => { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; return { r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] }; };
 const COLORS = {
@@ -55,6 +57,22 @@ function expectShows(project, cells) {
     else expect(shown.char, where).toBe(cell.fg.hex === cell.bg.hex ? ' ' : cell.char);
   });
 }
+
+// First in the file: the reference font (IBM VGA) hasn't loaded yet. Open as an image waits for it before drawing the
+// cells, so a letter is IBM VGA's glyph, not a fallback font's baked into the picture.
+test('opened as an image before the reference font has loaded, a letter is drawn in it', async () => {
+  const { project } = await createTestApp(), file = new File(['A'], 'a.txt');
+  const [cell] = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name).cells;
+  await project.openArtFile(file, { layer: 'picture' });
+  await settle(project);
+  await loadReferenceFont();
+  const { naturalWidth: w, naturalHeight: h } = project.image;
+  const ctx = Object.assign(document.createElement('canvas'), { width: w, height: h }).getContext('2d');
+  ctx.drawImage(project.image, 0, 0);
+  const want = Object.assign(document.createElement('canvas'), { width: w, height: h }).getContext('2d');
+  drawGlyphCell(want, cell, 0, 0, w);
+  expect([...ctx.getImageData(0, 0, w, h).data]).toEqual([...want.getImageData(0, 0, w, h).data]);
+});
 
 test('a CGA .ans opens as a document: its cells, size, palette and SAUCE, nothing to undo or save', async () => {
   const project = await afterAnotherDocument();
