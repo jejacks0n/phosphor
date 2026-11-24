@@ -29,11 +29,12 @@ const checkSize = (cols, rows) => {
   }
 };
 
-// A cell from its character byte and attribute: the foreground the low four bits, the background the high four with
-// iCE colors (bright backgrounds), else the three under the blink bit. indexes: the colors are the 16, so each keeps its
-// ANSI index.
-const cellsOf = (chars, attrs, palette, ice, indexes, table = CP437) => chars.map((byte, n) => {
-  const fgIndex = attrs[n] & 15, bgIndex = ice ? attrs[n] >> 4 : (attrs[n] >> 4) & 7;
+// A cell from its character byte and attribute: the foreground the low four bits, the background the high four. Without
+// iCE colors the top bit is blink, kept as the bright background it stands for (as an .ans's SGR 5 is), and the file
+// says so (iceColors), for the drawing to show it blinking and write it back the same. indexes: the colors are the 16,
+// so each keeps its ANSI index.
+const cellsOf = (chars, attrs, palette, indexes, table = CP437) => chars.map((byte, n) => {
+  const fgIndex = attrs[n] & 15, bgIndex = attrs[n] >> 4;
   return {
     char: table[byte], fg: palette[fgIndex], bg: palette[bgIndex],
     ...(indexes && { fgIndex: ANSI_OF_DOS[fgIndex], bgIndex: ANSI_OF_DOS[bgIndex] }),
@@ -98,8 +99,8 @@ export function readXBin(bytes, name, knownBlocks = () => undefined) {
   const blocks = font && knownBlocks(fontId(font));
   if (blocks) font = { ...font, blocks };
   const table = font ? slotChars(font) : CP437; // a font's slots, its blocks where it keeps them
-  const cells = cellsOf(chars, attrs, palette, (flags & NON_BLINK) !== 0, !(flags & PALETTE), table);
-  return { cols, rows, cells, sauce, palette, font, xbin: true, notUtf8: false };
+  const cells = cellsOf(chars, attrs, palette, !(flags & PALETTE), table);
+  return { cols, rows, cells, sauce, palette, font, xbin: true, notUtf8: false, iceColors: (flags & NON_BLINK) !== 0 };
 }
 
 // A .bin is BinaryText only by its SAUCE record (data type 5, the width in its file type, halved; 0 is 160). With no
@@ -120,9 +121,9 @@ export function readBinaryText(bytes, name) {
   checkSize(cols, rows);
   const chars = new Uint8Array(cols * rows).fill(32), attrs = new Uint8Array(cols * rows).fill(BLANK);
   for (let n = 0; n < total; n++) { chars[n] = data[n * 2]; attrs[n] = data[n * 2 + 1]; }
-  const cells = cellsOf(Array.from(chars), attrs, DOS_CGA, !!found?.iceColors, true);
+  const cells = cellsOf(Array.from(chars), attrs, DOS_CGA, true);
   const sauce = found && { ...found, width: cols, height: rows };
-  return { cols, rows, cells, sauce, palette: DOS_CGA, font: null, xbin: false, notUtf8: false, binNoSauce: !found };
+  return { cols, rows, cells, sauce, palette: DOS_CGA, font: null, xbin: false, notUtf8: false, binNoSauce: !found, iceColors: !!found?.iceColors };
 }
 
 // One row's cells as runs: at each cell the longest of both-same (3), char-same (1), attr-same (2), else a plain run (0).
@@ -154,10 +155,11 @@ function compressRow(out, chars, attrs) {
 }
 
 // palette is in XBin's order, DOS: index 1 is blue (PALETTES.cga is in ANSI order, where 1 is red). font is an {name, height, bytes}.
-export function writeXBin({ cols, rows, cells, palette, font, sauce }) {
+// iceColors false leaves NON_BLINK off: a background of 8 to 15 is then the blink bit, as the drawing showed it.
+export function writeXBin({ cols, rows, cells, palette, font, sauce, iceColors = true }) {
   const hexes = Array.from({ length: 16 }, (_, i) => palette[i] ?? '#000000');
   const colors = hexes.map((h) => ({ r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16) }));
-  const out = [...MAGIC, cols & 255, cols >> 8, rows & 255, rows >> 8, font.height, PALETTE | FONT | COMPRESS | NON_BLINK];
+  const out = [...MAGIC, cols & 255, cols >> 8, rows & 255, rows >> 8, font.height, PALETTE | FONT | COMPRESS | (iceColors ? NON_BLINK : 0)];
   for (const { r, g, b } of colors) out.push(r >> 2, g >> 2, b >> 2); // 6 bits a channel
   out.push(...font.bytes);
   for (let y = 0; y < rows; y++) {

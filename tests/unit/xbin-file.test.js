@@ -100,8 +100,14 @@ describe('XBin', () => {
   it('reads a run of one character with its own attributes (type 1)', () => {
     const art = readXBin(file(3, 1, 4, [0x42, 65, 0x07, 0x1f, 0x70]), 'a.xb');
     expect(chars(art)).toBe('AAA');
-    // blink on: the background is 3 bits
     expect(art.cells.map((c) => [c.fg, c.bg])).toEqual([['#aaaaaa', '#000000'], ['#ffffff', '#0000aa'], ['#000000', '#aaaaaa']]);
+  });
+  it('keeps the blink bit of a file without NON_BLINK as a bright background, and says iCE colors are off', () => {
+    const art = readXBin(file(2, 1, 0, [65, 0x9f, 66, 0x1f]), 'a.xb'); // blue (1) under the blink bit, and plain blue
+    expect(art.cells.map((c) => c.bg)).toEqual(['#5555ff', '#0000aa']);
+    expect(art.cells.map((c) => c.bgIndex)).toEqual([12, 4]); // ANSI's bright blue and blue
+    expect(art.iceColors).toBe(false);
+    expect(readXBin(file(2, 1, 8, [65, 0x9f, 66, 0x1f]), 'a.xb').iceColors).toBe(true); // NON_BLINK: bright backgrounds
   });
   it('reads a run of one attribute with its own characters (type 2)', () => {
     const art = readXBin(file(3, 1, 4, [0x82, 0x1f, ...asc('ABC')]), 'a.xb');
@@ -153,6 +159,15 @@ describe('XBin', () => {
     const pal = [...PAL]; pal[0] = '#ff0483';
     const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: pal, font, sauce: false });
     expect([...bytes.slice(11, 14)]).toEqual([63, 1, 32]);
+  });
+  it('sets NON_BLINK only with iCE colors, so a bright background is the blink bit without them', () => {
+    const cells = [{ char: 'A', fg: rgb(PAL[15]), bg: rgb(PAL[9]) }];
+    const header = (ice) => writeXBin({ cols: 1, rows: 1, cells, palette: PAL, font, sauce: false, ...(ice !== undefined && { iceColors: ice }) })[10];
+    expect(header() & 8).toBe(8); // on, unless it's said to be off
+    expect(header(true) & 8).toBe(8);
+    expect(header(false) & 8).toBe(0);
+    const back = readXBin(writeXBin({ cols: 1, rows: 1, cells, palette: PAL, font, sauce: false, iceColors: false }), 'a.xb');
+    expect([back.cells[0].bg, back.iceColors]).toEqual([PAL[9], false]); // the same cell, blinking
   });
   it('writes the size of the art in SAUCE, not one an opened file had', () => {
     const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: { fileSize: 999 } });
