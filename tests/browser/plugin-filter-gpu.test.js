@@ -53,8 +53,8 @@ const run = (image, params, options, size = W) => {
   gpu.process(image, params, size, size, options);
   return pixelsOf(gpu.canvas);
 };
-const filter = (id, passes, { options = [], values = {}, hash = 'h1' } = {}) =>
-  ({ ref: solverRef('jane.fx', id), pluginId: 'jane.fx', hash, passes, options, values });
+const filter = (id, passes, { options = [], values = {}, hash = 'h1', helpers = null } = {}) =>
+  ({ ref: solverRef('jane.fx', id), pluginId: 'jane.fx', hash, helpers, passes, options, values });
 const IDENTITY = 'return pixel(vec2(0.0));';
 // Everything on, for a filter that never runs: one that doesn't build leaves the passes exactly as with none.
 const RICH = { brightness: 120, sharpen: 40, edges: 30, flatten: 4, passes: 2, palette: PALETTES.cga };
@@ -110,6 +110,21 @@ test('a filter\'s passes chain, each reading the one before', () => {
   const out = run(image, { pluginFilters: [filter('halves', ['return pixel(vec2(0.0)) * 0.5;', 'return pixel(vec2(0.0)) * 2.0;'])] });
   expect(within(out, none, 1)).toEqual([]);
   expect(out).not.toEqual(run(image, { pluginFilters: [filter('half', ['return pixel(vec2(0.0)) * 0.5;'])] }));
+});
+
+test('a filter\'s helpers are in each of its passes: a function and a constant both passes use', () => {
+  registerScript('jane.fx', 'h1', { filters: [{ id: 'helped' }, { id: 'broken' }] });
+  const heard = [];
+  listen((ref, why) => heard.push(why.log ?? why));
+  const helpers = 'const float HALF = 0.5;\nvec3 scaled(float by) { return pixel(vec2(0.0)) * by; }';
+  const image = picture(), none = run(image, { pluginFilters: [] });
+  const out = run(image, { pluginFilters: [filter('helped', ['return scaled(HALF);', 'return scaled(1.0 / HALF);'], { helpers })] });
+  expect(heard).toEqual([]); // both passes built
+  expect(within(out, none, 1)).toEqual([]);
+  // A mistake in the helpers is told by its own line: source 1, line 2.
+  run(image, { pluginFilters: [filter('broken', [IDENTITY], { helpers: 'const float A = 1.0;\nfloat b = nope;' })] });
+  expect(heard).toHaveLength(1);
+  expect(heard[0]).toMatch(/\b1:2\b/);
 });
 
 test('options reach the shader as opt_ uniforms: a slider, a checkbox, a choice and a color', () => {

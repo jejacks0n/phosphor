@@ -309,8 +309,9 @@ void main() {
 // prelude docs/plugins.md describes: pixel(d), the color d processed pixels away as the pass before left it (the edge's
 // past the border), uv, uResolution, luma() and an opt_ uniform for each option. Those are the plugin API; every other
 // name a pass can reach is Phosphor's own and begins ph_ (the picture, the varying, the output, the function itself),
-// as in a solver's shader (ShapeMatcher's PLUGIN). #line: the compiler's log counts the author's lines.
-export const filterSource = (pass, options) => `#version 300 es
+// as in a solver's shader (ShapeMatcher's PLUGIN). helpers, the filter's own GLSL for all its passes, go before the
+// function. #line: the compiler's log counts the author's lines, the pass's as source 0 and the helpers' as source 1.
+export const filterSource = (pass, options, helpers = null) => `#version 300 es
 precision highp float;
 precision highp int;
 uniform sampler2D ph_image; uniform vec2 uResolution; in vec2 ph_texCoord; out vec4 ph_color;
@@ -318,8 +319,8 @@ vec2 uv;
 vec3 pixel(vec2 d) { vec2 h = 0.5 / uResolution; return texture(ph_image, clamp(uv + d / uResolution, h, 1.0 - h)).rgb; }
 float luma(vec3 c) { return dot(c, ${LUMA}); }
 ${options.map((option) => `uniform ${GLSL_TYPES[option.kind]} ${optUniform(option.id)};`).join('\n')}
-vec3 ph_pass() {
-#line 1
+${helpers ? `#line 1 1\n${helpers}\n` : ''}vec3 ph_pass() {
+#line 1 0
 ${pass}
 }
 void main() { uv = ph_texCoord; ph_color = vec4(clamp(ph_pass(), 0.0, 1.0), texture(ph_image, uv).a); }
@@ -482,7 +483,7 @@ export default class WebGLProcessor {
         used.add(key);
         if (!this.filterPrograms.has(key)) {
           try {
-            this.filterPrograms.set(key, this.#createProgram(FILTER_VERTEX_SHADER, filterSource(pass, filter.options)));
+            this.filterPrograms.set(key, this.#createProgram(FILTER_VERTEX_SHADER, filterSource(pass, filter.options, filter.helpers)));
           } catch (error) {
             if (this.gl.isContextLost()) break;
             this.filterPrograms.set(key, null);

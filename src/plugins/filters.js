@@ -85,4 +85,4 @@ export function filterGroups({ saved, installed, pluginState, pluginsOff, failur
 
 // The groups that run, as the pipeline takes them (WebGLProcessor's params.pluginFilters).
 export const runningFilters = (groups) => groups.filter(({ state }) => state === 'on')
-  .map(({ ref, pluginId, hash, def, values }) => ({ ref, pluginId, hash, passes: def.passes, options: def.options, values }));
+  .map(({ ref, pluginId, hash, def, values }) => ({ ref, pluginId, hash, helpers: def.helpers, passes: def.passes, options: def.options, values }));
