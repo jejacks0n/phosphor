@@ -201,7 +201,7 @@ export const useProjectStore = defineStore('project', {
   getters: {
     // The drawing's bitmap font, or null: decoded once for each fontBitmap.
     // Letter spacing 9px (its own setting, or the SAUCE 9px flag while that's unset): bitmap fonts of 8 draw at 9.
-    letterSpacing9: ninePx,
+    letterSpacing9() { return ninePx(this); }, // read when asked: Retouch imported first reaches this file before shared.js finishes
     drawingFont() { return drawingFontOf(this); },
     // A grid pixel's height over its width in the drawing's font: 1 with none or an 8x16 one, 0.5 in 8x8.
     pixelAspect() { return pixelAspectOf(this.drawingFont); },
