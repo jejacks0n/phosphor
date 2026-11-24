@@ -159,7 +159,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     chatTone: useLocalStorage('phosphor.chatTone', true), // a tone for someone else's chat message while you aren't in the chat (RoomStore.chime)
     sidePanelOpen: false,    // a narrow screen's side panel, over the art (not kept: each load starts with it shut); a wide one's is sidePanelFolded
     sidePanelUnread: 0,      // what was said while the chat wasn't showing (SidePanel counts it)
-    sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (Social out of a room, CHAT in one) | 'history' (development only)
+    sidePanelTab: 'layers',  // the side panel's tab: 'layers' | 'social' (Social out of a room, CHAT in one) | 'history' (where it's shown: dev/historyTab.js)
     chatReturn: null,        // the element Alt+T took focus from into SOCIAL, for Escape or Alt+T in the chat box to give it back (markRaw)
     keysOpen: useLocalStorage('phosphor.keysOpen', true), // the Keys panel (KeysPanel) open, or folded away
     keysZoom: useLocalStorage('phosphor.keysZoom', null, { serializer: StorageSerializers.number }), // its lanes' px a frame, or null to fit (keyLanes.js)

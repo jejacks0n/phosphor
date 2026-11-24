@@ -1,7 +1,8 @@
 <script setup>
-// Development only (SidePanel's HISTORY tab, behind import.meta.env.DEV): the session's steps from dev/actionLog.js, newest
-// at the bottom and kept scrolled there; Copy puts the whole log, headed by the build, browser and viewport, on the
-// clipboard for a bug report; Clear starts it over. No translations: it never ships.
+// SidePanel's HISTORY tab (in development, or once phosphor.history(true) has been run: dev/historyTab.js): the session's
+// steps from dev/actionLog.js, newest at the bottom and kept scrolled there; Copy puts the whole log, headed by the
+// build, browser and viewport, on the clipboard for a bug report; Clear starts it over. No translations: it's a tool
+// for whoever is chasing a bug, shown only to someone who asked for it by name in the console.
 import { nextTick, useTemplateRef, watch } from 'vue';
 import { clearLog, log, logText } from '@/dev/actionLog.js';
 import { toast } from '@/composables/useToast';

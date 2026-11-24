@@ -34,13 +34,16 @@ import LobbyPage from '@/components/social/LobbyPage.vue';
 import DesktopStartPage from '@/components/social/DesktopStartPage.vue';
 import LayersList from '@/components/LayersList.vue';
 import ArrowIcon from '@/components/ArrowIcon.vue';
+import { historyTabShown } from '@/dev/historyTab.js';
 
-// Development only: a HISTORY tab logging every step taken (dev/actionLog.js, installed in main.js). The panel loads lazily, so built apps leave it out.
-const DEV = import.meta.env.DEV;
-const HistoryPanel = DEV ? defineAsyncComponent(() => import('@/components/dev/HistoryPanel.vue')) : null;
+// A HISTORY tab listing every step taken (dev/actionLog.js, installed in main.js), in development, or in a built app once
+// phosphor.history(true) has been run in the console (dev/historyTab.js). The panel loads lazily, so an app that never
+// shows it never loads it.
+const historyShown = computed(historyTabShown);
+const HistoryPanel = defineAsyncComponent(() => import('@/components/dev/HistoryPanel.vue'));
 
 // The column at the right of the whole app: LAYERS, and Social, which is CHAT while you're in a
-// room (and in development, HISTORY, the log of the session's steps). Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
+// room (and where it's shown, HISTORY, the log of the session's steps). Its left edge drags to resize it (or its arrow keys, a step at a time; a double-click puts it back), and the
 // » at the right end of its tabs folds it away entirely; EditTabs then shows « in that same spot, which brings it back
 // and counts the messages you haven't seen, as the CHAT tab does while LAYERS shows. In a room a speaker sits left of the », on
 // either tab, for the tone for new messages. Width and fold are kept in the browser; going into a room opens it on CHAT, a reload into
@@ -109,6 +112,7 @@ watch(() => room.inRoom, async (inRoom, was) => {
 }, { immediate: true });
 
 const pick = (name) => { workspace.sidePanelTab = name; };
+watch(historyShown, (shown) => { if (!shown && tab.value === 'history') pick('layers'); });   // hidden while it shows
 
 // The marker along the picked tab's foot, sliding to the tab picked, and placed again wherever the tabs move to.
 const tabList = useTemplateRef('tabList');
@@ -156,8 +160,8 @@ function key(e) {
           <span v-if="unread" class="unread">{{ unread }}</span>
           <span v-else-if="!room.inRoom" class="beta" aria-hidden="true">{{ t('tabs.beta') }}</span>
         </button>
-        <!-- An icon, not a word: a development tool shouldn't crowd the real tabs. -->
-        <button v-if="DEV" role="tab" class="icon" aria-label="History" title="History" :aria-selected="tab === 'history'" :class="{ on: tab === 'history' }" @click="pick('history')">
+        <!-- An icon, not a word: a tool for bug reports shouldn't crowd the real tabs. -->
+        <button v-if="historyShown" role="tab" class="icon" aria-label="History" title="History" :aria-selected="tab === 'history'" :class="{ on: tab === 'history' }" @click="pick('history')">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
             <path d="M3 3v5h5"/>
@@ -182,7 +186,7 @@ function key(e) {
       </aside>
       <ChatPanel v-if="room.inRoom" v-show="tab === 'social'" :shown="chatShown"/>
       <component :is="DESKTOP ? DesktopStartPage : LobbyPage" v-else-if="tab === 'social' && social.allowed"/>
-      <HistoryPanel v-if="DEV && tab === 'history'"/>
+      <HistoryPanel v-if="historyShown && tab === 'history'"/>
     </div>
   </div>
 </template>
