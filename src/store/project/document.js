@@ -30,6 +30,7 @@ import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
 import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, letterSpacingOf, withLetterSpacing } from '@/lib/Sauce.js';
+import { lessMotion } from '@/lib/blink.js';
 import { toast } from '@/composables/useToast.js';
 import { sayMissingBlocks } from '@/composables/useFontSetup.js';
 import { askFontWidth } from '@/composables/useFontWidth.js';
@@ -117,6 +118,12 @@ async function artPicture(art, font) {
   drawArtCells(ctx, art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell })), m, { font });
   const blob = await canvasPng(canvas);
   return { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer() };
+}
+
+// A file opened with iCE colors off, so its bright backgrounds blink, where the system asks for reduced motion: the ANSI
+// view won't blink them, and says so (as the SAUCE tab's checkbox does). As `this`, the store.
+function sayBlinkSteady() {
+  if (this.blinkingBackgrounds && lessMotion()) toast(t('sauce.iceStill'));
 }
 
 const withBlocks = (font, text) => { const set = decodeBlocks(text); return font && set ? { ...font, blocks: set } : font; };
@@ -363,6 +370,7 @@ export const documentActions = {
       this.render();
       this.markSaved();
       this.asOpened = true;
+      sayBlinkSteady.call(this); // first: a word on the font, when there is one, matters more
       if (ask) askFontWidth(this.drawingFont); // the one toast, before any about blocks
       else if (art.font) sayMissingBlocks(this.drawingFont); // an XBin's own font, missing blocks besides its lower half
     });
@@ -592,6 +600,7 @@ export const documentActions = {
       this.filePath = file.desktopPath ?? null; // desktop: where it was opened from, for Save to write over
       this.fileHandle = file.fileHandle ? markRaw(file.fileHandle) : null; // the same on the web (pickFile, a drop)
       this.asOpened = true; // last: autosave writes the record at once, with the file it's saved to
+      sayBlinkSteady.call(this);
     } catch (e) {
       console.error('Failed to load project file', e);
       const reason = e?.code === 'INVALID_PROJECT' ? t('document.invalidProject') : e?.code === 'DECODE_IMAGE_FAILED' ? t('document.decodeImageFailed') : e.message;
