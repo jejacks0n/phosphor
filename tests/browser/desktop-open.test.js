@@ -44,7 +44,9 @@ const drop = async (file) => {
   host.querySelector('article.drop-zone').dispatchEvent(event);
   await settle();
 };
-// The question is a modal, on the body.
+// The question is a modal, on the body. An art file is read before it's asked about, which can take longer than a
+// settle on a busy machine, so the question is waited for.
+const asked = () => expect.poll(choices).toEqual(['Add to this drawing', 'Open in a new window']);
 const choices = () => [...document.querySelectorAll('button.choice b')].map((b) => b.textContent.trim());
 const choose = async (title) => {
   [...document.querySelectorAll('button.choice')].find((b) => b.querySelector('b').textContent.trim() === title).click();
@@ -73,7 +75,7 @@ test('an art file dropped over a drawing offers Add or Open in a new window, not
   const { opened } = await overDrawing();
   const file = art();
   await drop(file);
-  expect(choices()).toEqual(['Add to this drawing', 'Open in a new window']);
+  await asked();
   await choose('Open in a new window');
   expect(opened).toEqual([file]);
 });
@@ -93,7 +95,7 @@ test('drawing in someone\'s room still offers Open in a new window', async () =>
   const { opened } = await overDrawing({ before: inSomeonesRoom });
   expect(useDrawingStore().offWithOthers).toBeTruthy();
   await drop(art());
-  expect(choices()).toEqual(['Add to this drawing', 'Open in a new window']);
+  await asked();
   document.querySelector('button.cancel').click();
   await settle();
 
