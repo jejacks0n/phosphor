@@ -529,6 +529,36 @@ test('names the layers showing a stand-in', async () => {
 });
 
 // XBin holds 16 colors: it's offered with CGA, and not with VGA, full color or a list past 16.
+test('with iCE colors off, every format but ANS, Animated ANS and XBin says its blinking cells come out steady', async () => {
+  const { project } = await drawing();
+  project.quantize = 'cga';
+  project.addFrame('blank');
+  project.animate = true;
+  await settle(project);
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    // The format names whose note says so.
+    const saying = async () => {
+      const names = [];
+      for (const button of modal.querySelectorAll('.format-btn:not(:disabled)')) {
+        button.click();
+        await nextTick();
+        if (modal.querySelector('.note.steady')) names.push(button.querySelector('.format-name').textContent);
+      }
+      return names;
+    };
+    expect(await saying()).toEqual([]); // iCE colors on: nothing blinks
+    project.sauceIceColors = false;
+    await nextTick();
+    const names = await saying(), all = [...modal.querySelectorAll('.format-btn .format-name')].map((n) => n.textContent);
+    expect(all.filter((name) => !names.includes(name))).toEqual(['ANS', 'XBin', 'Animated ANS']);
+    expect(modal.querySelector('.note.steady').textContent).toBe('Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS and XBin keep the blink.');
+  } finally {
+    unmount();
+  }
+});
+
 test('offers XBin only for 16 colors or fewer', async () => {
   const { project, pinia } = await drawing();
   const state = async (settings) => {
