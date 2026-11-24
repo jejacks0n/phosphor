@@ -51,7 +51,7 @@ test('in a room, Delete asks first; Cancel keeps the layer; alone it doesn\'t as
   const deletes = vi.spyOn(project, 'deleteLayer').mockReturnValue(true);
   await deleteTopRow();
   expect(workspace.deleteLayerAsk).toEqual({ id: top });
-  expect(dialog().querySelector('h3').textContent).toBe('Delete Layer 2 for everyone?');
+  expect(dialog().querySelector('h2').textContent).toBe('Delete Layer 2 for everyone?');
   expect(dialog().querySelector('p.sub').textContent).toBe('Everyone in the room loses this layer and what\'s on it. This can\'t be undone.');
   expect(choices()).toEqual(['Delete layer']);
   dialog().querySelector('button.cancel').click();

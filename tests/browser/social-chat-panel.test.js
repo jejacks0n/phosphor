@@ -265,7 +265,7 @@ test('the report dialog: a report that can\'t go leaves it as it is; with its Re
     const report = vi.spyOn(room, 'report').mockReturnValue(false);
     host.querySelector('button.report').click();
     await nextTick();
-    expect(document.querySelector('dialog h3').textContent).toBe('Report name-0?');
+    expect(document.querySelector('dialog h2').textContent).toBe('Report name-0?');
     expect(dialogButton('Report').disabled).toBe(true);
     document.querySelector('dialog input[value=other]').click();
     await nextTick();
@@ -360,7 +360,7 @@ test('Report again on the same message while "Reported" shows opens the dialog a
   for (let i = 0; i < 2; i++) {
     host.querySelector('button.report').click();
     await nextTick();
-    expect(document.querySelector('dialog h3').textContent).toBe('Report name-0?');
+    expect(document.querySelector('dialog h2').textContent).toBe('Report name-0?');
     document.querySelector('dialog input[value=other]').click();
     await nextTick();
     [...document.querySelectorAll('dialog button')].find((b) => b.textContent === 'Report').click();
@@ -410,7 +410,7 @@ test('a watcher\'s Block asks first: Cancel and Escape send nothing, with focus 
     const trigger = host.querySelector('button.block');
     trigger.click();
     await nextTick();
-    expect(dialog().querySelector('h3').textContent).toBe('Block name-0?');
+    expect(dialog().querySelector('h2').textContent).toBe('Block name-0?');
     expect(dialog().querySelector('p.sub').textContent).toBe('They cannot join any room you host, and their messages will be hidden. You can unblock them in Account settings.');
     expect(document.activeElement).toBe(dialogButton('Cancel'));
     cancel();
@@ -471,7 +471,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
   trigger.click();
   await nextTick();
   const dialog = document.querySelector('dialog');
-  expect(dialog.querySelector('h3').textContent).toBe('Report this room?');
+  expect(dialog.querySelector('h2').textContent).toBe('Report this room?');
   expect(dialog.querySelector('p.sub').textContent).toBe('Moderators will receive recent lobby previews and a snapshot of the current canvas.');
   dialog.querySelector('input[value=sexual]').click();
   await nextTick();

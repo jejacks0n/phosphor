@@ -105,7 +105,7 @@ const onMouseDown = (event) => outside(event) && still() && event.preventDefault
             <span v-if="each.count !== undefined" class="count">{{ each.count }}</span>
           </button>
         </div>
-        <h3 v-else-if="props.title" id="modal-dialog-title">{{ props.title }}</h3>
+        <h2 v-else-if="props.title" id="modal-dialog-title">{{ props.title }}</h2>
       </div>
       <div ref="body" class="body" :tabindex="props.long || props.wide ? -1 : undefined">
         <p v-if="props.sub" class="sub">{{ props.sub }}</p>
@@ -246,10 +246,14 @@ dialog.modal-dialog.tall {
   }
 }
 
-h3 {
+h2 {   /* as SAUCE's title and the SOCIAL pages' headings */
   margin: 0 0 4px;
-  font-size: 16px;
+  font-size: 14px;
+  font-weight: bold;
   line-height: 18px; /* one height in every system font, so the × stays on its line */
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--accent);
 }
 
 p.sub {
