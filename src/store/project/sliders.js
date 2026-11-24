@@ -3,13 +3,17 @@
 // and _lastSlider (the step a nudge can extend).
 import { SLIDER_KEYS, NUDGE_MS, putSettings } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults, sameSetting } from '@/store/settings.js';
+import { lessMotion } from '@/lib/blink.js';
+import { toast } from '@/composables/useToast.js';
+import { t } from '@/i18n';
 
 export const sliderActions = {
   // iCE colors (the SAUCE tab's box), one undo step: it changes how the whole drawing shows and exports, so it goes back
-  // as a slider does. With no drawing yet it's the next one's, with nothing to undo. In a room only the host does it.
+  // as a slider does. Turned off where the system asks for reduced motion, a toast says nothing will blink. With no drawing yet it's the next one's, with nothing to undo. In a room only the host does it.
   setIceColors(on) {
     if (this.sauceIceColors === on) return;
     this.sauceIceColors = on;
+    if (!on && lessMotion()) toast(t('sauce.iceStill')); // the ANSI view won't blink them, so it says so
     if (!this.image) return;
     this.commitPending();
     this.pushEdit({ settingsOnly: true, undo: () => { this.sauceIceColors = !on; }, redo: () => { this.sauceIceColors = on; } });

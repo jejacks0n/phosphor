@@ -1128,7 +1128,7 @@ the cursor, as one undo step, without leaving Edit Mode.
   you're on. Then it follows the tool: Edit Mode shows the cell under the cursor, Select the selection's size and place,
   and the Eyedropper its last pick and where each color came from. On the right it shows that Space pans, and while you
   hold Alt (Option on a Mac) or Shift, what that key does with the tool, then its buttons: the zoom (away from 100%),
-  **Overwrite**, **Insert** or **Partial** in Edit Mode, **Canvas** or **DOM**, and **Smooth**. When the view is too narrow for all
+  **Overwrite**, **Insert** or **Partial** in Edit Mode, **Canvas** or **DOM**, **iCE** in a 16-color drawing ([iCE colors](characters.md#ice-colors)), and **Smooth**. When the view is too narrow for all
   of it, the FG and BG hex codes go first (hover a swatch for its code), so the buttons stay whole; then the readout
   wraps onto another line a part at a time (Col and Row, Char, FG, BG), so nothing in it is cut off, and only the
   buttons scroll sideways, faded at the edge while there are more, with the mouse wheel too. The readout keeps room for its largest
