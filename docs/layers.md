@@ -193,8 +193,9 @@ The settings on the left come in sections, each following a layer:
 - **Picture · Base**: **Smoothing**, how the picture and the base's own pixels are scaled to the grid. Only with the
   base selected, and only where it changes something: a picture, or a picture merged down onto the base (it lives in
   the base's pixels then, finer than a grid pixel). A blank canvas has none, and still has none after a Bake, after
-  paint on the base, or after **Blend into source image**, which paints each grid pixel into the picture whole: Image
-  filters work on that picture, but Smoothing has nothing finer to scale.
+  paint on the base, or after **Blend into source image** of paint, which paints each grid pixel into the picture whole:
+  Image filters work on that picture, but Smoothing has nothing finer to scale. Characters blended in are drawn as
+  their glyphs, finer than a grid pixel where the picture has more than one pixel a grid pixel, so Smoothing shows then.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which work
   on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after Flatten, a
   note says image filters require an image instead. After a Bake or **Blend into source image** the picture is a working
@@ -672,11 +673,14 @@ the canvas changes. Undo brings it back, selected if it was.
     it. A letter typed with no background keeps the picture's own pixels behind it, so it looks the same under any
     palette and slider. The base snaps its pixels to the palette one at a time, so a cell soft paint or a Blur stroke would show
     otherwise as pixels is pinned as it showed.
-  - **Blend into source image**: Your drawing becomes part of the image itself, so every slider applies to it, live,
-    like the photo. Paint and solid cells (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep showing their
-    two halves; letters and other characters can't become picture pixels, so they merge exactly, as does anything
-    drawn in the bars around a picture that doesn't fill the grid. In Color ASCII and Monochrome ASCII, **Colors
-    only**'s paint goes into the picture as paint, and a typed cell keeps its background as Keep crisp cells keeps it. Like Bake, the first time makes the picture the
+  - **Blend into source image**: Your drawing becomes part of the image itself, so every slider and image filter applies
+    to it, live, like the photo. Paint goes in as it shows. Letters and other characters are drawn into the picture as
+    they look, each in its two colors with your paint over it, and the converter picks them again from the picture, so
+    some can come back as other characters (the question lists that under **You give up**). In ANSI, solid cells
+    (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep showing their two halves. A wide character (漢),
+    anything drawn in the bars around a picture that doesn't fill the grid, and a cell a merge froze as it showed merge
+    exactly. In Color ASCII and Monochrome ASCII, **Colors only**'s paint goes into the picture as paint, and a typed
+    cell's background goes into the picture with it, so in Color ASCII it comes back as ink on black. Like Bake, the first time makes the picture the
     working-size copy the preview is made from, so growing the grid later works from that, effects like Edges can
     shift slightly that first time, and the **Image filters** work on it as on a picture you opened. With a Limited count palette,
     the palette is worked out again from the merged picture, so some colors can shift. When the graphics card can't

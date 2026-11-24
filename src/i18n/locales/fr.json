@@ -724,8 +724,9 @@
       "exactTitle": "Conserver des cellules nettes",
       "exactText": "Préserve chaque cellule de caractère exactement telle qu'affichée. Les filtres d'image comme Contours et Netteté n'affecteront pas ces cellules.",
       "intoImageTitle": "Fondre dans l'image source",
-      "intoImageText": "Dessine directement dans l'image de base afin que les curseurs et les filtres d'image s'y appliquent.",
+      "intoImageText": "Dessine directement dans l'image de base, caractères compris, afin que les curseurs et les filtres d'image s'y appliquent.",
       "ownCharsNote": "Les caractères personnalisés de {name} : sa peinture est redessinée avec ceux de {below}.",
+      "repickedNote": "Les caractères de {name} tels quels : chacun est dessiné dans l'image puis choisi à nouveau, donc certains peuvent changer.",
       "originalNote": "La résolution d'origine de l'image source : elle est ramenée à sa résolution de travail, comme Figer, et les filtres comme Contours peuvent varier légèrement."
     },
     "bakeDialog": {

@@ -245,15 +245,15 @@ export function bakeEditCells(map, params) {
 
 // How a covered cell merges into the picture. char: its user character (an edit cell's, else a
 // pin's), or undefined for the converter's own, which goes in as it is and comes back from the
-// picture. A solid character (each half all ink or none) goes in as it shows, pinned to ▄ so it
-// shows those two halves; any other character merges exactly, as a picture pixel can't hold a
-// glyph, and so does a cell not wholly inside the picture's area (the letterbox). The ASCII styles
-// don't show halves, so a user character there always merges exactly.
-export function mergeKind({ char, renderStyle, inPicture }) {
-  if (!inPicture) return 'exact';
+// picture. In ANSI a solid character (each half all ink or none) goes in as it shows, pinned to ▄
+// so it shows those two halves; any other character, in every style (in the ASCII styles a solid
+// one too, as they show no halves), is drawn in as its glyph ('glyph'), unpinned, and picked again.
+// A wide character (wide: two columns, which a glyph block of one cell can't hold) and a cell not
+// wholly inside the picture's area (the letterbox) merge exactly. docs/model.md R3.
+export function mergeKind({ char, renderStyle, inPicture, wide = false }) {
+  if (!inPicture || wide) return 'exact';
   if (char === undefined) return 'picture';
-  if (renderStyle !== 'ansi') return 'exact';
-  return isSolidGlyph(char) ? 'picture-pinned' : 'exact';
+  return renderStyle === 'ansi' && isSolidGlyph(char) ? 'picture-pinned' : 'glyph';
 }
 
 // Rect = { c0, r0, c1, r1 }: inclusive, normalized. Block = { w, h, entries: (Entry | null)[] }, row-major.

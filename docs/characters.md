@@ -347,7 +347,7 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 
 In 256 colors, 16 and 231 are a terminal's fixed black and white, while 0 and 15 follow the terminal's theme. Phosphor shows them alike but keeps their codes apart:
 
-- An opened file's 16 and 231 stay 16 and 231, opened with **Edit artwork** or **Draw on top**, and when they're moved, copied (into another tab too), rotated, merged down (onto the base too), merged exactly into the image, flattened, undone, or saved in a project.
+- An opened file's 16 and 231 stay 16 and 231, opened with **Edit artwork** or **Draw on top**, and when they're moved, copied (into another tab too), rotated, merged down (onto the base too), merged into the image where a cell merges exactly (a wide character, one in the bars around the picture, a frozen one; a letter blended in is picked again), flattened, undone, or saved in a project.
 - The color picker's VGA swatches include 16 and 231 as swatches of their own, and the Eyedropper picks them as they are. The recent colors keep them too: 16's black and 0's are two recent colors. What you type, fill, draw with Shapes, or set with **Set FG** and **Set BG** in them comes out as 16 or 231, and the color steps (**Ctrl+↑** and **Ctrl+↓**, **Ctrl+Option+↑** and **↓** on a Mac) step through them in order.
 - The Brush paints pixels, so its black and white are always 0 and 15, and so is a 16 or 231 cell painted over.
 
