@@ -87,6 +87,10 @@ export const SETTINGS = [
   // record's flags are an opened file's as they came, or Phosphor's own (sauceUse9pxFont's). With a bitmap font it is
   // also the drawing's width, 8 or 9 (setDrawingFontWidth sets both), and an opened file's replaces the drawing's.
   { key: 'sauceLetterSpacing', default: '', group: 'sauce', most: 4, storageKey: 'current_file.sauce.letterSpacing' },
+  // The SAUCE tab's iCE colors: on, a background of 8 to 15 shows bright; off, it's blink, as on DOS (the ANSI view
+  // draws it on the color 8 below, its letter blinking). Only a 16-color drawing's (sixteenColors); kept in any other,
+  // for when it's one again. The record's flag (bit 0) and an .ans's ESC[?33h, an XBin's NON_BLINK, follow it.
+  { key: 'sauceIceColors', default: true, group: 'sauce', storageKey: 'current_file.sauce.iceColors' },
 ];
 
 const BY_KEY = new Map(SETTINGS.map(s => [s.key, s]));

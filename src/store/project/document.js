@@ -334,6 +334,7 @@ export const documentActions = {
           sauceLetterSpacing: letterSpacingOf(sauce.flags), // the file's own, whatever the drawing was at
         }),
         sauceRecord: keptRecord(sauce, art.cols, art.rows),
+        sauceIceColors: art.iceColors, // an .ans's record (or its code), an XBin's NON_BLINK, a .bin's record
       };
       // As an image: the cells drawn into the picture in the font the drawing opens in, and the base alone, nothing pinned,
       // with the characters picked again By shape from the file's own (fitted to that font, as processParams fits them).
@@ -663,7 +664,7 @@ export const documentActions = {
       const durations = this.frames.map((frame) => frameDuration(frame, this.fps));
       if (format === 'ansimation' || format === 'utf8ansimation') {
         const utf8 = format === 'utf8ansimation';
-        return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, sauce: sauce && this.sauceFields() })], { type: 'application/octet-stream' });
+        return new Blob([AnsiFile.animationBytes(this.cols, lines, frames, { utf8, colorMode: this.quantize, iceColors: this.sauceIceColors, sauce: sauce && this.sauceFields() })], { type: 'application/octet-stream' });
       } else if (format === 'cast') {
         return new Blob([castText(this.cols, lines, frames, durations.map((ms) => ms / 1000), { colorMode: this.quantize })], { type: 'application/x-asciicast' });
       } else if (format === 'mp4') {
@@ -693,7 +694,7 @@ export const documentActions = {
 
   // What an art file's SAUCE record says, from the SAUCE tab. An opened file's record comes out as it went in
   // (sauceRecord keeps its flags and size, the size until a resize), with nothing added but what was changed (Letter
-  // spacing changes only its bits of the flags). Another drawing's is Phosphor's own: its empty date and font filled
+  // spacing changes only its bits of the flags, iCE colors only its bit 0). Another drawing's is Phosphor's own: its empty date and font filled
   // in, and Phosphor's comment lines before the person's.
   sauceFields() {
     const kept = keptFields(this.sauceRecord, this.cols, charRowsOf(this.rows));
@@ -707,7 +708,7 @@ export const documentActions = {
     const typed = this.sauceUserComments ? this.sauceUserComments.split('\n') : [];
     return {
       ...kept,
-      flags: withLetterSpacing(kept?.flags ?? (1 | (this.sauceUse9pxFont ? 4 : 2)), (this.drawingFont?.cellWidth ?? 8) < 8 ? '8' : this.sauceLetterSpacing), // a narrow drawing writes 8px
+      flags: (withLetterSpacing(kept?.flags ?? (this.sauceUse9pxFont ? 4 : 2), (this.drawingFont?.cellWidth ?? 8) < 8 ? '8' : this.sauceLetterSpacing) & ~1) | (this.sauceIceColors ? 1 : 0), // a narrow drawing writes 8px
       fontName: asIs(this.sauceFontName),
       title: this.sauceTitle,
       author: this.sauceAuthor,
@@ -737,10 +738,12 @@ export const documentActions = {
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => (ext === 'png'
       ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
       : ext === 'xb'
-        ? new Blob([writeXBin({ cols: this.cols, rows: lines, cells: this.cells, palette: this.xbinPalette, font: this.drawingFont ?? await vgaBitmapFont(), sauce: sauce && this.sauceFields() })], { type: 'application/octet-stream' })
+        // NON_BLINK as the drawing shows it: blinking only in a 16-color drawing, so another palette's 8 to 15 stay steady
+        ? new Blob([writeXBin({ cols: this.cols, rows: lines, cells: this.cells, palette: this.xbinPalette, font: this.drawingFont ?? await vgaBitmapFont(), sauce: sauce && this.sauceFields(), iceColors: !this.blinkingBackgrounds })], { type: 'application/octet-stream' })
         : new AnsiFile(this.cols, lines, this.cells).toBlob({
           sauce: sauce && this.sauceFields(),
           colorMode: this.quantize,
+          iceColors: this.sauceIceColors,
           utf8: ext === 'utf8ans',
           ...opts,
         })));

@@ -10,7 +10,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
-import { readSauce } from '@/lib/Sauce';
+import { Sauce, readSauce } from '@/lib/Sauce';
 import { readXBin, writeXBin } from '@/lib/XBinFile';
 import { readArtFile } from '@/lib/ArtFile';
 import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
@@ -593,6 +593,73 @@ test('opens an XBin and exports the same cells', async () => {
   await project.openArtFile(new File([blob], 'again.xb'));
   await settle(project);
   expect(project.quantize).toBe('cga'); // DOS order out, recognized as CGA again
+});
+
+// iCE colors (#205): the drawing's, from what a file says, and every export says it back the same way.
+const ICE = '\x1b[?33h';
+const latin = (bytes) => new TextDecoder('latin1').decode(bytes);
+const artOf = (bytes) => bytes.subarray(0, bytes.indexOf(0x1a));
+const withRecord = (text, flags) => new File([new Sauce({ cols: 4, rows: 1 }, { flags, fileType: 1, title: 'Blinks' }).appendTo(Uint8Array.from(text, (c) => c.charCodeAt(0)))], 'blinks.ans');
+
+test('an .ans whose SAUCE leaves iCE colors off opens with it off, and exports its blink cells, its flag and no ESC[?33h as they came', async () => {
+  const project = await afterAnotherDocument();
+  expect(project.sauceIceColors).toBe(true); // a new drawing's
+  const art = '\x1b[0m\x1b[5;37;44mAB\x1b[0;31mCD\x1b[0m';
+  await project.openArtFile(withRecord(art, 2));
+  await settle(project);
+  expect([project.sauceIceColors, project.quantize, project.cells[0].bg.hex]).toEqual([false, 'cga', PALETTES.cga[12].hex]); // stored bright
+  const bytes = await exported(project);
+  expect(latin(bytes)).not.toContain(ICE);
+  expect(readSauce(bytes).flags).toBe(2);
+  expect(latin(artOf(bytes))).toContain('\x1b[5;37;44mAB'); // the blink cells as they were written
+  const back = readArtFile(bytes, 'again.ans');
+  expect([back.iceColors, back.cells[0].bg]).toEqual([false, PALETTES.cga[12].hex]);
+
+  await project.openArtFile(withRecord(art, 3)); // with the flag: on, and said by the code too
+  await settle(project);
+  expect(project.sauceIceColors).toBe(true);
+  const on = await exported(project);
+  expect([latin(on).startsWith(ICE), readSauce(on).flags]).toEqual([true, 3]);
+});
+
+test('iCE colors turned off in a new CGA drawing: its .ans and animated .ans leave out ESC[?33h and the flag, its XBin NON_BLINK', async () => {
+  const project = await afterAnotherDocument();
+  project.quantize = 'cga';
+  await settle(project);
+  project.sauceIceColors = false;
+  const bytes = await exported(project);
+  expect([latin(bytes).includes(ICE), readSauce(bytes).flags & 1]).toEqual([false, 0]);
+  const spy = vi.spyOn(URL, 'createObjectURL');
+  await project.exportAnimation('ansimation');
+  const animated = new Uint8Array(await spy.mock.calls.at(-1)[0].arrayBuffer());
+  spy.mockRestore();
+  expect([latin(animated).includes(ICE), readSauce(animated).flags & 1]).toEqual([false, 0]);
+  let blob;
+  await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
+  expect(readXBin(new Uint8Array(await blob.arrayBuffer()), 'a.xb').iceColors).toBe(false);
+  // Limited count of 16: the setting stays, but nothing blinks there, so its XBin keeps 8 to 15 steady
+  project.quantize = 'count';
+  await settle(project);
+  expect([project.sauceIceColors, project.blinkingBackgrounds]).toEqual([false, null]);
+  await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
+  expect(readXBin(new Uint8Array(await blob.arrayBuffer()), 'a.xb').iceColors).toBe(true);
+  project.quantize = 'cga'; // back to 16: it's off again
+  expect(project.blinkingBackgrounds?.get(PALETTES.cga[12].hex)).toBe(PALETTES.cga[4]);
+});
+
+test('an XBin without NON_BLINK opens with iCE colors off, its own 16 blinking, and exports without it again', async () => {
+  const project = await afterAnotherDocument(), { font } = xbinFile();
+  const ramp = Array.from({ length: 16 }, (_, i) => `#${(i * 16).toString(16).padStart(2, '0')}0000`); // not CGA: its own list
+  const cells = [{ char: 'A', fg: plain(ramp[15]), bg: plain(ramp[9]) }, { char: 'B', fg: plain(ramp[15]), bg: plain(ramp[1]) }];
+  const bytes = writeXBin({ cols: 2, rows: 1, cells, palette: ramp, font, iceColors: false }), own = readXBin(bytes, 'own.xb').palette; // in 6 bits a channel
+  await project.openArtFile(new File([bytes], 'own.xb'));
+  await settle(project);
+  expect([project.quantize, project.sauceIceColors]).toEqual(['palette', false]);
+  expect(project.blinkingBackgrounds.get(own[9])).toMatchObject({ hex: own[1] });
+  let blob;
+  await project.exportFile('xb', { deliver: (b) => { blob = b; }, sauce: false });
+  const again = readXBin(new Uint8Array(await blob.arrayBuffer()), 'own.xb');
+  expect([again.iceColors, again.cells.map((c) => c.bg)]).toEqual([false, [own[9], own[1]]]);
 });
 
 test('an XBin with a font, added to a drawing without one, brings its slot 0 in as a space; to a drawing with one, as ␀', async () => {

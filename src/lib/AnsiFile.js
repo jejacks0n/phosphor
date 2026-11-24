@@ -54,13 +54,14 @@ export class CellWriter {
   #active = { fg: { hex: null }, bg: { hex: null }, blink: false, bold: false };
   #leadAsSpace = false;
 
-  constructor({ utf8 = false, colorMode = 'none' } = {}) {
+  constructor({ utf8 = false, colorMode = 'none', iceColors = true } = {}) {
     this.#utf8 = utf8;
     this.#colorMode = colorMode;
     this.sgr = this.sgr.bind(this);
-    // CGA in CP437 writes a bright background as blink (5). SAUCE's iCE Colors flag says to show it bright;
-    // ESC[?33h says the same to a viewer that ignores SAUCE but knows it (SyncTERM, some BBS terminals).
-    if (colorMode === 'cga' && !utf8) this.output.pushAll(toBytes('\x1b[?33h'));
+    // CGA in CP437 writes a bright background as blink (5). With iCE colors, SAUCE's flag says to show it bright, and
+    // ESC[?33h says the same to a viewer that ignores SAUCE but knows it (SyncTERM, some BBS terminals); without, both
+    // leave it blinking, so the record and the code never disagree.
+    if (colorMode === 'cga' && !utf8 && iceColors) this.output.pushAll(toBytes('\x1b[?33h'));
   }
 
   sgr(...codes) {
@@ -263,10 +264,10 @@ export class AnsiFile {
     return new Blob([this.#asBytes(opts)], { type: 'application/octet-stream' });
   }
 
-  #asBytes({ utf8 = false, colorMode = 'none', sauce = null } = {}) {
+  #asBytes({ utf8 = false, colorMode = 'none', iceColors = true, sauce = null } = {}) {
     // A viewer that ignores SAUCE wraps at 80 columns, so narrower .ans rows end in CR LF too.
     const lineFeeds = utf8 || this.cols < 80;
-    const writer = new CellWriter({ utf8, colorMode });
+    const writer = new CellWriter({ utf8, colorMode, iceColors });
     writer.sgr(0);
 
     for (let y = 0; y < this.rows; y++) {
@@ -290,8 +291,8 @@ export class AnsiFile {
   // An ANSiMation: a screen cleared once, then each frame as only the cells that differ from the one before, so a
   // viewer shows the art moving as the bytes arrive. Every run starts with a cursor move, so nothing can scroll.
   // Timing is the viewer's: a file has none.
-  static animationBytes(cols, rows, frames, { utf8 = false, colorMode = 'none', sauce = null } = {}) {
-    const writer = new CellWriter({ utf8, colorMode });
+  static animationBytes(cols, rows, frames, { utf8 = false, colorMode = 'none', iceColors = true, sauce = null } = {}) {
+    const writer = new CellWriter({ utf8, colorMode, iceColors });
     writer.sgr(0);
     writer.clear();
     frames.forEach((frame, i) => frameDiffBytes(frames[i - 1] ?? null, frame, cols, writer));

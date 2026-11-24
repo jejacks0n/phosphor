@@ -101,6 +101,13 @@ describe('iCE colors without SAUCE', () => {
     expect(start(AnsiFile.animationBytes(GRIDS.runs.cols, 2, [cells], { colorMode: 'cga' }))).toBe(ICE);
   });
 
+  test('nor does a CGA .ans without iCE colors, whose bright backgrounds are meant to blink: the code and the record agree', async () => {
+    const bytes = new Uint8Array(await new AnsiFile(GRIDS.runs.cols, GRIDS.runs.rows.length, cells).toBlob({ colorMode: 'cga', iceColors: false, sauce: false }).arrayBuffer());
+    expect(start(bytes)).not.toBe(ICE);
+    expect(bytes.subarray(0, 4)).toEqual(Uint8Array.from([27, 91, 48, 109])); // ESC[0m first, then the cells as ever
+    expect(start(AnsiFile.animationBytes(GRIDS.runs.cols, 2, [cells], { colorMode: 'cga', iceColors: false }))).not.toBe(ICE);
+  });
+
   test('a .utf8ans, and an .ans in any other color mode, don\'t: their colors never use blink', async () => {
     expect(start(await exported(GRIDS.runs, cells, 'cga', true))).not.toBe(ICE);
     expect(start(AnsiFile.animationBytes(GRIDS.runs.cols, 2, [cells], { utf8: true, colorMode: 'cga' }))).not.toBe(ICE);
