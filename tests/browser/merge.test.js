@@ -1015,6 +1015,57 @@ test('Merge down of a cells layer into another with the base hidden keeps what s
   expect(cellsKey(project)).toEqual(shown);
 });
 
+// Blend read the paint at grid resolution with a nearest-pixel drawImage, so a grid pixel's paint was whichever one pixel
+// of its block sat at the sample point: on a soft edge (a thin stroke) that dropped pixels or read them at the wrong
+// strength. It reads each grid pixel's block average, as the layer's pixelAt does.
+test('Blend into source image reads a merged shape\'s soft edge as each grid pixel\'s average', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 60, rows: 48 });
+  project.renderStyle = 'ascii';
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit');
+  workspace.pickLayer(vector);
+  project.addShape(ellipseShape(10, 6, 50, 40, { fill: null, stroke: '#ffffff', width: 1.5 }));
+  project.commitEdit();
+  await settle(project);
+  expect(project.mergeDown(vector)).toBe(true);
+  await settle(project);
+  const paint = [];
+  for (let y = 0; y < project.rows; y++) for (let x = 0; x < project.cols; x++) {
+    const p = project.paintLayer.pixelAt(x, y);
+    // A cell with a character of its own merges exactly (the ASCII styles hold no glyph in a picture pixel); the
+    // rest go in as picture pixels, which is what this reads.
+    const col = x, row = Math.floor(y / 2);
+    if (p?.a && !project.editCellAt(col, row) && !project.baseRecords.pins.has(`${col},${row}`)) paint.push({ x, y, ...p });
+  }
+  expect(paint.length).toBeGreaterThan(50);
+  await project.mergeIntoPicture(null, 'edit');
+  await settle(project);
+  const { image } = project, fit = project.fitFor(project.cols, project.rows), m = image.width / fit.dw;
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const picture = ctx2d(canvas);
+  picture.drawImage(image, 0, 0);
+  const data = picture.getImageData(0, 0, canvas.width, canvas.height).data;
+  const blockAt = (x, y) => {
+    const sum = [0, 0, 0];
+    for (let j = 0; j < m; j++) for (let i = 0; i < m; i++) {
+      const o = (((y - fit.dy) * m + j) * canvas.width + (x - fit.dx) * m + i) * 4;
+      for (let c = 0; c < 3; c++) sum[c] += data[o + c];
+    }
+    return sum.map((v) => v / (m * m));
+  };
+  const dropped = [], off = [];
+  for (const { x, y, r, g, b, a } of paint) {
+    const got = blockAt(x, y), want = [r * a, g * a, b * a]; // the paint laid over black
+    if (got.every((v) => v < 1)) { if (want.some((v) => v > 2)) dropped.push(`${x},${y} ${a}`); } // under a step: nothing to see
+    else if (got.some((v, c) => Math.abs(v - want[c]) > 2)) off.push(`${x},${y}: ${got.map(Math.round)} vs ${want.map(Math.round)}`);
+  }
+  expect(dropped).toEqual([]);
+  expect(off).toEqual([]);
+});
+
 // Text with no background typed over a photo, merged onto the base under a palette and a slider moved: the issue's table
 // (#201). The cell's background is the base's own, and stays its pixels: written as a stored color instead (baseCellAt's),
 // the base snapped it on the graphics card, which broke a tie between two palette colors the other way (VGA's d7 and ff
