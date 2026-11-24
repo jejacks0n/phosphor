@@ -136,8 +136,13 @@ same check: soft paint over a cell mixed into its colors before the snap instead
 that the converter picks again from the snapped pixels), it's written as it showed instead (`frozenCells`): its stored
 colors as its two pixels, its character pinned.
 
-Blend into source image (`mergeIntoPicture`) is the one merge that lets characters change, so the image filters reach
-them: a character of someone's own (an entry's, or a pin's under the layer's paint) is drawn into the picture as its
+Blend into source image (`mergeIntoPicture`) lays the layer's paint into the picture at its own detail, each picture
+pixel the paint it covers weighted by area (`paintFine`), over the picture's own pixels: a cell of the converter's keeps
+them under the paint, but a half where the base has its own pixels or an entry its colors, which go in as that half's
+block. So By shape samples the strokes it sampled while they were the layer's, not a flat color a half, and a grid
+pixel's block holds the paint's average exactly. The base reads the same pixels a little otherwise than a layer does,
+so a cell can come back as a look-alike (euphio.pho: 49 of 1,920 seen cells, where flat halves changed 209). It's also
+the one merge that lets characters change, so the image filters reach them: a character of someone's own (an entry's, or a pin's under the layer's paint) is drawn into the picture as its
 glyph (`drawGlyphCell`, in the drawing's font), its background mixed toward its foreground by the glyph's ink, each
 half's paint laid over that half's pixels; its pin goes, and the converter picks the cell again, so it can come back as
 another character. In ANSI a solid character (space, `█`, `▀`, `▄`) still goes in as its two halves, pinned `▄`; in the
@@ -156,7 +161,9 @@ anything in the letterbox merge exactly, pinned, as Keep crisp cells writes them
   `› R3: Merge down of text with no background onto the base with a palette and a slider moved: …` (#201: VGA and CGA
   under Levels, Posterize, Contrast, Saturation, Brightness, Hue, Invert, and none; Keep crisp cells keeps the canvas,
   and Blend into source image draws the letters into the picture as glyphs, a letter's block changed, none pinned);
-  `› R3: Blend into source image draws a typed letter in as its glyph …` (unpinned, its ink and background in the
+  `› R3: the report: Blend into source image lays a finely painted layer into the picture at its own detail`
+  (euphio.pho: the picture is the paint over black pixel for pixel), `› Blend into source image reads a merged shape's
+  soft edge as each grid pixel's average`, `› R3: Blend into source image draws a typed letter in as its glyph …` (unpinned, its ink and background in the
   picture, Blur reaching it, undo bringing back the layer, the pins and the picture), `› R3: the report: Blend into
   source image in ASCII puts the strokes over pinned spaces where Blur reaches them` (vector-strokes-ascii.phosphor) and
   `› at neutral: the same look but the letter …`; `tests/unit/edit-cells.test.js › R3: mergeKind: …`;

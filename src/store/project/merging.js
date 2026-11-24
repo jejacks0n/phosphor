@@ -602,8 +602,9 @@ export const mergingActions = {
   // Merge into the picture: the cells layer with the id (the one in use by default; another is picked first), inside rect
   // or all of it, directly on the bottom, becomes part of the image,
   // so every effect applies to it, live, like the photo. The image becomes the picture at its
-  // working size (m processed pixels per grid pixel) with nothing applied, each picture cell
-  // painted in as exact m x m blocks: the converter's own characters go in as they are and come
+  // working size (m processed pixels per grid pixel) with nothing applied, the layer's paint laid
+  // over it at its own detail: the converter's own characters keep the picture's pixels under the
+  // paint (where the base's own pixels or an entry's colors show, those, as m x m blocks) and come
   // back from the picture; in ANSI solid characters go in as they show, pinned to ▄; any other
   // character is drawn in as its glyph (in the drawing's font), unpinned, and picked again; a frozen
   // cell, a wide character and anything outside the picture's area (the letterbox) merge exactly
@@ -658,6 +659,37 @@ export const mergingActions = {
       const paintIn = this.paintLayer.pixelsIn(0, 0, this.cols - 1, this.rows - 1);
       const paintAt = (x, y) => paintIn(x, y) ?? { r: 0, g: 0, b: 0, a: 0 };
 
+      // The paint at its own detail (k pixels a grid pixel), laid over a cell's block of the picture (m a grid pixel): what By
+      // shape sampled while it was the layer's, so the picture holds the strokes' shapes and not a flat color a half. Each
+      // picture pixel takes the paint it covers weighted by area (its colors by their alpha, as PaintLayer.average reads
+      // them), so a grid pixel's block holds the paint's average exactly, scaled up or down; the browser's smoothing
+      // doesn't (6 levels off on a soft edge).
+      const k = this.paintLayer.scale, fine = ctx2d(this.paintLayer.canvas).getImageData(0, 0, this.paintLayer.canvas.width, this.paintLayer.canvas.height);
+      const paintFine = (col, row) => {
+        const x0 = (col - fit.dx) * m, y0 = (2 * row - fit.dy) * m, block = ctx.getImageData(x0, y0, m, 2 * m), out = block.data, s = k / m;
+        for (let ty = 0; ty < 2 * m; ty++) {
+          const sy0 = 2 * row * k + ty * s, sy1 = sy0 + s;
+          for (let tx = 0; tx < m; tx++) {
+            const sx0 = col * k + tx * s, sx1 = sx0 + s;
+            let r = 0, g = 0, b = 0, a = 0;
+            for (let y = Math.floor(sy0); y < sy1 && y < fine.height; y++) {
+              const wy = Math.min(y + 1, sy1) - Math.max(y, sy0);
+              for (let x = Math.floor(sx0); x < sx1 && x < fine.width; x++) {
+                const o = (y * fine.width + x) * 4, al = fine.data[o + 3] * wy * (Math.min(x + 1, sx1) - Math.max(x, sx0));
+                if (!al) continue;
+                r += fine.data[o] * al; g += fine.data[o + 1] * al; b += fine.data[o + 2] * al; a += al;
+              }
+            }
+            if (!a) continue;
+            const cover = a / (255 * s * s), o = (ty * m + tx) * 4;
+            out[o] = Math.round(r / a * cover + out[o] * (1 - cover));
+            out[o + 1] = Math.round(g / a * cover + out[o + 1] * (1 - cover));
+            out[o + 2] = Math.round(b / a * cover + out[o + 2] * (1 - cover));
+          }
+        }
+        ctx.putImageData(block, x0, y0);
+      };
+
       // The covered cells: edit cells and cells with paint, in the grid (and the rect).
       const covered = new Map();
       for (const key of this.editCells.keys()) {
@@ -696,17 +728,18 @@ export const mergingActions = {
           if (kind === 'picture-pinned') pins.push({ col, row, char: '▄' });
           else unpins.push({ col, row });
           pictureCells.push({ col, row });
-          if (kind === 'glyph') { // its glyph in its two colors, then each half's paint over that half's pixels
-            const x = (col - fit.dx) * m, y = (2 * row - fit.dy) * m;
-            drawGlyphCell(ctx, { char, fg: cell.fg, bg: cell.bg }, x, y, m, { font: reads.drawingFont });
-            [2 * row, 2 * row + 1].forEach((py, half) => {
-              const { r, g, b, a } = paintAt(col, py);
-              if (!a) return;
-              ctx.globalAlpha = a;
+          if (kind === 'glyph') { // its glyph in its two colors, then the paint over it
+            drawGlyphCell(ctx, { char, fg: cell.fg, bg: cell.bg }, (col - fit.dx) * m, (2 * row - fit.dy) * m, m, { font: reads.drawingFont });
+            paintFine(col, row);
+            continue;
+          }
+          if (kind === 'picture') { // the picture's own pixels, but where the base or an entry's colors show, then the paint over them
+            [top, bottom].forEach(({ r, g, b }, half) => {
+              if (!entry && !this.baseLayer.pixelAt(col, 2 * row + half)) return;
               ctx.fillStyle = rgb2hex({ r, g, b });
-              ctx.fillRect(x, y + half * m, m, m);
-              ctx.globalAlpha = 1;
+              ctx.fillRect((col - fit.dx) * m, (2 * row + half - fit.dy) * m, m, m);
             });
+            paintFine(col, row);
             continue;
           }
         }
