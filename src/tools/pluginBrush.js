@@ -12,8 +12,8 @@ import { firstUnderMark, sayFailed, toolOption, valuesOf } from '@/tools/pluginT
 
 // A plugin brush as a tool (tools/index.js's pluginTools makes one for each brush of a plugin that's on). Its looks, keys,
 // options and the modes it works in are here; its painting is the plugin's own work, behind its begin, move and end, each
-// handed the stroke's paint (below). Its options, the hang mark on its first move and its failure's words are a plugin
-// tool's (tools/pluginTool.js).
+// handed the stroke's paint (below). Its options, the hang mark on the first call of each of those and its failure's
+// words are a plugin tool's (tools/pluginTool.js).
 const point = ({ x, y }) => ({ x: Number(x), y: Number(y) });
 const MAX_SIZE = brushTool.options.find((option) => option.size).max; // the Brush's largest size
 const channel = (v) => Math.min(255, Math.max(0, Math.round(v)));
@@ -135,7 +135,9 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     lay(project, stroke);
     return true;
   };
-  const move = (paint, from, to) => firstUnderMark('brush', ref, hash, pluginId, () => def.move(point(from), point(to), paint));
+  // Each hook's first call of a visit runs under the hang mark, under a key of its own.
+  const marked = (hook, fn) => firstUnderMark(`brush-${hook}`, ref, hash, pluginId, fn);
+  const move = (paint, from, to) => marked('move', () => def.move(point(from), point(to), paint));
 
   const tool = {
     id: ref,
@@ -153,7 +155,7 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     begin(ctx, pos, event) {
       stroke = Object.assign(newStroke(ctx, def, valuesOf(ctx.workspace, 'brush', ref, def)), { owner: tool });
       const from = (event?.shiftKey && ctx.workspace.strokeEnd) || pos;
-      if (!def.begin || call(ctx.project, (paint) => def.begin(point(pos), paint))) tool.move(ctx, from, pos);
+      if (!def.begin || call(ctx.project, (paint) => marked('begin', () => def.begin(point(pos), paint)))) tool.move(ctx, from, pos);
       return true;
     },
     move(ctx, from, to) {
@@ -167,7 +169,7 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     end(ctx) {
       if (stroke && stroke.owner !== tool) return stroke.owner.end(ctx);
       const { project } = ctx;
-      if (stroke && !stroke.dead && (!def.end || call(project, (paint) => def.end(paint)))) project.commitEdit();
+      if (stroke && !stroke.dead && (!def.end || call(project, (paint) => marked('end', () => def.end(paint))))) project.commitEdit();
       stroke = null;
     },
   };
