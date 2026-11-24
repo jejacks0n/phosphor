@@ -91,6 +91,9 @@ and a half, measured, and the files share one software WebGL):
   next key (`scrolls` in `tests/browser/view-keys.test.js`).
 - In a room, an artist hears of a change a message after the host has it: before the artist's next change, wait for
   the artist's store, not the host's.
+- A selector both the view before a change and the one after it have (the Fonts page's `.info`, under a library font's
+  slots and under the same font in Favorites) can be met by the old view: wait for what only the new one has, in the
+  same check as the thing read (the lit star `&& .info` in `tests/browser/fonts-page.test.js`).
 - A store asked for after an `await` can be another test's: a test that finishes late makes its own Pinia the active
   one again (every Pinia action and getter does). Take `getActivePinia()` right after `createTestApp()`, before the
   next `await`, and ask for later stores by it (`useRoomStore(pinia)`).
