@@ -34,7 +34,7 @@ never a lost hour of work, whatever the browser does.
 
 ## What they lean on
 
-- Opening ANSI files with Edit artwork and Draw on top, the limits
+- Opening ANSI files with Edit artwork, Draw on top and Open as an image, the limits
   ([Opening ANSI and text files](../../layers.md#opening-ansi-and-text-files)).
 - Edit Mode for one-cell fixes, the Eyedropper, scrolling and zoom.
 - SAUCE, Export .ans, Save project ([Saving](../../characters.md#saving-utf8ans-and-ans)).
@@ -278,7 +278,10 @@ long file (time the reload), and press Back from a fresh start screen.
 - Expects: each opens under the `file` budget at its SAUCE width (or 80); the app's export reopens unchanged; where the
   original uses a move right past the last column, the app wraps and a modern terminal doesn't, so note it and judge
   from the screenshot.
-- Probes: `again`: open the member list too; `extremes`: open them on a phone-sized view.
+- Probes: `again`: open the member list too, then `RA-FIFTY.ANS` with Open as an image and set Blur to 3: it opens
+  as a picture (nothing pinned, Choose characters on By shape with the file's own characters), looks like the file
+  (though shades can turn into solid blocks and thin letters come out darker), and the Blur softens it; `extremes`:
+  open them on a phone-sized view.
 - Rated: yes, wants Cmd+O
 
 ### 21. Open .asc and .txt files

@@ -373,16 +373,24 @@ file**, and Phosphor asks what you'd like to do with the art, then opens it as a
 - **Edit artwork**: The art goes on a drawing layer, over a plain black base, as if you'd drawn it. Every cell is a
   drawing-layer cell, so the Eraser, **Clear layer** and everything else that works on what you've drawn works on it.
 - **Draw on top**: The art is the base layer, and what you draw goes on top of it, on an empty Layer 1, selected.
+- **Open as an image**: The art is drawn into the source image, each cell as its character looks in its two colors,
+  so the image filters (Blur, Sharpen, Edges and the rest) and the color sliders work on it as on any picture. Nothing
+  is pinned and the base has no pixels of its own: the base is all there is, as when you open a picture. **Choose
+  characters** starts on **By shape** with the characters the file uses as the character set, so the converter picks
+  each cell's character again from the picture, and some come out different from the file's: shades (`░ ▒ ▓`) can
+  become solid blocks, a wide character becomes narrow ones, and thin characters can come out darker in ANSI. Spaces,
+  the full block and the upper and lower half blocks (`█ ▀ ▄`) come back as they were.
 - **Cancel**: Opens nothing.
 
-Either way:
+All three:
 
 - **The Grid**: The file's size. Its width comes from the file's SAUCE record when that describes character art with
   a width; otherwise it's 80 columns for a `.ans` and the widest line for the others. Its height is as many lines as
   the art reaches. The ANSI view starts at the art's top-left, its first line, as a terminal shows it (centered when
   the whole file fits).
-- **Every Cell Keeps Its Character and Colors**: So it looks just as the file does. Opening a file isn't an edit, so
-  there's nothing to undo. With **Draw on top**, the art is the base layer as if you'd used Merge down, and the color
+- **Every Cell Keeps Its Character and Colors**: With **Edit artwork** and **Draw on top**, so it looks just as the
+  file does (**Open as an image** picks the characters again). Opening a file isn't an edit, so there's nothing to
+  undo. With **Draw on top**, the art is the base layer as if you'd used Merge down, and the color
   sliders, the palette and Bake work on it as they do on any picture. The PIXEL view shows each of its characters as
   it looks at that scale, paint over them included ([PIXEL View](#pixel-view)), so **All cells** stays as you left
   it.
@@ -440,9 +448,10 @@ With a drawing open, dropping one of these files on it asks what to do:
   cell you dropped it on (or the top-left of the view, when it's dropped beside the drawing), to drag into place. It
   goes on the selected layer (written into the base, with the base selected), as one undo step. Whatever runs past
   the canvas edge is cut off. The drawing's SAUCE, palette and font stay as they are, an `.xb`'s too: only its cells land.
-- **Open to edit** or **Open to draw on top**: It opens in place of this drawing, as **Edit artwork** or **Draw on
-  top** do above. With unsaved changes, these choices say they replace them (the drawing stays in this browser,
-  under Pick up where you left off), and choosing one opens the file without asking again.
+- **Open to edit**, **Open to draw on top** or **Open as an image**: It opens in place of this drawing, as **Edit
+  artwork**, **Draw on top** or **Open as an image** do above. With unsaved changes, these choices say they replace
+  them (the drawing stays in this browser, under Pick up where you left off), and choosing one opens the file without
+  asking again.
 - **Cancel**: Leaves everything as it was.
 
 An `.svg` dropped on a drawing offers **Add to this drawing**, which adds its shapes to VECTOR on the current frame,

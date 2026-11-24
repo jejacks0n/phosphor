@@ -17,7 +17,7 @@ test('the file picker asks, then Draw on top opens a .ans on the ANSI tab as the
   await expect(page.getByText(/Drop an image, .*, or ANSI file here/)).toBeVisible();
   await imageInput(page).setInputFiles({ name: 'boat.ans', mimeType: 'application/octet-stream', buffer: boat });
   await expect(question(page)).toContainText('Open boat.ans?');
-  await expect(question(page)).toContainText('Edit its artwork directly, or draw on top of it.');
+  await expect(question(page)).toContainText('Edit its artwork directly, draw on top of it, or open it as an image.');
   await question(page).getByRole('button', { name: /Draw on top/ }).click();
   await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
   await settled(page);

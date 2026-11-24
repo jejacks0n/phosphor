@@ -1223,7 +1223,7 @@
     "artOpenWindow": "Ouvrir dans une nouvelle fenêtre",
     "artOpenWindowText": "L'ouvre dans sa propre fenêtre, à côté de celle-ci.",
     "artOpenTitle": "Ouvrir {name} ?",
-    "artOpenSub": "Modifier son dessin directement, ou dessiner par-dessus.",
+    "artOpenSub": "Modifier son dessin directement, dessiner par-dessus, ou l'ouvrir comme image.",
     "artEdit": "Modifier le dessin",
     "artEditText": "Place le dessin sur un calque de dessin par-dessus un fond noir.",
     "artDrawOn": "Dessiner par-dessus",
@@ -1231,7 +1231,11 @@
     "artOpenEdit": "Ouvrir pour le modifier",
     "artOpenEditText": "Remplace le dessin actuel et le place sur un calque de dessin par-dessus un fond noir.",
     "artOpenDrawOn": "Ouvrir pour dessiner par-dessus",
-    "artOpenDrawOnText": "Remplace le dessin actuel et le place sur le calque de base sous vos dessins."
+    "artOpenDrawOnText": "Remplace le dessin actuel et le place sur le calque de base sous vos dessins.",
+    "artPicture": "Ouvrir comme image",
+    "artPictureText": "Trace le dessin dans l'image source pour que les filtres d'image s'y appliquent. Les caractères sont choisis de nouveau, donc certains peuvent changer.",
+    "artOpenPicture": "Ouvrir comme image",
+    "artOpenPictureText": "Remplace le dessin actuel et le trace dans l'image source pour que les filtres d'image s'y appliquent. Les caractères sont choisis de nouveau, donc certains peuvent changer."
   },
   "sauce": {
     "heading": "Métadonnées SAUCE",

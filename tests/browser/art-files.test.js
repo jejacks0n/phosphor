@@ -16,6 +16,7 @@ import { readArtFile } from '@/lib/ArtFile';
 import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
+import { blankScale } from '@/store/project/document';
 
 const plain = (hex) => { const n = parseInt(hex.slice(1), 16); const r = n >> 16, g = (n >> 8) & 255, b = n & 255; return { r, g, b, hex: rgb2hex({ r, g, b }), c: [r, g, b] }; };
 const COLORS = {
@@ -683,4 +684,182 @@ test('a render that lands after a file of another size opened composes nothing, 
   window.removeEventListener('unhandledrejection', caught);
   expect(errors).toEqual([]);
   expect(project.cells.map((c) => c.char)).toEqual(['A', 'B']);
+});
+
+// Open as an image: the file's cells drawn into the source image as glyph pixels, nothing pinned and no pixels of the
+// base's own, Choose characters on By shape with the file's own characters, so the image filters work on it.
+const fileChars = (art) => [...new Set(art.cells.map((cell) => cell.char))].sort().join('');
+const sortedChars = (chars) => [...new Set(chars)].sort().join('');
+// A cell's look: a space shows its background, a full block or a character in one color its foreground, and ▀ and ▐
+// are ▄ and ▌ with their colors swapped, so each of those pairs is one look.
+const lookOf = (char, fg, bg) => {
+  [fg, bg] = [fg.toLowerCase(), bg.toLowerCase()];
+  if (char === ' ') return `solid ${bg}`;
+  if (char === '█' || fg === bg) return `solid ${fg}`;
+  if (char === '▀' || char === '▐') return `${char === '▀' ? '▄' : '▌'} ${bg} ${fg}`;
+  return `${char} ${fg} ${bg}`;
+};
+// The share of cells that show the file's look.
+const sameLooks = (project, art) => art.cells.filter((cell, i) => {
+  const shown = project.cells[i];
+  return lookOf(shown.char, shown.fg.hex, shown.bg.hex) === lookOf(cell.char, cell.fg, cell.bg);
+}).length / art.cells.length;
+async function openAsPicture(file, { project = null } = {}) {
+  project ??= await afterAnotherDocument();
+  const art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
+  await project.openArtFile(file, { layer: 'picture' });
+  await settle(project);
+  return { project, art };
+}
+// What a picture opened as an image holds, and that Blur changes what it shows.
+async function expectPicture(project, art) {
+  expect([project.cols, project.rows]).toEqual([art.cols, 2 * art.rows]);
+  expect(project.baseRecords.pins.size).toBe(0);
+  expect(!!project.baseLayer?.hasPaint).toBe(false);
+  expect(project.layers.length).toBe(1); // the base alone, as a picture opens
+  expect([project.charChoice, project.charChoiceAscii]).toEqual(['shape', 'shape']);
+  expect([sortedChars(project.chars), sortedChars(project.charsAscii)]).toEqual([fileChars(art), fileChars(art)]);
+  expect(project.history.canUndo).toBe(false);
+  expect(project.isDirty).toBe(false);
+  const before = cellsKey(project);
+  project.blur = 3;
+  await settle(project);
+  expect(cellsKey(project)).not.toEqual(before);
+}
+// The picture's pixels.
+function pictureData(project) {
+  const { naturalWidth: w, naturalHeight: h } = project.image;
+  const ctx = Object.assign(document.createElement('canvas'), { width: w, height: h }).getContext('2d');
+  ctx.drawImage(project.image, 0, 0);
+  return ctx.getImageData(0, 0, w, h);
+}
+const pastTheEdge = async () => new File([await (await fetch('/tests/fixtures/ansi/past-the-edge.ans')).blob()], 'past-the-edge.ans');
+const kanFile = () => new File(['a 漢 b c\n d 漢 ef\n漢 gh  \n'], 'kan.utf8ans');
+
+test('opened as an image, an .ans is a picture of its cells: nothing pinned, By shape with its own characters, filters work', async () => {
+  const { project, art } = await openAsPicture(await pastTheEdge());
+  expect(project.quantize).toBe('cga');
+  expect(project.filename).toBe('past-the-edge');
+  await expectPicture(project, art);
+});
+
+test('opened as an image, a wide character is drawn across both its cells', async () => {
+  const { project, art } = await openAsPicture(kanFile());
+  expect(fileChars(art)).toContain('漢');
+  const image = pictureData(project), m = image.width / art.cols;
+  // the 漢 at column 2 of the first line: its trail (column 3) holds ink, the foreground mixed into black
+  let ink = 0;
+  for (let y = 0; y < 2 * m; y++) for (let x = 3 * m; x < 4 * m; x++) ink += image.data[(y * image.width + x) * 4];
+  expect(ink).toBeGreaterThan(0);
+  await expectPicture(project, art);
+});
+
+// The plan predicted 9 cells in 10 would come back as the file has them. Measured on past-the-edge.ans, 1,208 of 1,440
+// do (0.839), with Solids at 25% or 0: By shape samples a cell 4 by 8, which averages the shades (░ ▒ ▓) into solids,
+// and in ANSI its foreground fit pulls a thin character's color toward the background's (■, letters). So it holds what
+// By shape can draw exactly, the cells whose ink stops at a grid pixel's edge (a space, █, ▀, ▄), every one; and a floor
+// for the whole file just under what was measured. ▌ and ▐ split a grid pixel down the middle, which at this file's
+// processing scale (5 pixels a grid pixel) is 2.5 pixels, so they blur at the edge too (21 of their 38 cells differ).
+test('opened as an image, the cells By shape draws exactly come back as the file has them, and most of the rest do', async () => {
+  const { project, art } = await openAsPicture(await pastTheEdge());
+  const looks = art.cells.map((cell, i) => {
+    const shown = project.cells[i];
+    return { char: cell.char, file: lookOf(cell.char, cell.fg, cell.bg), shown: lookOf(shown.char, shown.fg.hex, shown.bg.hex), at: i };
+  });
+  const exact = looks.filter(({ char }) => [' ', '█', '▀', '▄'].includes(char));
+  expect(exact.length).toBeGreaterThan(1000);
+  expect(exact.filter(({ file, shown }) => file !== shown)).toEqual([]);
+  expect(sameLooks(project, art)).toBeGreaterThanOrEqual(0.82);
+});
+
+// Slot 0 (␀) comes in only with an XBin's own font, which the drawing opens in, so there it's the font's glyph; with no
+// font the reader gives byte 0 as CP437's space. (A paste maps ␀ to a space because the drawing may have no font.)
+test('opened as an image, an XBin\'s byte 0 is a space with no font, and its font\'s slot 0 with one', async () => {
+  // XBIN, 1A, 2 columns, 1 row, height 16, no flags, then byte 0 and A, each white on blue
+  const bare = new File([Uint8Array.of(0x58, 0x42, 0x49, 0x4e, 0x1a, 2, 0, 1, 0, 16, 0, 0, 0x1f, 65, 0x1f)], 'zero.xb');
+  const { project } = await openAsPicture(bare);
+  expect(project.drawingFont).toBeNull();
+  expect(sortedChars(project.chars)).toBe(sortedChars(' A'));
+  const image = pictureData(project), m = image.width / 2;
+  for (let y = 0; y < 2 * m; y++) for (let x = 0; x < m; x++) expect([...image.data.slice((y * image.width + x) * 4, (y * image.width + x) * 4 + 3)], `${x}, ${y}`).toEqual([0, 0, 0xaa]);
+
+  const font = solidAFont();
+  font.bytes.fill(0xff, 0, 8); // slot 0 drawn solid
+  const cells = [SLOT_CHARS[0], 'A'].map((char) => ({ char, fg: plain('#ffffff'), bg: plain('#0000aa') }));
+  const withFont = new File([writeXBin({ cols: 2, rows: 1, cells, palette: PALETTES.cga.map((c) => c.hex), font, sauce: false })], 'slot0.xb');
+  const { project: opened } = await openAsPicture(withFont);
+  expect(opened.chars).toContain(SLOT_CHARS[0]);
+  const drawn = pictureData(opened), n = drawn.width / 2;
+  for (let y = 0; y < 2 * n; y++) for (let x = 0; x < n; x++) expect(drawn.data[(y * drawn.width + x) * 4], `${x}, ${y}`).toBe(255); // the font's slot 0, solid white
+});
+
+// An XBin's own font, 8 high (a cell half as tall as it is wide in grid pixels), with only A of the letters drawn, solid.
+function solidAFont() {
+  const bytes = new Uint8Array(8 * 256);
+  const rows = (slot, fill) => fill.forEach((byte, y) => { bytes[slot * 8 + y] = byte; });
+  rows(65, Array(8).fill(0xff));
+  rows(219, Array(8).fill(0xff));
+  rows(220, [0, 0, 0, 0, 0xff, 0xff, 0xff, 0xff]);
+  rows(223, [0xff, 0xff, 0xff, 0xff, 0, 0, 0, 0]);
+  rows(221, Array(8).fill(0xf0));
+  rows(222, Array(8).fill(0x0f));
+  return { name: 'Solid A', height: 8, bytes };
+}
+
+test('opened as an image, an XBin is drawn in its own font, and its cells land on the grid\'s in a cell of another shape', async () => {
+  const white = plain('#ffffff'), black = plain('#000000');
+  const cells = Array.from({ length: 8 }, (_, i) => ({ char: i === 7 ? 'A' : ' ', fg: white, bg: black })); // A at the bottom right
+  const file = new File([writeXBin({ cols: 4, rows: 2, cells, palette: PALETTES.cga.map((c) => c.hex), font: solidAFont(), sauce: false })], 'solid.xb');
+  const { project } = await openAsPicture(file);
+  expect(project.drawingFont?.height).toBe(8); // the file's font (named for the file)
+  expect(project.pixelAspect).toBe(0.5);
+  const image = pictureData(project), m = image.width / 4;
+  for (let y = 2 * m; y < 4 * m; y++) for (let x = 3 * m; x < 4 * m; x++) expect(image.data[(y * image.width + x) * 4], `${x}, ${y}`).toBe(255); // the font's A, solid
+  expect(project.cells.map((cell) => lookOf(cell.char, cell.fg.hex, cell.bg.hex) === 'solid #000000')).toEqual([true, true, true, true, true, true, true, false]);
+});
+
+test('opened as an image, a full-color .utf8ans opens with By shape and its own characters, not a blank grid', async () => {
+  const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
+  const file = await artFile('color.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none' });
+  const { project, art } = await openAsPicture(file);
+  expect(project.quantize).toBe('none');
+  expect([project.charChoice, project.charChoiceAscii]).toEqual(['shape', 'shape']);
+  expect(sortedChars(project.chars)).toBe(fileChars(art));
+  expect(project.cells).toHaveLength(cols * rows);
+  expect(project.cells.some((cell) => cell.char !== ' ' || cell.bg.hex.toLowerCase() !== '#000000')).toBe(true);
+});
+
+test('opened as an image, a file of 5,000 lines opens at one pixel a grid pixel', async () => {
+  const file = new File([Array.from({ length: 5000 }, (_, i) => (i % 2 ? 'ab' : 'c ')).join('\n')], 'tall.txt');
+  const { project } = await openAsPicture(file);
+  expect([project.cols, project.rows]).toEqual([2, 10_000]);
+  expect(blankScale(2, 10_000)).toBe(1);
+  expect([project.image.naturalWidth, project.image.naturalHeight]).toEqual([2, 10_000]);
+  expect(project.charChoice).toBe('shape');
+  expect(project.baseRecords.pins.size).toBe(0);
+});
+
+test('the art question offers Open as an image: from the start screen beside edit and base, on a drawing after them', async () => {
+  const { project } = await createTestApp(), workspace = useWorkspaceStore();
+  const host = document.body.appendChild(document.createElement('div'));
+  const app = createApp(EditWorkspace).use(i18n);
+  app.mount(host);
+  const titles = () => [...document.querySelectorAll('button.choice b')].map((b) => b.textContent.trim());
+  const file = new File(['ab\ncd'], 'boat.txt');
+  try {
+    await workspace.askArt(file);
+    await nextTick();
+    expect(titles()).toEqual(['Edit artwork', 'Draw on top', 'Open as an image']);
+    [...document.querySelectorAll('button.choice')].find((b) => b.textContent.includes('Open as an image')).click();
+    await vi.waitFor(() => expect(project.filename).toBe('boat'));
+    await settle(project);
+    expect(project.charChoice).toBe('shape');
+    expect(project.baseRecords.pins.size).toBe(0);
+    await workspace.askArt(file);
+    await nextTick();
+    expect(titles()).toEqual(['Add to this drawing', 'Open to edit', 'Open to draw on top', 'Open as an image']);
+  } finally {
+    app.unmount();
+    host.remove();
+  }
 });

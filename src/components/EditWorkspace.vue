@@ -171,7 +171,8 @@ function startBlank() {
   project.setBlankCanvas();
 }
 
-// An art file opens on ANSI, onto the layer chosen ('edit' or 'base'); an SVG on VECTOR (openSvgFile chooses it).
+// An art file opens on ANSI, onto the layer chosen ('edit' or 'base') or as an image ('picture'); an SVG on VECTOR
+// (openSvgFile chooses it).
 async function openArt(file, layer, art) {
   const svg = isSvgFile(file.name);
   try {
@@ -183,11 +184,12 @@ async function openArt(file, layer, art) {
   if (!svg) workspace.editorTab = 'output';
 }
 
-// The art file's question. On the start screen: edit it (its art on the edit layer) or draw on top of it (its
-// art the base layer). Dropped on a drawing: added as a paste is (floating and selected, where it was dropped or at
-// the view's top-left), an SVG as shapes on VECTOR, or a picture as paint on the cells layer picked (else a new one);
-// or opened in place of this drawing, an art file onto either layer (not in a room where opening is off). On the
-// desktop, opening is in a new window instead, offered in a room too.
+// The art file's question. On the start screen: edit it (its art on the edit layer), draw on top of it (its art the
+// base layer), or open it as an image (its art drawn into the picture). Dropped on a drawing: added as a paste is
+// (floating and selected, where it was dropped or at the view's top-left), an SVG as shapes on VECTOR, or a picture as
+// paint on the cells layer picked (else a new one); or opened in place of this drawing, an art file in any of those
+// three ways (not in a room where opening is off). On the desktop, opening is in a new window instead, offered in a
+// room too.
 const layerName = useLayerName();
 const addText = (drop) => (drop.picture ? (workspace.pickedCells ? t('actions.pictureAddText', { name: layerName(workspace.pickedLayer) }) : t('actions.pictureAddNew'))
   : isSvgFile(drop.file.name) ? t('actions.svgAddText') : t(drop.at ? 'actions.artAddWhere' : 'actions.artAddTopLeft', { name: layerName(project.editId) }));
@@ -198,6 +200,7 @@ const artChoices = computed(() => {
     return [
       { id: 'edit', title: t('actions.artEdit'), text: t('actions.artEditText') },
       { id: 'base', title: t('actions.artDrawOn'), text: t('actions.artDrawOnText') },
+      { id: 'picture', title: t('actions.artPicture'), text: t('actions.artPictureText') },
     ];
   }
   if (DESKTOP) return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, { id: 'window', title: t('actions.artOpenWindow'), text: t('actions.artOpenWindowText') }];
@@ -206,6 +209,7 @@ const artChoices = computed(() => {
   const open = drop.picture || isSvgFile(drop.file.name) ? [{ id: 'open', title: t('actions.artOpen'), text: t('actions.artOpenText'), note }] : [
     { id: 'edit', title: t('actions.artOpenEdit'), text: t('actions.artOpenEditText'), note },
     { id: 'base', title: t('actions.artOpenDrawOn'), text: t('actions.artOpenDrawOnText'), note },
+    { id: 'picture', title: t('actions.artOpenPicture'), text: t('actions.artOpenPictureText'), note },
   ];
   return [{ id: 'add', title: t('actions.artAdd'), text: addText(drop) }, ...(drawing.offWithOthers ? [] : open)];
 });
@@ -222,7 +226,7 @@ async function chooseArt(choice) {
     workspace.editorTab = 'output';
     return;
   }
-  if (choice !== 'add') { // 'edit' or 'base' (an art file's layer), or 'open' (an SVG)
+  if (choice !== 'add') { // 'edit', 'base' or 'picture' (how an art file opens), or 'open' (an SVG)
     if (!project.image) workspace.editorTab = 'output'; // from the start screen, chosen first: the address moves once
     return openArt(file, choice, art); // its question said what happens to unsaved changes
   }
