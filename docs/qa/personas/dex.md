@@ -361,7 +361,8 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   the picture as it looked, unpinned (some letters can come back as others), and Blur on Base now reaches it
   (docs/model.md R3); undo brings back his layer and the base's pins as they were; `scope`: with only a Brush stroke
   on Layer 1 across the scene's letters (nothing typed), Blend into source image lists that the base's characters
-  under the paint are picked again, and a stroke over the black alone lists nothing of the kind.
+  under the paint are picked again, and in ANSI a stroke over the black alone (its pinned spaces are solid) lists
+  nothing of the kind.
 - Rated: yes, wants Cmd+E, then Enter
 
 ### 27. Flatten it to plain cells
