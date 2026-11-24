@@ -7,6 +7,32 @@ import { expect, openApp, tab, store, settled } from './support.js';
 const API = 'http://localhost:8787';
 export const ROOM_ID = 'abcdefghij';
 
+// The server's issue-reports route (POST /issue-reports, a multipart form), which a pre-release build's Report an issue
+// posts to: fakeIssueReports(page, { origin, answer }) records each report in the array it returns, as { origin (the
+// request's header), fields (the text ones), files ({ drawing, steps }: each { name, type, bytes }) }, and answers
+// [status, body] (answer(report); a kept report with its issue open by default). `origin` is the server's: the local one
+// the preview build talks to, or the hosted one a page that's somewhere else talks to. Its own route: the API's are
+// JSON, under /api.
+export async function fakeIssueReports(page, { origin = API, answer = () => [201, { id: 'r_1', issue: 312 }] } = {}) {
+  const reports = [];
+  await page.route(`${origin}/issue-reports`, async (route) => {
+    const request = route.request();
+    const headers = request.headers();
+    const cors = { 'access-control-allow-origin': headers.origin ?? '*' };
+    if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
+    const form = await new Response(request.postDataBuffer(), { headers: { 'content-type': headers['content-type'] } }).formData();
+    const report = { origin: headers.origin ?? null, fields: {}, files: {} };
+    for (const [name, value] of form) {
+      if (typeof value === 'string') report.fields[name] = value;
+      else report.files[name] = { name: value.name, type: value.type, bytes: Buffer.from(await value.arrayBuffer()) };
+    }
+    reports.push(report);
+    const [status, body] = await answer(report);
+    return route.fulfill({ status, headers: cors, contentType: 'application/json', body: JSON.stringify(body) });
+  });
+  return reports;
+}
+
 // A pass as the server makes one: base64url JSON claims, a dot, base64url Ed25519 signature over the
 // first part, by a key made once here (GET /api/pass-key answers its public half, so hosts can check).
 const PASS_KEY = generateKeyPairSync('ed25519');

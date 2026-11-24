@@ -51,7 +51,7 @@
       "privacy": "Politique de confidentialité",
       "guidelines": "Règles de la communauté"
     },
-    "desktopPrivacy": "Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP. Quand vous choisissez Rechercher les mises à jour, elle demande à GitHub les versions de Phosphor, et GitHub voit votre adresse IP. Quand vous ouvrez Plugins, elle demande à phosphor.work la liste des plugins, et phosphor.work voit votre adresse IP. Quand vous installez un plugin depuis la place de marché, elle demande à GitHub les fichiers du plugin, et GitHub voit votre adresse IP. Quand vous prenez une palette sur Lospec par son nom ou son lien, l'application la demande à lospec.com, qui voit la requête et votre adresse IP."
+    "desktopPrivacy": "Dans une salle, les personnes avec qui vous vous connectez voient votre adresse IP. Quand vous choisissez Rechercher les mises à jour, elle demande à GitHub les versions de Phosphor, et GitHub voit votre adresse IP. Quand vous ouvrez Plugins, elle demande à phosphor.work la liste des plugins, et phosphor.work voit votre adresse IP. Quand vous installez un plugin depuis la place de marché, elle demande à GitHub les fichiers du plugin, et GitHub voit votre adresse IP. Quand vous prenez une palette sur Lospec par son nom ou son lien, l'application la demande à lospec.com, qui voit la requête et votre adresse IP. Sur une version bêta ou alpha, quand vous appuyez sur Envoyer dans Signaler un problème, elle envoie ce que vous avez écrit, votre version de Phosphor et votre système, et, si vous avez laissé la case cochée, votre dessin et les étapes de la session au serveur de Phosphor (api.phosphor.work, hébergé chez Cloudflare), qui voit votre adresse IP. Ce que vous avez écrit est publié sous forme de ticket sur GitHub. Le dessin et les étapes sont conservés 90 jours, et seul le développeur de Phosphor les voit."
   },
   "footer": {
     "language": "Langue",
@@ -91,6 +91,38 @@
     "byline": "Proposé par {ishifishi} et {euphio}",
     "motto": "Make Code Not War",
     "policies": "Consultez nos {terms}, notre {privacy} et nos {guidelines}."
+  },
+  "issueReport": {
+    "stage": {
+      "beta": "Bêta",
+      "alpha": "Alpha"
+    },
+    "link": "Signaler un problème",
+    "title": "Signaler un problème",
+    "doing": "Que faisiez-vous ?",
+    "wrong": "Qu'est-ce qui n'a pas fonctionné ?",
+    "tooLong": "C'est trop long pour être envoyé. Raccourcissez-le à {most} caractères (un retour à la ligne compte pour deux).",
+    "include": "Envoyer mon dessin et les étapes de cette session",
+    "steps": "{count} étape | {count} étapes",
+    "what": {
+      "preparing": "Préparation de votre dessin…",
+      "drawing": "{name}, {size} · {steps}",
+      "room": "Le dessin de cette salle, {size} · {steps}",
+      "drawingTooBig": "{name} est trop volumineux pour être envoyé ({size} ; un signalement contient {most} au plus). Seules les étapes partiront ({steps}).",
+      "roomTooBig": "Le dessin de cette salle est trop volumineux pour être envoyé ({size} ; un signalement contient {most} au plus). Seules les étapes partiront ({steps}).",
+      "stepsOnly": "{steps}. Aucun dessin n'est ouvert."
+    },
+    "public": "Ce que vous écrivez devient un ticket public sur GitHub. Votre dessin et vos étapes ne vont qu'au développeur de Phosphor.",
+    "with": "Envoyé avec : Phosphor {build}, {agent}.",
+    "send": "Envoyer",
+    "sending": "Envoi…",
+    "sent": "Envoyé. Merci.",
+    "sentIssue": "Envoyé. Merci. C'est le {issue} sur GitHub.",
+    "issue": "ticket n° {number}",
+    "errors": {
+      "rateLimited": "Trop de signalements pour l'instant. Patientez un moment et réessayez.",
+      "tooBig": "C'était trop volumineux pour être envoyé. Décochez le dessin et réessayez."
+    }
   },
   "zero": {
     "dropPrompt": "Déposez une image, un fichier {ext} ou un fichier ANSI ici",

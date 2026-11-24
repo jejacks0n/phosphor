@@ -74,6 +74,16 @@ export function messageFor(code, detail = {}) {
   return (typeof word === 'function' ? word(detail) : word) ?? t('social.errors.fallback');
 }
 
+// An issue report that didn't go (lib/issueReport.js), by the server's error: too many just now, too big, Turnstile's
+// no, or a server that can't be reached; anything else has no words of its own. Not a report of a person or a room.
+const ISSUE_REPORT_WORDS = {
+  'rate-limited': () => t('issueReport.errors.rateLimited'),
+  'too-big': () => t('issueReport.errors.tooBig'),
+  turnstile: () => t('social.errors.turnstileFailed'),
+  network: () => t('social.errors.network'),
+};
+export const issueReportWords = (error) => own(ISSUE_REPORT_WORDS, error)?.() ?? t('social.errors.fallback');
+
 // Why a room's socket was turned away or kicked, in plain words: a refusal's reason, or ended,
 // removed or replaced (the same account joined from another tab). A pass refused even when fresh
 // (bad-pass) reads as a room that isn't there.

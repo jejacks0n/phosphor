@@ -1,5 +1,5 @@
 // The page's one way into the main process (desktop/main.js), as window.phosphorDesktop: the room service, quitting and
-// closing (whether there's unsaved work), the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, the releases to update to, the marketplace's plugin list and files, and a palette from Lospec. Sandboxed, so CommonJS, with only Electron's renderer modules.
+// closing (whether there's unsaved work), the menu bar (its words and state out, with the window's drawing, and its commands back), files opened and saved, the releases to update to, the marketplace's plugin list and files, a palette from Lospec, and an issue report sent. Sandboxed, so CommonJS, with only Electron's renderer modules.
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 let onQuit = null;
@@ -63,4 +63,7 @@ contextBridge.exposeInMainWorld('phosphorDesktop', {
   // The color layer's Get from Lospec: one palette by its slug as { text } or { failed: 'notFound' | 'unreachable' |
   // 'notPalette' }.
   lospecPalette: (slug) => ipcRenderer.invoke('phosphor:lospec-palette', slug),
+  // An issue report (the beta banner's dialog), on Send: its text fields and, if the person said so, the drawing
+  // ({ name, bytes }) and the session's steps (text), as { ok: true, issue } or { ok: false, error }.
+  sendIssueReport: (fields, files) => ipcRenderer.invoke('phosphor:issue-report', fields, files),
 });
