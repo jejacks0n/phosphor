@@ -136,8 +136,17 @@ same check: soft paint over a cell mixed into its colors before the snap instead
 that the converter picks again from the snapped pixels), it's written as it showed instead (`frozenCells`): its stored
 colors as its two pixels, its character pinned.
 
-- Lives in: `onCells`, `onBase`, `mergeCellOf`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike` in
-  `src/store/project/merging.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
+Blend into source image (`mergeIntoPicture`) is the one merge that lets characters change, so the image filters reach
+them: a character of someone's own (an entry's, or a pin's under the layer's paint) is drawn into the picture as its
+glyph (`drawGlyphCell`, in the drawing's font), its background mixed toward its foreground by the glyph's ink, each
+half's paint laid over that half's pixels; its pin goes, and the converter picks the cell again, so it can come back as
+another character. In ANSI a solid character (space, `█`, `▀`, `▄`) still goes in as its two halves, pinned `▄`; in the
+ASCII styles, which show no halves, it's a glyph too. A frozen cell, a wide character (its glyph is two cells wide) and
+anything in the letterbox merge exactly, pinned, as Keep crisp cells writes them (`mergeKind`).
+
+- Lives in: `onCells`, `onBase`, `mergeCellOf`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike`,
+  `mergeIntoPicture` in `src/store/project/merging.js`; `mergeKind` in `src/document/editCells.js`; `drawGlyphCell` in
+  `src/lib/glyphPicture.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
 - Checked by: `tests/browser/merge.test.js › R3: the report: Keep crisp cells under soft paint …` (Keep crisp cells on
@@ -146,7 +155,11 @@ colors as its two pixels, its character pinned.
   `› … keeps every cell with a palette and Levels on, the soft edges paint`;
   `› R3: Merge down of text with no background onto the base keeps the canvas with a palette and a slider moved`
   (#201: VGA and CGA under Levels, Posterize, Contrast, Saturation, Brightness, Hue, Invert, and none; Keep crisp cells
-  and Blend into source image);
+  keeps the canvas, and Blend into source image draws the letters in as glyphs, none pinned);
+  `› R3: Blend into source image draws a typed letter in as its glyph …` (unpinned, its ink and background in the
+  picture, Blur reaching it, undo bringing back the layer, the pins and the picture), `› R3: the report: Blend into
+  source image in ASCII puts the strokes over pinned spaces where Blur reaches them` (vector-strokes-ascii.phosphor) and
+  `› at neutral: the same look but the letter …`; `tests/unit/edit-cells.test.js` (`mergeKind`);
   `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and
@@ -287,7 +300,9 @@ converted cell is, what Merge down wrote before pins kept a background, and what
 can't easily be given a background by hand; a merge gives it one). A cell on black stays on black: the paint over it
 is folded into its ink (the average of its two tinted halves, as it showed) rather than laid over each pixel, which would
 make them differ. The one cost: a cell whose character is its own background's color (a plain colored box) merges as
-that color's ink on black.
+that color's ink on black. Blend into source image is the exception: it draws a typed cell into the picture as its
+glyph (R3), and the converter's cells are ink on black, so the background goes into the picture's pixels and the cell
+comes back as ink on black.
 
 - Lives in: `pinnedCell` in `src/lib/Cells.js`, used by `Renderer.#onBase`; `baseLook` (`src/store/project/reading.js`)
   completes an entry against such a pin with its background; `mergeCellOf` (`src/store/project/merging.js`) writes the

@@ -724,8 +724,9 @@
       "exactTitle": "Keep crisp cells",
       "exactText": "Preserves each character cell exactly as shown. Image filters like Edges and Sharpen will not affect these cells.",
       "intoImageTitle": "Blend into source image",
-      "intoImageText": "Draws directly into the base image so sliders and image filters will apply to it.",
+      "intoImageText": "Draws directly into the base image, characters included, so sliders and image filters will apply to it.",
       "ownCharsNote": "{name}'s custom characters: its paint is redrawn in {below}'s.",
+      "repickedNote": "{name}'s characters as they are: each is drawn into the image and picked again, so some can change.",
       "originalNote": "The source image's original resolution: it's resized to its working resolution, like Bake, and filters like Edges may shift slightly."
     },
     "bakeDialog": {

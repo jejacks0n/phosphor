@@ -99,17 +99,23 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.ok(Object.isFrozen(baked.get('0,0')));
   const none = new Map();
   assert.equal(bakeEditCells(none, P), none);
-  // How a covered cell merges into the picture: the converter's own character goes in as it is
-  // (it comes back from the picture); a solid character goes in as it shows, pinned to ▄; any other
-  // character merges exactly (a picture pixel can't hold a glyph), as does anything in the letterbox.
-  const at = (char, renderStyle = 'ansi', inPicture = true) => mergeKind({ char, renderStyle, inPicture });
+  // How a covered cell merges into the picture: the converter's own character goes in as it is (it comes back from the
+  // picture); a solid character in ANSI goes in as it shows, pinned to ▄; any other character, in every style, is drawn
+  // in as its glyph and picked again. A wide character and anything in the letterbox merge exactly. The cases before
+  // the glyph rule had letters, shades and lines (and every user character in the ASCII styles) merge exactly.
+  const at = (char, renderStyle = 'ansi', inPicture = true, wide = false) => mergeKind({ char, renderStyle, inPicture, wide });
   assert.equal(at(undefined), 'picture');
   for (const solid of [' ', '█', '▀', '▄']) assert.equal(at(solid), 'picture-pinned', solid);
-  for (const glyph of ['A', '░', '╬', '漢', '▌']) assert.equal(at(glyph), 'exact', glyph); // ▌ is half-inked, not solid
-  assert.equal(at('█', 'colorAscii'), 'exact');               // ASCII styles: a user character stays exact
+  for (const glyph of ['A', '░', '╬', '▌']) assert.equal(at(glyph), 'glyph', glyph); // ▌ is half-inked, not solid
+  assert.equal(at('漢', 'ansi', true, true), 'exact');        // a wide character stays exact
+  for (const style of ['colorAscii', 'ascii']) {
+    for (const char of ['█', ' ', 'A']) assert.equal(at(char, style), 'glyph', `${style} ${char}`); // no halves shown: a solid one too
+    assert.equal(at('漢', style, true, true), 'exact');
+  }
   assert.equal(at(undefined, 'ascii'), 'picture');
   assert.equal(at(undefined, 'ansi', false), 'exact');        // not wholly in the picture's area
   assert.equal(at('█', 'ansi', false), 'exact');
+  assert.equal(at('A', 'ascii', false), 'exact');
 });
 
 // docs/model.md R1 and R3: a frozen cell is paint Merge down wrote as a character so the look stays, marked so. The mark

@@ -15,6 +15,8 @@ import { getTool } from '@/tools';
 import { isFrozen, ownEntry } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { coverageOf } from '@/lib/GlyphCoverage.js';
+import { glyphMask } from '@/lib/glyphPicture.js';
+import { hex2rgb } from '@/lib/ColorUtils.js';
 
 const looks = (project) => project.cells.map(({ char, fg, bg }) => ({ char, fg: { r: fg.r, g: fg.g, b: fg.b }, bg: { r: bg.r, g: bg.g, b: bg.b } }));
 const apart = (a, b) => Math.max(Math.abs(a.r - b.r), Math.abs(a.g - b.g), Math.abs(a.b - b.b));
@@ -52,6 +54,26 @@ function expectKeptButSoft(project, id, was) {
   expectLooksAlike(looks(project), was, soft);
   expect([...soft].filter((i) => isFrozen(project.cellsOf(id).get(`${i % project.cols},${Math.floor(i / project.cols)}`)))).toEqual([]);
   return soft;
+}
+
+// The picture's pixels in a cell's block (m by 2m), row by row, as hex.
+function pictureBlock(project, col, row) {
+  const { image } = project, fit = project.fitFor(project.cols, project.rows), m = image.width / fit.dw;
+  const canvas = document.createElement('canvas');
+  canvas.width = image.width;
+  canvas.height = image.height;
+  const picture = ctx2d(canvas);
+  picture.drawImage(image, 0, 0);
+  const data = picture.getImageData((col - fit.dx) * m, (2 * row - fit.dy) * m, m, 2 * m).data, pixels = [];
+  for (let i = 0; i < data.length; i += 4) pixels.push(`#${[0, 1, 2].map((k) => data[i + k].toString(16).padStart(2, '0')).join('')}`);
+  return pixels;
+}
+// Undo after a merge into the picture: the layer back with its entries, the base's pins and the picture as they were.
+function expectRestored(project, id, was) {
+  expect(project.layerById(id)).toBeTruthy();
+  expect(project.image).toBe(was.image);
+  expect(new Map(project.baseRecords.pins)).toEqual(was.pins);
+  expect(new Map(project.cellsOf(id))).toEqual(was.entries);
 }
 
 const maxDiff = (a, b, only) => (only ?? a.map((_, i) => i)).reduce((m, i) => Math.max(m, ...a[i].map((v, k) => Math.abs(v - b[i][k]))), 0);
@@ -141,21 +163,24 @@ describe('exactly', () => {
   // docs/model.md R1 and R8: Into the image in Color ASCII. The report (projects/text-merge-base.phosphor): Layer 1's
   // Colors only ▄s counted as characters, so their cells went in as pins with each half's paint over the picture's black,
   // two pixels that differ, which a pin now shows as a background: 331 cells got one. A paint block outside ANSI is the
-  // converter's paint, into the picture; a cell on black folds the paint over it into its ink and stays on black.
-  test('R1: the report: Into the image in Color ASCII gives no cell a background it didn\'t show, and keeps the text\'s', async () => {
+  // converter's paint, into the picture. The text is drawn in as glyphs (R3), unpinned, and picked again: the converter's
+  // cells in Color ASCII are ink on black, so its background goes into the picture's pixels (it showed it as its own
+  // before the glyph rule, when the text merged exactly, pinned).
+  test('R1: the report: Into the image in Color ASCII gives no cell a background it didn\'t show, and draws the text in as glyphs', async () => {
     const { project } = await createTestApp();
     await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/text-merge-base.phosphor')).arrayBuffer()], 'x.phosphor'));
     await settle(project);
-    const before = project.cells.map((c) => c.bg.hex), at = 10 * project.cols + 26;
-    const typed = [...project.cellsOf('edit').values()].filter((entry) => ownEntry(entry, 'colorAscii')).length; // the text; the rest are Colors only's ▄s
+    const before = project.cells.map((c) => c.bg.hex), pins = project.baseRecords.pins.size;
+    expect([...project.cellsOf('edit').values()].filter((entry) => ownEntry(entry, 'colorAscii')).length).toBeGreaterThan(0); // the text; the rest are Colors only's ▄s
     await project.mergeIntoPicture();
     await settle(project);
     const after = project.cells.map((c) => c.bg.hex);
     expect(after.filter((bg, i) => bg !== '#000000' && before[i] === '#000000')).toHaveLength(0);
-    expect([project.cells[at].char, project.cells[at].bg.hex]).toEqual(['t', '#999898']);
-    expect(project.baseRecords.pins.size).toBe(typed); // the text pinned, not the stroke's cells
+    expect(project.baseRecords.pins.size).toBe(pins); // neither the text nor the stroke's cells pinned
   });
 
+  // Into the image draws the letter in as its glyph (R3) and the converter picks it again, ink on black; it kept its
+  // character and ink before the glyph rule, when it merged exactly.
   test('R8: in Color ASCII a letter tinted by paint stays ink on black through Keep crisp cells and Into the image', async () => {
     for (const into of [false, true]) {
       const { project, workspace } = await createTestApp();
@@ -174,7 +199,12 @@ describe('exactly', () => {
       else expect(project.mergeDown('edit')).toBe(true);
       await settle(project);
       const cell = project.cells[4 * 20 + 4];
-      expect([cell.char, cell.bg.hex]).toEqual(['A', '#000000']);
+      expect(cell.bg.hex).toBe('#000000');
+      if (into) {
+        expect(project.baseRecords.pins.has('4,4')).toBe(false);
+        continue;
+      }
+      expect(cell.char).toBe('A');
       expect(Math.max(...['r', 'g', 'b'].map((k) => Math.abs(cell.fg[k] - shown.fg[k])))).toBeLessThanOrEqual(1);
     }
   });
@@ -238,15 +268,21 @@ describe('into the picture', () => {
     expect(halves(project)).toEqual(before);
   });
 
-  test('at neutral: the same look; solid cells pinned ▄, letters kept', async () => {
+  // docs/model.md R3: a letter is drawn in as its glyph and picked again, unpinned (it was kept, pinned, before the glyph
+  // rule); everything else looks the same.
+  test('at neutral: the same look but the letter; solid cells pinned ▄, the letter drawn in as its glyph', async () => {
     const { project, workspace } = await createTestApp();
     await drawnDocument(project, workspace);
-    const before = halves(project);
+    const before = halves(project), letter = 8 * project.cols + 14;
     await project.mergeIntoPicture();
     await settle(project);
-    expect(maxDiff(before, halves(project))).toBeLessThanOrEqual(1); // soft paint can round a level
+    expect(maxDiff(before, halves(project), before.map((_, i) => i).filter((i) => i !== letter))).toBeLessThanOrEqual(1); // soft paint can round a level
     const char = (c, r) => project.cells[r * project.cols + c].char;
-    expect(char(14, 8)).toBe('A');
+    expect(project.baseRecords.pins.has('14,8')).toBe(false);
+    // Its background mixed toward its ink by the glyph's (this picture is a pixel a grid pixel: a 1 by 2 glyph)
+    const m = project.image.width / project.fitFor(project.cols, project.rows).dw, ink = glyphMask('A', m, 2 * m);
+    const fg = hex2rgb('#ffee00'), bg = hex2rgb('#0044aa');
+    expect(maxDiff(pictureBlock(project, 14, 8).map((hex) => { const { r, g, b } = hex2rgb(hex); return [r, g, b]; }), Array.from(ink, (v) => ['r', 'g', 'b'].map((k) => bg[k] + (fg[k] - bg[k]) * v)))).toBeLessThanOrEqual(1);
     expect(char(20, 8)).toBe('▄');
     expect(project.imageIsWorkingCopy).toBe(true);
     expect(project.editCells.size).toBe(0);
@@ -289,11 +325,11 @@ describe('into the picture', () => {
   test('a selection merges only what is inside it', async () => {
     const { project, workspace } = await createTestApp();
     await drawnDocument(project, workspace);
-    const rect = { c0: 10, r0: 5, c1: 21, r1: 12 };
+    const rect = { c0: 10, r0: 5, c1: 21, r1: 12 }, letter = 8 * project.cols + 14; // the letter is picked again (R3)
     const before = halves(project);
     await project.mergeIntoPicture(rect);
     await settle(project);
-    expect(maxDiff(before, halves(project))).toBeLessThanOrEqual(1);
+    expect(maxDiff(before, halves(project), before.map((_, i) => i).filter((i) => i !== letter))).toBeLessThanOrEqual(1);
     expect(project.editCellAt(14, 8)).toBeUndefined();
     expect(project.hasPaint).toBe(true); // the paint below the selection stays
   });
@@ -349,6 +385,77 @@ describe('into the picture', () => {
     project.cols = 60;
     await settle(project);
     expect(project.cellHasPaint(55, 15)).toBe(true);
+  });
+
+  // docs/model.md R3: Blend into source image draws a character of someone's own into the picture as its glyph, unpinned,
+  // so the converter picks it again and the image filters reach it. Undo brings back the layer, the pins and the picture.
+  test('R3: Blend into source image draws a typed letter in as its glyph, which the filters reach, and undo brings it back', async () => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+    project.renderStyle = 'ascii';
+    project.charChoiceAscii = 'shape'; // Brightness reads a cell's average, which a light Blur keeps: By shape sees it
+    await settle(project);
+    workspace.pickLayer('edit');
+    project.typeAt(5, 5, 'A', { fg: '#ffffff', bg: '#000000' });
+    project.typeAt(12, 5, '漢', { fg: '#ffffff', bg: '#000000' }); // a wide character merges exactly
+    project.typeAt(8, 5, ' ', { fg: '#ffffff', bg: '#000000' }); // a space with soft paint over its lower half
+    project.commitEdit();
+    project.paintEditPixels([{ x: 8, y: 11, r: 0x33, g: 0xff, b: 0x66, alpha: 0.4 }]);
+    project.commitEdit();
+    await settle(project);
+    const was = { image: project.image, pins: new Map(project.baseRecords.pins), entries: new Map(project.cellsOf('edit')), look: cellsKey(project) };
+    await project.mergeIntoPicture();
+    await settle(project);
+    expect(project.baseRecords.pins.has('5,5')).toBe(false);
+    expect([project.baseRecords.pins.get('12,5'), project.cells[5 * 20 + 12].char]).toEqual(['漢', '漢']);
+    const block = pictureBlock(project, 5, 5);
+    expect(block.includes('#ffffff')).toBe(true);
+    expect(block.includes('#000000')).toBe(true);
+    // the paint over each pixel of its half, the other half its glyph's (a space's: its background)
+    const space = pictureBlock(project, 8, 5).map((hex) => { const { r, g, b } = hex2rgb(hex); return [r, g, b]; }), half = space.length / 2;
+    expect(maxDiff(space, space.map((_, i) => (i < half ? [0, 0, 0] : [0x33 * 0.4, 0xff * 0.4, 0x66 * 0.4])))).toBeLessThanOrEqual(2);
+    project.undo();
+    await settle(project);
+    expectRestored(project, 'edit', was);
+    expect(cellsKey(project)).toEqual(was.look);
+    project.redo();
+    await settle(project);
+    const near = () => [4, 5, 6].flatMap((row) => [4, 5, 6].map((col) => JSON.stringify(project.cells[row * 20 + col])));
+    const sharp = near();
+    project.blur = 3;
+    await settle(project);
+    expect(near()).not.toEqual(sharp);
+  });
+
+  // The report (projects/vector-strokes-ascii.phosphor, in ASCII): Layer 1 moved under Vector 1, Vector 1 merged into it,
+  // then Blend. Its strokes lie over the opened file's pinned spaces, which merged exactly, so no filter reached them.
+  // Drawn in as glyphs (the spaces with the paint over them), Blur reaches them. docs/model.md R3.
+  test('R3: the report: Blend into source image in ASCII puts the strokes over pinned spaces where Blur reaches them', async () => {
+    const { project, workspace } = await createTestApp();
+    await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/vector-strokes-ascii.phosphor')).arrayBuffer()], 'x.phosphor'));
+    await settle(project);
+    expect(project.moveLayer('edit', 1)).toBe(true);
+    workspace.pickLayer('vector');
+    expect(project.mergeDown('vector')).toBe(true);
+    await settle(project);
+    const strokes = [];
+    for (let row = 0; row < project.rows / 2; row++) for (let col = 0; col < project.cols; col++) if (project.cellHasPaint(col, row)) strokes.push(row * project.cols + col);
+    expect(strokes.length).toBeGreaterThan(100);
+    const was = { image: project.image, pins: new Map(project.baseRecords.pins), entries: new Map(project.cellsOf('edit')), paint: project.paintOf('edit').snapshot(), look: cellsKey(project) };
+    await project.mergeIntoPicture(null, 'edit');
+    await settle(project);
+    expect(strokes.filter((i) => project.baseRecords.pins.has(`${i % project.cols},${Math.floor(i / project.cols)}`))).toEqual([]);
+    project.undo();
+    await settle(project);
+    expectRestored(project, 'edit', was);
+    expect(project.paintOf('edit').snapshot()).toEqual(was.paint);
+    expect(cellsKey(project)).toEqual(was.look);
+    project.redo();
+    await settle(project);
+    const sharp = strokes.map((i) => JSON.stringify(project.cells[i]));
+    project.blur = 3;
+    await settle(project);
+    expect(strokes.filter((i, k) => JSON.stringify(project.cells[i]) !== sharp[k]).length).toBeGreaterThan(0);
   });
 
   test('another image loaded while merging is left alone', async () => {
@@ -915,8 +1022,9 @@ test('Into the image from a row that isn\'t the layer in use merges that row\'s 
   }
 });
 
-// What Blend into source image gives up: a layer's own characters (its paint is redrawn in the base's), and only a real
-// picture's original resolution (a blank canvas's is one color, the same at any size).
+// What Blend into source image gives up: a layer's own characters (its paint is redrawn in the base's), its characters as
+// they are (each is drawn in as its glyph and picked again, docs/model.md R3), and only a real picture's original
+// resolution (a blank canvas's is one color, the same at any size).
 test.each([
   ['a picture', true],
   ['a blank canvas', false],
@@ -943,9 +1051,11 @@ test.each([
     return blend().textContent;
   };
   const chars = /Layer \d+'s custom characters: its paint is redrawn in Base's\./, resolution = "The source image's original resolution";
+  const repicked = /Layer \d+'s characters as they are: each is drawn into the image and picked again, so some can change\./;
   try {
     const before = await ask(); // the base's characters
     expect(before).not.toMatch(chars);
+    expect(before).not.toMatch(repicked); // paint only
     expect(before.includes('You give up:')).toBe(picture);
     expect(before.includes(resolution)).toBe(picture);
     project.setLayerChars(top, { chars: '▖▗▘▝▚▞' });
@@ -953,6 +1063,9 @@ test.each([
     const after = await ask();
     expect(after).toMatch(new RegExp(`You give up:.*${chars.source}`, 's'));
     expect(after.includes(resolution)).toBe(picture);
+    project.typeAt(9, 9, 'Q', { fg: '#00ffff' });
+    project.commitEdit();
+    expect(await ask()).toMatch(new RegExp(`You give up:.*${repicked.source}`, 's'));
     blend().click(); // a warning, not a refusal
     await vi.waitFor(() => expect(project.layerById(top)).toBe(undefined), { timeout: 10_000 });
   } finally {
@@ -1033,7 +1146,7 @@ test('Blend into source image reads a merged shape\'s soft edge as each grid pix
   const paint = [];
   for (let y = 0; y < project.rows; y++) for (let x = 0; x < project.cols; x++) {
     const p = project.paintLayer.pixelAt(x, y);
-    // A cell with a character of its own merges exactly (the ASCII styles hold no glyph in a picture pixel); the
+    // A cell with a character of its own (an entry or a pin) goes in as its glyph, or exactly when frozen (R3); the
     // rest go in as picture pixels, which is what this reads.
     const col = x, row = Math.floor(y / 2);
     if (p?.a && !project.editCellAt(col, row) && !project.baseRecords.pins.has(`${col},${row}`)) paint.push({ x, y, ...p });
@@ -1070,7 +1183,9 @@ test('Blend into source image reads a merged shape\'s soft edge as each grid pix
 // (#201). The cell's background is the base's own, and stays its pixels: written as a stored color instead (baseCellAt's),
 // the base snapped it on the graphics card, which broke a tie between two palette colors the other way (VGA's d7 and ff
 // under Midtones 2), or never made the color at all (the picture's cell showed a mix of its pixels' snaps, as under
-// Posterize 5). Keep crisp cells and Blend into source image both write the letters as base pixels (mergeCellOf).
+// Posterize 5). Keep crisp cells writes the letters as base pixels (mergeCellOf). Blend into source image draws them into
+// the picture as glyphs, picked again (R3), so the canvas changes there: those cases held it unchanged before the glyph
+// rule, when Blend wrote the letters as Keep crisp cells does, and hold now that the letters went in, none pinned.
 describe('R3: Merge down of text with no background onto the base keeps the canvas with a palette and a slider moved', () => {
   const cases = [
     ['VGA, Midtones 2', 'vga', { levelsMid: 2 }], ['VGA, Midtones 1.4', 'vga', { levelsMid: 1.4 }], ['VGA, Midtones 0.5', 'vga', { levelsMid: 0.5 }],
@@ -1107,11 +1222,13 @@ describe('R3: Merge down of text with no background onto the base keeps the canv
     expect(changed(cellsKey(project), was)).toEqual([]);
   });
 
-  test.each(cases)('Blend into source image, %s: the canvas unchanged', async (_, quantize, sliders) => {
-    const project = await typed(quantize, sliders, { blended: true }), was = cellsKey(project);
+  test.each(cases)('Blend into source image, %s: the letters drawn into the picture as glyphs, none pinned', async (_, quantize, sliders) => {
+    const project = await typed(quantize, sliders, { blended: true });
     await project.mergeIntoPicture();
     await settle(project);
     expect(project.layers).toHaveLength(1); // the layer went into the picture
-    expect(changed(cellsKey(project), was)).toEqual([]);
+    const fit = project.fitFor(project.cols, project.rows);
+    const inPicture = (key) => { const [col, row] = key.split(',').map(Number); return col >= fit.dx && col < fit.dx + fit.dw && 2 * row >= fit.dy && 2 * row + 1 < fit.dy + fit.dh; };
+    expect([...project.baseRecords.pins.keys()].filter(inPicture)).toEqual([]); // only the letterbox's merge exactly
   });
 });
