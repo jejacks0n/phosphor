@@ -10,11 +10,11 @@ test('About opens from the logo, says which build it is and who brings it, and c
   await expect(page.locator('footer').getByRole('button', { name: 'About Phosphor' })).toHaveCount(0); // the logo is the way in
   await page.getByRole('button', { name: 'About Phosphor' }).click();
   await expect(page.locator('dialog.modal-dialog.reading')).toBeVisible();
-  // The build it is: major.minor with the day it was built as the third number, and the commit
-  // (GitHub Actions' when deploying; "-dirty" with uncommitted changes), in About and in the page's
-  // <meta name="phosphor-build">.
+  // The build it is: major.minor with the day it was built as the third number (and -beta or -alpha after it while
+  // package.json's version is one), and the commit (GitHub Actions' when deploying; "-dirty" with uncommitted changes),
+  // in About and in the page's <meta name="phosphor-build">.
   const day = (ago) => new Date(Date.now() - ago * 86_400_000).toISOString().slice(0, 10).replaceAll('-', '');
-  const today = `(${day(0)}|${day(1)})`; // built moments ago: today, or yesterday across midnight UTC
+  const today = `(${day(0)}|${day(1)})(-(alpha|beta)(\\.\\d+)?)?`; // built moments ago: today, or yesterday across midnight UTC
   const sha = process.env.GITHUB_SHA?.slice(0, 7) ?? execSync('git rev-parse --short=7 HEAD').toString().trim();
   await expect(page.locator('p.version')).toHaveText(new RegExp(`^v\\d+\\.\\d+\\.${today}$`));
   await expect(page.locator('p.build')).toHaveText(new RegExp(`^build ${sha}(-dirty)?$`));

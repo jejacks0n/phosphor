@@ -8,11 +8,14 @@ import { join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 
 // What a build is, baked into it (__BUILD__ in the app; a <meta name="phosphor-build"> in index.html):
-// the version, package.json's major.minor with the day it was built (UTC) as the third number
-// (0.1.20261024), and the commit it was built from (GitHub Actions' GITHUB_SHA when deploying;
-// "-dirty" when built from uncommitted changes), which tells two builds on one day apart. The desktop app's version is
-// package.json's whole, as its releases are tagged (v0.2.0, v0.2.0-beta).
-export function buildInfo({ desktop = false } = {}) {
+// the version, package.json's major.minor with the day it was built (UTC) as the third number and its pre-release
+// suffix kept (0.1.20261024, 1.0.20261124-beta), the commit it was built from (GitHub Actions' GITHUB_SHA when
+// deploying; "-dirty" when built from uncommitted changes), which tells two builds on one day apart, and
+// packageVersion, package.json's own version (1.0.0-beta): what says a build is a pre-release (src/lib/buildStage.js),
+// and the one name the days' builds of a version share. The desktop app's version is package.json's whole, as its
+// releases are tagged (v0.2.0, v0.2.0-beta).
+const packageVersion = () => JSON.parse(readFileSync(new URL('./package.json', import.meta.url))).version;
+export function buildInfo({ desktop = false, version = packageVersion(), now = new Date() } = {}) {
   const git = (cmd) => {
     try {
       return execSync(cmd, { stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
@@ -22,11 +25,10 @@ export function buildInfo({ desktop = false } = {}) {
   };
   const sha = (process.env.GITHUB_SHA || git('git rev-parse HEAD')).slice(0, 7) || 'unknown';
   const dirty = !process.env.GITHUB_SHA && git('git status --porcelain') ? '-dirty' : '';
-  const { version } = JSON.parse(readFileSync(new URL('./package.json', import.meta.url)));
-  if (desktop) return { version, sha: sha + dirty };
-  const [major, minor] = version.split('.');
-  const day = new Date().toISOString().slice(0, 10).replaceAll('-', '');
-  return { version: `${major}.${minor}.${day}`, sha: sha + dirty };
+  if (desktop) return { version, sha: sha + dirty, packageVersion: version };
+  const [, major, minor, suffix] = /^(\d+)\.(\d+)\.\d+(.*)$/.exec(version);
+  const day = now.toISOString().slice(0, 10).replaceAll('-', '');
+  return { version: `${major}.${minor}.${day}${suffix}`, sha: sha + dirty, packageVersion: version };
 }
 
 // The built page's Content-Security-Policy: the web build sends it as a header (the _headers file, see securityHeaders;
