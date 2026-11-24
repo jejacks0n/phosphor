@@ -108,6 +108,11 @@
       "unchanged": "Inchangé",
       "changed": "Modifié",
       "saved": "Enregistré"
+    },
+    "keys": {
+      "heading": "Clavier",
+      "commands": "Lancer une commande",
+      "shortcuts": "Tous les raccourcis clavier"
     }
   },
   "tabs": {

@@ -1342,7 +1342,9 @@ About's Licenses tab credits the palettes to Lospec's Palette List and their aut
 ### The Command List
 
 **Cmd+K** (Ctrl+K on Windows and Linux) opens a box for running a command by name, so the ones you use now and then
-don't need a key or a trip to their button. In the desktop app it's also **Help > Command List…**.
+don't need a key or a trip to their button. In the desktop app it's also **Help > Command List…**. The start screen's
+**Keyboard** box, in its bottom right corner (under the list on a phone), shows this key and **?** for the shortcuts
+list, and opens either when clicked; it shows only with a mouse or trackpad, where there's likely a keyboard.
 
 - **Finding**: Type a few letters of the command's words, in order but not necessarily together: **exa** finds
   **Export .ans**, and **save as** finds **Save the project as a new file**. Whole words you type come first, then the
