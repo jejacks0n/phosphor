@@ -17,6 +17,7 @@ import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
 import { slidersAtDefaults } from '@/store/settings';
 import { blankScale } from '@/store/project/document';
+import { writeProject } from '@/document/projectIO.js';
 import { loadReferenceFont } from '@/lib/GlyphCoverage';
 import { drawGlyphCell } from '@/lib/glyphPicture';
 
@@ -630,6 +631,35 @@ test('an .ans written blinking, as tests/qa/files.js writes Walt\'s blink.ans, e
   await settle(project);
   expect(project.sauceIceColors).toBe(false);
   expect([...await exported(project)]).toEqual([...original]);
+});
+
+test('a file that opens blinking, where the system asks for reduced motion, says the ANSI view won\'t blink it; otherwise nothing', async () => {
+  const project = await afterAnotherDocument();
+  const STEADY = 'Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.';
+  const art = '\x1b[0m\x1b[5;37;44mAB\x1b[0m';
+  const reduced = (on) => vi.spyOn(window, 'matchMedia').mockImplementation((query) => (query === '(prefers-reduced-motion: reduce)' ? { matches: on, media: query } : realMatchMedia(query)));
+  const realMatchMedia = window.matchMedia.bind(window);
+  const said = async (open, on) => {
+    const motion = reduced(on);
+    try {
+      closeToast();
+      await open();
+      await settle(project);
+      return toastMessage.value;
+    } finally {
+      motion.mockRestore();
+    }
+  };
+  expect(await said(() => project.openArtFile(withRecord(art, 2)), true)).toBe(STEADY);
+  expect(await said(() => project.openArtFile(withRecord(art, 2)), false)).toBeFalsy(); // it blinks: nothing to say
+  expect(await said(() => project.openArtFile(withRecord(art, 3)), true)).toBeFalsy(); // iCE colors on: nothing blinks
+  // A project saved with iCE colors off, opened again
+  await project.openArtFile(withRecord(art, 2));
+  await settle(project);
+  const pho = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'blinks.pho');
+  expect(await said(() => project.loadProject(pho), true)).toBe(STEADY);
+  expect(await said(() => project.loadProject(pho), false)).toBeFalsy();
+  closeToast();
 });
 
 test('iCE colors turned off in a new CGA drawing: its .ans and animated .ans leave out ESC[?33h and the flag, its XBin NON_BLINK', async () => {
