@@ -12,6 +12,8 @@ import { bakedEntry, blockOver, cellIndex, charRowsOf, isSolidGlyph, mix, opensT
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { effectiveColor, paletteChoices, shownColors, storedShowingAs } from '@/lib/PixelTransforms.js';
 import { resolves } from '@/lib/CharResolver.js';
+import { paintCell } from '@/lib/blink.js';
+import { fontChars } from '@/lib/BitmapFont.js';
 import { layerSum, levelCells, over } from '@/store/project/shared.js';
 
 // For each palette color, a stored color that shows as it under the adjustments (paletteChoices), kept while
@@ -322,6 +324,24 @@ export const readingActions = {
     const cells = this.cells; // read once: a store read a cell adds up over a grid of characters
     for (const i of ownIndexes(this.ownCellMaps(), cols, rows, this.renderStyle)) if (cells[i]) putCellPixels(image.data, cols, i, cells[i]);
     return image;
+  },
+
+  // cells (the drawing's, a built frame's, the ones showing) as a 16-color drawing without iCE colors holds them, for
+  // the ANSI view and every export: a cell that isn't a character of someone's own never blinks, its bright color
+  // written as the foreground (blink.js paintCell, docs/model.md R14); someone's own keeps its bright background, which
+  // blinks. With iCE colors on, or in any other drawing, the cells as they are. Someone's own: a pin, an entry of a cells
+  // layer that shows (maps: a built frame's are its editCells) and, in the frame showing (art), an art layer's character.
+  // ponytail: by position, not by which layer is on top, so paint laid over someone's character on a lower layer still
+  // counts as theirs, and a frame that isn't showing doesn't know its art layers' characters.
+  steadyCells(cells = this.cells, { maps = this.ownCellMaps(), art = true } = {}) {
+    const under = this.blinkingBackgrounds;
+    if (!under) return cells;
+    const { cols } = this, own = ownIndexes(maps, cols, this.rows, this.renderStyle);
+    const add = (key) => { const { col, row } = parseKey(key); if (col < cols) own.add(row * cols + col); };
+    for (const key of this.baseRecords.pins.keys()) add(key);
+    if (art) for (const shapes of [this.renderer.shapes, ...this.renderer.upper.map((u) => u.layer)]) if (shapes?.hasArt) for (const key of shapes.artCells()) add(key);
+    const blocks = !this.drawingFont || fontChars('▀█', this.drawingFont) === '▀█';
+    return cells.map((cell, i) => (own.has(i) ? cell : paintCell(cell, under, blocks)));
   },
 
   // Whether the cell at col, row shows a character of someone's own (typed, opened, pasted, pinned, an art layer's; a

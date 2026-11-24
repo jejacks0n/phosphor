@@ -506,6 +506,28 @@ so Undo brings them back.
   keeping its look in the other half, a soft stroke over white painted before staying white, a pinned `▄` kept, Undo,
   and ANSI and Color ASCII keeping their pins).
 
+### R14. Without iCE colors, only a character of someone's own blinks.
+
+In a 16-color drawing with iCE colors off, a bright background (8 to 15) is DOS's blink bit: the cell shows on the
+dark color under it, its letter blinking. Paint and the converter's cells put a cell's top half in its background, so
+the first build made every bright color painted into a top half blink, and a solid bright area dark. A cell blinks only
+where its character is someone's own: a pin, an entry `ownEntry` says is one (R1) on a cells layer that shows, or an
+art layer's character. Every other cell is written as a DOS editor writes it, the bright color in the foreground
+(`paintCell`): a half block whose other half isn't bright turns over (`▄` to `▀`), a cell all in one bright color or a
+space on one is a `█` in it, and what can't be written so (two different bright halves, a converter's character on a
+bright background, a font with no `▀` or `█`) keeps its shape on the background's dark color. The cells themselves keep
+their bright backgrounds: this is how the ANSI view draws them and how every export writes them, so turning iCE colors
+back on (one undo step, `setIceColors`) shows the drawing as it was. Ownership is asked by position, not by which layer
+is on top: paint laid over someone's character on a lower layer is still theirs, a `▄` pinned on the base (Half-block,
+Colors only) is someone's own as every pin is, and a frame that isn't showing doesn't count its art layers' characters.
+
+- Lives in: `paintCell` (`src/lib/blink.js`), asked by `steadyCells` (`src/store/project/reading.js`), which the ANSI
+  view (`steadyShown` in `src/components/AnsiEditor.vue`), `exportFile` and `animationCells`
+  (`src/store/project/document.js`) all go through; `blinkCell` blinks what's left.
+- Checked by: `tests/unit/blink.test.js › R14: …` (each case of `paintCell`); `tests/browser/ansi-blink.test.js › R14: …`
+  (paint over a top half and a whole cell beside a typed character: the cells kept, what's drawn, the `.ans` written,
+  and Undo); `tests/browser/art-files.test.js` (a file's blink, pins, exported byte for byte).
+
 ## Where the rules are walked and what else they reach
 
 Maya's QA script walks R2–R11 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));

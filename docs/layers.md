@@ -1270,7 +1270,7 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
   its palette color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
   the color steps (**Ctrl+arrows**), step past it. With [iCE colors](characters.md#ice-colors) off, the bright
-  colors (8 to 15) on the BG side have a small spark in the corner, in **Recent** too: as a background they blink. **Recent** keeps the palette colors you picked; a recent color
+  colors (8 to 15) on the BG side have a small spark in the corner, in **Recent** too: as the background of a character you type they blink. **Recent** keeps the palette colors you picked; a recent color
   the palette doesn't have (one picked in Full Color) shows as the palette's nearest. A palette with many colors (a
   list of 256 is 32 rows) scrolls by itself, so **None** and **Recent** under it stay in reach. With a Custom color
   list, the color layer's **Palettes** page edits it ([The Color Layer](#the-color-layer)).

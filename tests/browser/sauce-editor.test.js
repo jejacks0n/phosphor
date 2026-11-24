@@ -293,6 +293,12 @@ test('iCE colors is a checkbox in a 16-color drawing, on for a new one; in any o
   box.click();
   await nextTick();
   expect(project.sauceIceColors).toBe(false);
+  project.undo(); // one undo step, so a drawing it changed can go back
+  await nextTick();
+  expect([box.checked, project.sauceIceColors]).toEqual([true, true]);
+  project.redo();
+  await nextTick();
+  expect([box.checked, project.sauceIceColors]).toEqual([false, false]);
   project.quantize = 'vga';
   await nextTick();
   expect([box.checked, box.disabled, help()]).toEqual([false, true, 'Only for 16-color drawings.']);
