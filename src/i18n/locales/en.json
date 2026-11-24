@@ -1515,7 +1515,7 @@
       "dialogChoices": "Move between a dialog's choices, or the start screen's buttons",
       "pencil": "Pencil",
       "brush": "Brush",
-      "eraser": "Eraser (with the Select tool and a selection: erase selection contents)",
+      "eraser": "Eraser",
       "bucket": "Paint Bucket",
       "gradient": "Gradient",
       "blur": "Blur",

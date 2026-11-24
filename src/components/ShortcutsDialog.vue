@@ -123,7 +123,8 @@ kbd {
   border-radius: 4px;
   background: var(--surface-3);
   color: var(--text);
-  font: 12px ui-monospace, Menlo, monospace;
+  font: 12px var(--ui-font-family); /* the system font draws ⌃⌥⇧⌘ as the Mac's menus do; a monospace one's ⇧ is tiny */
+  letter-spacing: 0.1em;
   white-space: nowrap;
 }
 
