@@ -1369,6 +1369,7 @@
       "includeSauce": "Inclure le SAUCE (titre, auteur, police…)",
       "noSauceNote": "Sans SAUCE, les autres visionneuses ne connaissent ni le titre, ni l'auteur, ni la largeur, ni la police, et certaines font clignoter les fonds clairs.",
       "steadyBlink": "Les cellules qui clignotent dans la vue ANSI (couleurs iCE désactivées) sortent fixes ici, avec leur fond clair. ANS et XBin gardent le clignotement.",
+      "blinkGif": "Deux images en boucle : les cellules qui clignotent, leurs lettres visibles puis masquées, comme dans la vue ANSI.",
       "formats": {
         "ans": {
           "name": "ANS"

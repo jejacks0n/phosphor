@@ -66,3 +66,32 @@ test('in an 8×11 font a GIF frame is 11 pixels a line', async () => {
     await setDisplayFont('jetbrains');
   }
 });
+
+// A still drawing that blinks (iCE colors off) exports a GIF of the blink: two frames, the letter there and gone.
+test('a still CGA drawing with a blinking cell exports a two-frame GIF: the letter lit, then dark, a blink apart', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 4, rows: 4 });
+  project.quantize = 'cga';
+  await settle(project);
+  project.writeEditCells([{ col: 1, row: 0, attrs: { char: '█', fg: '#ffffff', bg: '#5555ff' } }]); // a full block on bright blue: every pixel of the cell blinks
+  project.commitEdit();
+  await settle(project);
+  project.setIceColors(false);
+  expect(project.blinks).toBe(true);
+  let blob;
+  await project.exportAnimation('gif', { deliver: (b) => { blob = b; } });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const decoder = new ImageDecoder({ data: bytes, type: 'image/gif' });
+  await decoder.tracks.ready;
+  await decoder.completed;
+  expect(decoder.tracks.selectedTrack.frameCount).toBe(2);
+  const first = await decoder.decode({ frameIndex: 0 });
+  expect(first.image.duration).toBe(230_000); // 23 hundredths of a second, in microseconds: DOS's blink
+  first.image.close();
+  decoder.close();
+  const [lit, dark] = await decodedFrames(bytes, 2);
+  const w = lit.width / 4, at = (frame, col) => [...frame.data.slice(4 * (Math.floor(w * (col + 0.5)) + frame.width * 4), 4 * (Math.floor(w * (col + 0.5)) + frame.width * 4) + 3)];
+  expect(at(lit, 1)).toEqual([255, 255, 255]); // the block, lit
+  expect(at(dark, 1)).toEqual([0, 0, 170]); // gone: the dark blue under bright blue
+  expect(at(lit, 2)).toEqual(at(dark, 2)); // a cell that doesn't blink is the same in both
+});

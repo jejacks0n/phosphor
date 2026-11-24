@@ -560,6 +560,34 @@ test('with iCE colors off, every format but ANS, Animated ANS and XBin says its 
   }
 });
 
+test('a still drawing in which something blinks has GIF too, saying it\'s two frames in place of the steady note; with nothing blinking it\'s off', async () => {
+  const { project } = await drawing();
+  project.quantize = 'cga';
+  await settle(project);
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog');
+    const gif = () => [...modal.querySelectorAll('.format-btn')].find((b) => b.querySelector('.format-name').textContent === 'GIF');
+    expect(gif().disabled).toBe(true); // iCE colors on
+    project.setIceColors(false);
+    await nextTick();
+    expect(project.blinks).toBe(false); // the A's background isn't a bright color
+    expect(gif().disabled).toBe(true);
+    project.writeEditCells([{ col: 2, row: 0, attrs: { char: 'B', fg: '#ffffff', bg: '#5555ff' } }]);
+    project.commitEdit();
+    await settle(project);
+    await nextTick();
+    expect(gif().disabled).toBe(false);
+    expect([...modal.querySelectorAll('.format-btn:disabled')].length).toBe(4); // the other animated formats stay off
+    gif().click();
+    await nextTick();
+    expect(modal.querySelector('.note.blink-gif').textContent).toBe('Two frames, looping: the cells that blink, their letters on and off as in the ANSI view.');
+    expect(modal.querySelector('.note.steady')).toBe(null);
+  } finally {
+    unmount();
+  }
+});
+
 test('offers XBin only for 16 colors or fewer', async () => {
   const { project, pinia } = await drawing();
   const state = async (settings) => {

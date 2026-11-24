@@ -228,6 +228,12 @@ export const useProjectStore = defineStore('project', {
     blinkingBackgrounds() {
       return !this.sauceIceColors && this.sixteenColors ? blinkingBackgrounds(this.sixteenColors) : null;
     },
+    // Whether anything blinks: without iCE colors, a character of someone's own on a bright background (steadyCells
+    // leaves only those bright). What a still drawing's GIF has two frames for.
+    blinks() {
+      const under = this.blinkingBackgrounds;
+      return !!under && this.steadyCells().some((cell) => cell && under.has(cell.bg.hex.toLowerCase()));
+    },
     // The 16 colors an XBin export holds, as hexes in XBin's DOS order, or null when the drawing's palette is more.
     xbinPalette(state) {
       const hexes = (colors) => (colors.length >= 1 && colors.length <= 16 ? colors.map((c) => c.hex) : null);
