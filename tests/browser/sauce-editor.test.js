@@ -1,12 +1,17 @@
 // The SAUCE tab (SauceEditor.vue): a count on each short field as the record counts characters, a line under a field
 // saying how many characters fit when an edit went past it, and the fields off for an artist in a room.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import SauceEditor from '@/components/SauceEditor.vue';
 import { CP437_BLOCKS } from '@/lib/BitmapFont.js';
+import { closeToast, toastMessage } from '@/composables/useToast';
+
+// The system's reduced-motion setting, as matchMedia answers it; every other query the browser's own.
+const realMatchMedia = window.matchMedia.bind(window);
+const reducedMotion = (on) => vi.spyOn(window, 'matchMedia').mockImplementation((query) => (query === '(prefers-reduced-motion: reduce)' ? { matches: on, media: query } : realMatchMedia(query)));
 
 let app = null, host = null;
 afterEach(() => {
@@ -295,4 +300,29 @@ test('iCE colors is a checkbox in a 16-color drawing, on for a new one; in any o
   project.palette = Array.from({ length: 16 }, (_, i) => `#${i.toString(16).repeat(6)}`).join(' '); // a list of 16, as an XBin's own
   await nextTick();
   expect([box.checked, box.disabled]).toEqual([false, false]);
+});
+
+test('turning iCE colors off where the system asks for reduced motion says the ANSI view won\'t blink; elsewhere, or turned on, nothing', async () => {
+  let motion = reducedMotion(false);
+  try {
+    await mount(({ project }) => { project.quantize = 'cga'; });
+    const box = field('sauce-ice');
+    closeToast();
+    box.click(); // off, with motion
+    await nextTick();
+    expect(toastMessage.value).toBeFalsy();
+    box.click(); // on again
+    motion.mockRestore();
+    motion = reducedMotion(true);
+    box.click(); // off, with reduced motion
+    await nextTick();
+    expect(toastMessage.value).toBe('Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.');
+    closeToast();
+    box.click(); // on: nothing to say
+    await nextTick();
+    expect(toastMessage.value).toBeFalsy();
+  } finally {
+    motion.mockRestore();
+    closeToast();
+  }
 });
