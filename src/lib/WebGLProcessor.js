@@ -327,26 +327,37 @@ export default class WebGLProcessor {
   }
 
   // The picture as it goes up for processing at w x h, always through a canvas, so a transparent pixel reads the same
-  // at every size (black, never the color a file keeps under alpha 0). Smaller than that (a picture with fewer pixels
-  // than the working scale's least), it's enlarged to it pixel for pixel, so a small pixel-art picture stays blocks and
-  // every pass reads its pixels at their centers. Twice that or more, or longer than the GPU takes (it would come out
-  // black), it's averaged down by a whole factor (boxFiltered), so what would fall between two of the texture's bilinear
-  // samples isn't lost; the bilinear sampling then does the rest, under 2x. One side shorter and one longer goes up as
-  // it is. The averaged copy is kept while the factor stays, so a Columns drag doesn't make it again at every step.
-  #fitting(image, w, h) {
+  // at every size (black, never the color a file keeps under alpha 0). Twice that or more, or longer than the GPU takes
+  // (it would come out black), it's averaged down by a whole factor (#averaged), so what would fall between two of the
+  // texture's bilinear samples isn't lost; the bilinear sampling then does the rest, under 2x. Smaller, it's enlarged
+  // pixel for pixel in blocks of pixelUp x pixelUp (#pixelUp), or smoothly by the bilinear sampling when pixelUp is 0.
+  #fitting(image, w, h, pixelUp) {
     const iw = image.naturalWidth || image.width, ih = image.naturalHeight || image.height;
-    const canvas = (cw, ch) => Object.assign(document.createElement('canvas'), { width: cw, height: ch });
-    if (iw <= w && ih <= h && (iw < w || ih < h)) {
-      const fitted = canvas(w, h), ctx = fitted.getContext('2d');
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(image, 0, 0, w, h);
-      return fitted;
-    }
+    if (pixelUp && iw <= w && ih <= h && (iw < w || ih < h)) return this.#pixelUp(image, iw, ih, w, h, pixelUp);
     const f = Math.max(Math.floor(Math.min(iw / w, ih / h)), Math.ceil(Math.max(iw, ih) / this.maxSide));
     if (f >= 2) return this.#averaged(image, iw, ih, f);
     if (typeof image.getContext === 'function') return image;
-    const fitted = canvas(iw, ih);
+    const fitted = Object.assign(document.createElement('canvas'), { width: iw, height: ih });
     fitted.getContext('2d').drawImage(image, 0, 0);
+    return fitted;
+  }
+
+  // The picture enlarged to w x h pixel for pixel, each block x block square of it the picture's pixel under the square's
+  // center, worked out in whole numbers so a center on a pixel's edge picks the same pixel on every computer (a canvas's
+  // own nearest scaling doesn't: CI's software drawing picked the other at 1.5x).
+  #pixelUp(image, iw, ih, w, h, block) {
+    const own = Object.assign(document.createElement('canvas'), { width: iw, height: ih }), ownCtx = own.getContext('2d');
+    ownCtx.drawImage(image, 0, 0);
+    const from = new Uint32Array(ownCtx.getImageData(0, 0, iw, ih).data.buffer);
+    const out = new ImageData(w, h), to = new Uint32Array(out.data.buffer);
+    const bw = Math.ceil(w / block), bh = Math.ceil(h / block), at = (i, n, size) => Math.min(size - 1, Math.floor(((2 * Math.floor(i / block) + 1) * size) / (2 * n)));
+    const xs = Int32Array.from({ length: w }, (_, x) => at(x, bw, iw));
+    for (let y = 0; y < h; y++) {
+      const row = at(y, bh, ih) * iw;
+      for (let x = 0; x < w; x++) to[y * w + x] = from[row + xs[x]];
+    }
+    const fitted = Object.assign(document.createElement('canvas'), { width: w, height: h });
+    fitted.getContext('2d').putImageData(out, 0, 0);
     return fitted;
   }
 
@@ -480,7 +491,7 @@ export default class WebGLProcessor {
 
   // snapLastPass: false leaves the CGA/VGA palette snap out of the last pass (a bake captures the
   // picture without it; the palette keeps applying when it's rendered).
-  process(image, params, targetWidth, targetHeight, { snapLastPass = true } = {}) {
+  process(image, params, targetWidth, targetHeight, { snapLastPass = true, pixelUp = 0 } = {}) {
     const gl = this.gl;
     const program = this.program;
 
@@ -493,7 +504,7 @@ export default class WebGLProcessor {
     }
 
     // Main Image Texture
-    if (this.lastImage !== image || this.lastSize !== `${w}x${h}`) {
+    if (this.lastImage !== image || this.lastSize !== `${w}x${h}${pixelUp}`) {
       if (this.texture) gl.deleteTexture(this.texture);
       this.texture = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, this.texture);
@@ -501,9 +512,9 @@ export default class WebGLProcessor {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.#fitting(image, w, h));
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, this.#fitting(image, w, h, pixelUp));
       this.lastImage = image;
-      this.lastSize = `${w}x${h}`;
+      this.lastSize = `${w}x${h}${pixelUp}`;
     }
 
     // Palette Texture

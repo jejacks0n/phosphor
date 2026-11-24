@@ -39,3 +39,15 @@ for (const [name, settings] of Object.entries(CASES)) {
     expect(off).toEqual([]);
   });
 }
+
+// Threshold shows its two colors only: at the working scale a grid pixel along its edge averages processed pixels of
+// both, and it's snapped to the nearer. The bars around the picture stay black.
+test('Threshold\'s cells are its two colors, at any working scale', async () => {
+  const { createTestApp, loadImage, settle } = await import('../support/app.js');
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  Object.assign(project, { threshold: 128, thresholdDark: '#331100', thresholdLight: '#ffaa00' });
+  await settle(project);
+  const shown = new Set(project.cells.flatMap((cell) => [cell.fg.hex, cell.bg.hex]));
+  expect([...shown].filter((hex) => hex !== '#000000').sort()).toEqual(['#331100', '#ffaa00']);
+});
