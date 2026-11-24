@@ -4,7 +4,7 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import os from 'node:os';
 import { join } from 'node:path';
 import { readArtFile } from '../../src/lib/ArtFile.js';
-import { makeLogoAns, makeLongAns, makeSceneAns, writeFiles } from '../qa/files.js';
+import { makeBlinkAns, makeLogoAns, makeLongAns, makeSceneAns, writeFiles } from '../qa/files.js';
 
 const at = (art, char) => {
   const i = art.cells.findIndex((cell) => cell.char === char);
@@ -62,6 +62,17 @@ test('the logo reads back as 20 by 5 with spaces around the shape', () => {
 test('the files are written into a folder, each as the bytes the generator makes', () => {
   const dir = mkdtempSync(join(os.tmpdir(), 'qa-files-'));
   const paths = writeFiles(dir);
-  expect(Object.keys(paths)).toEqual(['long', 'scene', 'logo']);
+  expect(Object.keys(paths)).toEqual(['long', 'scene', 'logo', 'blink']);
   expect(readFileSync(paths.logo)).toEqual(Buffer.from(makeLogoAns()));
+  expect(readFileSync(paths.blink)).toEqual(Buffer.from(makeBlinkAns()));
+});
+
+test('the blink file leaves iCE colors off: SAUCE flags 2, no ESC[?33h, its bright backgrounds written as blink', () => {
+  const bytes = makeBlinkAns(), art = readArtFile(bytes, 'blink.ans'), text = Buffer.from(bytes).toString('latin1');
+  expect([art.cols, art.rows, art.sauce.flags, art.sauce.title, art.iceColors]).toEqual([20, 4, 2, 'QA Blink', false]);
+  expect(text).not.toContain('\x1b[?33h');
+  expect(text).toContain(`${String.fromCharCode(27)}[1;5;37;41m`); // bold white on red, with blink (SGR 5): bright red
+  expect(at(art, 'B').cell.bg).toBe('#ff5555');
+  expect(at(art, 's').cell.bg).toBe('#0000aa');
+  expect(art.cells[3 * 20 + 2].bg).toBe('#5555ff');
 });

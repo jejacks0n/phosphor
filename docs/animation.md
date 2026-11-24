@@ -325,7 +325,7 @@ The still exports (**ANS**, **UTF-8 ANS**, and **PNG**) write the frame showing.
 - **Animated UTF-8 ANS**: The same, in UTF-8, for a modern terminal. Every character is kept, so there's nothing to replace. `cat` writes it faster than the eye can follow; something that slows it down plays it, like `pv -qL 20000 art.utf8ans`.
 - **Cast** (an asciinema recording): Plays back with exact frame timing and every character, in a terminal or on the web. It needs a terminal or player at least as wide and tall as the art.
 
-The ANSI and Cast exports write 24-bit color, or the palette's own colors with the VGA or CGA palette. The animated ANSI files end with a SAUCE record unless **Include SAUCE** is unchecked, as the still ones do ([SAUCE Metadata](characters.md#sauce-metadata)).
+The ANSI and Cast exports write 24-bit color, or the palette's own colors with the VGA or CGA palette. The animated ANSI files end with a SAUCE record unless **Include SAUCE** is unchecked, as the still ones do ([SAUCE Metadata](characters.md#sauce-metadata)). With [iCE colors](characters.md#ice-colors) off, a CGA Animated ANS leaves its bright backgrounds blinking, as a still one does; GIF, video and Cast show them steady, with no blinking frames.
 
 ---
 

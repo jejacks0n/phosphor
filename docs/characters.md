@@ -334,12 +334,14 @@ With the **Edit Mode** tool (**T**) selected, you can type characters, symbols, 
 - **`.utf8ans`**: Modern Unicode ANSI. Keeps every character. A two-column character is written once and the terminal moves two columns for it, so the rows line up.
 - **`.ans`**: Classic DOS CP437, which can't hold most Unicode characters. Each character it lacks is written as its closest lookalike, or `?`. Before you export, the Export dialog lists every one, what it becomes, and how many cells use it. A two-column character becomes its stand-in plus a space, so the grid still lines up.
 - **Colors** are written as the **Color palette** says: CGA as the 16 classic colors, VGA as 256-color codes (`38;5`), and everything else as 24-bit codes (`38;2`). A file you opened keeps the palette it came with ([Opening a file](layers.md#opening-ansi-and-text-files)), so it comes out in the same kind of codes.
+- **Bright backgrounds** in a CGA `.ans` are written the classic way, as blink. With [iCE colors](#ice-colors) on, the file starts with `ESC[?33h`, which tells a viewer that ignores SAUCE (SyncTERM, some BBS terminals) to show them bright, as the record's flag does; with it off, neither is written, and they blink. A `.utf8ans` writes them as colors of their own, never blink.
 
 ### Saving .xb
 
 - **`.xb`**: XBin, the format 16colo.rs shows with the art's own font and 16 colors inside the file. The export holds your cells, the drawing's bitmap font (IBM VGA 8×16 when it has none) and the palette.
 - **Cells with one color**: A cell whose foreground and background are the same palette color is written as a space, as in an `.ans`, so no hidden character rides along.
 - **Needs 16 colors or fewer**: XBin is offered when the **Color palette** is CGA, **Limited count** of 16 or fewer, or a **Custom** list of up to 16 colors. With any other palette the **Export** button is off and the dialog says what to pick.
+- **Blink**: With [iCE colors](#ice-colors) off in a 16-color drawing, the file says its backgrounds' top bit is blink, so colors 8 to 15 blink as they do in Phosphor; otherwise it says they're bright.
 - **SAUCE** is optional, as it is for `.ans`: **Include SAUCE** is the Export dialog's checkbox. An XBin's record names no font (the font is in the file), whatever **Font name** holds.
 - **Opening** an `.xb` gives the drawing its cells, font and palette ([Opening ANSI and text files](layers.md#opening-ansi-and-text-files)). The font is listed under **This drawing** by the file's name, without the `.xb`.
 
@@ -353,12 +355,12 @@ In 256 colors, 16 and 231 are a terminal's fixed black and white, while 0 and 15
 
 ### SAUCE Metadata
 
-Exported `.ans` and `.utf8ans` files, animated ones too, end with a SAUCE metadata record, which holds what's on the **SAUCE** tab: title, author, group, date, comments, font name, and letter spacing.
+Exported `.ans` and `.utf8ans` files, animated ones too, end with a SAUCE metadata record, which holds what's on the **SAUCE** tab: title, author, group, date, comments, font name, letter spacing, and iCE colors.
 
 - **Include SAUCE**: The Export dialog's checkbox for the ANSI formats, checked each time the dialog opens. Unchecked, the file ends with the art: no record, no comments, and no end-of-file byte before them. The dialog then says what other viewers lose without it: the title, author, width, and font, and some show bright backgrounds blinking. Phosphor opens such a file with an empty SAUCE tab ([Opening a file](layers.md#opening-ansi-and-text-files)).
 
 - **Letter spacing is the width**: With a bitmap font, 8px and 9px on the SAUCE tab are the Fonts page's 8 and 9 (setting either sets both, as one undo step, and a narrow drawing becomes 8 or 9 wide); with a narrow drawing neither is lit. A narrow drawing exports Letter spacing 8px. An opened `.ans`'s Letter spacing replaces the drawing's, so one saying 9px opens 9 wide and one saying 8px opens 8 wide. Not set writes 00 and draws at 8, the same kind of undo step (a narrow drawing becomes 8 wide).
-- **A new drawing** starts with an empty SAUCE tab: a picture, an SVG, or a blank canvas keeps nothing from the drawing before it (no title, author, group, date, or comments, the font name back to IBM VGA, and letter spacing to 8px).
+- **A new drawing** starts with an empty SAUCE tab: a picture, an SVG, or a blank canvas keeps nothing from the drawing before it (no title, author, group, date, or comments, the font name back to IBM VGA, letter spacing to 8px, and iCE colors on).
 - **A converted image or a blank canvas** gets Phosphor's own comment lines first (Created with Phosphor, and the settings it was converted with), then a blank line and yours. An empty date is the day you export, the font name is IBM VGA, and the letter spacing is 8px.
 - **A library font's name**: a library font that has a SAUCE name (Amiga Topaz 1+, say) sets **Font name** when you use it from the Fonts page, in the same undo step as the font, so an export names the font it was drawn in. Favoriting it changes nothing, and using it later from Favorites on the Fonts page sets the name too. An `.ans` or `.bin` whose SAUCE names such a font opens in it (the font is fetched, kept in Favorites, and opening it is no step to undo); IBM VGA and names the library doesn't know open as before, and if the font can't be fetched the file opens in the font in use, with a note saying so.
 - **A file you opened** gets none of them: its record comes out as it went in, with its date, flags (iCE colors, letter spacing), font name, size, and comments changed only where you changed them on the SAUCE tab. An empty date or font name stays empty, and its field says so. Letter spacing changes only its own bits of the flags. A resize changes the size it gives.
@@ -366,12 +368,24 @@ Exported `.ans` and `.utf8ans` files, animated ones too, end with a SAUCE metada
 - **Date** is YYYYMMDD and takes digits. A date that isn't a real day gets a note under the field, and is written as typed.
 - **Comments** are lines of up to 64 characters: a longer line breaks at a space, and only a word longer than 64 characters is split. The record holds at most 255 lines. Under Comments, the SAUCE tab counts the lines the record would take ("128 of 255 SAUCE lines"), saying how many are Phosphor's own, and past 255 says from which line comments won't be in the file; the Export dialog says it again before you export. The field keeps everything you paste, so trimming is up to you.
 - **Font name and Letter spacing** (Not set, 8px, or 9px) tell other viewers how to show the file. Phosphor's view keeps your display font, except that with a bitmap font Letter spacing is the width it's drawn at (above).
+- **iCE colors**: The checkbox under them ([iCE colors](#ice-colors)).
+
+### iCE colors
+
+On DOS a background color had three bits and the fourth was blink: a cell whose background was one of the bright colors (8 to 15) showed that color less 8, its letter blinking. Art made with iCE colors used the bit for bright backgrounds instead, and SAUCE's flag says which a file means.
+
+- **The checkbox**: **iCE colors** on the SAUCE tab, under Font name and Letter spacing. On, bright backgrounds are bright. Off, they blink, as on DOS. It's the drawing's own, saved with the project, kept by autosave, and the same for everyone in a room (the host's, as the other SAUCE fields are).
+- **When it's on**: A new drawing starts with it on. An opened file has it as the file says ([Opening a file](layers.md#opening-ansi-and-text-files)), so legacy art that blinked on purpose blinks again.
+- **Where it shows**: Only in the ANSI view. A cell with a bright background is drawn on the dark color under it, its letter on and off a few times a second (steady, with the background dark, when your system asks for reduced motion). The PIXEL view, **Merge into the image**, and every picture you export (`.png`, `.gif`, video, `.cast`) show the cell steady, its background bright, as a viewer with iCE colors would.
+- **Making a cell blink**: With iCE colors off, pick a bright background. On the color layer's BG side the bright swatches have a small spark in the corner, saying they blink.
+- **Only 16 colors**: It's for a drawing in 16 colors: CGA, or a **Custom** list of exactly 16 (as an XBin opens its own), whose 9th to 16th colors are the bright ones. In any other palette the checkbox is off, saying "Only for 16-color drawings", and nothing blinks; the drawing keeps its choice, so going back to CGA brings it back.
+- **In the files**: An `.ans` export's record has the iCE colors flag as the checkbox says, and a CGA `.ans` starts with `ESC[?33h` only when it's on, so the record and the code always agree. An XBin says it in its header. The other formats don't have blink, so they stay as they are.
 - **CP437**: The record is CP437 in `.ans` and `.utf8ans` alike. A character it lacks is written as its lookalike, or `?`, and the Export dialog lists those too, for every ANSI format, with the fields each is in. Only what reaches the record is listed.
 - **Control characters** (tab, ESC, and the like), which a terminal printing the file would act on, can't be in SAUCE. Typed or pasted, they're left out and the line under the field says so, and an export leaves out any that a project or an opened file still has. A comment's line breaks stay, since they make its lines.
 
 ### Exporting .png
 
-A `.png` is a picture of the art as the ANSI view draws it, in your display font, at one pixel per font pixel: the frame that's showing, with or without Animate.
+A `.png` is a picture of the art as the ANSI view draws it, in your display font, at one pixel per font pixel: the frame that's showing, with or without Animate. A cell that blinks there ([iCE colors](#ice-colors) off) is drawn steady, its background bright.
 
 - **With Smooth text off** (the status bar's **Smooth**), every pixel is one of the art's colors and the file is small.
 - **With Smooth text on**, the Export dialog offers a **Text rendering** choice: **Smooth** (picked first) keeps the anti-aliased edges, which add colors and make the file a few times bigger, and **Hard-edged** draws the text crisp, as with Smooth text off. The choice doesn't change the Smooth setting, and isn't remembered.

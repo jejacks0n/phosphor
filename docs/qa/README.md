@@ -492,13 +492,15 @@ file `performance` findings; note it on the first step.
 
 ## Files
 
-- **Generated:** `files.writeFiles(join(runDir, 'files'))` writes three ANSI files into the run folder and returns
-  their paths, `{ long, scene, logo }`:
+- **Generated:** `files.writeFiles(join(runDir, 'files'))` writes four ANSI files into the run folder and returns
+  their paths, `{ long, scene, logo, blink }`:
   - `long`: 300 columns by 1,600 lines (480,000 cells, about 10.6 MB), every color of the 256, for the sizes near the
     limit;
   - `scene`: an 80 column scene with what real .ans files have (CP437 characters, a move right, a saved and restored
     cursor, a bright background written as blink, a line running past column 80, SAUCE);
-  - `logo`: a 20 by 5 shape on spaces, for merging onto other art.
+  - `logo`: a 20 by 5 shape on spaces, for merging onto other art;
+  - `blink`: a 20 by 4 piece whose SAUCE leaves iCE colors off (flags 2, no `ESC[?33h`), its bright backgrounds
+    written as blink (SGR 5), for keeping blink as a file had it.
 - **Fixtures:** `e2e.fixture(path)` is the absolute path of anything in `tests/fixtures/`: images (`images/photo.jpg`,
   `gradient.png`, `rgba.png`, `tall.png`, `tiny.gif` and more), projects (`projects/animated.phosphor` and more), SVGs
   (`svg/rose-mark.svg`, `svg/gradients.svg` ...), `ansi/past-the-edge.ans`, fonts and clipboard captures.
