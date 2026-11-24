@@ -3,6 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ModalDialog from '@/components/ModalDialog.vue';
+import CrtGlow from '@/components/CrtGlow.vue';
 import { LINKED_FONTS } from '@/lib/linkedFonts';
 import { licenseUrl } from '@/lib/fontLibrary';
 
@@ -112,6 +113,7 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { fl
 
     <template v-else>
       <header>
+        <CrtGlow/>
         <div class="logo"></div>
         <p class="tagline">{{ t('about.tagline') }}</p>
         <p class="version accent">{{ t('about.version', { version }) }}</p>
@@ -217,11 +219,21 @@ watch(() => workspace.legalPage, (page) => { if (!page) opener?.focus(); }, { fl
 </template>
 
 <style scoped>
+/* The glow reaches up to the tabs and out to the dialog's sides: past the body's padding (ModalDialog's reading). */
 header {
+  --glow-reach: 40px;
+  position: relative;
+  isolation: isolate;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
+}
+
+@media (max-width: 700px) {
+  header {
+    --glow-reach: 18px;
+  }
 }
 
 div.logo {
