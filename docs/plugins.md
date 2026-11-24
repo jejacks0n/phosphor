@@ -419,9 +419,10 @@ chosen for every cell, and it can read what pass 1 chose around it.
 `cell` and `look` are Phosphor's own objects, handed to every call of a pass: `cell` is the same object for each cell
 in turn, its `col` and `line` changed, so keep the numbers, not the object.
 
-A pass returns `{ char, fg, bg }`. A color is a palette index or `{ r, g, b }`, 0 to 255, and gets the palette's nearest
-color when there is one. Anything else is black, so a mistake shows: a channel under 0 or over 255, an index the palette
-doesn't have, or a color as an `[r, g, b]` list (what `cell.sample` gives is a list; name its channels). The result is held to the layer's set and the style: a character the layer's set and your
+A pass returns `{ char, fg, bg }`. A color is a palette index, or `{ r, g, b }` or `[r, g, b]` as the helpers take, 0
+to 255, and gets the palette's nearest color when there is one. A channel under 0 or over 255 is held to the range, as
+a brush's is. Anything else is black, so a mistake shows: a channel that isn't a finite number (`NaN`, `Infinity`, a
+string) or an index the palette doesn't have. The result is held to the layer's set and the style: a character the layer's set and your
 `chars` don't hold is the first character of the set (a fault: where your JavaScript draws, the plugin's row in the
 Plugins dialog says the solver returned a character it doesn't draw with), Color ASCII's background is black and
 Monochrome ASCII is white on black. `refine` may return `null` to keep pass 1's cell, as Outlines does where Clean up
@@ -479,7 +480,8 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
 - `byShape()`: By shape's pick for the cell, put as the result.
 - `charAt(ivec2 d)` (pass 2): pass 1's glyph index for the cell `d` away, or -1 past the border.
 - `put(vec3 fg, vec3 bg, int glyph)`: the result, the foreground first, as a pass's `{ char, fg, bg }` names them
-  (`mixed` is the one that takes the background first). Glyph 255 means a solid cell.
+  (`mixed` is the one that takes the background first). Glyph 255 means a solid cell. Each color is held as the
+  JavaScript's is: a channel to 0 to 255, and a color with a channel that isn't finite to black.
 
 Those names are the whole of what a shader may use from Phosphor, and they keep their meaning. Your pass sits in one
 shader with Phosphor's own code, so it can see more than is listed: everything else there is Phosphor's own, begins
@@ -558,9 +560,10 @@ functions, so `this` is undefined. `paint` is made once a stroke, and is the sam
   `null` off the grid. That's paint and cells both: a block of colored spaces typed on the layer, or on one under it, is
   its color, and a letter is its ink over its background as its shape covers that half of the cell.
 - `paint.own(x, y)`: the picked layer's own paint there, as `{ r, g, b, a }` (`a` from 0 to 1), or `null` where it has
-  none. With the base picked it's what `shown` gives: `{ r, g, b }`, with no `a`.
-- `paint.put(x, y, color, alpha)`: paints a grid pixel with `color` (`{ r, g, b }`, 0 to 255) at `alpha` (0 to 1) over
-  what the picked layer had there when the stroke began.
+  none. With the base picked it's what `shown` gives, at `a` 1, since every pixel of the base is opaque.
+- `paint.put(x, y, color, alpha)`: paints a grid pixel with `color` (`{ r, g, b }` or `[r, g, b]`, 0 to 255) at `alpha`
+  (0 to 1) over what the picked layer had there when the stroke began. A channel under 0 or over 255 is held to the
+  range, as a solver's is; a write with a channel that isn't a finite number is ignored.
 - `paint.set(x, y, color, alpha)`: makes the picked layer's paint at a grid pixel exactly `color` at `alpha`, whatever
   was there; at 0 it clears the pixel, and needs no color. It's how a brush thins or removes paint, which a put can't.
   On the base, where every pixel is opaque, it's a put.
