@@ -71,7 +71,7 @@ function onKey(event) {
   <ModalDialog :title="t('shortcuts.list.title')" closable full @cancel="emit('close', null)">
     <input
         v-model="query"
-        type="text"
+        type="search"
         role="combobox"
         aria-expanded="true"
         aria-autocomplete="list"
@@ -80,7 +80,10 @@ function onKey(event) {
         :aria-label="t('shortcuts.list.search')"
         :placeholder="t('shortcuts.list.search')"
         autocomplete="off"
+        autocapitalize="off"
+        autocorrect="off"
         spellcheck="false"
+        enterkeyhint="go"
         autofocus
         @keydown="onKey"
     >
@@ -109,11 +112,6 @@ function onKey(event) {
 </template>
 
 <style scoped>
-input {
-  width: 100%;
-  box-sizing: border-box;
-}
-
 /* One height whatever is found, so the box doesn't change size as you type; the whole window on a phone. */
 div.rows {
   height: min(50vh, 400px);
@@ -135,9 +133,10 @@ h4 {
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
-  color: var(--accent-hot);
+  color: var(--text-faint);
 }
 
+/* The words take what the reason leaves, and a reason takes at most half the row: each wraps in its own column. */
 [role="option"] {
   display: flex;
   align-items: baseline;
@@ -161,7 +160,9 @@ span.words {
 }
 
 span.reason {
+  max-width: 50%;
   font-size: 12px;
+  text-align: right;
 }
 
 kbd {

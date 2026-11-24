@@ -98,16 +98,18 @@ test('a close request cancels and leaves it open; the backdrop cancels a short o
 const many = () => Array.from({ length: 60 }, (_, i) => h('p', `Line ${i}`));
 const closeOf = (dialog) => dialog.querySelector(':scope > .head > button.close');
 
-test('a closable one has the thin × inside its top right corner, on a first line the body scrolls under', async () => {
+test('a closable one has the thin × inside its top right corner, level with its title, on a first line the body scrolls under', async () => {
   await desktop();
   const { cancels, dialog } = await mount({ closable: true, long: true }, many);
   const close = closeOf(dialog()), box = dialog().getBoundingClientRect(), at = close.getBoundingClientRect();
   expect(close.getAttribute('aria-label')).toBe('Close');
   expect(close.querySelector('svg')).toBeTruthy();          // the Palettes and Fonts layer's ×, drawn: not a letter
   expect(close.textContent.trim()).toBe('');
-  expect([Math.round(box.right - at.right), Math.round(at.top - box.top)]).toEqual([7, 7]); // 6px in, past the 1px border
+  expect(Math.round(box.right - at.right)).toBe(7); // 6px in, past the 1px border
   const title = dialog().querySelector(':scope > .head > h3#modal-dialog-title');
   expect(title.textContent).toBe('Ask');
+  const mid = (r) => (r.top + r.bottom) / 2;
+  expect(Math.abs(mid(at) - mid(title.getBoundingClientRect()))).toBeLessThanOrEqual(1); // on the title's line, as Sign in's and the tabs' are
   const body = dialog().querySelector(':scope > .body');
   expect(body.contains(title)).toBe(false);
   expect(body.getBoundingClientRect().top).toBeGreaterThanOrEqual(at.bottom); // nothing of the body passes under the ×
@@ -122,6 +124,7 @@ test('a closable one has the thin × inside its top right corner, on a first lin
 test('one with neither a title nor tabs keeps a line for its ×, and one with no × has no first line', async () => {
   const { dialog } = await mount({ title: '', label: 'Sign in', closable: true, long: true }, many);
   const close = closeOf(dialog());
+  expect(Math.round(close.getBoundingClientRect().top - dialog().getBoundingClientRect().top - dialog().clientTop)).toBe(6); // 6px in, inside any border
   expect(dialog().querySelector(':scope > .body').getBoundingClientRect().top).toBeGreaterThanOrEqual(close.getBoundingClientRect().bottom);
   expect(dialog().getAttribute('aria-label')).toBe('Sign in');
   app.unmount();

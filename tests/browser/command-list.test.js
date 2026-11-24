@@ -167,3 +167,17 @@ test('the tabs are offered: SAUCE chosen shows SAUCE after the list has gone, an
   await vi.waitFor(() => expect(workspace.editorTab).toBe('sauce'));
   expect(workspace.commandListOpen).toBe(false);
 });
+
+test('a long reason wraps beside its words, never over them; the field is a search field that filters', async () => {
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  await open();
+  expect(field().type).toBe('search');
+  expect(field().placeholder).toBe('Filter commands…');
+  await type('bake');
+  const row = options().find((o) => o.querySelector('.reason')?.textContent.startsWith('Nothing to bake'));
+  const text = document.createRange();
+  text.selectNodeContents(row.querySelector('.words')); // the words as drawn, which can spill out of a squeezed box
+  const w = text.getBoundingClientRect(), r = row.querySelector('.reason').getBoundingClientRect();
+  expect(r.height).toBeGreaterThan(w.height); // wrapped, on lines of its own column
+  expect(w.right).toBeLessThanOrEqual(r.left);
+});

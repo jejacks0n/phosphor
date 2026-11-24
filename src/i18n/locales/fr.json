@@ -1438,7 +1438,7 @@
     "macFnNote": "Sur les claviers Mac, il peut falloir maintenir Fn pour utiliser F1–F12. Pour vous en passer, activez « Utiliser les touches F1, F2, etc. comme touches de fonction standard » dans Réglages Système → Clavier → Raccourcis clavier… → Touches de fonction.",
     "list": {
       "title": "Commandes",
-      "search": "Trouver une commande",
+      "search": "Filtrer les commandes…",
       "recent": "Récentes",
       "none": "Aucune commande ne correspond"
     },
@@ -1576,7 +1576,7 @@
       "tabPicture": "Afficher l'onglet PIXEL, ou VECTOR avec un calque vectoriel sélectionné",
       "tabAnsi": "Afficher l'onglet ANSI (ou ASCII)",
       "tabSauce": "Afficher l'onglet SAUCE",
-      "tabRoom": "Afficher l'onglet SALLE, en regardant une salle",
+      "tabRoom": "Afficher l'onglet SALLE",
       "tabsKeptFromBrowser": "Sous Linux, rien là où les touches des onglets ne servent pas, pour que le navigateur ne change pas d'onglet",
       "social": "Afficher Social, dans une salle avec le curseur dans le chat ; depuis le chat, revenir où vous étiez (Échap aussi)",
       "commandList": "Trouver une commande et la lancer",
