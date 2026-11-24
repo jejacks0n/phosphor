@@ -57,12 +57,15 @@ afterEach(() => {
 // The host, drawing on a 40 x 40 grid in its own pinia, named name if it's given, having done before(project) alone first.
 // Join people with join(room, sub).
 async function hosting({ cols = 40, rows = 40, name = null, before = () => {}, withLayer = true } = {}) {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows, withLayer });
+  // Active again: a late action of the test before, finishing while the image loaded, makes its own pinia the active one,
+  // and before's stores and the room's would be that test's.
+  setActivePinia(pinia);
   project.ensureLayer();
   before(project);
-  const drawing = useDrawingStore();
-  const room = { project, drawing, people: new Map(), pinia: getActivePinia() };
+  const drawing = useDrawingStore(pinia);
+  const room = { project, drawing, people: new Map(), pinia };
   room.host = new Host({
     config, passKey, roomId: 'room',
     send: async (msg) => {
