@@ -68,7 +68,7 @@ const spacing = computed({
 const ice = computed({
   get: () => project.sauceIceColors,
   set: (on) => {
-    project.sauceIceColors = on;
+    project.setIceColors(on); // one undo step
     if (!on && lessMotion()) toast(t('sauce.iceStill'));
   },
 });

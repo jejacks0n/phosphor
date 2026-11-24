@@ -1,6 +1,6 @@
 // Blink without iCE colors: which bright backgrounds blink, and a cell as the ANSI view draws it at each half.
 import { test, expect } from 'vitest';
-import { blinkCell, blinkingBackgrounds } from '../../src/lib/blink.js';
+import { blinkCell, blinkingBackgrounds, paintCell } from '../../src/lib/blink.js';
 import { PALETTES, parseColorList } from '../../src/lib/ColorUtils.js';
 
 const cga = PALETTES.cga;
@@ -27,4 +27,32 @@ test('a blinking cell is drawn on the dark color, its letter there while lit and
   const steady = { char: 'B', fg: cga[15], bg: cga[4] };
   expect(blinkCell(steady, under, false)).toBe(steady);
   expect(blinkCell(undefined, under, false)).toBe(undefined); // a missing cell stays missing
+});
+
+// docs/model.md R14: paint and the converter's cells never blink.
+test('R14: a painted half block with one bright half turns over, so the bright color is the foreground', () => {
+  const under = blinkingBackgrounds(cga);
+  expect(paintCell({ char: '▄', fg: cga[1], bg: cga[12] }, under)).toEqual({ char: '▀', fg: cga[12], bg: cga[1] });
+  expect(paintCell({ char: '▀', fg: cga[1], bg: cga[12] }, under)).toEqual({ char: '▄', fg: cga[12], bg: cga[1] });
+});
+
+test('R14: a cell all in one bright color, whatever its character, or a space on one, is a full block in it', () => {
+  const under = blinkingBackgrounds(cga);
+  expect(paintCell({ char: '▄', fg: cga[12], bg: cga[12] }, under)).toEqual({ char: '█', fg: cga[12], bg: cga[4] });
+  expect(paintCell({ char: ' ', fg: cga[7], bg: cga[12] }, under)).toEqual({ char: '█', fg: cga[12], bg: cga[4] });
+  expect(paintCell({ char: '░', fg: cga[12], bg: cga[12] }, under)).toEqual({ char: '█', fg: cga[12], bg: cga[4] }); // any character in its own color shows none
+});
+
+test('R14: two different bright halves, a converter\'s character on a bright background, and any cell where the font has no ▀ or █ keep their shape on the dark color', () => {
+  const under = blinkingBackgrounds(cga);
+  expect(paintCell({ char: '▄', fg: cga[14], bg: cga[12] }, under)).toEqual({ char: '▄', fg: cga[14], bg: cga[4] });
+  expect(paintCell({ char: '%', fg: cga[1], bg: cga[12] }, under)).toEqual({ char: '%', fg: cga[1], bg: cga[4] });
+  expect(paintCell({ char: '▄', fg: cga[1], bg: cga[12] }, under, false)).toEqual({ char: '▄', fg: cga[1], bg: cga[4] });
+});
+
+test('R14: a cell with no bright background is left as it is', () => {
+  const under = blinkingBackgrounds(cga);
+  const cell = { char: '▄', fg: cga[12], bg: cga[1] };
+  expect(paintCell(cell, under)).toBe(cell);
+  expect(paintCell(undefined, under)).toBe(undefined);
 });

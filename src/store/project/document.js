@@ -654,11 +654,14 @@ export const documentActions = {
     });
   },
 
-  // Every frame's cells, built as a still is.
+  // Every frame's cells, built as a still is, for an export (steadyCells).
   async animationCells() {
     this.commitPending();
     const cells = [];
-    for (let i = 0; i < this.frames.length; i++) cells.push((await this.builtFrame(i)).cells);
+    for (let i = 0; i < this.frames.length; i++) {
+      const built = await this.builtFrame(i);
+      cells.push(this.steadyCells(built.cells, { maps: [built.editCells], art: false })); // without iCE colors, as the ANSI view shows them
+    }
     return cells;
   },
 
@@ -744,18 +747,21 @@ export const documentActions = {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
     if (ext === 'xb' && !this.xbinPalette) throw Object.assign(new Error('XBin holds 16 colors'), { userMessage: t('export.errors.xbinPalette') });
-    const blob = await busyWhile(saving(`${filename}.${ext}`), async () => (ext === 'png'
-      ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(this.cells)))
-      : ext === 'xb'
+    const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
+      const cells = this.steadyCells(); // without iCE colors, as the ANSI view shows them
+      return (ext === 'png'
+        ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(cells)))
+        : ext === 'xb'
         // NON_BLINK as the drawing shows it: blinking only in a 16-color drawing, so another palette's 8 to 15 stay steady
-        ? new Blob([writeXBin({ cols: this.cols, rows: lines, cells: this.cells, palette: this.xbinPalette, font: this.drawingFont ?? await vgaBitmapFont(), sauce: sauce && this.sauceFields(), iceColors: !this.blinkingBackgrounds })], { type: 'application/octet-stream' })
-        : new AnsiFile(this.cols, lines, this.cells).toBlob({
-          sauce: sauce && this.sauceFields(),
-          colorMode: this.quantize,
-          iceColors: this.sauceIceColors,
-          utf8: ext === 'utf8ans',
-          ...opts,
-        })));
+          ? new Blob([writeXBin({ cols: this.cols, rows: lines, cells, palette: this.xbinPalette, font: this.drawingFont ?? await vgaBitmapFont(), sauce: sauce && this.sauceFields(), iceColors: !this.blinkingBackgrounds })], { type: 'application/octet-stream' })
+          : new AnsiFile(this.cols, lines, cells).toBlob({
+            sauce: sauce && this.sauceFields(),
+            colorMode: this.quantize,
+            iceColors: this.sauceIceColors,
+            utf8: ext === 'utf8ans',
+            ...opts,
+          }));
+    });
     exported.call(this, filename, ext);
     await deliver(blob, `${filename.trim() || this.filename}.${ext}`);
   },

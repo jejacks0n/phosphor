@@ -1,10 +1,20 @@
 // The Transforms, Adjustments and Image Filters sliders (and the plugin filters' values) as undo steps: a drag, a run of
-// key nudges, a color pick, RESET and RESET ALL are one step each. Owns _sliderBefore (the values before a move)
+// key nudges, a color pick, RESET and RESET ALL are one step each, and so is iCE colors (setIceColors). Owns _sliderBefore (the values before a move)
 // and _lastSlider (the step a nudge can extend).
 import { SLIDER_KEYS, NUDGE_MS, putSettings } from '@/store/project/shared.js';
 import { RESET_GROUPS, groupDefaults, sameSetting } from '@/store/settings.js';
 
 export const sliderActions = {
+  // iCE colors (the SAUCE tab's box), one undo step: it changes how the whole drawing shows and exports, so it goes back
+  // as a slider does. With no drawing yet it's the next one's, with nothing to undo. In a room only the host does it.
+  setIceColors(on) {
+    if (this.sauceIceColors === on) return;
+    this.sauceIceColors = on;
+    if (!this.image) return;
+    this.commitPending();
+    this.pushEdit({ settingsOnly: true, undo: () => { this.sauceIceColors = !on; }, redo: () => { this.sauceIceColors = on; } });
+  },
+
   // RESET ALL and a group's RESET: one undo step each.
   resetSliders() {
     this._sliderBefore ??= this.sliderValues();

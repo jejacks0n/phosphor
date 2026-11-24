@@ -158,7 +158,7 @@ const render = () => {
     const was = sizedBy.value;
     sizedBy.value = m;
     if (was && (was.cellWidth !== m.cellWidth || was.lineHeight !== m.lineHeight)) keepPlace(was);
-    cellCanvas.draw(projectStore.shownCells, { cols, rows: lines, col: win.col, row: win.row, look: blinkLook() });
+    cellCanvas.draw(steadyShown(), { cols, rows: lines, col: win.col, row: win.row, look: blinkLook() });
     canvasRef.value.style.left = `${win.col * m.cellWidth}px`;
     canvasRef.value.style.top = `${win.row * m.lineHeight}px`;
     return;
@@ -170,7 +170,7 @@ const render = () => {
     rows: charRowsOf(projectStore.rows),
   }, m);
 
-  const look = blinkLook(), cells = look ? projectStore.shownCells.map(look) : projectStore.shownCells;
+  const look = blinkLook(), cells = look ? steadyShown().map(look) : projectStore.shownCells;
   const buffer = cells.map(({ char, fg, bg, wide }) => ({
     char: wide === 'trail' ? '' : char, // the lead's glyph is the whole wide character
     fit: wide === 'trail' ? 0 : fitColumns(char), // held to its columns, its shape spilling over what follows
@@ -184,8 +184,20 @@ const render = () => {
 
 // Blink: without iCE colors a 16-color drawing's bright backgrounds blink here, and only here (blink.js). The letters
 // turn over while anything can blink, and stay lit for someone who asks for less motion.
+// Only a character of someone's own blinks: the cells showing with paint's and the converter's bright colors written so
+// they don't (steadyCells), worked out once for each set of cells shown. A frame playing is asked by its own cells.
 const blinkLit = ref(true);
 let blinkTimer = null;
+let steady = { shown: null, under: null, cells: null };
+const steadyShown = () => {
+  const shown = projectStore.shownCells, under = projectStore.blinkingBackgrounds;
+  if (!under) return shown;
+  if (steady.shown !== shown || steady.under !== under) {
+    const played = workspaceStore.playing && workspaceStore.played;
+    steady = { shown, under, cells: projectStore.steadyCells(shown, played ? { maps: [played.editCells], art: false } : undefined) };
+  }
+  return steady.cells;
+};
 const blinkLook = () => {
   const under = projectStore.blinkingBackgrounds, lit = blinkLit.value;
   return under && ((cell) => blinkCell(cell, under, lit));

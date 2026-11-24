@@ -72,3 +72,49 @@ test('with reduced motion asked for, a blinking cell is drawn dark with its lett
     motion.mockRestore();
   }
 });
+
+// docs/model.md R14. A CGA drawing without iCE colors: bright blue (12) painted over the top half of one cell and over all
+// of another, and a white A typed on the same color.
+async function paintedAndTyped() {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 4, rows: 4 });
+  project.quantize = 'cga';
+  project.chars = '▄'; // paint as half blocks, on the layer too
+  project.setLayerChars('edit', { chars: '▄' });
+  await settle(project);
+  const { r, g, b } = cga[12], blue = { r, g, b, alpha: 1 };
+  project.paintEditPixels([{ x: 0, y: 0, ...blue }, { x: 1, y: 0, ...blue }, { x: 1, y: 1, ...blue }]);
+  project.commitEdit();
+  project.writeEditCells([{ col: 2, row: 0, attrs: { char: 'A', fg: cga[15].hex, bg: cga[12].hex } }]);
+  project.commitEdit();
+  await settle(project);
+  project.setIceColors(false);
+  return project;
+}
+const look = ({ char, fg, bg }) => [char, fg.hex.toLowerCase(), bg.hex.toLowerCase()];
+
+test('R14: without iCE colors paint never blinks: a bright half is the foreground of a ▀, a cell all bright a █, and only the typed character keeps its bright background', async () => {
+  const project = await paintedAndTyped();
+  expect(project.cells.slice(0, 3).map((cell) => cell.bg.hex.toLowerCase())).toEqual([cga[12].hex, cga[12].hex, cga[12].hex].map((h) => h.toLowerCase())); // the cells themselves: bright on top
+  const steady = project.steadyCells();
+  expect(look(steady[0])).toEqual(['▀', cga[12].hex.toLowerCase(), project.cells[0].fg.hex.toLowerCase()]);
+  expect(look(steady[1])).toEqual(['█', cga[12].hex.toLowerCase(), cga[4].hex.toLowerCase()]);
+  expect(steady[2]).toBe(project.cells[2]); // someone's own: it blinks
+  expect(steady[3]).toBe(project.cells[3]);
+
+  project.undo(); // iCE colors is an undo step
+  expect(project.sauceIceColors).toBe(true);
+  expect(project.steadyCells()).toBe(project.cells);
+});
+
+test('R14: an .ans exported without iCE colors writes paint steady (▀ and █ in the bright color) and blink only for the typed character', async () => {
+  const project = await paintedAndTyped();
+  let blob;
+  await project.exportFile('ans', { deliver: (b) => { blob = b; }, sauce: false });
+  const bytes = new Uint8Array(await blob.arrayBuffer()), text = new TextDecoder('latin1').decode(bytes);
+  const esc = String.fromCharCode(27), sgrs = text.split(esc + '[').slice(1).map((part) => part.slice(0, part.indexOf('m')).split(';'));
+  expect(sgrs.filter((codes) => codes.includes('5')).length).toBe(1); // one run blinks: the A
+  expect(text.slice(text.indexOf('A') - 12, text.indexOf('A'))).toContain('[5;');
+  expect(bytes.includes(0xdf)).toBe(true); // ▀
+  expect(bytes.includes(0xdb)).toBe(true); // █
+});
