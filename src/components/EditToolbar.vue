@@ -22,7 +22,7 @@ import { isUniform } from '@/lib/ImageProcessor';
 import { copySelection as copyToClipboards } from '@/composables/clipboard';
 import { refusedHidden } from '@/store/project/shared.js';
 import { sameChars } from '@/document/layerInfo.js';
-import { mergeKind, ownEntry, parseKey } from '@/document/editCells.js';
+import { isFrozen, mergeKind, ownEntry, parseKey, shownEntry } from '@/document/editCells.js';
 import { isWideChar } from '@/lib/Cells.js';
 import { useLayerName } from '@/composables/useLayerName';
 import { asking as merging, mergeBusy, useMergeDown } from '@/composables/useMergeDown';
@@ -325,16 +325,27 @@ const mergeChoices = computed(() => {
   const { id } = merging.value ?? {}, layer = project.layerById(id);
   const ownChars = layer && project.paintOf(id)?.hasPaint && !sameChars(layer.chars, project.baseChars, 'cells')
     && t('toolbar.mergeDialog.ownCharsNote', { name: layerName(id), below: layerName(below(id)?.id) });
-  // Its characters (in the selection) go in as glyphs the converter picks again (mergeKind's 'glyph'): some can change.
-  const { rect } = merging.value ?? {}, style = project.renderStyle;
-  const repicked = layer && [...project.cellsOf(id)].some(([key, entry]) => {
-    const char = ownEntry(entry, style)?.char, { col, row } = parseKey(key);
+  // Its characters (in the selection) go in as glyphs the converter picks again (mergeKind's 'glyph'): some can change. So
+  // do the base's pins under its paint where it has no character of its own (mergeIntoPicture takes the pin's then).
+  const { rect } = merging.value ?? {}, style = project.renderStyle, entries = layer ? project.cellsOf(id) : new Map();
+  const fit = layer && (project.processParams.fit ?? project.fitFor(project.cols, project.rows));
+  const repickedAt = (key, char) => {
+    const { col, row } = parseKey(key);
+    const inPicture = col >= fit.dx && col < fit.dx + fit.dw && 2 * row >= fit.dy && 2 * row + 1 < fit.dy + fit.dh;
     return char !== undefined && (!rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1))
-      && mergeKind({ char, renderStyle: style, inPicture: true, wide: isWideChar(char) }) === 'glyph';
-  }) && t('toolbar.mergeDialog.repickedNote', { name: layerName(id) });
+      && mergeKind({ char, renderStyle: style, inPicture, wide: isWideChar(char) }) === 'glyph';
+  };
+  const repicked = [...entries].some(([key, entry]) => repickedAt(key, ownEntry(entry, style)?.char))
+    && t('toolbar.mergeDialog.repickedNote', { name: layerName(id) });
+  const paint = layer && project.paintOf(id);
+  const basePicked = paint?.hasPaint && [...project.baseRecords.pins].some(([key, pin]) => {
+    const { col, row } = parseKey(key), entry = entries.get(key);
+    return shownEntry(entry, style)?.char === undefined && !isFrozen(entry) && (paint.pixelAt(col, 2 * row)?.a || paint.pixelAt(col, 2 * row + 1)?.a)
+      && repickedAt(key, pin);
+  }) && t('toolbar.mergeDialog.basePickedNote');
   // A blank canvas's picture is one color, the same at any size: resizing it gives up nothing.
   const resized = project.pictureIsOriginal && !isUniform(project.image) && t('toolbar.mergeDialog.originalNote');
-  const costs = [ownChars, repicked, resized].filter(Boolean);
+  const costs = [ownChars, repicked, basePicked, resized].filter(Boolean);
   return costs.length ? [choices[0], { ...choices[1], costs }] : choices;
 });
 

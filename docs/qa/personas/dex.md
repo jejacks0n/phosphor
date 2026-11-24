@@ -246,9 +246,9 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
 
 ### 16. Drop the logo on my piece
 - Does: drops `logo.ans` on the canvas at a cell, and picks Add to this drawing.
-- Expects: the question offers Add to this drawing, Open to edit, Open to draw on top and Cancel; Add lands the logo
-  floating and selected at the cell he dropped it on, on Layer 3, as one undo step; the drawing's SAUCE and palette
-  stay his.
+- Expects: the question offers Add to this drawing, Open to edit, Open to draw on top, Open as an image and Cancel;
+  Add lands the logo floating and selected at the cell he dropped it on, on Layer 3, as one undo step; the drawing's
+  SAUCE and palette stay his.
 - Probes: `back-out`: drop it and press Cancel; `extremes`: drop it near the right edge and check what runs past is cut
   off; `out-of-order`: drop an `.xb` from the packs and expect the same Add question; on Add its cells land, and his drawing's font and palette stay his.
 - Rated: yes, wants Cmd+O, then Enter on Add to this drawing (Open asks, over a drawing)
@@ -359,7 +359,9 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   then Keep crisp cells: the word is pinned as it shows, nothing else changes (docs/model.md R2 to R4); then undo and
   choose Blend into source image instead: the question lists that his characters are picked again, the word goes into
   the picture as it looked, unpinned (some letters can come back as others), and Blur on Base now reaches it
-  (docs/model.md R3); undo brings back his layer and the base's pins as they were.
+  (docs/model.md R3); undo brings back his layer and the base's pins as they were; `scope`: with only a Brush stroke
+  on Layer 1 across the scene's letters (nothing typed), Blend into source image lists that the base's characters
+  under the paint are picked again, and a stroke over the black alone lists nothing of the kind.
 - Rated: yes, wants Cmd+E, then Enter
 
 ### 27. Flatten it to plain cells
