@@ -54,6 +54,9 @@ export function keepMode(frame, id) {
 
 // Cells drawn over on a frame, whether or not that changed them: drawn maps a stroke's id to its cells, and KEPT to
 // those no undo can take back any more. A cell drawn in exactly what it inherited isn't owned, but it isn't a ghost.
+// ponytail: nothing shows these since inherited cells stopped dimming; they're still kept and written to files, so a
+// copy of Phosphor from before reads what it expects. Take the bookkeeping out (noteDrawn, keepDrawn, the file's drawn)
+// once that no longer matters.
 export const KEPT = 'kept';
 export function drawnKeys(frame) {
   const keys = new Set();

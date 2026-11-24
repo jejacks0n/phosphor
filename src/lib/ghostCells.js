@@ -1,6 +1,7 @@
-// The ghost: on a Blank frame, what's inherited from the frames before shows dimmed, keeping its colors, so
-// what's drawn on this frame stands out, and so do pictures of nearby frames: those before in their own colors, those
-// after in one cool tint, each fainter the further it is. A drawing aid only: it never plays and is never exported.
+// The ghost: on a Blank frame, pictures of nearby frames show dimmed where the frame shows nothing: those before
+// (their cells that stay) in their own colors, those after in one cool tint, each fainter the further it is. What the
+// frame inherits is its own and shows solid. A drawing aid only: it never plays and is never exported. Stepped into an
+// art layer, the rest of the drawing dims the same way (ghostedCells).
 import { rgb2hex } from './ColorUtils.js';
 
 const dim = (color, base, strength) => {

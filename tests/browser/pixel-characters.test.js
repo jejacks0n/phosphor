@@ -333,7 +333,7 @@ test('R11: a frame built for playing shows the look too', async () => {
 });
 
 // A Blank frame dims what it inherits toward the base under it (the ghost): toward a character there as it looks.
-test('R11: on a Blank frame, paint inherited over a character on the base dims toward the character\'s look', async () => {
+test('R11: on a Blank frame, paint inherited over a character on the base shows solid over the character\'s look', async () => {
   const { project, workspace, seen, done } = await mountPixelView(null, { overlay: 0 });
   project.setAnimate(true);
   pin(project, 4, 3, '█');
@@ -343,10 +343,9 @@ test('R11: on a Blank frame, paint inherited over a character on the base dims t
   project.commitEdit();
   project.addFrame('blank');
   await settle(project);
-  expect(project.shownCells[3 * project.cols + 4]).not.toBe(project.cells[3 * project.cols + 4]); // inherited: dimmed
-  const [top, bottom] = shown(seen, 4, 3), faded = Math.round(255 * (1 - project.ghostStrength));
-  expect(top[0]).toBe(255); // red toward the block's white, not toward its black background
-  expect(Math.abs(top[1] - faded)).toBeLessThanOrEqual(2);
+  expect(project.shownCells).toBe(project.cells); // inherited: the frame's own, not a ghost
+  const [top, bottom] = shown(seen, 4, 3);
+  expect(top).toEqual(RED);
   expect(bottom).toEqual(WHITE);
   done();
 });

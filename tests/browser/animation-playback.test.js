@@ -1,4 +1,4 @@
-// Playing, and the ghost. Playing never touches editCells, so autosave stays quiet. Exports read project.cells.
+// Playing, and the ghost (pictures of other frames; what a frame inherits shows solid). Playing never touches editCells, so autosave stays quiet. Exports read project.cells.
 import { test, expect } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
 import { getActivePinia } from 'pinia';
@@ -28,29 +28,26 @@ const until = async (test_, what) => {
   throw new Error(`never: ${what}`);
 };
 
-test('a Blank frame ghosts inherited cells, not its own, and not the base', async () => {
-  const { project } = await animated();
+// What a Blank frame inherits is its own: it plays and exports, so it shows solid. The ghost is pictures of other frames
+// (cells that stay, Frames before and after: animation-cells-stay.test.js and below).
+test('a Blank frame shows what it inherits solid, typed or painted, with the ghost on: the same cells it plays and exports', async () => {
+  const { project, workspace } = await animated();
   type(project, 1, 1, 'A');
-  project.addFrame('blank');
-  type(project, 2, 2, 'B');
-  const shown = project.shownCells;
-  expect(shown[at(1, 1)].char).toBe('A');
-  expect(shown[at(1, 1)]).not.toBe(project.cells[at(1, 1)]); // inherited: dimmed
-  expect(shown[at(1, 1)].fg.hex).not.toBe(project.cells[at(1, 1)].fg.hex);
-  expect(shown[at(2, 2)]).toBe(project.cells[at(2, 2)]);     // its own
-  expect(shown[at(5, 5)]).toBe(project.cells[at(5, 5)]);     // the base
-});
-
-test('inherited paint is a ghost too, and sits on the picture', async () => {
-  const { project } = await animated();
   project.paintStroke([{ x: 6, y: 6, alpha: 1 }, { x: 6, y: 7, alpha: 1 }], '#ff0000');
   project.commitEdit();
   project.addFrame('blank');
-  const shown = project.shownCells[at(6, 3)], solid = project.cells[at(6, 3)];
-  expect(shown.bg.r).toBeLessThan(solid.bg.r);
+  expect(workspace.ghost).toBe(true);
+  expect(project.cells[at(1, 1)].char).toBe('A');
+  expect(project.cells[at(6, 3)].bg.r).toBe(255);
+  expect(project.shownCells).toBe(project.cells);
+  type(project, 2, 2, 'B'); // its own, beside what it inherits
+  expect(project.shownCells).toBe(project.cells);
+  project.undo();
+  await settle(project);
+  expect(project.shownCells).toBe(project.cells);
 });
 
-test('a Wipe and a Duplicate have no ghost; a Blank after a Wipe ghosts what the Wipe frame drew', async () => {
+test('a Wipe, a Duplicate and a Blank after a Wipe show their cells solid too', async () => {
   const { project } = await animated();
   type(project, 1, 1, 'A');
   project.addFrame('duplicate');
@@ -59,45 +56,8 @@ test('a Wipe and a Duplicate have no ghost; a Blank after a Wipe ghosts what the
   type(project, 2, 2, 'W');
   expect(project.shownCells).toBe(project.cells);
   project.addFrame('blank');
-  expect(project.shownCells[at(2, 2)]).not.toBe(project.cells[at(2, 2)]);
-  expect(project.shownCells[at(1, 1)]).toBe(project.cells[at(1, 1)]);
-});
-
-test('a cell stops being a ghost during the stroke that draws on it', async () => {
-  const { project } = await animated();
-  project.paintStroke([{ x: 6, y: 6, alpha: 1 }, { x: 7, y: 6, alpha: 1 }], '#ff0000');
-  project.commitEdit();
-  project.addFrame('blank');
-  expect(project.shownCells[at(6, 3)]).not.toBe(project.cells[at(6, 3)]);
-  project.paintStroke([{ x: 6, y: 6, alpha: 1 }], '#00ff00'); // left open
-  expect(project.shownCells[at(6, 3)]).toBe(project.cells[at(6, 3)]);
-  expect(project.shownCells[at(7, 3)]).not.toBe(project.cells[at(7, 3)]);
-  project.commitEdit();
-  expect(project.shownCells[at(6, 3)]).toBe(project.cells[at(6, 3)]);
-});
-
-test('undoing a stroke over a ghost makes it a ghost again', async () => {
-  const { project } = await animated();
-  type(project, 1, 1, 'A');
-  project.addFrame('blank');
-  type(project, 1, 1, 'B');
-  expect(project.shownCells[at(1, 1)]).toBe(project.cells[at(1, 1)]);
-  project.undo();
-  await settle(project);
-  expect(project.cells[at(1, 1)].char).toBe('A');
-  expect(project.shownCells[at(1, 1)]).not.toBe(project.cells[at(1, 1)]);
-});
-
-test('with Ghost off, inherited cells show solid; and with Animate off', async () => {
-  const { project, workspace } = await animated();
-  type(project, 1, 1, 'A');
-  project.addFrame('blank');
-  workspace.ghost = false;
   expect(project.shownCells).toBe(project.cells);
-  workspace.ghost = true;
-  expect(project.shownCells).not.toBe(project.cells);
-  project.setAnimate(false);
-  expect(project.shownCells).toBe(project.cells);
+  expect(project.cells[at(2, 2)].char).toBe('W');
 });
 
 test('frame 0 and a still have no ghost', async () => {
@@ -107,15 +67,6 @@ test('frame 0 and a still have no ghost', async () => {
   project.addFrame('blank');
   project.showFrame(0);
   expect(project.shownCells).toBe(project.cells);
-});
-
-test('project.cells is never ghosted: an export during a Blank frame is solid', async () => {
-  const { project } = await animated();
-  type(project, 1, 1, 'A');
-  const solid = project.cells[at(1, 1)].fg.hex;
-  project.addFrame('blank');
-  expect(project.cells[at(1, 1)].fg.hex).toBe(solid);
-  expect(project.shownCells[at(1, 1)].fg.hex).not.toBe(solid);
 });
 
 test('playing loops, honors holds, and leaves editCells and editVersion alone', async () => {
@@ -290,7 +241,7 @@ test('the PIXEL view plays output and overlay in place, without changing tab', a
 });
 
 
-test('the PIXEL view dims what’s inherited on a Blank frame, drawn or typed, and plays and exports it solid', async () => {
+test('the PIXEL view shows what a Blank frame inherits solid, drawn or typed, with the ghost on or off, as it plays', async () => {
   const { project, workspace } = await animated();
   const playback = usePlayback();
   workspace.editorTab = 'input';
@@ -317,40 +268,20 @@ test('the PIXEL view dims what’s inherited on a Blank frame, drawn or typed, a
   };
   const solidRed = [255, 0, 0], solidGreen = [0, 255, 0];
   expect(px(10, 10)).toEqual(solidGreen); // this frame's own
-  const dimmed = px(8, 8);
-  expect(dimmed).not.toEqual(solidRed);
-  const under = project.renderer.underCell(8, 4, project.processParams, project.renderedCells).fg;
-  expect(Math.abs(dimmed[0] - Math.round(under.r + (255 - under.r) * 0.35))).toBeLessThanOrEqual(2);
-  const typedBefore = px(1, 2);
+  expect(px(8, 8)).toEqual(solidRed); // inherited: this frame's too
+  const typed = px(1, 2);
 
   workspace.ghost = false;
   await settle(project);
   expect(px(8, 8)).toEqual(solidRed);
-  expect(px(1, 2)).not.toEqual(typedBefore);
-
+  expect(px(1, 2)).toEqual(typed);
   workspace.ghost = true;
-  await settle(project);
-  expect(px(8, 8)).toEqual(dimmed);
-  expect(project.renderer.outputCanvas.getContext('2d').getImageData(8, 8, 1, 1).data[0]).toBe(255); // the art itself is solid
-
-  // Drawing over it: solid, at once.
-  project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#0000ff');
-  project.commitEdit();
-  await settle(project);
-  expect(px(8, 8)).toEqual([0, 0, 255]);
-  project.undo();
-  await settle(project);
-  expect(px(8, 8)).toEqual(dimmed);
 
   project.setFps(1);
   await playback.play();
   await settle(project);
   expect(px(8, 8)).toEqual(solidRed);
   playback.pause();
-  await settle(project);
-  expect(px(8, 8)).toEqual(dimmed);
-
-  project.setAnimate(false);
   await settle(project);
   expect(px(8, 8)).toEqual(solidRed);
   app.unmount();
@@ -425,112 +356,6 @@ test('with Frames after, what a frame after painted shows on PIXEL in the cool t
   host.remove();
 });
 
-test('the ghost’s strength sets how far inherited cells dim, in both views, from gone to solid', async () => {
-  const { project, workspace } = await animated();
-  workspace.editorTab = 'input';
-  project.paintStroke([{ x: 8, y: 8, alpha: 1 }], '#ff0000');
-  project.commitEdit();
-  type(project, 1, 1, 'A');
-  project.addFrame('blank');
-  const host = document.createElement('div');
-  host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
-  document.body.append(host);
-  const app = createApp({ render: () => h(InputEditor) });
-  app.use(getActivePinia());
-  app.mount(host);
-  await nextTick();
-  await settle(project);
-  const canvas = host.querySelector('canvas');
-  const px = (x, y) => {
-    const c = canvas.getContext('2d'), { width, height } = canvas;
-    return [...c.getImageData(Math.floor((x + 0.5) * (width / 20)), Math.floor((y + 0.5) * (height / 20)), 1, 1).data].slice(0, 3);
-  };
-  const at = cellIndex(1, 1, project.cols), under = project.renderer.underCell(1, 1, project.processParams, project.renderedCells);
-  const set = async (percent) => { workspace.ghostStrength = percent; await settle(project); };
-
-  expect(workspace.ghostStrength).toBe(35);
-  await set(100);
-  expect(px(8, 8)).toEqual([255, 0, 0]);
-  expect(project.shownCells[at].fg.hex).toBe(project.cells[at].fg.hex);
-  await set(0);
-  const { data, width } = project.renderer.basePixels, o = 4 * (8 * width + 8);
-  const near = (got, want) => got.forEach((value, i) => expect(Math.abs(value - want[i])).toBeLessThanOrEqual(2));
-  near(px(8, 8), [data[o], data[o + 1], data[o + 2]]);
-  expect(project.shownCells[at].fg.hex).toBe(under.fg.hex);
-  await set(50);
-  near(px(8, 8), [(data[o] + 255) / 2, data[o + 1] / 2, data[o + 2] / 2]);
-  expect(project.cells[at]).not.toBe(project.shownCells[at]);
-  expect(project.cells[at].fg.hex).not.toBe(project.shownCells[at].fg.hex); // the art itself isn't touched
-  app.unmount();
-  host.remove();
-});
-
-test('what’s drawn on this frame never dims, even in exactly the color it inherited', async () => {
-  const { project, workspace } = await animated();
-  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 12, y: 12, alpha: 1 }, { x: 12, y: 13, alpha: 1 }], '#ffffff');
-  project.commitEdit();
-  type(project, 1, 1, 'A');
-  project.addFrame('blank');
-  await settle(project);
-  const crossed = cellIndex(8, 4, project.cols), left = cellIndex(12, 6, project.cols), typed = cellIndex(1, 1, project.cols);
-  const dim = (i) => project.shownCells[i] !== project.cells[i];
-  expect([dim(crossed), dim(left), dim(typed)]).toEqual([true, true, true]);
-
-  // Across the old drawing in exactly its color, and on past it: only the new pixels change anything.
-  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 20, y: 20, alpha: 1 }], '#ffffff');
-  project.commitEdit();
-  type(project, 1, 1, 'A');
-  await settle(project);
-  expect([dim(crossed), dim(left), dim(typed)]).toEqual([false, true, false]);
-  expect(project.currentFrame.changes.has('8,4')).toBe(false); // it's still inherited: only how it shows differs
-
-  project.showFrame(0);
-  project.showFrame(1);
-  await settle(project);
-  expect([dim(crossed), dim(left), dim(typed)]).toEqual([false, true, false]); // scrubbing doesn't forget
-
-  project.undo(); // the typing
-  project.undo(); // the stroke
-  await settle(project);
-  expect([dim(crossed), dim(left), dim(typed)]).toEqual([true, true, true]);
-  project.redo();
-  await settle(project);
-  expect([dim(crossed), dim(left), dim(typed)]).toEqual([false, true, true]);
-
-  project.paintStroke([{ x: 12, y: 12, alpha: 1 }, { x: 12, y: 13, alpha: 1 }], '#ffffff'); // nothing but what's there already
-  project.commitEdit();
-  await settle(project);
-  expect(dim(left)).toBe(false);
-  expect(workspace.ghost).toBe(true);
-});
-
-test('what’s drawn in exactly the inherited color stays solid once undo can’t reach it, and after saving and opening', async () => {
-  const { project } = await animated();
-  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 12, y: 12, alpha: 1 }, { x: 12, y: 13, alpha: 1 }], '#ffffff');
-  project.commitEdit();
-  project.addFrame('blank');
-  project.paintStroke([{ x: 8, y: 8, alpha: 1 }, { x: 8, y: 9, alpha: 1 }, { x: 20, y: 20, alpha: 1 }], '#ffffff');
-  project.commitEdit();
-  await settle(project);
-  const crossed = cellIndex(8, 4, project.cols), left = cellIndex(12, 6, project.cols);
-  const dim = (i) => project.shownCells[i] !== project.cells[i];
-  expect([dim(crossed), dim(left)]).toEqual([false, true]);
-
-  project.clearHistory(); // as past the undo limit, or opening a project
-  await settle(project);
-  expect([dim(crossed), dim(left)]).toEqual([false, true]);
-
-  const { writeProject } = await import('@/document/projectIO.js');
-  const parts = await project.projectParts();
-  await project.loadProject(new File([await writeProject({ imageBuffer: project.imageBuffer, ...parts })], 'movie.phosphor'));
-  await settle(project);
-  expect([project.frames.length, project.frame]).toEqual([2, 1]);
-  expect([dim(crossed), dim(left)]).toEqual([false, true]);
-  expect(project.currentFrame.changes.has('8,4')).toBe(false); // still inherited: only how it shows differs
-});
-
-// Priya's run: Escape in FPS kept the typed 20, and a tap away then set it. Escape puts a typed field back to the value in
-// use, as Dimensions and the Custom color list's hex do; Hold the same.
 test('Escape in FPS or Hold puts the field back, and a blur after it changes nothing', async () => {
   const { project } = await animated();
   project.addFrame('blank');

@@ -347,12 +347,12 @@ see what happens to a Follow a path… under way.
 
 ### 23. Draw by the ghost
 - Does: picks Layer 1, draws a few cells with the Pencil on frame 5, steps to frame 6 (a Blank) and draws a few more
-  beside them, looking at the dimmed ones; opens Ghost's box, moves its strength to 70%, sets Frames after to 1 and
+  beside them, looking at the ones it inherits; opens Ghost's box, moves its strength to 70%, sets Frames after to 1 and
   steps back to frame 5, then unchecks Show ghost.
-- Expects: inherited cells show dimmed on ANSI in their own colors; what she draws on this frame shows at full
-  strength; the strength starts at 35% and this browser remembers it, as it does Frames before (1) and Frames after
-  (0); on frame 5, what she drew on frame 6 shows in a cool blue tint where frame 5 shows nothing; Ghost off shows
-  inherited cells solid; the ghost never plays or reaches an export ([The ghost](../../animation.md#the-ghost)).
+- Expects: inherited cells show solid on ANSI, as frame 5 shows them, beside what she draws on this frame; the
+  strength starts at 35% and this browser remembers it, as it does Frames before (1) and Frames after
+  (0); on frame 5, what she drew on frame 6 shows in a cool blue tint where frame 5 shows nothing; Ghost off takes the tint
+  away and leaves inherited cells as they were; the ghost never plays or reaches an export ([The ghost](../../animation.md#the-ghost)).
 - Probes: `extremes`: strength at 0% and 100%, and on frame 1 Frames after still shows frame 2; `interrupt`: reload and check the strength came back; `back-out`: open
   the box and press Escape, and check where focus went.
 - Rated: yes, wants a key for Ghost on and off

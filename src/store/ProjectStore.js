@@ -43,9 +43,6 @@ import { vectorActions } from '@/store/project/vector.js';
 import { layerActions } from '@/store/project/layers.js';
 import { PIPELINE_KEYS, layerName, savedJson, MAX_HISTORY_BYTES, ALONE, newLedger, drawingFontOf, ninePx } from '@/store/project/shared.js';
 
-// A cell an edit didn't touch stays the same object, except a wide one, which is laid out again with its row.
-const sameLook = (a, b) => a === b || (!!a?.wide && !!b && a.wide === b.wide && a.char === b.char && a.fg.hex === b.fg.hex && a.bg.hex === b.bg.hex);
-
 // Stepped into an art layer: outside its box, and where nothing drawn inside has changed what shows since you stepped
 // in (entered), the cells show as they did then (snapshot, the drawing with them), dimmed toward what's under them as
 // the ghost is. Inside it, and wherever you've drawn, they show as they are. The drawing outside doesn't change while
@@ -163,7 +160,7 @@ export const useProjectStore = defineStore('project', {
     ghostFrames: [], // [{ frame, built, at }]: frames near the one showing (at: how far, before negative), built for their pictures' ghost (buildGhost)
     animate: false, // the bar is up
     _frameSwaps: 0, // how many times the frame showing was swapped in: autosave doesn't count those as edits
-    _ghost: markRaw({ memo: new WeakMap() }), // what shownCells worked out last, kept out of what it reacts to
+    _ghost: markRaw({}), // what shownCells worked out last, kept out of what it reacts to
 
     filename: null,
     fileExt: null, // the extension of the file it came from or last went to (pho, ans, png), for the start screen's list
@@ -333,31 +330,21 @@ export const useProjectStore = defineStore('project', {
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],
-    // What the ANSI view shows: while playing, the built frame; on a Blank frame, its ghost: what's inherited dimmed,
-    // and over it, pictures of the frames near this one (ghostPictures) where they drew and this one shows nothing.
-    // cells is never ghosted, so exports can't see one.
+    // What the ANSI view shows: while playing, the built frame; on a Blank frame, its ghost: pictures of the frames near
+    // this one (ghostPictures), dimmed where they drew and this one shows nothing. What the frame inherits is its own
+    // (it plays and exports), so it shows solid. cells is never ghosted, so exports can't see one.
     shownCells() {
       const workspace = useWorkspaceStore(), { cells } = this;
       if (workspace.playing && workspace.played) return workspace.played.cells;
       if (this._artInside) return insideCells(this, this._artInside, cells);
       if (!this.animate || !workspace.ghost || this.currentFrame?.kind !== 'blank') return cells; // frame 0 too: it has frames after
       const held = this._ghost, frame = this.currentFrame, version = this.historyVersion, rendered = this.renderedCells;
-      const strength = this.ghostStrength, pictures = this.ghostPictures;
+      const pictures = this.ghostPictures;
       if (held.frame !== frame || (!this._stroke && (held.version !== version || held.rendered !== rendered))) {
-        Object.assign(held, { frame, version, rendered, cells, inherited: this.inheritedCells(), sets: new Map(), shared: {}, owners: null, over: new Map() });
+        Object.assign(held, { frame, version, rendered, cells, sets: new Map(), shared: {}, owners: null, over: new Map() });
       }
-      if (held.strength !== strength) Object.assign(held, { strength, memo: new WeakMap(), over: new Map() });
       if (held.pictures !== pictures) Object.assign(held, { pictures, owners: null, over: new Map() });
-      const still = (i) => held.inherited.has(i) && sameLook(cells[i], held.cells[i]); // a stroke's new object: no longer a ghost
-      const { cols } = this, params = this.processParams;
-      const shown = ghostedCells(
-        cells,
-        (i) => this.renderer.underCell(i % cols, Math.floor(i / cols), params, rendered),
-        (i) => (cells[i].wide === 'trail' ? still(i - 1) : still(i)),
-        held.memo,
-        strength,
-      );
-      if (!pictures.length) return shown;
+      if (!pictures.length) return cells;
       // Each index the nearest picture's that has it. The pictures' ghosts are over this frame's cells, so they go (over)
       // when those may have changed.
       held.owners ??= pictureOwners(pictures.map((picture) => {
@@ -370,9 +357,9 @@ export const useProjectStore = defineStore('project', {
         const memo = held.over.get(picture.at) ?? held.over.set(picture.at, new WeakMap()).get(picture.at), cell = picture.built.cells[i];
         let ghost = memo.get(cell);
         if (!ghost) memo.set(cell, ghost = ghostCell(picture.tint ? tinted(cell) : cell, cells[i], picture.strength));
-        (out ??= shown.slice())[i] = ghost;
+        (out ??= cells.slice())[i] = ghost;
       }
-      return out ?? shown;
+      return out ?? cells;
     },
     // The frames near the one showing whose pictures shownCells ghosts, nearest first (the frame before ahead of the
     // frame after at the same distance): ghostFrames as many as the Ghost box asks for, each with its strength, the

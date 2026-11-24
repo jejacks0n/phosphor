@@ -233,7 +233,6 @@ test('Clear on a frame stops the carry: what\'s drawn on an earlier frame later 
   expect(charAt(project, 1, 1)).not.toBe('A');
   type(project, 5, 5, 'D'); // drawing on it doesn't bring the carry back
   expect(charAt(project, 3, 3)).not.toBe('C');
-  expect(project.inheritedCells().size).toBe(0); // no ghost of them either
   project.showFrame(2);
   expect(charAt(project, 3, 3)).not.toBe('C');
   expect(charAt(project, 5, 5)).toBe('D');
