@@ -1,12 +1,12 @@
 name: Release
 
-# Only a version tag releases: v and three numbers (v0.2.0), or a pre-release with a dash after them (v0.2.0-beta,
-# v0.2.0-beta.2), matching package.json's version and higher than every version tag before it by semver's order, where
-# v0.2.0-beta comes before v0.2.0 (scripts/release-tag.mjs), on a commit main's tests passed. It builds the desktop app
-# for the three platforms and attaches them to a GitHub Release for the tag: a draft to look over and publish by hand,
-# or for a pre-release, a pre-release published as the builds finish. A release (not a pre-release) then publishes
-# phosphor.work from the tag's commit; a pre-release's web side is next.phosphor.work, which every push to main
-# publishes (deploy.yml).
+# Only a version tag releases: v and three numbers (v0.2.0), or a pre-release with a dash after them, a beta (v0.2.0-beta,
+# v0.2.0-beta.2) or an alpha (v0.2.0-alpha, v0.2.0-alpha.2) and no other, matching package.json's version and higher
+# than every version tag before it by semver's order, where v0.2.0-alpha comes before v0.2.0-beta and that before v0.2.0
+# (scripts/release-tag.mjs), on a commit main's tests passed. It builds the desktop app for the three platforms and
+# attaches them to a GitHub Release for the tag: a draft to look over and publish by hand, or for a pre-release, a
+# pre-release published as the builds finish. A release or a beta then publishes phosphor.work from the tag's commit; an
+# alpha's web side is next.phosphor.work, which every push to main publishes (deploy.yml).
 on:
   push:
     tags: ['v[0-9]+.[0-9]+.[0-9]+', 'v[0-9]+.[0-9]+.[0-9]+-*']
@@ -46,13 +46,14 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
     outputs:
-      prerelease: ${{ steps.tag.outputs.prerelease }}
+      prerelease: ${{ steps.tag.outputs.prerelease }} # a beta or an alpha
+      prod: ${{ steps.tag.outputs.prod }} # a release or a beta: it publishes phosphor.work
 
   # Once, after the version check: new fonts upstream are mirrored into main and the tag moved onto them, so the release
   # and the web app carry them. A push made with the workflow's own token starts no run, but one over SSH with a deploy
   # key does: that moved tag starts this workflow again, where nothing is new and it builds. This run then builds
   # nothing and cancels itself, so it never ends in a success that published nothing (plugin-list.yml takes a
-  # release run's success to mean phosphor.work has its commit).
+  # release's or a beta's run's success to mean phosphor.work has its commit).
   library:
     needs: version
     runs-on: ubuntu-latest
@@ -151,12 +152,12 @@ jobs:
       - run: npm run build:desktop
       - run: npx electron-builder --publish always
 
-  # phosphor.work (the Pages project's main branch), for a release and not a pre-release, after the three builds: a
+  # phosphor.work (the Pages project's main branch), for a release or a beta and not an alpha, after the three builds: a
   # platform that fails to build publishes nothing, and re-running it publishes once it passes. Last in the run, so
-  # plugin-list.yml can take a release run's success to mean this published.
+  # plugin-list.yml can take a release's or a beta's run's success to mean this published.
   site:
     needs: [version, package]
-    if: needs.version.outputs.prerelease == 'false'
+    if: needs.version.outputs.prod == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

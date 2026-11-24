@@ -1,9 +1,10 @@
 // Version tags (src/lib/semver.js) and the desktop workflow's tag check (scripts/release-tag.mjs): which tags are
-// versions, their order, what's refused.
+// versions, their order, what's refused, and which of the three forms a tag has (a release, a beta, an alpha), with what
+// each publishes.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { compare, newerRelease, parse } from '../../src/lib/semver.js';
-import { refusal } from '../../scripts/release-tag.mjs';
+import { kindOf, outputs, refusal } from '../../scripts/release-tag.mjs';
 
 test('a version is v and three numbers, with a pre-release after a dash', () => {
   for (const tag of ['v0.1.0', 'v1.2.3', 'v1.2.3-beta', 'v1.2.3-beta.2', 'v10.0.0-rc.1.x-y']) assert.ok(parse(tag), tag);
@@ -29,6 +30,27 @@ test('a tag is refused unless it is package.json version and higher than every v
   assert.match(refusal('v1.0.0-beta', '1.0.0-beta', ['v1.0.0']), /isn't higher than the last version, v1\.0\.0$/);
   assert.match(refusal('v0.9.0', '0.9.0', ['v0.10.0', 'v0.9.5']), /, v0\.10\.0$/);
   assert.match(refusal('v1.0.0-beta.2', '1.0.0-beta.2', ['v1.0.0-beta.10']), /, v1\.0\.0-beta\.10$/);
+});
+
+test('a tag is a release, a beta or an alpha, each of the last two with a number after it or not, and nothing else', () => {
+  assert.equal(kindOf('v1.0.0'), 'release');
+  for (const tag of ['v1.0.0-beta', 'v1.0.0-beta.2', 'v1.0.0-beta.10', 'v0.1.0-beta.0']) assert.equal(kindOf(tag), 'beta', tag);
+  for (const tag of ['v1.0.0-alpha', 'v1.0.0-alpha.3']) assert.equal(kindOf(tag), 'alpha', tag);
+  // A version by semver, but not one of the three forms: refused, though older tags like it still take their place in the order.
+  for (const tag of ['v1.0.0-rc.1', 'v1.0.0-rc', 'v1.0.0-1', 'v1.0.0-beta2', 'v1.0.0-beta.x', 'v1.0.0-beta.02', 'v1.0.0-beta.2.1', 'v1.0.0-Beta', 'v1.0.0-alpha-1', 'v1.0', 'nightly']) {
+    assert.equal(kindOf(tag), null, tag);
+    assert.match(refusal(tag, tag.slice(1), []), /isn't a version/, tag);
+  }
+  assert.equal(refusal('v1.0.0', '1.0.0', ['v1.0.0-rc.1']), null);
+  assert.match(refusal('v1.0.0-beta', '1.0.0-beta', ['v1.0.0-rc.1']), /, v1\.0\.0-rc\.1$/);
+});
+
+test('a release and a beta publish phosphor.work, an alpha does not, and a beta and an alpha are GitHub pre-releases', () => {
+  assert.deepEqual(outputs('v1.0.0'), { prerelease: false, prod: true });
+  assert.deepEqual(outputs('v1.0.0-beta'), { prerelease: true, prod: true });
+  assert.deepEqual(outputs('v1.0.0-beta.2'), { prerelease: true, prod: true });
+  assert.deepEqual(outputs('v1.0.0-alpha'), { prerelease: true, prod: false });
+  assert.deepEqual(outputs('v1.0.0-alpha.2'), { prerelease: true, prod: false });
 });
 
 test('Check for Updates offers the newest later release, and pre-releases only to someone on one', () => {

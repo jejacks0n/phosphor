@@ -10,7 +10,8 @@ host** and the host's reload (see [Social](social.md)). This page covers what's 
 ## Downloading
 
 The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor/releases) page. Releases marked
-**Pre-release** (a version like `v1.2.0-beta`) are betas to try before the release they lead to.
+**Pre-release** are betas (a version like `v1.2.0-beta`) and alphas (`v1.2.0-alpha`), to try before the release they
+lead to.
 
 - **macOS**: the `.dmg` (or the `.zip`), for Apple silicon (`arm64`) or Intel (`x64`). It's signed and notarized, so
   macOS opens it without a warning.
@@ -20,8 +21,8 @@ The app is on Phosphor's [GitHub Releases](https://github.com/jejacks0n/phosphor
   sandbox up when it installs.
 
 The app doesn't update itself. **Check for Updates…** (in the Phosphor menu on macOS, in Help elsewhere) asks GitHub
-for the releases and offers the newest one's download page, or says yours is the newest. Someone on a beta (a version
-like `1.2.0-beta`) is offered betas too; everyone else only releases. It asks only when you choose it. In a room,
+for the releases and offers the newest one's download page, or says yours is the newest. Someone on a beta or an alpha (a version
+like `1.2.0-beta`) is offered those too; everyone else only releases. It asks only when you choose it. In a room,
 someone on a different version is told so: "They're on a newer Phosphor. Update to join." (with **Check for updates**
 beside it) or "They're on an older Phosphor. They need to update before you can join."
 
@@ -271,6 +272,18 @@ page checks as the web app does. The app builds that address itself from the pal
 there.
 
 ## Releasing
+
+A version tag has one of three forms, and any other (`v1.2.3-rc.1`, say) is refused before anything builds:
+
+| Tag | GitHub release | phosphor.work |
+|---|---|---|
+| `v1.2.3` | a release (a draft, published by hand) | published |
+| `v1.2.3-beta`, `v1.2.3-beta.2` | a pre-release | published |
+| `v1.2.3-alpha`, `v1.2.3-alpha.2` | a pre-release | not published |
+
+All three build the app for the three platforms. An alpha's web side is next.phosphor.work, which every push to main
+publishes. The tag is package.json's version, and higher than every version tag before it (an alpha comes before a
+beta, a beta before its release, and `beta.2` before `beta.10`).
 
 A version tag first checks the font library. The workflow's library job mirrors Phosphor's two upstream font
 collections (`npm run fonts`). If nothing is new, the tag builds. If there are new fonts, the tag is main's latest
