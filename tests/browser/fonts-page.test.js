@@ -1497,9 +1497,11 @@ test('a font in Yours shows From and License after its slots', async () => {
   const index = FIXTURE(), entry = serveFile(index, 'Zeta');
   await mount({ library: index });
   await chooseLibrary('Zeta');
+  await vi.waitFor(() => expect(host.querySelectorAll('.edit-side .grid.sheet .cell').length).toBe(256)); // the library's slots, with their own .info
   await press(button('☆ Favorite'));
-  await vi.waitFor(() => expect(host.querySelector('.edit-side .info')).toBeTruthy());
   await vi.waitFor(async () => expect((await loadFonts()).some((f) => f.id === entry.fontId)).toBe(true));
+  // The font in Favorites: its star lit (the library's isn't), and its slots and .info once the browser's copy is read, after From
+  await vi.waitFor(() => expect(host.querySelector('.edit-side .star[aria-pressed="true"]') && host.querySelector('.edit-side .info')).toBeTruthy());
   const info = host.querySelector('.edit-side .info'), originList = host.querySelector('.edit-side dl.origin');
   expect(originList).toBeTruthy();
   expect(info.compareDocumentPosition(originList) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
