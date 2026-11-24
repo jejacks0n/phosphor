@@ -593,8 +593,9 @@ from it.
 - Rated: yes, wants Tab to Brightness then the arrows
 
 **Free time:** she'd take `qa.memory`, try `tall.png` at 80 columns and scroll to its bottom, bake at 200 columns and
-grow the grid afterwards to see what the working-size copy does, and export the bigger .ans and check it in the
-terminal.
+grow the grid afterwards to see what the working-size copy does, draw thin strokes on a Vector layer right on a new
+photo's base and move a cells layer under it to check none of its characters change (one working scale for every
+layer), and export the bigger .ans and check it in the terminal.
 
 ## Known
 
