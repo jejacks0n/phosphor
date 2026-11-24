@@ -649,19 +649,10 @@ export const mergingActions = {
       const inRect = (col, row) => !rect || (col >= rect.c0 && col <= rect.c1 && row >= rect.r0 && row <= rect.r1);
       const inPicture = (col, row) => col >= fit.dx && col < fit.dx + fit.dw && 2 * row >= fit.dy && 2 * row + 1 < fit.dy + fit.dh;
 
-      // The paint at grid resolution, as stored (the Renderer draws it this way before adjusting it).
-      const paint = document.createElement('canvas');
-      paint.width = this.cols;
-      paint.height = this.rows;
-      const paintCtx = ctx2d(paint);
-      paintCtx.imageSmoothingEnabled = false;
-      const k = this.paintLayer.scale;
-      paintCtx.drawImage(this.paintLayer.canvas, 0, 0, this.cols * k, this.rows * k, 0, 0, this.cols, this.rows);
-      const paintData = paintCtx.getImageData(0, 0, this.cols, this.rows).data;
-      const paintAt = (x, y) => {
-        const o = (y * this.cols + x) * 4;
-        return { r: paintData[o], g: paintData[o + 1], b: paintData[o + 2], a: paintData[o + 3] / 255 };
-      };
+      // The paint at grid resolution: each grid pixel's block averaged, as the layer's own reads do (the Renderer draws it
+      // this way before adjusting it). A nearest-pixel sample would drop the pixels of a soft edge a block holds.
+      const paintIn = this.paintLayer.pixelsIn(0, 0, this.cols - 1, this.rows - 1);
+      const paintAt = (x, y) => paintIn(x, y) ?? { r: 0, g: 0, b: 0, a: 0 };
 
       // The covered cells: edit cells and cells with paint, in the grid (and the rect).
       const covered = new Map();
