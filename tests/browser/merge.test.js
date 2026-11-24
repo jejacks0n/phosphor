@@ -1045,8 +1045,8 @@ test('Into the image from a row that isn\'t the layer in use merges that row\'s 
 });
 
 // What Blend into source image gives up: a layer's own characters (its paint is redrawn in the base's), its characters as
-// they are (each is drawn in as its glyph and picked again, docs/model.md R3), and only a real picture's original
-// resolution (a blank canvas's is one color, the same at any size).
+// they are and the base's under its paint (each is drawn in as its glyph and picked again, docs/model.md R3), and only a
+// real picture's original resolution (a blank canvas's is one color, the same at any size).
 test.each([
   ['a picture', true],
   ['a blank canvas', false],
@@ -1074,6 +1074,7 @@ test.each([
   };
   const chars = /Layer \d+'s custom characters: its paint is redrawn in Base's\./, resolution = "The source image's original resolution";
   const repicked = /Layer \d+'s characters as they are: each is drawn into the image and picked again, so some can change\./;
+  const basePicked = /The base's characters under the paint are drawn into the image and picked again, so some can change\./;
   try {
     const before = await ask(); // the base's characters
     expect(before).not.toMatch(chars);
@@ -1085,6 +1086,11 @@ test.each([
     const after = await ask();
     expect(after).toMatch(new RegExp(`You give up:.*${chars.source}`, 's'));
     expect(after.includes(resolution)).toBe(picture);
+    // a pin of the base's away from the paint, or a solid one under it (x 3), is nothing; a letter under it (x 6) is picked again
+    project.writeBaseCells([{ col: 15, row: 8, char: 'A', fg: '#ffffff', bg: '#000000' }, { col: 3, row: 3, char: '█', fg: '#ffffff', bg: '#000000' }]);
+    expect(await ask()).not.toMatch(basePicked);
+    project.writeBaseCells([{ col: 6, row: 3, char: 'A', fg: '#ffffff', bg: '#000000' }]);
+    expect(await ask()).toMatch(new RegExp(`You give up:.*${basePicked.source}`, 's'));
     project.typeAt(9, 9, 'Q', { fg: '#00ffff' });
     project.commitEdit();
     expect(await ask()).toMatch(new RegExp(`You give up:.*${repicked.source}`, 's'));

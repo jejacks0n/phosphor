@@ -383,18 +383,20 @@ file**, and Phosphor asks what you'd like to do with the art, then opens it as a
   the full block and the upper and lower half blocks (`█ ▀ ▄`) come back as they were.
 - **Cancel**: Opens nothing.
 
+**Edit artwork** and **Draw on top**:
+
+- **Every Cell Keeps Its Character and Colors**: So it looks just as the file does. With **Draw on top**, the art is
+  the base layer as if you'd used Merge down, and the color sliders, the palette and Bake work on it as they do on any
+  picture. The PIXEL view shows each of its characters as it looks at that scale, paint over them included
+  ([PIXEL View](#pixel-view)), so **All cells** stays as you left it.
+
 All three:
 
 - **The Grid**: The file's size. Its width comes from the file's SAUCE record when that describes character art with
   a width; otherwise it's 80 columns for a `.ans` and the widest line for the others. Its height is as many lines as
   the art reaches. The ANSI view starts at the art's top-left, its first line, as a terminal shows it (centered when
   the whole file fits).
-- **Every Cell Keeps Its Character and Colors**: With **Edit artwork** and **Draw on top**, so it looks just as the
-  file does (**Open as an image** picks the characters again). Opening a file isn't an edit, so there's nothing to
-  undo. With **Draw on top**, the art is the base layer as if you'd used Merge down, and the color
-  sliders, the palette and Bake work on it as they do on any picture. The PIXEL view shows each of its characters as
-  it looks at that scale, paint over them included ([PIXEL View](#pixel-view)), so **All cells** stays as you left
-  it.
+- **Nothing to Undo**: Opening a file isn't an edit, so there's nothing to undo.
 - **The Palette**: Follows the file: CGA when every color is one of the 16 classic colors, VGA when it uses 256-color
   codes for the others, and full color when it uses a 24-bit code. An export writes the same kind of codes, 16 and 231
   (fixed black and white) among them, where 0 and 15 would follow a terminal's theme
@@ -676,13 +678,16 @@ the canvas changes. Undo brings it back, selected if it was.
   - **Blend into source image**: Your drawing becomes part of the image itself, so every slider and image filter applies
     to it, live, like the photo. Paint goes in as it shows. Letters and other characters are drawn into the picture as
     they look, each in its two colors with your paint over it, and the converter picks them again from the picture, so
-    some can come back as other characters (the question lists that under **You give up**). In ANSI, solid cells
+    some can come back as other characters (the question lists that under **You give up**). The same goes for the
+    base's own characters under your paint, such as an opened file's, where the layer has none of its own: the question
+    lists those too. In ANSI, solid cells
     (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep showing their two halves. A wide character (漢),
     anything drawn in the bars around a picture that doesn't fill the grid, and a cell a merge froze as it showed merge
     exactly. In Color ASCII and Monochrome ASCII, **Colors only**'s paint goes into the picture as paint, and a typed
     cell's background goes into the picture with it, so in Color ASCII it comes back as ink on black. Like Bake, the first time makes the picture the
     working-size copy the preview is made from, so growing the grid later works from that, effects like Edges can
-    shift slightly that first time, and the **Image filters** work on it as on a picture you opened. With a Limited count palette,
+    shift slightly that first time, and the **Image filters** work on it as on a picture you opened (on a blank canvas
+    they appear once the picture is more than one color). With a Limited count palette,
     the palette is worked out again from the merged picture, so some colors can shift. When the graphics card can't
     process a picture as long as the grid (most handle the full 5,000 lines; some phones stop at 2,000 or 4,000), it
     merges exactly instead. Shapes stay shapes. A layer with character settings of its own loses them here: its paint is
