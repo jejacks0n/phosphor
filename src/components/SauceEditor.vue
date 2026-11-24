@@ -60,6 +60,13 @@ const spacing = computed({
   },
 });
 
+// iCE colors: on, bright backgrounds; off, they blink. Only a 16-color drawing has them (sixteenColors); in another the
+// box is off and keeps its value, for when the drawing is one again.
+const ice = computed({
+  get: () => project.sauceIceColors,
+  set: (on) => { project.sauceIceColors = on; },
+});
+
 const quoted = (text, most = 20) => ([...text].length > most ? `${[...text].slice(0, most).join('')}…` : text);
 
 // Comments in record lines, counted as the export writes them, once there's text: past 255, from which line of the
@@ -138,6 +145,11 @@ function fit(event, f) {
           <ToggleGroup v-model="spacing" class="spacing" single :options="SPACINGS" :label="t('sauce.spacing')" aria-describedby="sauce-viewers-help"/>
         </div>
         <p id="sauce-viewers-help">{{ t('sauce.viewersHelp') }}</p>
+
+        <div class="field">
+          <label class="check"><input id="sauce-ice" v-model="ice" type="checkbox" :disabled="!project.sixteenColors" aria-describedby="sauce-ice-help"> {{ t('sauce.iceColors') }}</label>
+          <p id="sauce-ice-help" class="lines">{{ project.sixteenColors ? t('sauce.iceHelp') : t('sauce.iceOnly16') }}</p>
+        </div>
       </fieldset>
 
       <hr/>
@@ -224,6 +236,18 @@ h4 {
   text-transform: uppercase;
   color: var(--text-muted);
 }
+
+/* A checkbox and its name, read as the field's label is not: in the text's own case and color. */
+label.check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: normal;
+  text-transform: none;
+  color: var(--text);
+}
+label.check:has(input:disabled) { color: var(--text-faint); }
 
 /* Three parts across the field, each a comfortable tap. */
 div.spacing { display: flex; }

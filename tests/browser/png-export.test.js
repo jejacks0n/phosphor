@@ -57,6 +57,24 @@ test('a hard-edged export is a small indexed PNG of the frame as the ANSI view d
   expect(rgbOf(png.data)).toEqual(rgbOf(shot.data));
 });
 
+test('without iCE colors a blinking cell is exported steady: its background bright, its letter there', async () => {
+  const { project } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 2, rows: 2 });
+  project.quantize = 'cga';
+  project.typeAt(0, 0, '█', { fg: '#ffffff', bg: '#5555ff' });
+  project.typeAt(1, 0, ' ', { fg: '#ffffff', bg: '#5555ff' });
+  project.commitEdit();
+  project.sauceIceColors = false;
+  await settle(project);
+  expect(project.blinkingBackgrounds.has('#5555ff')).toBe(true);
+  const download = nextDownload();
+  await project.exportFile('png', { filename: 'art', smooth: false });
+  const png = await decoded((await download).bytes), at = (x, y) => [...png.data.subarray((y * png.width + x) * 4, (y * png.width + x) * 4 + 3)];
+  const middle = png.height >> 1;
+  expect(at(png.width >> 2, middle)).toEqual([255, 255, 255]); // the block, lit
+  expect(at((3 * png.width) >> 2, middle)).toEqual([85, 85, 255]); // the background, bright
+});
+
 test('above 256 colors the export is full color, every pixel as it was', async () => {
   const width = 40, height = 10, rgba = new Uint8ClampedArray(width * height * 4);
   for (let p = 0; p < width * height; p++) rgba.set([p & 255, p >> 8, 7, 255], 4 * p);

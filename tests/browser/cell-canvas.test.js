@@ -227,6 +227,22 @@ function windowGrid() {
   return layoutWide(cells, GRID_COLS);
 }
 
+test('a look draws each cell in view as it says (a blink\'s half), the cells given left as they are', async () => {
+  await createTestApp();
+  const cells = [cell('█', '#ffffff', '#5555ff'), cell('█', '#ffffff', '#0000aa')];
+  const dark = rgb('#0000aa'), look = (c) => (c.bg.hex === '#5555ff' ? { ...c, bg: dark, fg: dark } : c); // unlit
+  const canvas = document.createElement('canvas'), view = new CellCanvas(canvas);
+  view.resize(2, 1, 1);
+  view.draw(cells, { look });
+  const gl = canvas.getContext('webgl2'), { width, height } = canvas, raw = new Uint8Array(width * height * 4);
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, raw);
+  view.destroy();
+  const at = (x) => [...raw.subarray(((height >> 1) * width + x) * 4, ((height >> 1) * width + x) * 4 + 3)];
+  expect(at(width >> 2)).toEqual([0, 0, 170]); // the block gone into its dark background
+  expect(at((3 * width) >> 2)).toEqual([255, 255, 255]); // a steady cell's block
+  expect(cells[0].bg.hex).toBe('#5555ff');
+});
+
 test('a window draws exactly the pixels the whole grid draws there', async () => {
   await createTestApp();
   await useWideFont();

@@ -41,6 +41,33 @@ test('under Saturation 0 the CGA colors show, only the grays can be picked, and 
   expect(swatches.filter((s) => !s.disabled).length).toBe(4); // black, gray, dark gray and white
 });
 
+test('with iCE colors off, a CGA drawing\'s bright swatches say they blink, on the BG side only', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  project.quantize = 'cga';
+  await settle(project);
+  workspace.editorTab = 'output';
+  const marked = async (slotName) => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const app = createApp(ColorsPage, { slotName }).use(i18n);
+    app.mount(host);
+    await nextTick();
+    const swatches = [...host.querySelectorAll('.swatches .swatch')];
+    const found = swatches.flatMap((swatch, i) => (swatch.classList.contains('blinks') ? [i] : []));
+    const title = swatches[12].title;
+    app.unmount();
+    host.remove();
+    return { found, title };
+  };
+  expect((await marked('bg')).found).toEqual([]); // iCE colors on: bright is bright
+  project.sauceIceColors = false;
+  const bg = await marked('bg');
+  expect(bg.found).toEqual([8, 9, 10, 11, 12, 13, 14, 15]);
+  expect(bg.title).toBe('#5555ff: blinks as a background (iCE colors is off)');
+  expect((await marked('fg')).found).toEqual([]); // a bright letter never blinks
+});
+
 // The browser's eyedropper, standing in: open() gives what's asked of it.
 function eyeDropper(open) {
   const had = Object.getOwnPropertyDescriptor(window, 'EyeDropper');

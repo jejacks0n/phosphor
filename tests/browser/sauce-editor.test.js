@@ -279,3 +279,20 @@ test('with a bitmap font drawn narrow, Not set leaves narrow in one undo step', 
   await nextTick();
   expect([project.fontWidth, project.drawingFont.cellWidth]).toEqual(['7', 7]);
 });
+
+test('iCE colors is a checkbox in a 16-color drawing, on for a new one; in any other it\'s off with a note, and keeps its value', async () => {
+  const { project } = await mount(({ project }) => { project.quantize = 'cga'; });
+  const box = field('sauce-ice'), help = () => host.querySelector('#sauce-ice-help').textContent;
+  expect([box.checked, box.disabled, project.sauceIceColors]).toEqual([true, false, true]);
+  expect(help()).toBe('On: bright backgrounds. Off: they blink, as on DOS.');
+  box.click();
+  await nextTick();
+  expect(project.sauceIceColors).toBe(false);
+  project.quantize = 'vga';
+  await nextTick();
+  expect([box.checked, box.disabled, help()]).toEqual([false, true, 'Only for 16-color drawings.']);
+  project.quantize = 'palette';
+  project.palette = Array.from({ length: 16 }, (_, i) => `#${i.toString(16).repeat(6)}`).join(' '); // a list of 16, as an XBin's own
+  await nextTick();
+  expect([box.checked, box.disabled]).toEqual([false, false]);
+});
