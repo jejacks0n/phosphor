@@ -94,6 +94,9 @@ and a half, measured, and the files share one software WebGL):
 - A selector both the view before a change and the one after it have (the Fonts page's `.info`, under a library font's
   slots and under the same font in Favorites) can be met by the old view: wait for what only the new one has, in the
   same check as the thing read (the lit star `&& .info` in `tests/browser/fonts-page.test.js`).
+- A unit test of a limit at its full size (a ledger at 64 MB, a file at the most lines) runs several times slower on a
+  CI runner than here, past the default 5 s once the runner is loaded: when nothing smaller can stand in for it, it
+  gets its own deadline with a comment giving its times (`AT_THE_LIMIT` in `tests/unit/ledger.test.js`).
 - A store asked for after an `await` can be another test's: a test that finishes late makes its own Pinia the active
   one again (every Pinia action and getter does). Take `getActivePinia()` right after `createTestApp()`, before the
   next `await`, and ask for later stores by it (`useRoomStore(pinia)`).
