@@ -1,6 +1,7 @@
 // A plugin filter's values as a drawing keeps them (the filterOptions setting: { [ref]: { name, values: { [optionId]: value } } }),
-// and the settings column's groups made from them and the filters installed. A filter runs only while one of its options is
-// off its default, so only those are kept, with the filter's name, which a drawing whose filter isn't there shows it by.
+// the plugin solvers' names it keeps (solverNames), and the settings column's groups made from the filters' values and the
+// filters installed. A filter runs only while one of its options is off its default, so only those are kept, with the
+// filter's name, which a drawing whose filter isn't there shows it by.
 import { isSolverRef, optionValues, pluginOfSolver, solverRef } from './solvers.js';
 import { ID, OPTION_ID } from './script.js';
 import { goodPluginId, plainText } from './manifest.js';
@@ -39,6 +40,18 @@ export function cleanFilterOptions(raw) {
     kept[ref] = { name: entry.name, values: { ...entry.values } };
   }
   return kept;
+}
+
+// A solverNames value as one a document can hold: an entry kept only when its key is a ref of the shape solverRef makes
+// (goodPluginRef) and both names are plain text of at most MOST_NAMED characters (a plugin's name, the longer of the two,
+// is held to that), the latest MOST_SOLVER_NAMES. What isn't an object is none.
+export const MOST_SOLVER_NAMES = 32;
+const MOST_NAMED = 60;
+const goodName = (name) => plainText(name) && !!name && [...name].length <= MOST_NAMED;
+export function cleanSolverNames(value) {
+  if (!plain(value)) return {};
+  const good = Object.entries(value).filter(([ref, entry]) => goodPluginRef(ref) && plain(entry) && goodName(entry.name) && goodName(entry.plugin));
+  return Object.fromEntries(good.slice(-MOST_SOLVER_NAMES).map(([ref, { name, plugin }]) => [ref, { name, plugin }]));
 }
 
 // A group's state: 'on' (it runs), 'idle' (installed, at its defaults), 'missing' (not installed), 'off' (its plugin

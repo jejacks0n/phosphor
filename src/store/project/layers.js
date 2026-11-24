@@ -10,6 +10,8 @@ import { markRaw } from 'vue';
 import { MOST_LAYERS, goodLayerName, layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { exactly, pixelRuns } from '@/document/changes.js';
 import { CHAR_KEYS, DITHER_KEYS, cleanOptions, sameSetting } from '@/store/settings.js';
+import { MOST_SOLVER_NAMES } from '@/plugins/filters.js';
+import { usePluginStore } from '@/store/PluginStore.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, fitRect } from '@/lib/Canvas.js';
 import PaintLayer from '@/document/PaintLayer.js';
@@ -18,7 +20,7 @@ import { NUDGE_MS, bytesHeld, dropFromSums, emptyFields, layerName, putLayer, pu
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { t } from '@/i18n';
 import { toast } from '@/composables/useToast';
-import { solverFor, optionValues } from '@/plugins/solvers.js';
+import { isSolverRef, optionValues, pluginOfSolver, solverFor } from '@/plugins/solvers.js';
 
 // id's layer with changes made, or no change when there's no such layer.
 function changed(store, id, patch) {
@@ -32,6 +34,16 @@ function putChars(store, id, own) {
 }
 
 const pick = (from, keys) => Object.fromEntries(keys.map((key) => [key, from[key]]));
+
+// A plugin solver a layer chose, named in the drawing's solverNames as it is now (the solver's name and its plugin's), the
+// latest last, so the drawing can say what to install where the plugin isn't. One that isn't here has no names to give.
+function nameSolver(store, ref) {
+  const def = solverFor(ref)?.def, record = usePluginStore().plugins.find((each) => each.id === pluginOfSolver(ref));
+  if (!def || !record) return;
+  const entry = { name: def.name, plugin: record.manifest.name }, { [ref]: was, ...rest } = store.solverNames;
+  if (was && sameSetting(was, entry) && Object.keys(store.solverNames).at(-1) === ref) return;
+  store.solverNames = Object.fromEntries([...Object.entries(rest), [ref, entry]].slice(-MOST_SOLVER_NAMES));
+}
 
 // The layer with the id out of the stack, and what's on it, for putBack: { layer, below, data } for a cells layer (its
 // cells and paint), { layer, below, shapes } for a vector layer (the shapes on it showing; a movie's other frames keep
@@ -213,6 +225,7 @@ export const layerActions = {
       this._charsBefore = { id, key: changedKey(own, was), values: pick(was, CHAR_KEYS), hadNoOwn: id !== 'base' && !layer.chars };
     }
     putChars(this, id, own);
+    for (const key of ['charChoice', 'charChoiceAscii']) if (isSolverRef(own[key])) nameSolver(this, own[key]);
     return true;
   },
 

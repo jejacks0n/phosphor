@@ -503,7 +503,9 @@ Outlines writes its tables once and builds the shader from them for that reason.
 
 A solver is chosen from the **Choose characters** list, under the built-ins and only where it does the drawing's
 style. It isn't used in rooms. A drawing that uses a solver whose plugin isn't there keeps the choice and its options,
-and shows By shape until the plugin is back; see [Characters](characters.md#plugin-solvers).
+and shows By shape until the plugin is back; see [Characters](characters.md#plugin-solvers). It also keeps the
+solver's name and the plugin's, as they were when a layer chose the solver, so its note can say which plugin to install
+("Outlines isn't installed."): a new name in a later version shows once a layer chooses the solver again.
 
 ## Writing a brush
 

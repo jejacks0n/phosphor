@@ -97,14 +97,14 @@ area.
 **When the solver isn't there**, the layer shows By shape in its place, with a note under **Choose characters**, and a ⚠
 beside the layer's name in LAYERS. The note says why:
 
-- "Outlines isn't installed. Showing By shape." The plugin was removed, or this browser never had it. When the plugin is gone its name isn't known, so the note uses the solver's id.
+- "Outlines isn't installed. Showing By shape." The plugin was removed, or this browser never had it. The note names the plugin, the thing to install, by the name the drawing kept when the solver was chosen, and the **Choose characters** list keeps the solver by its own name ("Outlines (not here)"). A drawing saved before names were kept has only the solver's id to give ("outlines").
 - "Outlines is off. Showing By shape." The plugin is switched off.
 - "Plugins are off for this visit. Showing By shape." The page was loaded with `plugins=off`.
 - "Outlines doesn't do ASCII. Showing By shape." The solver doesn't do the drawing's Art style.
 - "Outlines failed: … Showing By shape." The script threw; the message is its own.
 - "Plugin solvers aren't used in rooms. Showing By shape." In a room, everyone sees By shape.
 
-The file keeps the choice and its options, so installing the plugin, or switching it on, brings the look back. Exports
+The file keeps the choice, its options and the names, so installing the plugin, or switching it on, brings the look back. Exports
 use By shape for those layers, and the export dialog names them ("Base shows By shape in
 place of its plugin solver."). Hosting a room is refused while a layer uses a plugin solver (a stand-in counts), and says
 which layer: choose a built-in solver for it, or Flatten the drawing first.
