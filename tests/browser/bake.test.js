@@ -115,16 +115,25 @@ test('the color pair and a copied block keep their look', async () => {
   await settle(project);
   const { getEffectiveColor } = await import('@/lib/PixelTransforms');
   const swatch = getEffectiveColor(workspace.editFgColor, project, project.activePalette);
+  // The block pasted back over itself before Bake, under the sliders, and the baked block after: the same look, within
+  // a level (the block's colors are baked in JavaScript, the sliders run in the shader; they round differently by at
+  // most one). Not against the picture itself: a pasted half shows its one color transformed, the picture its pixels
+  // each transformed and then averaged, and where contrast clamps those differ (they were the same only when a grid
+  // pixel was one processed pixel).
+  const before = halves(project);
+  project.pasteSelection(workspace.clipboard, 10, 6);
+  await settle(project);
+  const unbaked = halves(project);
+  project.undo();
+  await settle(project);
+  expect(halves(project)).toEqual(before);
   await project.bake();
   await settle(project);
   expect(getEffectiveColor(workspace.editFgColor, project, project.activePalette)).toBe(swatch);
-  // Pasting the pre-bake block back over itself: the same look, within a level (the block's colors
-  // are baked in JavaScript, the picture by the shader; they round differently by at most one).
-  const shown = halves(project);
   project.pasteSelection(workspace.clipboard, 10, 6);
   await settle(project);
   const after = halves(project);
-  expect(Math.max(...shown.flatMap((h, i) => h.map((v, k) => Math.abs(v - after[i][k]))))).toBeLessThanOrEqual(1);
+  expect(Math.max(...unbaked.flatMap((h, i) => h.map((v, k) => Math.abs(v - after[i][k]))))).toBeLessThanOrEqual(1);
 });
 
 test('undo and redo', async () => {
