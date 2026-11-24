@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>Phosphor Thumbnail</string>
+  <key>CFBundleExecutable</key>
+  <string>PhosphorThumbnail</string>
+  <key>CFBundleIdentifier</key>
+  <string>work.phosphor.app.thumbnail</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>PhosphorThumbnail</string>
+  <key>CFBundlePackageType</key>
+  <string>XPC!</string>
+  <!-- The app's version, written in by build/thumbnail.mjs. -->
+  <key>CFBundleShortVersionString</key>
+  <string>0</string>
+  <key>CFBundleVersion</key>
+  <string>0</string>
+  <key>LSMinimumSystemVersion</key>
+  <string>12.0</string>
+  <key>NSExtension</key>
+  <dict>
+    <key>NSExtensionAttributes</key>
+    <dict>
+      <key>QLSupportedContentTypes</key>
+      <array>
+        <string>work.phosphor.pho</string>
+      </array>
+      <key>QLThumbnailMinimumDimension</key>
+      <integer>0</integer>
+    </dict>
+    <key>NSExtensionPointIdentifier</key>
+    <string>com.apple.quicklook.thumbnail</string>
+    <key>NSExtensionPrincipalClass</key>
+    <string>ThumbnailProvider</string>
+  </dict>
+</dict>
+</plist>
