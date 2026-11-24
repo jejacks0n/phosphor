@@ -11,8 +11,8 @@ const { cga, vga } = PALETTES;
 
 // The bytes of a cols by rows file, one cell(x, y) at a time, the way the app writes a .ans: a line feed
 // only where a viewer that ignores SAUCE needs one (under 80 columns), and SAUCE after the art.
-function ansBytes(cols, rows, cell, { colorMode, sauce }) {
-  const writer = new CellWriter({ colorMode });
+function ansBytes(cols, rows, cell, { colorMode, iceColors = true, sauce }) {
+  const writer = new CellWriter({ colorMode, iceColors });
   writer.sgr(0);
   for (let y = 0; y < rows; y++) {
     for (let x = 0; x < cols; x++) {
@@ -76,12 +76,28 @@ export function makeSceneAns() {
   return new Sauce({ cols: 80, rows }, { fileType: 1, fileSize: art.length, title: 'QA Scene', author: 'Phosphor QA', group: 'QA' }).appendTo(Uint8Array.from(art));
 }
 
-// The three files in a folder (made if it isn't there), and their paths.
+// A 20 by 4 piece made for blink: SAUCE's flags 2 (8 pixel letter spacing, iCE colors left off) and no ESC[?33h, so
+// its bright backgrounds, written as blink (SGR 5), blink in a viewer as they did on DOS. BLINK and its star are on
+// bright red and bright blue, the rest on dark colors, steady.
+const BLINKING = ['  ** BLINK **       ', '                    ', '  steady on blue    ', '  * a star *        '];
+export function makeBlinkAns() {
+  const cell = (x, y) => {
+    const char = BLINKING[y][x];
+    if (y === 0 && x >= 2 && x < 13) return { char, fg: cga[15], bg: cga[9] }; // bright red: blinks
+    if (y === 2 && x >= 2 && x < 16) return { char, fg: cga[14], bg: cga[4] }; // blue: steady
+    if (y === 3 && x >= 2 && x < 12) return { char, fg: cga[11], bg: cga[12] }; // bright blue: blinks
+    return { char, fg: cga[7], bg: cga[0] };
+  };
+  return ansBytes(20, BLINKING.length, cell, { colorMode: 'cga', iceColors: false, sauce: { title: 'QA Blink', flags: 2 } });
+}
+
+// The four files in a folder (made if it isn't there), and their paths.
 export function writeFiles(dir) {
   mkdirSync(dir, { recursive: true });
-  const paths = { long: join(dir, 'long.ans'), scene: join(dir, 'scene.ans'), logo: join(dir, 'logo.ans') };
+  const paths = { long: join(dir, 'long.ans'), scene: join(dir, 'scene.ans'), logo: join(dir, 'logo.ans'), blink: join(dir, 'blink.ans') };
   writeFileSync(paths.long, makeLongAns());
   writeFileSync(paths.scene, makeSceneAns());
   writeFileSync(paths.logo, makeLogoAns());
+  writeFileSync(paths.blink, makeBlinkAns());
   return paths;
 }

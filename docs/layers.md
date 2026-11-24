@@ -402,24 +402,28 @@ All three:
   codes for the others, and full color when it uses a 24-bit code. An export writes the same kind of codes, 16 and 231
   (fixed black and white) among them, where 0 and 15 would follow a terminal's theme
   ([Saving .utf8ans and .ans](characters.md#saving-utf8ans-and-ans)).
-- **SAUCE**: Fills the SAUCE tab: title, author, group, date, comments, font name and letter spacing. Your
+- **SAUCE**: Fills the SAUCE tab: title, author, group, date, comments, font name, letter spacing and iCE colors. Your
   display font stays as you have it. An export writes the record back as it came, with only what you changed on the
   SAUCE tab, and the size after a resize.
-- **Bright Backgrounds**: Kept bright. Blink isn't shown.
+- **Bright Backgrounds**: Blink (in a `.ans`, the code that makes a background bright on DOS) is kept as the bright
+  background it stands for. Whether it shows bright or blinks is the file's **iCE colors**: on when its SAUCE record
+  says so, off when it doesn't ([iCE colors](characters.md#ice-colors)). A file with no record is on when it starts
+  with the code that says so (`ESC[?33h`, as Phosphor writes it), off when it uses blink without it, and on when
+  nothing in it blinks. A UTF-8 file's bright backgrounds are colors of their own, so it's always on.
 - **Characters**: A `.utf8ans` is UTF-8, even with a stray byte that isn't (shown as �). One that isn't UTF-8 at all
   (a `.ans` renamed, say) is read as CP437 at 80 columns, as a `.ans` is, and a message says so. The other types are
   read as UTF-8 when they're valid UTF-8 with characters beyond plain ASCII, and as CP437 otherwise.
 - **Limits**: A file over 300 columns, 5,000 lines or 500,000 cells doesn't open. A message gives the file's size and
   the limits, and what you had open stays open. A file with no art in it doesn't open either. Either way the message
   comes first: Phosphor reads the file before it asks how to open it, or whether to leave unsaved work.
-- **XBin Files**: An `.xb` opens with its cells, its font and its palette. A palette that's exactly the 16 classic colors opens as CGA, and any other opens as a **Custom** color list. A file with no font opens with no bitmap font of its own. Added to a drawing with no bitmap font, a cell in the font's first slot (`␀`) comes in as a space, as classic CP437 shows it. A file that uses 512 characters is refused, with a message saying so, and so is one that's cut short or isn't XBin. Drawing with it, and saving one back, are in [Bitmap Fonts](characters.md#bitmap-fonts) and [Saving .xb](characters.md#saving-xb).
+- **XBin Files**: An `.xb` opens with its cells, its font and its palette. A palette that's exactly the 16 classic colors opens as CGA, and any other opens as a **Custom** color list. A file whose header says its backgrounds are bright opens with iCE colors on; one that doesn't keeps that bit as a bright background and opens with iCE colors off, so it blinks. A file with no font opens with no bitmap font of its own. Added to a drawing with no bitmap font, a cell in the font's first slot (`␀`) comes in as a space, as classic CP437 shows it. A file that uses 512 characters is refused, with a message saying so, and so is one that's cut short or isn't XBin. Drawing with it, and saving one back, are in [Bitmap Fonts](characters.md#bitmap-fonts) and [Saving .xb](characters.md#saving-xb).
 - **BinaryText Files**: A `.bin` is a character and its colors for each cell, with no escape codes, in CP437 and the 16
   classic colors, so it opens on CGA, in the font a `.ans` would open in. Its width comes from its SAUCE record,
-  and its height is as many lines as the file holds (a last line cut short is filled with spaces). Bright backgrounds
-  are bright when the record says iCE colors; otherwise that bit is blink, which isn't shown. Since `.bin` is used for
+  and its height is as many lines as the file holds (a last line cut short is filled with spaces). A background's top
+  bit is a bright background, shown bright when the record says iCE colors and blinking when it doesn't. Since `.bin` is used for
   every kind of file, Phosphor opens one only when its SAUCE record says it's BinaryText, or, with no record, when it's
   a whole number of 160-column lines, the width BinaryText has without one; then a message says it had no SAUCE record
-  and was read as BinaryText 160 columns wide (with bright backgrounds off). Any other `.bin` is refused: "*name* isn't
+  and was read as BinaryText 160 columns wide (with iCE colors off). Any other `.bin` is refused: "*name* isn't
   a BinaryText file." A `.bin` that's really an XBin opens as one. Phosphor opens `.bin` files but doesn't save them.
 - **Animated Files**: An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
@@ -1265,7 +1269,8 @@ As in Moebius, these work with any tool, in Edit Mode while you type too (they n
 - **With a Palette** (CGA, VGA, Limited count or Custom color list): Every swatch, in the grid and in **Recent**, paints
   its palette color whatever the color adjustments are. A color the adjustments can't make at all (Saturation at 0 makes
   only grays) shows under a "no" sign (a circle with a slash) and can't be picked, in **Recent** too, and the arrows, and
-  the color steps (**Ctrl+arrows**), step past it. **Recent** keeps the palette colors you picked; a recent color
+  the color steps (**Ctrl+arrows**), step past it. With [iCE colors](characters.md#ice-colors) off, the bright
+  colors (8 to 15) on the BG side have a small spark in the corner, in **Recent** too: as a background they blink. **Recent** keeps the palette colors you picked; a recent color
   the palette doesn't have (one picked in Full Color) shows as the palette's nearest. A palette with many colors (a
   list of 256 is 32 rows) scrolls by itself, so **None** and **Recent** under it stay in reach. With a Custom color
   list, the color layer's **Palettes** page edits it ([The Color Layer](#the-color-layer)).

@@ -79,7 +79,7 @@ script. Every section ends with Free time.
 - Expects: it opens on ANSI at 80 columns by 6 lines, every cell an edit cell on Layer 1 over a black base; the line
   that runs past column 80 wraps onto the next line; Z sits ten columns past "ab", R right after Z where the cursor
   was saved; the `!` has a bright red background, not blinking; the palette is CGA; SAUCE shows "QA Scene", "Phosphor
-  QA" and "QA"; Undo is off (opening isn't an edit). It opens within the `file` budget.
+  QA" and "QA", and iCE colors checked (the scene's record says so); Undo is off (opening isn't an edit). It opens within the `file` budget.
 - Probes: `back-out`: choose the file and press Cancel at the question, and check the start screen is as it was;
   `free`: drop the file on the start screen's box instead of the button.
 - Rated: yes, wants Cmd+O, then Enter for Edit artwork
@@ -284,8 +284,9 @@ look at what covers what, and check what Merge down's tooltip says.
 
 ### 20. Bright backgrounds stay bright
 - Does: in Edit Mode, sets a bright CGA background (bright blue) and types a word over it.
-- Expects: it shows bright, never blinking; the export writes it the classic way (blink, with SAUCE's iCE colors flag)
-  so the terminal check and other viewers show it bright.
+- Expects: it shows bright, never blinking, since his scene keeps iCE colors on (the SAUCE tab's checkbox, checked);
+  the BG swatches have no blink spark; the export writes it the classic way (blink, with SAUCE's iCE colors flag and
+  `ESC[?33h` at the top) so the terminal check and other viewers show it bright.
 - Probes: `again`: set bright backgrounds on two lines with different colors; `out-of-order`: set the palette to Full
   color and back to CGA and check the bright colors held.
 - Rated: yes, wants Alt+B, then Enter

@@ -18,6 +18,8 @@ never a lost hour of work, whatever the browser does.
 - The generated `long` file (the README's Files): 300 columns by 1,600 lines, 480,000 cells, about 10.6 MB, every
   color of the 256, SAUCE titled "QA Long". The same maker (`files.makeLongAns({ cols, lines })`) makes the over-limit
   files he tries: 300 by 1,700 (510,000 cells) and 301 by 100.
+- The generated `blink` file: 20 by 4, SAUCE titled "QA Blink" with flags 2 (iCE colors left off) and no `ESC[?33h`,
+  its bright backgrounds written as blink (SGR 5), as legacy art used it on purpose.
 - The real packs in `input/qa/packs/` when they're there (`input/qa/README.txt` lists them): the biggest .ans
   (`blocktronics_blocktober/ungenannt_oceanvs.ans`, 137 KB), the longest (`acid-50a/RA-FIFTY.ANS`, about 1,675
   lines), the member list (`blocktronics_blocktober/__BLOCKTRONICS_BLOCKTOBER_MEMBERLIST_AND_STATS.ans`, about 240
@@ -219,6 +221,20 @@ bytes of the original and the export outside the art.
 - Probes: `interrupt`: save the project instead, reload, reopen it from the start screen, and check SAUCE there too.
 - Rated: yes, wants Cmd+E, then Enter
 
+### 16. Blink kept as the file had it
+- Does: opens `blink.ans` (flags 2 in its record: iCE colors left off) with Edit artwork; looks at the ANSI view and the
+  SAUCE tab; fixes a cell on the steady row (types over a letter of "steady"); exports .ans; then compares the export
+  with `blink.ans` byte for byte outside the fixed cell's run.
+- Expects: "BLINK" and the star line show on dark red and dark blue, their letters blinking; the steady row doesn't;
+  PIXEL shows them bright and steady. SAUCE's iCE colors checkbox is off, and its line says "On: bright backgrounds.
+  Off: they blink, as on DOS."; on the Colors page's BG side the bright swatches have a small spark (they blink). The
+  export's record has flags 2, as it was; there's no `ESC[?33h`; the blink cells (SGR 5) are byte for byte the same.
+- Probes: `out-of-order`: switch the color mode to VGA (the checkbox goes off, saying "Only for 16-color drawings.") and
+  back to CGA (it's off again, and the letters blink again); `again`: turn iCE colors on, export, and check the record's
+  flags are 3 and the file starts with `ESC[?33h`; `interrupt`: save the project, reload, reopen it, and check iCE
+  colors is still off.
+- Rated: yes, wants Tab to iCE colors, then Space
+
 **Free time:** he'd check the SAUCE Date, Font name and Letter spacing (type a 9-digit date and a 25-character font
 name, set 9px and back to what the file had, and compare the export's record byte for byte), clear every field and
 export (an empty SAUCE: an opened file's empty date and font name stay empty), compare
@@ -226,7 +242,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 
 ## Autosave, Versions, Back and Forward
 
-### 16. My fix survives a reload
+### 17. My fix survives a reload
 - Does: fixes a cell, waits a second and a half, and reloads.
 - Expects: the fix is back, the document says it has unsaved changes, the file name is kept, the address brings back
   the tab; Undo starts empty (by design, not a finding).
@@ -234,7 +250,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
   `speed`: make ten fixes quickly, wait, reload, and check all ten.
 - Rated: no (a check of autosave)
 
-### 17. A second tab offers my work
+### 18. A second tab offers my work
 - Does: opens the app in a second tab of the same browser and looks at the start screen; then closes it.
 - Expects: "Pick up where you left off" lists his work, marked as already open in another tab (dimmed, "In another tab");
   the first tab's work is as it was. Choose a file has focus as the page opens, so Down reaches the rest at once.
@@ -244,7 +260,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
   buttons stay the list's width (one over the other once they can't share a line) and nothing in a row runs under Resume.
 - Rated: yes, wants Tab to the entry, then Enter
 
-### 18. Go back to an earlier version
+### 19. Go back to an earlier version
 - Does: opens Versions right after opening his file (none yet); fixes a cell and opens it again; then keeps fixing
   cells, a snippet at a time, until more than five minutes of work have passed and Versions lists another snapshot (or
   waits, with an edit every minute); then restores the oldest, "As opened", and opens Versions again.
@@ -255,7 +271,7 @@ SAUCE in a .utf8ans export with what its Export dialog lists, and check SAUCE's 
 - Probes: `back-out`: open Versions and press Escape; `undo-redo`: after restoring, Cmd+Z, and see what it does.
 - Rated: yes, wants a key for Versions
 
-### 19. Back and Forward between tabs
+### 20. Back and Forward between tabs
 - Does: from ANSI goes to PIXEL, then SAUCE; presses the browser's Back twice, Forward once; reloads on SAUCE.
 - Expects: the address names each tab; Back and Forward move between them; the reload comes back to SAUCE; Back with a
   dialog open (Export) closes the dialog and the tab stays. Back past the first tab, after a file opened from the start
@@ -272,7 +288,7 @@ long file (time the reload), and press Back from a fresh start screen.
 
 ## Real packs and the edges
 
-### 20. Open the biggest real files
+### 21. Open the biggest real files
 - Does: opens `ungenannt_oceanvs.ans` (the biggest) and `RA-FIFTY.ANS` (the longest) with Edit artwork, timing each, and compares each with the terminal
   check and with the app's reopen of its own export.
 - Expects: each opens under the `file` budget at its SAUCE width (or 80); the app's export reopens unchanged; where the
@@ -284,25 +300,26 @@ long file (time the reload), and press Back from a fresh start screen.
   open them on a phone-sized view.
 - Rated: yes, wants Cmd+O
 
-### 21. Open .asc and .txt files
+### 22. Open .asc and .txt files
 - Does: opens an .asc from `acid-50a` and a .txt from `impure88`.
 - Expects: each opens at its widest line, read as UTF-8 when it looks like it and CP437 otherwise; box characters show
   as they should.
 - Probes: `out-of-order`: drop one on an open drawing and pick Add to this drawing.
 - Rated: yes, wants Cmd+O
 
-### 22. Open an XBin, fix a cell, export it again
+### 23. Open an XBin, fix a cell, export it again
 - Does: opens the pack's XBins (`acid-55a/ACID-55.XB` and the others) one at a time, and checks the cells, the font
   and the palette against what the file holds. Fixes one cell, exports XBin, and decodes the export, comparing its
   cells, font and palette with the file's (not its bytes: the compression may differ). Opens a 512-character XBin, made
   in the snippet by setting that flag in a file's header.
 - Expects: the art, its font and its palette are the file's; the file's palette is CGA when it's exactly the 16 classic
-  colors and a Custom list otherwise; the export differs from the original only in the fixed cell; the 512-character
+  colors and a Custom list otherwise; an XBin whose header leaves NON_BLINK off opens with iCE colors off (its bright
+  backgrounds blinking in the ANSI view) and its export leaves NON_BLINK off too; the export differs from the original only in the fixed cell; the 512-character
   file is refused with a message that says why, and a cut-short one says it's broken (the README's Files).
 - Probes: `back-out`: Cancel any question it asks; `again`: export twice and compare the two decodes.
 - Rated: yes, wants Cmd+O
 
-### 23. Try the formats it may not open
+### 24. Try the formats it may not open
 - Does: drops `.sue`, `.tnd`, `.nfo` and `.diz` files on the start screen one at a time, then chooses one with
   Choose a file. Then the `.bin` files: the BinaryText fixture, a 160-column one with no SAUCE made in the snippet (two
   rows of `█` in yellow on blue, 640 bytes), and a PNG renamed `photo.bin` (one whose size isn't a whole number of 320 bytes, nor one byte more).
@@ -313,7 +330,7 @@ long file (time the reload), and press Back from a fresh start screen.
 - Probes: `back-out`: Cancel any question it asks; `again`: drop the same file twice.
 - Rated: yes, wants Cmd+O
 
-### 24. Files over the limits are refused
+### 25. Files over the limits are refused
 - Does: makes a 300 by 1,700 file and a 301 by 100 file with `files.makeLongAns`, and with unsaved work drops each on
   his open drawing.
 - Expects: neither opens; a message gives the file's size and the limits (300 columns, 5,000 lines, 500,000 cells)
@@ -323,7 +340,7 @@ long file (time the reload), and press Back from a fresh start screen.
   `again`: try the same file twice.
 - Rated: yes, wants Cmd+O
 
-### 25. Grow the grid to its limit
+### 26. Grow the grid to its limit
 - Does: on the long file, sets Dimensions' lines to 1,700 (3,400 pixel rows), then 1,666; then turns Lock aspect ratio
   off and does it again.
 - Expects: with the lock on, the size stays at 1,600 lines and a message says the lock keeps the shape, 300 × 3200 the
@@ -334,7 +351,7 @@ long file (time the reload), and press Back from a fresh start screen.
   the steps before it), then redo both; `extremes`: 5,000 lines at 100 columns.
 - Rated: yes, wants Tab to Dimensions
 
-### 26. Fill, merge and delete across the long file
+### 27. Fill, merge and delete across the long file
 - Does: adds a layer, fills the whole of it with the Paint Bucket (a click on the blank layer), clicks again while it
   fills, then Merge down; Select all, Cmd+C, Delete on the base, then Cmd+V the copy back; changes the character set.
 - Expects: each lands as one undo step; one taking over half a second says so at the bottom ("Filling…", "Merging…",
@@ -344,7 +361,7 @@ long file (time the reload), and press Back from a fresh start screen.
   "Merging…" is up (it draws nothing); `undo-redo`: undo each and redo it.
 - Rated: no (a check of speed)
 
-### 27. Memory after a long session
+### 28. Memory after a long session
 - Does: takes `qa.memory` and compares it with step 1's; reopens the long file once more and takes it again.
 - Expects: no steady growth: reopening the same file doesn't add its size each time.
 - Probes: `again`: open and close the long file three times, taking `qa.memory` after each.
