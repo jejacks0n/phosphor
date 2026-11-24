@@ -1,7 +1,6 @@
 import { test, expect, vi, afterEach } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import ExportModal from '@/components/ExportModal.vue';
@@ -12,9 +11,10 @@ afterEach(() => vi.restoreAllMocks());
 // default second.
 const PATIENT = { interval: 5, timeout: 10_000 };
 
-// With the test's pinia, a late action of the test before (which makes its own pinia the active one) can't hand the
-// modal that test's stores.
-function mountModal(pinia = getActivePinia()) {
+// With the test's pinia, kept by drawing() before any await: a late action of the test before makes its own pinia the
+// active one again, so the active pinia at mount time may hand the modal that test's stores.
+let testPinia = null;
+function mountModal(pinia = testPinia) {
   const closed = vi.fn();
   const app = createApp(ExportModal, { onClose: closed }).use(i18n).use(pinia);
   app.mount(document.createElement('div'));
@@ -23,6 +23,7 @@ function mountModal(pinia = getActivePinia()) {
 
 async function drawing() {
   const { project, workspace, pinia } = await createTestApp();
+  testPinia = pinia;
   await project.setBlankCanvas({ withLayer: true, cols: 6, rows: 4 });
   project.typeAt(1, 0, 'A', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
