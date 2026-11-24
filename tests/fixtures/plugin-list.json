@@ -11,7 +11,7 @@
         "phosphor": 1,
         "id": "phosphor.outlines",
         "name": "Outlines",
-        "version": "1.0.1",
+        "version": "1.0.2",
         "author": "Phosphor",
         "description": "Draws - | / and \\ along a picture's outlines, darker side on lighter, and leaves the rest to By shape.",
         "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/outlines",
@@ -20,8 +20,8 @@
         "preview": " ╱──╲ \n│    │\n ╲──╱ ",
         "themes": []
       },
-      "manifestHash": "ae511fd2d146794b7a75a3df90dbd68a20901ad6d74d99f164d9796a2291eb00",
-      "scriptHash": "c0f86dc2b5fefed97e073a89a9cacf7ed0f542566322b1571ebd89aee6597b4e"
+      "manifestHash": "e57b6959f134d4cf28153377af062412d2d58887f622d1398c995ff1edd84419",
+      "scriptHash": "497cb473ac0e52ddbdefa8702ae908ccb39180949f14c2ad2c14d2652be3c48c"
     },
     {
       "official": true,

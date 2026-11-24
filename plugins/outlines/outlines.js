@@ -10,7 +10,8 @@
 // as a line to Clean up too.
 //
 // Both passes are here twice: in JavaScript, and as shaders that run on the graphics card. Phosphor checks the shaders
-// against the JavaScript before it uses them, so they're written to work out the same numbers in the same order.
+// against the JavaScript before it uses them, so they're written to work out the same numbers in the same order, and
+// each shader function is named for the JavaScript function it mirrors.
 
 // The lines, in the order the code counts them (0 -, 1 |, 2 /, 3 \): the ASCII ones, then the box-drawing ones.
 const LINES = ['-|/\\', '─│╱╲'];
@@ -114,54 +115,70 @@ function refine(cell, look) {
 }
 
 // ---- GLSL ----
-// Each pass is the body of a function Phosphor puts after its prelude (docs/plugins.md, "The shader"); the
-// pieces both passes share are strings put together here. The tables come from the JavaScript's, so they can't drift.
-// A glyph is named by its index: ownGlyph[n] is the index of this solver's nth character (in chars, LINES joined), so
-// line k of the Lines choice is ownGlyph[4 * opt_lines + k], wherever the layer's set put it.
-// A shader can't keep pass 1's cell as refine's null does, so its refine works pass 1's cell out again (WINDOW, LINE)
-// and uses it where Clean up changes nothing.
+// The same two passes for the graphics card. helpers is GLSL that Phosphor puts after its prelude and before each pass's
+// function (docs/plugins.md, "The shader"), so the functions the passes share are written once, and each is the
+// JavaScript function of the same name, working out the same numbers in the same order. The tables come from the
+// JavaScript's, so they can't drift. A glyph is named by its index: ownGlyph[n] is the index of this solver's nth
+// character (in chars, LINES joined), so line k of the Lines choice is ownGlyph[4 * opt_lines + k], wherever the layer's
+// set put it.
 
-const WINDOW_GLSL = `
-  vec3 sums[9];
+const HELPERS = `
+const float STRONGEST = 255.0 * sqrt(20.0);
+const int SIDES[24] = int[24](${SIDES.flat(2).join(', ')});
+const int RUNS[8] = int[8](${RUNS.flat().join(', ')});
+
+vec3 sums[9];
+void readWindow() {
   for (int j = 0; j < 9; j++) {
     vec3 sum = vec3(0);
     for (int i = 0; i < 32; i++) sum += sampleAt(ivec2(j % 3 - 1, j / 3 - 1), i);
     sums[j] = sum;
-  }`;
+  }
+}
 
-const LINE_GLSL = `
-  const float STRONGEST = 255.0 * sqrt(20.0);
+int lineOf() {
   float b[9];
-  for (int j = 0; j < 9; j++) b[j] = floor((0.2126 * sums[j].r + 0.7152 * sums[j].g + 0.0722 * sums[j].b) / 32.0 + 0.5);
+  for (int j = 0; j < 9; j++) b[j] = floor(gray(sums[j]) / 32.0 + 0.5);
   float gx = b[2] + 2.0 * b[5] + b[8] - b[0] - 2.0 * b[3] - b[6];
   float gy = b[6] + 2.0 * b[7] + b[8] - b[0] - 2.0 * b[1] - b[2];
-  int k = -1;
-  if ((gx != 0.0 || gy != 0.0) && !(100.0 * length(vec2(gx, gy)) < opt_threshold * STRONGEST)) {
-    float ax = abs(gx), ay = abs(gy);
-    k = 12.0 * ay <= 5.0 * ax ? 1 : 12.0 * ax <= 5.0 * ay ? 0 : gx * gy > 0.0 ? 2 : 3;
-  }`;
+  if ((gx == 0.0 && gy == 0.0) || 100.0 * length(vec2(gx, gy)) < opt_threshold * STRONGEST) return -1;
+  float ax = abs(gx), ay = abs(gy);
+  if (12.0 * ay <= 5.0 * ax) return 1;
+  if (12.0 * ax <= 5.0 * ay) return 0;
+  return gx * gy > 0.0 ? 2 : 3;
+}
 
-const PUT_GLSL = `
-  if (k < 0) {
-    if (opt_elsewhere == 0) { byShape(); return; }
-    int blank = 255;
-    for (int g = 0; g < glyphCount && blank == 255; g++) {
-      bool empty = true;
-      for (int i = 0; i < 32; i++) if (glyphMask(g, i) != 0.0) empty = false;
-      if (empty) blank = g;
-    }
-    vec3 mean = sums[4] / 32.0;
-    put(mean, mean, blank);
-    return;
-  }
-  const int SIDES[24] = int[24](${SIDES.flat(2).join(', ')});
+void lineCell(int k) {
   vec3 one = (sums[SIDES[k * 6]] + sums[SIDES[k * 6 + 1]] + sums[SIDES[k * 6 + 2]]) / 96.0;
   vec3 two = (sums[SIDES[k * 6 + 3]] + sums[SIDES[k * 6 + 4]] + sums[SIDES[k * 6 + 5]]) / 96.0;
-  bool darker = 0.2126 * one.r + 0.7152 * one.g + 0.0722 * one.b <= 0.2126 * two.r + 0.7152 * two.g + 0.0722 * two.b;
-  put(darker ? one : two, darker ? two : one, ownGlyph[4 * opt_lines + k]);`;
+  bool darker = gray(one) <= gray(two);
+  put(darker ? one : two, darker ? two : one, ownGlyph[4 * opt_lines + k]);
+}
 
-const REFINE_GLSL = `
-  const int RUNS[8] = int[8](${RUNS.flat().join(', ')});
+// Blank is the set's first glyph with no ink, else 255, the solid: as the JavaScript's blank.
+void elsewhere() {
+  if (opt_elsewhere == 0) { byShape(); return; }
+  int blank = 255;
+  for (int g = 0; g < glyphCount && blank == 255; g++) {
+    bool empty = true;
+    for (int i = 0; i < 32; i++) if (glyphMask(g, i) != 0.0) empty = false;
+    if (empty) blank = g;
+  }
+  vec3 mean = sums[4] / 32.0;
+  put(mean, mean, blank);
+}`;
+
+const SOLVE = `
+  readWindow();
+  int k = lineOf();
+  if (k < 0) elsewhere(); else lineCell(k);`;
+
+// Clean up reads pass 1's characters with charAt, which only pass 2 has, so it stays in this pass rather than the
+// helpers (a helper both passes reach can't call it). A shader can't keep pass 1's cell as refine's null does, so it works
+// pass 1's line out again and draws it where Clean up changes nothing.
+const REFINE = `
+  readWindow();
+  int k = lineOf();
   int kinds[9];
   for (int j = 0; j < 9; j++) {
     int c = charAt(ivec2(j % 3 - 1, j / 3 - 1)); // -1 past the border
@@ -179,7 +196,8 @@ const REFINE_GLSL = `
       }
     }
   }
-  if (now != was) k = now; // else pass 1's k, worked out again above`;
+  if (now != was) k = now;
+  if (k < 0) elsewhere(); else lineCell(k);`;
 
 export default {
   solvers: [{
@@ -196,9 +214,6 @@ export default {
     ],
     solve,
     refine,
-    shader: {
-      solve: WINDOW_GLSL + LINE_GLSL + PUT_GLSL,
-      refine: WINDOW_GLSL + LINE_GLSL + REFINE_GLSL + PUT_GLSL,
-    },
+    shader: { helpers: HELPERS, solve: SOLVE, refine: REFINE },
   }],
 };

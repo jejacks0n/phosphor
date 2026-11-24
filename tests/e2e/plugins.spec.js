@@ -92,7 +92,7 @@ async function installOutlines(page, { from, replaces = false }) {
   const chooser = page.waitForEvent('filechooser');
   await dialog(page).getByRole('button', { name: from === 'folder' ? 'Install from a folder…' : 'Install from a file…' }).click();
   await (await chooser).setFiles(from === 'folder' ? OUTLINES : OUTLINES_ZIP);
-  const title = replaces ? 'Replace Outlines 1.0.1 with 1.0.1?' : 'Install Outlines 1.0.1?';
+  const title = replaces ? 'Replace Outlines 1.0.2 with 1.0.2?' : 'Install Outlines 1.0.2?';
   await expect(dialog(page).getByRole('heading', { name: title })).toBeVisible();
   await expect(dialog(page).getByText('This plugin runs code in Phosphor. Install it only if you trust where it came from.')).toBeVisible();
   await dialog(page).getByRole('button', { name: replaces ? /^Replace Adds a script/ : /^Install Adds a script/ }).click();
@@ -187,7 +187,7 @@ test('Outlines is found in the Marketplace, installed as Official and draws', as
   await dialog(page).getByPlaceholder('Search plugins').fill('out');
   await expect(dialog(page).getByRole('link', { name: 'Midnight' })).toHaveCount(0);
   await dialog(page).getByRole('button', { name: 'Install', exact: true }).click();
-  await expect(page.getByRole('heading', { name: 'Install Outlines 1.0.1?' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Install Outlines 1.0.2?' })).toBeVisible();
   await expect(page.getByText('Official', { exact: true })).toBeVisible(); // the question says where it comes from
   await dialog(page).getByRole('button', { name: /^Install Adds a script/ }).click();
   await installedTab(page);

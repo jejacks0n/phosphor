@@ -72,7 +72,7 @@ test('with nothing installed it opens on Marketplace: the line under the tabs an
   expect(names()).toEqual(['Aberration', 'Midnight', 'Outlines', 'Rain', 'Smear', 'Superformula', 'Amber CRT', 'Fog']);
 
   const outlines = card('Outlines');
-  for (const words of ['1.0.1', 'Official', 'Adds a script']) expect(outlines.textContent).toContain(words);
+  for (const words of ['1.0.2', 'Official', 'Adds a script']) expect(outlines.textContent).toContain(words);
   expect(outlines.textContent).not.toContain('by Phosphor');
   const description = outlines.querySelector('p.description');
   expect(description.textContent).toBe('Draws - | / and \\ along a picture\'s outlines, darker side on lighter, and leaves the rest to By shape.');
@@ -170,7 +170,7 @@ test('Install asks first, naming Official and warning of code, and the answer in
   await expect.element(page.getByRole('tab', { name: 'Marketplace' })).toHaveAttribute('aria-selected', 'true');
   await vi.waitFor(() => expect(names()).toHaveLength(7));
   button('Outlines').click();
-  await vi.waitFor(() => expect(heading()).toBe('Install Outlines 1.0.1?'));
+  await vi.waitFor(() => expect(heading()).toBe('Install Outlines 1.0.2?'));
   expect(document.querySelector('dialog p.sub').textContent).toBe('Official');
   expect(dialogText()).toContain('Adds a script.');
   expect(dialogText()).toContain(WARNING);

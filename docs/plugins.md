@@ -342,7 +342,7 @@ Its manifest names the script:
   "phosphor": 1,
   "id": "phosphor.outlines",
   "name": "Outlines",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "author": "Phosphor",
   "script": "outlines.js"
 }
@@ -485,7 +485,9 @@ of a GLSL ES 3.00 function (`void solve()`, `void refine()`) that Phosphor puts 
 
 A pass is one function's body, so it can't declare a function or a constant outside itself. `helpers` is where those go:
 GLSL that Phosphor puts after the prelude and before the pass's function, in both passes' shaders, so it can use what's
-listed above and both passes can call it. A helper both passes reach can't call `charAt`, which only pass 2 has. In the
+listed above and both passes can call it. Outlines keeps its shared functions there, each named for the JavaScript
+function it mirrors. A helper both passes reach can't call `charAt`, which only pass 2 has, so Outlines' Clean up stays
+in its `refine`. In the
 compiler's log a line of the helpers is counted from their first line as source 1 (`1:3` is their third line), and a
 line of a pass from its own first line as source 0 (`0:3`). Write each pass as a body, never closing its function early
 to declare things after it: `helpers` is the place for them, and a pass that leaves its function may stop building in a
