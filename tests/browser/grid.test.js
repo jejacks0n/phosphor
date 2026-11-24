@@ -12,6 +12,9 @@ import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { ctx2d } from '@/lib/Canvas';
 import { BLANK_CANVAS_SCALE } from '@/store/project/shared.js';
 import { MOST_SCALE } from '@/lib/ImageProcessor.js';
+import { MAX_LAYER_DIM } from '@/document/PaintLayer.js';
+
+const EDGE = MAX_LAYER_DIM / MOST_SCALE; // the most rows a layer holds at the working scale's most
 import { cellIndex, MAX_LINES, MAX_CELLS } from '@/lib/Cells';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -590,7 +593,7 @@ test('a canvas resize past MAX_LAYER_DIM resamples the layers, and undo puts the
   await settle(project);
   await dabAndType(project, workspace);
   const before = drawn(project);
-  project.rows = 600; // 600 rows at the scale would be past MAX_LAYER_DIM
+  project.rows = 1100; // 1,100 rows at the working scale would be past MAX_LAYER_DIM
   await settle(project);
   expect(project.paintLayer.scale).toBeLessThan(BLANK_CANVAS_SCALE);
   expect(project.baseLayer.scale).toBeLessThan(BLANK_CANVAS_SCALE);
@@ -683,17 +686,17 @@ test('a run of Dimensions presses is one undo step, past MAX_LAYER_DIM too, and 
   let now = Date.now();
   const clock = vi.spyOn(Date, 'now').mockImplementation(() => now);
   try {
-    for (let rows = 491; rows <= 510; rows++) { // 500 rows at the working scale's most, 8, is MAX_LAYER_DIM: 501 resamples
+    for (let rows = EDGE - 9; rows <= EDGE + 10; rows++) { // EDGE rows at the working scale's most is MAX_LAYER_DIM: one more resamples
       project.updateRows(rows);
       await settle(project);
       now += 100;
     }
     expect(project.paintLayer.scale).toBeLessThan(MOST_SCALE);
     const after = drawn(project);
-    project.undo(); // 501 to 510, the resample and the presses that joined it
+    project.undo(); // EDGE + 1 to EDGE + 10, the resample and the presses that joined it
     await settle(project);
-    expect([project.rows, project.paintLayer.scale]).toEqual([500, MOST_SCALE]);
-    project.undo(); // 491 to 500
+    expect([project.rows, project.paintLayer.scale]).toEqual([EDGE, MOST_SCALE]);
+    project.undo(); // EDGE - 9 to EDGE
     await settle(project);
     expect(drawn(project)).toEqual({ ...before, paint: expect.any(String), base: expect.any(String) });
     expect(project.paintLayer.pixelAt(4, 4)).toMatchObject({ r: 255, g: 0, b: 0 });
