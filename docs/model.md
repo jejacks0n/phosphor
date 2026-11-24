@@ -265,9 +265,14 @@ olive and black stripes by turns. A vector layer right on the base draws its sha
 there each cell a shape takes holds the pin's look in place of its two pixels (each half the background and foreground
 mixed by the glyph's ink in it), before the color settings, as the pixels would be; Merge down and Bake press them
 into the base over that look, so nothing changes. Right on the base means in the whole stack, eyes aside: the lower
-group is the whole stack's, and a hidden layer is only left out of it (`lowerGroup`'s `shows`). A vector layer
-right on the base draws at the base's scale and one above at the paint's, so a cells layer hidden under a vector layer
-that moved it onto the base would redraw its strokes at another scale, as other characters. The lower
+group is the whole stack's, and a hidden layer is only left out of it (`lowerGroup`'s `shows`). A new drawing
+has one working scale, which its picture is processed at and its base, every cells layer's paint and every vector layer
+share: the picture's own pixels a grid pixel, at most 8 (twice By shape's samples) and at least 4 (a smaller picture
+enlarged to it, pixel for pixel), within the largest layer size (`prepare`'s `natural`). So a vector layer draws the same
+pixels right on the base or above a cells layer, and moving or hiding a cells layer under it changes none of its
+characters. A file saved with scales of its own keeps them: there a vector layer right on the base draws at the base's
+scale and one above at the paint's, so a cells layer moved under one (or hidden there, had the group followed the eyes)
+redraws its strokes at another scale, as other characters. The lower
 group's own paint converts over the picture the same way. Under By shape (and plugin solvers, R12), which matches finer samples of the picture
 (4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
 (`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
@@ -280,7 +285,8 @@ shapes, and the PIXEL view, which shows a grid pixel of paint as its block's ave
 merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
 another step, dither error, By shape's finer samples, a plugin solver's neighbors, R12), which R3 freezes.
 
-- Lives in: `lowerGroup` (`src/document/layerInfo.js`), with its `shows` from `ProjectStore.lowerGroup` and
+- Lives in: the working scale, `prepare` (`src/lib/ImageProcessor.js`) and `ensureLayer` (`src/store/project/rendering.js`:
+  a new drawing's paint at the base's scale, a rescale taking both); `lowerGroup` (`src/document/layerInfo.js`), with its `shows` from `ProjectStore.lowerGroup` and
   `FrameBuilder.prepare`; `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
   for `#paintOver`'s convert path, with `pictureUnder` for the lower group; the look under a character of someone's own
   comes from `composeUpper`'s reader (`#lowerPx`), and `#fineUnder` steps aside there; on the bottom, `ShapeLayer`'s
@@ -290,7 +296,9 @@ another step, dither error, By shape's finer samples, a plugin solver's neighbor
 - Checked by: `tests/browser/layer-stack.test.js › R7: …` (faint red over white, in Color ASCII by intensity and By
   shape and in ANSI; the report's file; a soft edge over pinned blocks, on a layer above or on the base, then Merge
   down; a pin changed alone under a shape, and its undo; the report `projects/vector-edge-over-pins.phosphor`; the report
-  `projects/vector-strokes-ascii.phosphor`, a cells layer hidden under a vector layer); `tests/unit/layer-info.test.js ›
+  `projects/vector-strokes-ascii.phosphor`, a cells layer hidden under a vector layer); `tests/browser/paint-scale.test.js ›
+  R7: moving a cells layer under a vector layer …` (one scale for a new drawing's layers, and the rule's cases);
+  `tests/unit/layer-info.test.js ›
   lowerGroup: a hidden layer is left out of its part …`; `tests/browser/layer-hide.test.js › a cells layer with no paint
   hides and shows …`; `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
   merges down with nothing frozen) and `› R3: the report (as saved) …` (a shape merged into an upper By shape layer,

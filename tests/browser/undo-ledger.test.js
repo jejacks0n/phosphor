@@ -524,7 +524,7 @@ test('applyChange writes cells and runs, and only what it names changes', async 
   const ctx = project.paintLayer.canvas.getContext('2d');
   expect(Array.from(ctx.getImageData(3 * k, 3 * k, 1, 1).data)).toEqual([255, 0, 0, 255]);
   project.applyChange({ cells: [], runs: [[3 * k, 3 * k, k, 0], [3 * k, 3 * k + 1, k, 0]] });
-  expect(project.hasPaint).toBe(k > 2);
+  expect(project.hasPaint).toBe(false); // every pixel it painted is cleared: none left, at any scale
   await settle(project);
 });
 
