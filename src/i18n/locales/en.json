@@ -1364,6 +1364,7 @@
       "shareFailed": "Could not share the file.",
       "includeSauce": "Include SAUCE (title, author, font…)",
       "noSauceNote": "Without SAUCE, other viewers don't know the art's title, author, width or font, and some show bright backgrounds blinking.",
+      "steadyBlink": "Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS and XBin keep the blink.",
       "formats": {
         "ans": {
           "name": "ANS"
