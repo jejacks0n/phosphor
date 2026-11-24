@@ -7,6 +7,8 @@ import { createTestApp, loadImage, settle } from '../support/app.js';
 import { ellipseShape } from '@/document/shapes.js';
 import { MAX_LAYER_DIM, editScaleFor } from '@/document/PaintLayer.js';
 import { workingScale } from '@/lib/ImageProcessor.js';
+import { readProject, writeProject } from '@/document/projectIO.js';
+import { font8 } from '../support/blockFonts.js';
 
 const same = (project) => {
   expect(project.paintLayer.scale).toBe(project.baseLayer.scale);
@@ -112,4 +114,68 @@ test('a small picture is enlarged pixel for pixel, not smoothed', async () => {
   expect(new Set(row.slice(0, 10)).size).toBe(1);
   expect(new Set(row.slice(10, 20)).size).toBe(1);
   expect(row[9]).not.toBe(row[10]);
+});
+
+// Every way a new drawing gets a paint layer or a new base keeps the two at one scale.
+async function drawing() {
+  const app = await createTestApp();
+  await loadImage(app.project, '/tests/fixtures/images/photo.jpg', { cols: 40, rows: 40 });
+  return app;
+}
+const painted = (project, workspace, id) => {
+  workspace.pickLayer(id);
+  project.paintStroke([{ x: 3, y: 3, alpha: 1 }], '#ff0000');
+  project.commitEdit();
+};
+
+test('a font height change keeps base and paint at one scale', async () => {
+  const { project } = await drawing();
+  project.setDrawingFont(font8);
+  await settle(project);
+  same(project);
+});
+
+test('a layer added, and a picture added as one, paint at the base\'s scale', async () => {
+  const { project, workspace } = await drawing();
+  const id = project.addLayer('cells', 'base');
+  painted(project, workspace, id); // a layer's paint is made when something's drawn on it
+  expect(project.paintOf(id).scale).toBe(project.baseLayer.scale);
+  const blob = await (await fetch('/tests/fixtures/images/gradient.png')).blob();
+  const added = await project.addPictureToLayer(new File([blob], 'gradient.png', { type: 'image/png' }));
+  await settle(project);
+  expect(project.paintOf(added).scale).toBe(project.baseLayer.scale);
+});
+
+test('Bake and Blend into source image keep base and paint at one scale', async () => {
+  const { project, workspace } = await drawing();
+  const id = project.addLayer('cells', 'base');
+  painted(project, workspace, id);
+  project.brightness = 130;
+  await settle(project);
+  await project.bake();
+  await settle(project);
+  same(project);
+  await project.mergeIntoPicture(null, id);
+  await settle(project);
+  same(project);
+});
+
+test('a drawing reopened with no scales saved (as autosave keeps one with nothing drawn) paints at the base\'s', async () => {
+  const { project } = await drawing();
+  const parts = await project.projectParts();
+  parts.settings = { ...parts.settings, paintScale: null, baseScale: null };
+  const file = await writeProject({ ...parts, imageBuffer: project.imageBuffer });
+  await project.loadProject(new File([await file.arrayBuffer()], 'x.phosphor'));
+  await settle(project);
+  same(project);
+});
+
+test('a file saved with its own scales keeps them', async () => {
+  const { project } = await createTestApp();
+  const bytes = await (await fetch('/tests/fixtures/projects/vector-strokes-ascii.phosphor')).arrayBuffer();
+  const { settings } = await readProject(new File([bytes], 'x.phosphor'));
+  await project.loadProject(new File([bytes], 'x.phosphor'));
+  await settle(project);
+  expect([project.baseLayer.scale, project.paintLayer.scale]).toEqual([settings.baseScale, settings.paintScale]);
+  expect(project.paintLayer.scale).not.toBe(project.baseLayer.scale);
 });
