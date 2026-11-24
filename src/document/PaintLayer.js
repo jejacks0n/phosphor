@@ -52,6 +52,39 @@ const newCanvas = (w, h) => {
   return c;
 };
 
+// A layer saved at another scale at w x h, worked out from its bytes as Renderer's baseSamplesOver is: each pixel the
+// alpha-weighted average of the saved pixels it covers, or the one it starts in when it covers none, so a grid pixel
+// takes only its own saved grid pixel's pixels. Not drawn scaled: drawImage's smoothing blended neighboring grid pixels
+// and rounded differently on another computer's CPU (live-main.phosphor, saved at 3, loaded at 4).
+function resampled(paint, w, h) {
+  const pw = paint.width, ph = paint.height, own = ctx2d(newCanvas(pw, ph));
+  own.drawImage(paint, 0, 0);
+  const d = own.getImageData(0, 0, pw, ph).data, out = new ImageData(w, h), o = out.data;
+  const spans = (n, size) => Array.from({ length: n }, (_, i) => {
+    const from = Math.floor((i * size) / n);
+    return [from, Math.max(from + 1, Math.floor(((i + 1) * size) / n))];
+  });
+  const xs = spans(w, pw), ys = spans(h, ph);
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      let r = 0, g = 0, b = 0, a = 0, count = 0;
+      for (let sy = ys[y][0]; sy < ys[y][1]; sy++) {
+        for (let sx = xs[x][0]; sx < xs[x][1]; sx++) {
+          const i = (sy * pw + sx) * 4, al = d[i + 3];
+          r += d[i] * al; g += d[i + 1] * al; b += d[i + 2] * al; a += al;
+          count++;
+        }
+      }
+      if (!a) continue;
+      const j = (y * w + x) * 4;
+      o[j] = Math.round(r / a); o[j + 1] = Math.round(g / a); o[j + 2] = Math.round(b / a); o[j + 3] = Math.round(a / count);
+    }
+  }
+  const canvas = newCanvas(w, h);
+  ctx2d(canvas).putImageData(out, 0, 0);
+  return canvas;
+}
+
 export default class PaintLayer {
   #stroke = null; // { tiles: Map<'x,y', { x, y, w, h, before }>, touched: Set<'x,y'>, hadPaint, erased } while recording
   version = 0;    // goes up with every change to the pixels (what's drawn from them can be cached)
@@ -555,9 +588,7 @@ export default class PaintLayer {
   // grid. Without an image, the PNG is the whole layer.
   load(paint, image, fit) {
     const { x, y, w, h } = image ? savedPaintRect(paint, image, fit, this.scale, this.canvas.width, this.canvas.height) : { x: 0, y: 0, w: this.canvas.width, h: this.canvas.height };
-    const ctx = ctx2d(this.canvas);
-    ctx.imageSmoothingEnabled = this.smooth;
-    ctx.drawImage(paint, 0, 0, paint.width, paint.height, x, y, w, h);
+    ctx2d(this.canvas).drawImage(paint.width === w && paint.height === h ? paint : resampled(paint, w, h), x, y);
     this.hasPaint = true;
     this.#changed(null);
   }
