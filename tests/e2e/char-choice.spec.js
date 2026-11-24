@@ -6,7 +6,7 @@ const cells = (page) => store(page, 'project', (p) => p.cells.map((c) => `${c.ch
 const top = async (locator) => (await locator.boundingBox()).y;
 
 test('Choose characters comes before Characters, and each choice shows its own options', async ({ page }) => {
-  await openApp(page);
+  await openApp(page, 'images/photo.jpg'); // a photo: shapes for By shape to find (a gradient's grid pixels are near solid, as Best match picks them)
   await pickLayer(page, 'Base'); // the picture's characters are its layer's
   const choice = panel(page).locator('#charChoice');
   const seed = panel(page).locator('#seed');

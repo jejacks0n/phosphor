@@ -2,7 +2,7 @@
  * Orchestrates the image processing pipeline:
  */
 
-import { rgb2hex, hex2rgb, parseColorList, PALETTES } from './ColorUtils.js';
+import { rgb2hex, hex2rgb, nearestColor, parseColorList, PALETTES } from './ColorUtils.js';
 import Canvas, { fitRect, ctx2d, boxFiltered, flatBlock } from './Canvas.js';
 import WebGLProcessor from './WebGLProcessor.js';
 import { editScaleFor } from '../document/PaintLayer.js';
@@ -162,7 +162,10 @@ function prepare(image, params, scale = null) {
     ph = Math.floor(tall * s);
   }
 
-  return { dx, dy, dw, dh, m, pw, ph, glParams: shaderParams(params) };
+  // pixelUp: how many processed pixels each way a picture smaller than the processing size is enlarged in, pixel for
+  // pixel (WebGLProcessor's #fitting): one with a pixel a grid pixel or more in 1, so a grid pixel holds only its own
+  // pixels; a smaller one in whole grid pixels (m), each a picture pixel, as when it was drawn into the grid at its own size.
+  return { dx, dy, dw, dh, m, pw, ph, pixelUp: own >= 1 ? 1 : Math.max(1, m), glParams: shaderParams(params) };
 }
 
 // A hex color as the shader takes it: [r, g, b], each 0-1.
@@ -260,14 +263,14 @@ export function workingScale(image, params) {
 // ImageData, never a canvas: a long grid's would be taller than a canvas can be); else null.
 export async function processImage(image, params, { samples = true } = {}) {
   const { cols, rows, smoothing } = params;
-  const { dx, dy, dw, dh, pw, ph, glParams } = prepare(image, params);
+  const { dx, dy, dw, dh, pw, ph, pixelUp, glParams } = prepare(image, params);
   glProcessor ??= new WebGLProcessor();
   return underMark(glParams.pluginFilters, () => {
     // A one-color picture stays one color through every pass: each pixel is adjusted alike, and blur, Flatten, Edges and
     // Sharpen read neighbors of that color (the edges clamped). So one pixel goes through, and every grid pixel is it: it has
     // no shape to keep, so it fills the grid at any size, never letterboxed (whose black the adjustments don't reach).
     const one = uniform.get(image);
-    glProcessor.process(one ?? image, glParams, one ? 1 : pw, one ? 1 : ph);
+    glProcessor.process(one ?? image, glParams, one ? 1 : pw, one ? 1 : ph, { pixelUp });
     const pixel = one && boxFiltered(glProcessor.canvas, 1, 1, 0, 0, 1, 1).data;
 
     // Final output stage (downsizing)
@@ -278,6 +281,7 @@ export async function processImage(image, params, { samples = true } = {}) {
     // Fit by the image's natural aspect (the store's fit), not pw x ph
     if (one) canvas.ctx.putImageData(filled(cols, rows, 0, 0, cols, rows, pixel), 0, 0);
     else canvas.drawManual(glProcessor.canvas, dx, dy, dw, dh, smoothing);
+    if (!one && parseFloat(params.threshold ?? 0) > 0) twoColors(canvas.ctx, dx, dy, dw, dh, params, glParams.palette);
     const s = SAMPLES.w; // a grid pixel's samples each way (a cell is two grid pixels tall)
     const sampled = !(samples && params.charMode === 'shape') ? null
       : one ? filled(cols * s, rows * s, 0, 0, cols * s, rows * s, pixel) : boxFiltered(glProcessor.canvas, cols * s, rows * s, dx * s, dy * s, dw * s, dh * s);
@@ -288,15 +292,29 @@ export async function processImage(image, params, { samples = true } = {}) {
   });
 }
 
+// Threshold's two colors only, over the picture where it sits in the grid (the bars around it stay black): at the working
+// scale a grid pixel along Threshold's edge averages processed pixels of both, and is snapped to the nearer (docs/layers.md,
+// Threshold). Under a CGA or VGA palette the shader snaps (palette), the two are the palette's nearest to them, as it shows.
+function twoColors(ctx, dx, dy, dw, dh, params, palette) {
+  const x0 = Math.max(0, Math.floor(dx)), y0 = Math.max(0, Math.floor(dy));
+  const w = Math.min(ctx.canvas.width, Math.ceil(dx + dw)) - x0, h = Math.min(ctx.canvas.height, Math.ceil(dy + dh)) - y0;
+  if (w <= 0 || h <= 0) return;
+  const [dark, light] = [params.thresholdDark ?? '#000000', params.thresholdLight ?? '#ffffff'].map((hex) => { const { r, g, b } = nearestColor(hex2rgb(hex), palette); return [r, g, b]; });
+  const image = ctx.getImageData(x0, y0, w, h), data = image.data;
+  const far = (i, [r, g, b]) => (data[i] - r) ** 2 + (data[i + 1] - g) ** 2 + (data[i + 2] - b) ** 2;
+  for (let i = 0; i < data.length; i += 4) data.set(far(i, dark) <= far(i, light) ? dark : light, i);
+  ctx.putImageData(image, x0, y0);
+}
+
 // The image as the preview is made from it (the processed image before it's downsized to the
 // grid, at the size processImage processes it), without the palette snap in its last pass unless
 // snap (a bake locked to CGA/VGA): what a bake makes the new image. A copy, so the next render can't
 // draw over it. m: a fixed processing scale (an Into-the-picture merge needs whole pixels per grid pixel).
 export async function processedImage(image, params, { m = null, snap = false } = {}) {
-  const { pw, ph, glParams } = prepare(image, params, m);
+  const { pw, ph, pixelUp, glParams } = prepare(image, params, m);
   if (!glProcessor) glProcessor = new WebGLProcessor();
   return underMark(glParams.pluginFilters, () => {
-    glProcessor.process(image, glParams, pw, ph, { snapLastPass: snap });
+    glProcessor.process(image, glParams, pw, ph, { snapLastPass: snap, pixelUp });
     const out = document.createElement('canvas');
     out.width = pw;
     out.height = ph;

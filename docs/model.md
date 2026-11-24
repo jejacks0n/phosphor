@@ -268,8 +268,8 @@ into the base over that look, so nothing changes. Right on the base means in the
 group is the whole stack's, and a hidden layer is only left out of it (`lowerGroup`'s `shows`). A new drawing
 has one working scale, which its picture is processed at and its base, every cells layer's paint and every vector layer
 share: the picture's own pixels a grid pixel, at most `MOST_SCALE` (4: one picture pixel to each of By shape's samples)
-and at least `LEAST_SCALE` (4: a smaller picture enlarged to it, pixel for pixel, so vector shapes keep detail inside a
-grid pixel), within the largest layer size (`prepare`'s `natural`). So a vector layer draws the same
+and at least `LEAST_SCALE` (4: a smaller picture enlarged to it pixel for pixel, so vector shapes keep detail inside a
+grid pixel; one with fewer pixels than the grid in whole grid pixels, each the picture's pixel under its center), within the largest layer size (`prepare`'s `natural`). So a vector layer draws the same
 pixels right on the base or above a cells layer, and moving or hiding a cells layer under it changes none of its
 characters. A file saved with scales of its own keeps them: there a vector layer right on the base draws at the base's
 scale and one above at the paint's, so a cells layer moved under one (or hidden there, had the group followed the eyes)

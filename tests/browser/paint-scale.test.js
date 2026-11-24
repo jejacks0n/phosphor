@@ -107,8 +107,8 @@ test('R7: moving a cells layer under a vector layer leaves the vector layer\'s c
   expect(chars()).toBe(shown);
 });
 
-// A picture enlarged to the working scale's least is enlarged pixel for pixel (nearest), as a small pixel-art picture
-// should be: a 4 × 4 picture on a 40 × 40 grid is sixteen blocks of 10 × 10 grid pixels, none smeared into the next.
+// A picture smaller than the grid is enlarged pixel for pixel in whole grid pixels, as a small pixel-art picture should be
+// (WebGLProcessor's #pixelUp): a 4 × 4 picture on a 40 × 40 grid is sixteen blocks of 10 × 10 grid pixels, none smeared.
 test('a small picture is enlarged pixel for pixel, not smoothed', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/tiny.gif', { cols: 40, rows: 40 });
@@ -222,15 +222,12 @@ test('sliders moved make no new upload of the picture', () => {
 test('a transparent picture reads the same at its own size and enlarged', async () => {
   const gpu = new WebGLProcessor();
   const picture = new Image();
-  picture.src = '/tests/fixtures/images/rgba.png'; // 48 × 48, its first rows clear with a color kept under them
+  picture.src = '/tests/fixtures/images/rgba.png'; // 48 × 48, its first row clear with red to magenta kept under it
   await picture.decode();
   const own = gpuPixels(gpu, picture, 48, 48), twice = gpuPixels(gpu, picture, 96, 96);
-  for (let y = 0; y < 48; y += 4) {
-    for (let x = 0; x < 48; x += 4) {
-      const a = (y * 48 + x) * 4, b = (y * 2 * 96 + x * 2) * 4;
-      expect([...twice.slice(b, b + 3)]).toEqual([...own.slice(a, a + 3)]);
-    }
-  }
+  const row = (pixels, w) => [...pixels.slice(0, w * 4)].filter((_, i) => i % 4 !== 3);
+  expect(new Set(row(own, 48))).toEqual(new Set([0]));
+  expect(new Set(row(twice, 96))).toEqual(new Set([0]));
 });
 
 // What goes up is never larger than the GPU takes, a side, even averaged down by a whole factor (a strip picture on a

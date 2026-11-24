@@ -65,10 +65,14 @@ test('with no font a photo is read for one color once as it opens, as before; in
   const reads = async (font) => {
     const { project } = await appIn(font);
     const blob = await (await fetch(PHOTO)).blob(), file = new File([blob], 'photo.jpg', { type: blob.type });
-    const spy = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
+    const real = CanvasRenderingContext2D.prototype.getImageData, stacks = [];
+    const spy = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData').mockImplementation(function (...args) {
+      stacks.push(new Error().stack); // findUniform's reads, not the upload's (it reads a picture it enlarges pixel for pixel)
+      return real.apply(this, args);
+    });
     try {
       await project.setImageFromFile(file);
-      return spy.mock.calls.filter((args) => args.join() === '0,0,96,64').length; // findUniform reads the whole photo
+      return spy.mock.calls.filter((args, i) => args.join() === '0,0,96,64' && stacks[i].includes('findUniform')).length; // findUniform reads the whole photo
     } finally {
       spy.mockRestore();
     }
