@@ -425,7 +425,9 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
   second time into the already blended picture, then a third from a layer given its own Characters (Blend into source
   image lists her layer's custom characters under "You give up:", and choosing it still merges); `scope`: in Color ASCII, with a Colors only stroke and dark text typed
   over white paint on the layer, Blend into source image: the stroke goes into the picture with no new backgrounds
-  anywhere, and the text goes in with its light background and comes back as ink on black.
+  anywhere, and the text goes in with its light background and comes back as ink on black; `fine`: in Color ASCII with
+  By shape, draws thin strokes on a vector layer over Layer 1, merges it down, then Blends Layer 1 into the base: the
+  strokes keep their characters but for a look-alike here and there (Q for $, L for f), none turned to blocky $ q p.
 - Rated: yes, wants Cmd+E, then the arrows to the second choice
 
 ### 29. Press the shapes into the picture

@@ -193,9 +193,10 @@ The settings on the left come in sections, each following a layer:
 - **Picture · Base**: **Smoothing**, how the picture and the base's own pixels are scaled to the grid. Only with the
   base selected, and only where it changes something: a picture, or a picture merged down onto the base (it lives in
   the base's pixels then, finer than a grid pixel). A blank canvas has none, and still has none after a Bake, after
-  paint on the base, or after **Blend into source image** of paint, which paints each grid pixel into the picture whole:
-  Image filters work on that picture, but Smoothing has nothing finer to scale. Characters blended in are drawn as
-  their glyphs, finer than a grid pixel where the picture has more than one pixel a grid pixel, so Smoothing shows then.
+  paint on the base, or after **Blend into source image** of paint laid a grid pixel at a time: Image filters work on
+  that picture, but Smoothing has nothing finer to scale. Paint finer than that (a merged shape's edge, a thin stroke)
+  goes into the picture at its own detail, and characters blended in are drawn as their glyphs, both finer than a grid
+  pixel where the picture has more than one pixel a grid pixel, so Smoothing shows then.
 - **Image filters**: **Blur**, **Simplify**, **Sharpen**, **Edges** (with its color) and **Edge thickness**, which work
   on the picture itself. Only with the base selected, and only with a picture: on a blank canvas, or after Flatten, a
   note says image filters require an image instead. After a Bake or **Blend into source image** the picture is a working
@@ -676,7 +677,8 @@ the canvas changes. Undo brings it back, selected if it was.
     palette and slider. The base snaps its pixels to the palette one at a time, so a cell soft paint or a Blur stroke would show
     otherwise as pixels is pinned as it showed.
   - **Blend into source image**: Your drawing becomes part of the image itself, so every slider and image filter applies
-    to it, live, like the photo. Paint goes in as it shows. Letters and other characters are drawn into the picture as
+    to it, live, like the photo. Paint goes in as it shows, at its own detail over the picture's own pixels, so the
+    characters picked from it come back as they were, but for a look-alike here and there (Q for $, L for f). Letters and other characters are drawn into the picture as
     they look, each in its two colors with your paint over it, and the converter picks them again from the picture, so
     some can come back as other characters (the question lists that under **You give up**). The same goes for the
     base's own characters under your paint, such as an opened file's, where the layer has none of its own: the question

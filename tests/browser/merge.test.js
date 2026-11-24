@@ -1298,3 +1298,37 @@ describe('R3: Merge down of text with no background onto the base with a palette
     expect([...project.baseRecords.pins.keys()].filter(inPicture)).toEqual([]); // only the letterbox's merge exactly
   });
 });
+
+// The report (euphio.pho): Layer 1 holds a logo painted at ten pixels a grid pixel over a black picture, and Blend into
+// source image changed it dramatically. Each covered cell went in as two flat blocks, the base cell's colors with the
+// paint's average over them, so By shape picked $, q and p from two halves where it had picked j, Q, f and L from the
+// strokes. The paint goes in at its own detail over the picture's own pixels now: the picture is the paint laid over
+// black, pixel for pixel at its size. What's left is By shape picking a look-alike now and then, the base's reading of
+// the same pixels against the layer's (49 cells of 1,920 that can be seen, against 209 before).
+test('R3: the report: Blend into source image lays a finely painted layer into the picture at its own detail', async () => {
+  const { project } = await createTestApp();
+  await project.loadProject(new File([await (await fetch('/tests/fixtures/projects/euphio.pho')).arrayBuffer()], 'euphio.pho'));
+  await settle(project);
+  const pixelsOf = (source, width, height) => {
+    const canvas = Object.assign(document.createElement('canvas'), { width, height }), ctx = ctx2d(canvas);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, width, height);
+    ctx.drawImage(source, 0, 0, width, height);
+    return ctx.getImageData(0, 0, width, height).data;
+  };
+  expect(pixelsOf(project.image, project.image.width, project.image.height).every((v, i) => i % 4 === 3 || v === 0)).toBe(true); // a black picture
+  const paint = Object.assign(document.createElement('canvas'), { width: project.paintLayer.canvas.width, height: project.paintLayer.canvas.height });
+  ctx2d(paint).drawImage(project.paintLayer.canvas, 0, 0);
+  const seen = () => project.cells.map((c) => (c.char === ' ' || (c.fg.r + c.fg.g + c.fg.b) / 3 < 48 ? ' ' : c.char));
+  const before = seen();
+
+  await project.mergeIntoPicture(null, project.layers[1].id);
+  await settle(project);
+  const { width, height } = project.image, got = pixelsOf(project.image, width, height), want = pixelsOf(paint, width, height);
+  let off = 0;
+  for (let i = 0; i < got.length; i += 4) if ([0, 1, 2].some((c) => Math.abs(got[i + c] - want[i + c]) > 2)) off++;
+  expect(off).toBe(0);
+  expect(project.layers).toHaveLength(1);
+  const after = seen();
+  expect(after.filter((ch, i) => ch !== before[i]).length).toBeLessThanOrEqual(60);
+});
