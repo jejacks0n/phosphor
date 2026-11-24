@@ -11,6 +11,8 @@ import { MOST_CHANGE_BYTES, cellsFitAnyGrid } from '@/social/wire.js';
 import { MAX_CELLS, cellIndex, charRowsOf, halfColors, mix, opensToPaint } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
+import { decodeBlocks, decodeFont, drawnWidthOf } from '@/lib/BitmapFont.js';
+import { decodeLines, decodeSets } from '@/lib/FontLines.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
@@ -54,6 +56,24 @@ export function readsOf(project) {
   });
   return view;
 }
+
+// decodeFont's last answer, so the getter doesn't decode the same string for each store. blocks: the drawing's own
+// (fontBlocks), when they decode; else the font has none and they're found.
+let lastFont = { text: '', name: '', blocks: '', lines: '', sets: '', width: '', nine: false, font: null };
+function fontFor(text, name, blocks, lines, sets, width, nine) {
+  if (!text) return null;
+  if (lastFont.text !== text || lastFont.name !== name || lastFont.blocks !== blocks || lastFont.lines !== lines || lastFont.sets !== sets || lastFont.width !== width || lastFont.nine !== nine) {
+    const font = decodeFont(text, name), set = decodeBlocks(blocks), l = decodeLines(lines), s = decodeSets(sets);
+    // width: fontWidth when it's the font's own narrow width (else the font is drawn at 8, or 9 with letter spacing 9)
+    const cellWidth = font && drawnWidthOf(font, width, nine), narrow = font && cellWidth < 8 ? cellWidth : null;
+    lastFont = { text, name, blocks, lines, sets, width, nine, font: font && { ...font, ...(narrow && { width: narrow }), cellWidth, ...(set && { blocks: set }), ...(l && { lines: l }), ...(s && { sets: s }) } };
+  }
+  return lastFont.font;
+}
+// Letter spacing 9px: the SAUCE field, or with it unset, the 9px flag.
+export const ninePx = (state) => state.sauceLetterSpacing === '9' || (state.sauceLetterSpacing === '' && state.sauceUse9pxFont);
+// The drawing's font as settings (the store's, or a document's about to open) give it: drawingFont.
+export const drawingFontOf = (settings) => fontFor(settings.fontBitmap, settings.fontName, settings.fontBlocks, settings.fontLines, settings.fontSets, settings.fontWidth, ninePx(settings));
 
 export const DEFAULT_COLS = getSetting('cols').default;
 export const DEFAULT_ROWS = getSetting('rows').default;

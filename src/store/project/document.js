@@ -11,12 +11,14 @@ import { cellsPng } from '@/lib/PngFile.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
 import { knownBlocksOf, loadFonts, addBitmapFont, storedBitmapFont } from '@/lib/userFonts.js';
-import { decodeBlocks, decodeFont, fontId } from '@/lib/BitmapFont.js';
+import { decodeBlocks, decodeFont, fontChars, fontId } from '@/lib/BitmapFont.js';
 import { sauceFont } from '@/lib/fontLibrary.js';
 import { asksWidth, fontSettingsOf } from '@/store/project/font.js';
 import { notSetUp } from '@/lib/fontSetup.js';
 import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont } from '@/lib/GlyphCoverage.js';
+import { drawArtCells } from '@/lib/glyphPicture.js';
+import { ctx2d, canvasPng } from '@/lib/Canvas.js';
 import { readSvgFile, svgRefusal } from '@/lib/SvgFile.js';
 import { MOST_SHAPES } from '@/document/shapes.js';
 import { castText } from '@/lib/CastFile.js';
@@ -34,7 +36,7 @@ import { askFontWidth } from '@/composables/useFontWidth.js';
 import { busyWhile } from '@/composables/useBusy.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { settingDefaults, sauceDefaults, sliderDefaults } from '@/store/settings.js';
-import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture, putSettings } from '@/store/project/shared.js';
+import { DEFAULT_COLS, DEFAULT_ROWS, BLANK_CANVAS_SCALE, SAVED_KEYS, savedJson, randomId, blackPicture, putSettings, drawingFontOf } from '@/store/project/shared.js';
 import { desktop } from '@/social/desktop.js';
 import { generateSlug } from 'random-word-slugs';
 import { markRaw, shallowRef } from 'vue';
@@ -97,6 +99,23 @@ function exported(filename, ext) {
 // The note shown while it takes a while (useBusy).
 const opening = (name) => t('document.opening', { name });
 const saving = (name) => t('document.saving', { name });
+
+// A blank canvas's pixels a grid pixel (cols x rows grid pixels): BLANK_CANVAS_SCALE, or fewer for a long grid, no more
+// than the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas), and at least 1.
+export const blankScale = (cols, rows) => Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
+
+// An art file's cells as a picture, each its glyph in its two colors (glyphPicture.js) in font, a blank canvas's size:
+// { image, imageBuffer }.
+async function artPicture(art, font) {
+  const m = blankScale(art.cols, 2 * art.rows);
+  const canvas = Object.assign(document.createElement('canvas'), { width: art.cols * m, height: 2 * art.rows * m });
+  const ctx = ctx2d(canvas);
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  drawArtCells(ctx, art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell })), m, { font });
+  const blob = await canvasPng(canvas);
+  return { image: await loadImage(blob), imageBuffer: await blob.arrayBuffer() };
+}
 
 const withBlocks = (font, text) => { const set = decodeBlocks(text); return font && set ? { ...font, blocks: set } : font; };
 
@@ -234,16 +253,14 @@ export const documentActions = {
     });
   },
 
-  // The blank picture is BLANK_CANVAS_SCALE pixels a grid pixel, or fewer for a long grid: no more than
-  // the GPU processes (gpuMaxSide) and Safari draws (16M pixels a canvas). cols, rows: its size
-  // (grid pixels), else the grid's; withLayer: with Layer 1 above the base (an opened ANSI file), else the base alone;
-  // patch: more for replaceImage. It keeps the font in use (an art file's patch brings its own or none). False when it
-  // couldn't start.
-  async setBlankCanvas({ cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS, withLayer = false, ...patch } = {}) {
-    const scale = Math.max(1, Math.min(BLANK_CANVAS_SCALE, Math.floor(gpuMaxSide() / Math.max(cols, rows)), Math.floor(Math.sqrt(16_000_000 / (cols * rows)))));
-    let picture;
+  // A blank canvas: a black picture blankScale(cols, rows) pixels a grid pixel. cols, rows: its size (grid pixels),
+  // else the grid's; withLayer: with Layer 1 above the base (an opened ANSI file), else the base alone; picture: an
+  // { image, imageBuffer }, or a promise of one, made at blankScale, in the black one's place (an art file opened as an
+  // image); patch: more for replaceImage. It keeps the font in use (an art file's patch brings its own or none). False
+  // when it couldn't start.
+  async setBlankCanvas({ cols = this.cols || DEFAULT_COLS, rows = this.rows || DEFAULT_ROWS, withLayer = false, picture = null, ...patch } = {}) {
     try {
-      picture = await blackPicture(cols, rows, scale);
+      picture = await (picture ?? blackPicture(cols, rows, blankScale(cols, rows)));
     } catch (e) {
       console.error('Failed to start a blank canvas', e);
       alert(t('document.blankFailed'));
@@ -263,9 +280,9 @@ export const documentActions = {
   },
 
   // An .ans, .utf8ans, .asc, .txt, .xb or .bin file as a new document: a blank canvas its size with the art on
-  // the base layer (layer 'base', to draw on top of), or as edit cells over the black base ('edit', to
-  // edit it), its palette and SAUCE in the settings (the rest at their defaults, so the sliders leave
-  // it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't open
+  // the base layer (layer 'base', to draw on top of), as edit cells over the black base ('edit', to
+  // edit it), or drawn into the picture ('picture', for the image filters to work on), its palette and SAUCE in the
+  // settings (the rest at their defaults, so the sliders leave it as the file shows it). Loading, not an edit: nothing to undo or save. A file that can't open
   // throws (with its userMessage) before anything changes. `art`: the file as read already (workspace.askArt).
   async openArtFile(file, { layer = 'base', art = null } = {}) {
     return busyWhile(opening(file.name), async () => {
@@ -292,8 +309,7 @@ export const documentActions = {
       // An XBin's own font, with the lines, sets and width answer kept in this browser for it.
       const own = art.xbin && art.font && { ...art.font, lines: stored?.lines, sets: stored?.sets, width: stored?.width };
       const ask = asksWidth(named ?? own); // narrow with no answer: opened narrow, and asked
-      const opened = await this.setBlankCanvas({
-        withLayer: true,
+      const settings = {
         ...settingDefaults(),
         cols: art.cols,
         rows: 2 * art.rows,
@@ -316,17 +332,31 @@ export const documentActions = {
           sauceLetterSpacing: letterSpacingOf(sauce.flags), // the file's own, whatever the drawing was at
         }),
         sauceRecord: keptRecord(sauce, art.cols, art.rows),
+      };
+      // As an image: the cells drawn into the picture in the font the drawing opens in, and the base alone, nothing pinned,
+      // with the characters picked again By shape from the file's own (fitted to that font, as processParams fits them).
+      const font = layer === 'picture' && drawingFontOf({ ...sauceDefaults(), ...settings });
+      // A slot 0 (␀) comes only with an XBin's font, which the drawing opens in, so it's that font's glyph (with no font
+      // the reader gives byte 0 as CP437's space).
+      const used = layer === 'picture' && [...new Set(art.cells.map((cell) => cell.char))].join(''), chars = font ? fontChars(used, font) : used;
+      const opened = await this.setBlankCanvas({
+        withLayer: layer !== 'picture',
+        ...settings,
+        // its pixels grid pixels, as a working copy's are: it fills the grid in any cell shape (gridPicture)
+        ...(layer === 'picture' && { picture: artPicture(art, font), imageIsWorkingCopy: true, charChoice: 'shape', charChoiceAscii: 'shape', chars, charsAscii: chars }),
       });
       if (!opened) return;
       if (art.xbin && !art.font) useWorkspaceStore().displayFont = 'vga'; // an XBin with no font of its own is drawn in IBM VGA's
-      const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
-      if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
-      else this.writeBaseCells(cells);
-      // Alone, the ledger needn't record it (every cell, at 500k cells half a second): clearHistory would drop it next. In a
-      // room it goes out numbered, as any host's edit does.
-      if (this._stroke && !this._sharing) this._stroke.unrecorded = true;
-      this.commitEdit();
-      this.clearHistory();
+      if (layer !== 'picture') {
+        const cells = art.cells.map((cell, i) => ({ col: i % art.cols, row: Math.floor(i / art.cols), ...cell }));
+        if (layer === 'edit') this.writeEditCells(cells.map(({ col, row, ...attrs }) => ({ col, row, attrs }))); // char, fg, bg and any 256-color index
+        else this.writeBaseCells(cells);
+        // Alone, the ledger needn't record it (every cell, at 500k cells half a second): clearHistory would drop it next. In a
+        // room it goes out numbered, as any host's edit does.
+        if (this._stroke && !this._sharing) this._stroke.unrecorded = true;
+        this.commitEdit();
+        this.clearHistory();
+      }
       this.render();
       this.markSaved();
       this.asOpened = true;

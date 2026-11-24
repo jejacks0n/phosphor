@@ -1223,7 +1223,7 @@
     "artOpenWindow": "Open in a new window",
     "artOpenWindowText": "Opens it in a window of its own, beside this one.",
     "artOpenTitle": "Open {name}?",
-    "artOpenSub": "Edit its artwork directly, or draw on top of it.",
+    "artOpenSub": "Edit its artwork directly, draw on top of it, or open it as an image.",
     "artEdit": "Edit artwork",
     "artEditText": "Places the artwork on a drawing layer over a black background.",
     "artDrawOn": "Draw on top",
@@ -1231,7 +1231,11 @@
     "artOpenEdit": "Open to edit",
     "artOpenEditText": "Replaces the current artwork and places it on a drawing layer over a black background.",
     "artOpenDrawOn": "Open to draw on top",
-    "artOpenDrawOnText": "Replaces the current artwork and places it on the base layer under your drawings."
+    "artOpenDrawOnText": "Replaces the current artwork and places it on the base layer under your drawings.",
+    "artPicture": "Open as an image",
+    "artPictureText": "Draws the artwork into the source image so image filters work on it. Characters are picked again, so some can change.",
+    "artOpenPicture": "Open as an image",
+    "artOpenPictureText": "Replaces the current artwork and draws it into the source image so image filters work on it. Characters are picked again, so some can change."
   },
   "sauce": {
     "heading": "SAUCE metadata",
