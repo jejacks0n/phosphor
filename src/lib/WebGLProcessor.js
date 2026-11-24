@@ -5,6 +5,8 @@
 import { boxFiltered } from './Canvas.js';
 import { failFilter, optionValues, scriptOptions } from '../plugins/solvers.js';
 
+const MOST_CANVAS = 4096 * 4096; // a phone browser's largest canvas, in pixels (#averaged)
+
 const VERTEX_SHADER = `
     attribute vec2 position;
     attribute vec2 texCoord;
@@ -327,30 +329,47 @@ export default class WebGLProcessor {
   // The picture as it goes up for processing at w x h, always through a canvas, so a transparent pixel reads the same
   // at every size (black, never the color a file keeps under alpha 0). Smaller than that (a picture with fewer pixels
   // than the working scale's least), it's enlarged to it pixel for pixel, so a small pixel-art picture stays blocks and
-  // every pass reads its pixels at their centers. Twice that or more, it's averaged down by the whole factor
-  // (boxFiltered), so what would fall between two of the texture's bilinear samples isn't lost; the bilinear sampling
-  // then does the rest, under 2x. Past what the GPU takes (it would come out black), it's scaled down to w x h.
+  // every pass reads its pixels at their centers. Twice that or more, or longer than the GPU takes (it would come out
+  // black), it's averaged down by a whole factor (boxFiltered), so what would fall between two of the texture's bilinear
+  // samples isn't lost; the bilinear sampling then does the rest, under 2x. One side shorter and one longer goes up as
+  // it is. The averaged copy is kept while the factor stays, so a Columns drag doesn't make it again at every step.
   #fitting(image, w, h) {
     const iw = image.naturalWidth || image.width, ih = image.naturalHeight || image.height;
-    const f = Math.floor(Math.min(iw / w, ih / h));
     const canvas = (cw, ch) => Object.assign(document.createElement('canvas'), { width: cw, height: ch });
-    const enlarged = iw <= w && ih <= h && (iw < w || ih < h); // one side shorter and one longer goes up as it is
-    if (enlarged || (Math.max(iw, ih) > this.maxSide && f < 2)) {
+    if (iw <= w && ih <= h && (iw < w || ih < h)) {
       const fitted = canvas(w, h), ctx = fitted.getContext('2d');
-      if (enlarged) ctx.imageSmoothingEnabled = false;
-      else ctx.imageSmoothingQuality = 'high';
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(image, 0, 0, w, h);
       return fitted;
     }
-    if (f >= 2) {
-      const fitted = canvas(Math.round(iw / f), Math.round(ih / f));
-      fitted.getContext('2d').putImageData(boxFiltered(image, fitted.width, fitted.height, 0, 0, fitted.width, fitted.height), 0, 0);
-      return fitted;
-    }
+    const f = Math.max(Math.floor(Math.min(iw / w, ih / h)), Math.ceil(Math.max(iw, ih) / this.maxSide));
+    if (f >= 2) return this.#averaged(image, iw, ih, f);
     if (typeof image.getContext === 'function') return image;
     const fitted = canvas(iw, ih);
     fitted.getContext('2d').drawImage(image, 0, 0);
     return fitted;
+  }
+
+  // The picture averaged down f times, kept for the next call with the same picture and factor. A phone's browser draws
+  // no canvas over about 16.7 million pixels (MOST_CANVAS: it comes out blank), and boxFiltered reads a picture that
+  // isn't a canvas through one its size, so a larger picture is halved first, straight from it (bilinear at exactly
+  // half averages each 2 x 2), and the rest of the factor averaged from that.
+  #averaged(image, iw, ih, f) {
+    const tw = Math.max(1, Math.floor(iw / f)), th = Math.max(1, Math.floor(ih / f));
+    const kept = this.averagedCopy;
+    if (kept?.image === image && kept.canvas.width === tw && kept.canvas.height === th) return kept.canvas;
+    let source = image, sw = iw, sh = ih;
+    while (sw * sh > MOST_CANVAS && sw >= 2 * tw && sh >= 2 * th) {
+      const half = Object.assign(document.createElement('canvas'), { width: Math.ceil(sw / 2), height: Math.ceil(sh / 2) });
+      half.getContext('2d').drawImage(source, 0, 0, half.width, half.height);
+      source = half;
+      sw = half.width;
+      sh = half.height;
+    }
+    const out = Object.assign(document.createElement('canvas'), { width: tw, height: th });
+    out.getContext('2d').putImageData(boxFiltered(source, tw, th, 0, 0, tw, th), 0, 0);
+    this.averagedCopy = { image, canvas: out };
+    return out;
   }
 
   #createProgram(vsSource, fsSource) {

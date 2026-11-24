@@ -232,3 +232,58 @@ test('a transparent picture reads the same at its own size and enlarged', async 
     }
   }
 });
+
+// What goes up is never larger than the GPU takes, a side, even averaged down by a whole factor (a strip picture on a
+// GPU with a low limit: its reduced copy would be past it, and come out black).
+test('a picture averaged down still fits the GPU', () => {
+  const gpu = new WebGLProcessor();
+  gpu.maxSide = 64;
+  const upload = vi.spyOn(gpu.gl, 'texImage2D');
+  gpuPixels(gpu, stripes(200, 20, 10), 60, 6); // 3 times: 67 across, past 64
+  const [source] = upload.mock.calls.filter((call) => call.length === 6).map((call) => call[5]);
+  expect(Math.max(source.width, source.height)).toBeLessThanOrEqual(64);
+});
+
+// A phone's browser draws no canvas over about 16.7 million pixels (it comes out blank), so a big photo is never copied to
+// a canvas its own size: it's halved first, straight from the picture.
+const MOST_CANVAS = 4096 * 4096;
+test('a picture past a phone\'s largest canvas is reduced without a canvas its size', async () => {
+  const big = Object.assign(document.createElement('canvas'), { width: 5000, height: 4000 });
+  const ctx = ctx2d(big);
+  ctx.fillStyle = '#808080';
+  ctx.fillRect(0, 0, 5000, 4000);
+  const photo = new Image();
+  photo.src = URL.createObjectURL(await new Promise((done) => big.toBlob(done)));
+  await photo.decode();
+  const gpu = new WebGLProcessor();
+  const made = [], create = document.createElement.bind(document);
+  vi.spyOn(document, 'createElement').mockImplementation((tag) => {
+    const element = create(tag);
+    if (tag === 'canvas') made.push(element);
+    return element;
+  });
+  const out = gpuPixels(gpu, photo, 320, 256);
+  vi.restoreAllMocks();
+  expect(Math.max(...made.map((canvas) => canvas.width * canvas.height))).toBeLessThanOrEqual(MOST_CANVAS);
+  expect(out[0]).toBe(128);
+});
+
+// A Columns drag is a new size each step: the averaged copy is made again only when the whole factor changes.
+test('the averaged copy is kept while the whole factor stays', () => {
+  const gpu = new WebGLProcessor();
+  const picture = stripes(1600, 960, 10);
+  const read = vi.spyOn(CanvasRenderingContext2D.prototype, 'getImageData');
+  gpuPixels(gpu, picture, 165, 99); // 9 times and more
+  const once = read.mock.calls.length;
+  gpuPixels(gpu, picture, 170, 102); // still 9: the same copy
+  expect(read.mock.calls.length - once).toBe(1); // gpuPixels' own read of the output only
+});
+
+// Review Focus: a long grid with a real picture comes out as the picture, never black (the GPU's cap brings the scale
+// under 1 there).
+test('a picture on a 10,000-line grid isn\'t black', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 50, rows: 10000 });
+  expect(project.baseLayer.scale).toBe(editScaleFor(Infinity, Infinity, 50, 10000)); // under the least, a long grid's
+  expect(project.cells.some((cell) => cell.fg.hex !== '#000000' || cell.bg.hex !== '#000000')).toBe(true); // the picture letterboxed at the top
+});
