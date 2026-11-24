@@ -4,7 +4,9 @@
 // sent and answers:
 //   POST {apiOrigin}/issue-reports, multipart/form-data, 25 MB at most
 //     doing (0 to 2,000 characters), wrong (1 to 4,000), packageVersion, build, platform ('web' | 'desktop'), agent (80 at
-//     most), turnstile (the web build's token), drawing (the .pho, image/png) and steps (the log's text, text/plain)
+//     most), turnstile (the web build's token, solved for the action 'issue'), then drawing (the .pho, image/png) and
+//     steps (the log's text, text/plain): every text field before either file, or it's refused. A line break counts as
+//     one character, as a field counts it, though a form sends it as two.
 //   201 { id, issue }: issue is the public issue's number, or null while it isn't open yet
 //   400 { error: 'bad-request' } · 403 { error: 'turnstile' } · 413 { error: 'too-big' } · 429 { error: 'rate-limited' }
 // The text becomes a public issue; the drawing and the steps don't. Nothing is sent but by sendIssueReport, which the
@@ -13,7 +15,7 @@
 import { apiOrigin } from '@/social/config.js';
 
 export const ISSUE_REPORTS_PATH = '/issue-reports';
-export const TURNSTILE_ACTION = 'issue-report'; // the widget's, as each form has its own (social/turnstile.js)
+export const TURNSTILE_ACTION = 'issue'; // the widget's, as each form has its own (social/turnstile.js): the one the server takes a token for
 export const MOST_DOING = 2000;
 export const MOST_WRONG = 4000;
 export const MOST_AGENT = 80;
@@ -21,9 +23,6 @@ export const MOST_REQUEST_BYTES = 25 * 1024 * 1024;
 const ROOM_FOR_TEXT = 64 * 1024; // of the request: what was written (6,000 characters, four bytes each at the most) and the form's own lines
 
 const FIELDS = ['doing', 'wrong', 'packageVersion', 'build', 'platform', 'agent'];
-
-// What was written as it's counted on its way: a form sends a line break as two characters.
-export const sentLength = (text) => text.replace(/\r\n?|\n/g, '\r\n').length;
 
 // Whether a drawing of that many bytes fits the request with the steps beside it.
 export const drawingFits = (drawingBytes, stepsBytes) => drawingBytes + stepsBytes + ROOM_FOR_TEXT <= MOST_REQUEST_BYTES;
@@ -48,7 +47,7 @@ export function agentLine(userAgent) {
 }
 
 // The form: the six text fields always, and the token, the drawing (a File, typed image/png) and the steps (text) only
-// when there are any.
+// when there are any, the files last.
 export function reportForm(fields, { token = null, drawing = null, steps = null } = {}) {
   const form = new FormData();
   for (const name of FIELDS) form.append(name, fields[name] ?? '');

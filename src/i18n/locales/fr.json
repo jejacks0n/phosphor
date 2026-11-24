@@ -101,7 +101,6 @@
     "title": "Signaler un problème",
     "doing": "Que faisiez-vous ?",
     "wrong": "Qu'est-ce qui n'a pas fonctionné ?",
-    "tooLong": "C'est trop long pour être envoyé. Raccourcissez-le à {most} caractères (un retour à la ligne compte pour deux).",
     "include": "Envoyer mon dessin et les étapes de cette session",
     "steps": "{count} étape | {count} étapes",
     "what": {

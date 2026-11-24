@@ -101,7 +101,6 @@
     "title": "Report an issue",
     "doing": "What were you doing?",
     "wrong": "What went wrong?",
-    "tooLong": "That's too long to send. Shorten it to {most} characters (a line break counts as two).",
     "include": "Send my drawing and this session's steps",
     "steps": "{count} step | {count} steps",
     "what": {

@@ -12,7 +12,7 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { log, logText } from '@/dev/actionLog.js';
-import { MOST_DOING, MOST_REQUEST_BYTES, MOST_WRONG, TURNSTILE_ACTION, agentLine, buildLine, drawingFits, sendIssueReport, sentLength } from '@/lib/issueReport.js';
+import { MOST_DOING, MOST_REQUEST_BYTES, MOST_WRONG, TURNSTILE_ACTION, agentLine, buildLine, drawingFits, sendIssueReport } from '@/lib/issueReport.js';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 import { issueReportWords } from '@/social/messages';
 import { mountTurnstile } from '@/social/turnstile';
@@ -48,11 +48,9 @@ const { version, sha, packageVersion } = __BUILD__;
 const build = buildLine({ version, sha });
 const agent = agentLine(navigator.userAgent);
 
-// A count is of what's sent (a line break is two characters), so a field has no maxlength: one past its most says so.
-const lengths = computed(() => ({ doing: sentLength(draft.doing.trim()), wrong: sentLength(draft.wrong.trim()) }));
-const counts = computed(() => ({ doing: sentLength(draft.doing), wrong: sentLength(draft.wrong) }));
-const tooLong = computed(() => ({ doing: lengths.value.doing > MOST_DOING, wrong: lengths.value.wrong > MOST_WRONG }));
-const ready = computed(() => lengths.value.wrong > 0 && !tooLong.value.doing && !tooLong.value.wrong && !sending.value);
+// Each field stops at its most (its maxlength, a line break one character, as the server counts it). Send waits for
+// What went wrong?, and holds for a field put past its most some other way than typing.
+const ready = computed(() => draft.wrong.trim() !== '' && draft.doing.length <= MOST_DOING && draft.wrong.length <= MOST_WRONG && !sending.value);
 
 // The steps, as the HISTORY tab's Copy has them, and the drawing: undefined until it's made, null with none open.
 const stepsText = () => logText({ version, sha, userAgent: navigator.userAgent, viewport: `${window.innerWidth}×${window.innerHeight}` });
@@ -125,17 +123,15 @@ function close() {
     <form v-else @submit.prevent="send">
       <div class="counted">
         <label for="issue-doing">{{ t('issueReport.doing') }}</label>
-        <FieldCount id="issue-doing-count" :count="counts.doing" :most="MOST_DOING" uncapped />
+        <FieldCount id="issue-doing-count" :count="draft.doing.length" :most="MOST_DOING" />
       </div>
-      <textarea id="issue-doing" v-model="draft.doing" rows="3" :aria-invalid="tooLong.doing" aria-describedby="issue-doing-count issue-doing-long"></textarea>
-      <p v-if="tooLong.doing" id="issue-doing-long" class="long">{{ t('issueReport.tooLong', { most: MOST_DOING }) }}</p>
+      <textarea id="issue-doing" v-model="draft.doing" rows="3" :maxlength="MOST_DOING" aria-describedby="issue-doing-count"></textarea>
 
       <div class="counted">
         <label for="issue-wrong">{{ t('issueReport.wrong') }}</label>
-        <FieldCount id="issue-wrong-count" :count="counts.wrong" :most="MOST_WRONG" uncapped />
+        <FieldCount id="issue-wrong-count" :count="draft.wrong.length" :most="MOST_WRONG" />
       </div>
-      <textarea id="issue-wrong" v-model="draft.wrong" rows="5" required :aria-invalid="tooLong.wrong" aria-describedby="issue-wrong-count issue-wrong-long"></textarea>
-      <p v-if="tooLong.wrong" id="issue-wrong-long" class="long">{{ t('issueReport.tooLong', { most: MOST_WRONG }) }}</p>
+      <textarea id="issue-wrong" v-model="draft.wrong" rows="5" required :maxlength="MOST_WRONG" aria-describedby="issue-wrong-count"></textarea>
 
       <label class="include"><input v-model="include" type="checkbox" aria-describedby="issue-what"> {{ t('issueReport.include') }}</label>
       <p id="issue-what" class="what" :class="{ off: !include }">{{ what }}</p>
@@ -182,10 +178,6 @@ textarea {
 p {
   margin: 0;
   font-size: 13px;
-}
-p.long {
-  margin: -8px 0 14px;
-  color: var(--warning);
 }
 label.include {
   display: flex;

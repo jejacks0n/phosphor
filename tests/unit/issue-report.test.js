@@ -2,8 +2,8 @@
 // and its parts, what fits, and the server's answers read as sent or as an error to put in words.
 import { expect, test, vi } from 'vitest';
 import {
-  ISSUE_REPORTS_PATH, MOST_AGENT, MOST_DOING, MOST_REQUEST_BYTES, MOST_WRONG, agentLine, buildLine, drawingFits, reportForm, sendIssueReport,
-  sentLength,
+  ISSUE_REPORTS_PATH, MOST_AGENT, MOST_DOING, MOST_REQUEST_BYTES, MOST_WRONG, TURNSTILE_ACTION, agentLine, buildLine, drawingFits, reportForm,
+  sendIssueReport,
 } from '@/lib/issueReport.js';
 
 const CHROME = 'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/142.0.0.0 Safari/537.36';
@@ -39,12 +39,9 @@ test('the build is its full version and commit, as About has them', () => {
   expect(buildLine({ version: '1.0.20261124-beta', sha: 'f1bc75f' })).toBe('1.0.20261124-beta (f1bc75f)');
 });
 
-test('what was written is counted as it\'s sent: a line break is two characters', () => {
-  expect(sentLength('')).toBe(0);
-  expect(sentLength('one line')).toBe(8);
-  expect(sentLength('a\nb\n\nc')).toBe(9);
-  expect(sentLength('a\r\nb')).toBe(4); // already as sent
-  expect([MOST_DOING, MOST_WRONG]).toEqual([2000, 4000]);
+test('the fields\' limits and the Turnstile widget\'s action are the server\'s', () => {
+  expect([MOST_DOING, MOST_WRONG, MOST_AGENT]).toEqual([2000, 4000, 80]);
+  expect(TURNSTILE_ACTION).toBe('issue'); // a token solved for any other action is turned away
 });
 
 test('a drawing goes only if it fits the request with the steps and the text beside it', () => {

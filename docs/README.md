@@ -31,7 +31,7 @@ Your theme choice is saved in your browser. Plugins can add themes of their own,
 A beta or an alpha version of Phosphor says so under the logo at the top of the settings panel: **BETA** (or **ALPHA**), with **Report an issue** beside it. A version is one when its number ends in `-beta` or `-alpha` (About, opened from the logo, shows the number), and next.phosphor.work, where each change lands before it's released, is always a beta. A released version shows nothing there.
 
 **Report an issue** opens a short form for telling Phosphor's developer about a bug. You don't need a GitHub account.
-- **What were you doing?** and **What went wrong?**: The second is required. Each counts what you've written, up to 2,000 and 4,000 characters, a line break counting as two.
+- **What were you doing?** and **What went wrong?**: The second is required. Each counts what you've written and stops at its most, 2,000 and 4,000 characters.
 - **Send my drawing and this session's steps**: Ticked to begin with. The line under it says exactly what goes: your drawing's file name and size and how many steps, as in "sky.pho, 1.2 MB · 340 steps". The steps are the tools and commands you've used since the page loaded, with the names of your files and layers. Nothing you typed into SOCIAL is in them: no password, email address, code, room password or chat. With no drawing open, only the steps go. A drawing too big for a report (a report holds 25 MB) isn't sent, and the line says so. In a room you host or draw in, the drawing open is the room's, and the line says "This room's drawing". Unticked, only what you wrote goes.
 - **Send**: Nothing is sent before it.
 

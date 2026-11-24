@@ -103,27 +103,34 @@ test('what you write becomes public, and the note above Send says so, with the b
   expect(dialog().querySelector('p.public').compareDocumentPosition(sendButton()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 });
 
-test('each field counts what will be sent, a line break as two, and one past its most says so and holds Send', async () => {
+test('each field counts what\'s written and stops at its most, a line break counting as one', async () => {
   await open();
-  const count = (id) => dialog().querySelector(`#issue-${id}-count`).textContent;
-  expect([count('doing'), count('wrong')]).toEqual(['0 / 2000', '0 / 4000']);
-  expect(field('wrong').getAttribute('aria-describedby')).toContain('issue-wrong-count');
+  const count = (id) => dialog().querySelector(`#issue-${id}-count`);
+  expect([count('doing').textContent, count('wrong').textContent]).toEqual(['0 / 2000', '0 / 4000']);
+  expect([field('doing').maxLength, field('wrong').maxLength]).toEqual([2000, 4000]); // the browser stops typing and pasting there
+  expect([field('doing').getAttribute('aria-describedby'), field('wrong').getAttribute('aria-describedby')]).toEqual(['issue-doing-count', 'issue-wrong-count']);
   await typed('wrong', 'one\ntwo');
-  expect(count('wrong')).toBe('8 / 4000');
-  expect(dialog().querySelector('p.long')).toBe(null);
+  expect(count('wrong').textContent).toBe('7 / 4000');
+  expect(count('wrong').classList.contains('full')).toBe(false);
 
-  await typed('wrong', 'x'.repeat(4001));
-  expect(count('wrong')).toBe('4001 / 4000');
-  expect(dialog().querySelector('#issue-wrong-count').classList.contains('full')).toBe(true);
-  expect(dialog().querySelector('p.long').textContent).toContain('4000');
-  expect(field('wrong').getAttribute('aria-invalid')).toBe('true');
+  await typed('wrong', `${'x'.repeat(3999)}\n`);
+  expect(count('wrong').textContent).toBe('4000 / 4000');
+  expect(count('wrong').classList.contains('full')).toBe(true); // full, in its warning color
+  await typed('wrong', 'x'.repeat(4000));
+  expect(sendButton().disabled).toBe(false);
+
+  // More than a field lets anyone type, put there some other way: Send holds rather than send what the server would refuse.
+  const put = async (id, text) => {
+    field(id).value = text;
+    field(id).dispatchEvent(new Event('input'));
+    await nextTick();
+  };
+  await put('wrong', 'x'.repeat(4001));
   expect(sendButton().disabled).toBe(true);
-  await typed('wrong', `${'x'.repeat(3998)}\n`); // 3,999 typed, 4,000 as sent
-  expect(count('wrong')).toBe('4000 / 4000');
-  await typed('wrong', 'It broke');
-  await typed('doing', 'y'.repeat(2001));
+  await put('wrong', 'It broke');
+  await put('doing', 'y'.repeat(2001));
   expect(sendButton().disabled).toBe(true);
-  await typed('doing', 'y'.repeat(2000));
+  await put('doing', 'y'.repeat(2000));
   expect(sendButton().disabled).toBe(false);
 });
 
@@ -214,7 +221,7 @@ test('the web build\'s Turnstile is asked for as the dialog opens, shown only wh
   const fetch = await open();
   expect(turnstile.mounted).toHaveLength(1);
   expect(turnstile.mounted[0][0]).toBe(dialog().querySelector('div.turnstile'));
-  expect(turnstile.mounted[0].slice(1)).toEqual(['issue-report', { appearance: 'interaction-only' }]);
+  expect(turnstile.mounted[0].slice(1)).toEqual(['issue', { appearance: 'interaction-only' }]);
   await typed('wrong', 'It broke');
   await send();
   expect(fetch.mock.calls[0][1].body.get('turnstile')).toBe('tok-1');
