@@ -4,6 +4,9 @@ import { useI18n } from 'vue-i18n';
 import { PROJECT_EXTENSION } from '@/document/projectIO';
 import { formatShortDateTime } from '@/i18n/format';
 import { arrowsBetween } from '@/lib/focus';
+import { commandById } from '@/lib/commands';
+import { keyLabel, keysFor } from '@/lib/keymap';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const props = defineProps({
   ready: { type: Boolean, default: true }, // nothing until it's known there's nothing to restore, so this doesn't flash
@@ -24,6 +27,13 @@ watch(() => props.ready, async (ready) => {
 // A drawing open elsewhere is in another tab on the web, and in another window in the desktop app.
 const elsewhere = import.meta.env.VITE_DESKTOP === '1' ? 'openElsewhereWindow' : 'openElsewhere';
 
+// The keys to the rest: the command list and the shortcuts list, each a button that opens it too.
+const keys = [
+  { label: 'zero.keys.commands', key: keyLabel(keysFor(commandById('ui.commandList').keys)[0]), open: 'commandListOpen' },
+  { label: 'zero.keys.shortcuts', key: commandById('general.help').shown[0], open: 'shortcutsOpen' },
+];
+const openList = (open) => { useWorkspaceStore()[open] = true; };
+
 const MAX_RECENT = 5;
 
 const rows = computed(() => {
@@ -39,8 +49,8 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <!-- Up and Down move between its buttons, top to bottom: Choose a file, Start blank, each row. -->
-  <article class="zero-state" @keydown="arrowsBetween($event, $event.currentTarget.querySelectorAll('button'))">
+  <!-- Up and Down move between its buttons, top to bottom: Choose a file, Start blank, each row (the Keyboard box is Tab's). -->
+  <article class="zero-state" @keydown="arrowsBetween($event, $event.currentTarget.querySelectorAll('div.actions button, section.recent button'))">
     <!-- The dashed line is around the whole canvas, as all of it takes a dropped file (DropZone.vue). With recent work
          the drop part shrinks to a band, and the list sits under it, one column in the middle, the band the list's width. -->
     <div v-if="ready" class="drop-zone" :class="{ listed: rows.length }">
@@ -79,6 +89,14 @@ const rows = computed(() => {
             </button>
           </li>
         </ul>
+      </section>
+
+      <!-- Only with a mouse or trackpad, the nearest a page can come to knowing there's a keyboard. -->
+      <section class="keys" aria-labelledby="keys-heading">
+        <h2 id="keys-heading">{{ t('zero.keys.heading') }}</h2>
+        <button v-for="each in keys" :key="each.open" @click="openList(each.open)">
+          <span>{{ t(each.label) }}</span><kbd>{{ each.key }}</kbd>
+        </button>
       </section>
     </div>
   </article>
@@ -372,6 +390,83 @@ section.recent li button:disabled span.go {
   }
 }
 
+/* The keys: a small box in the drop zone's bottom right corner, with room kept under what's in the middle so the two
+   never meet; in a narrow canvas, the width of what's above it, under it. None without a mouse or trackpad. */
+section.keys {
+  display: none;
+  width: 230px;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  background: var(--surface-1);
+  text-align: left;
+}
+@media (any-pointer: fine) {
+  section.keys {
+    display: block;
+  }
+}
+@media (any-pointer: fine) and (min-width: 769px) {
+  div.drop-zone {
+    position: relative;
+    padding-bottom: 150px;
+  }
+  section.keys {
+    position: absolute;
+    right: 20px;
+    bottom: 20px;
+  }
+}
+
+section.keys h2 {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+section.keys button {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+  width: calc(100% + 12px);
+  margin: 0 -6px; /* the hover fill runs past the text */
+  padding: 3px 6px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  box-shadow: none;
+  text-align: left;
+  font-size: 12px;
+  font-weight: normal;
+  color: var(--text);
+}
+section.keys button:focus-visible {
+  background: var(--surface-2);
+}
+@media (hover: hover) {
+  section.keys button:hover {
+    transform: none;
+    background: var(--surface-2);
+    box-shadow: none;
+    color: var(--text);
+  }
+}
+
+section.keys kbd { /* as the shortcuts list's keys */
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--surface-3);
+  color: var(--text);
+  font: 12px var(--ui-font-family);
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
 /* A phone: nothing can be dropped, so no dashed line. The logo, the two buttons a finger's size, the list under them. */
 @media (max-width: 768px) {
   article.zero-state {
@@ -416,6 +511,12 @@ section.recent li button:disabled span.go {
   }
 
   section.recent {
+    margin-top: 24px;
+  }
+
+  section.keys {
+    align-self: stretch;
+    width: auto;
     margin-top: 24px;
   }
 

@@ -108,6 +108,11 @@
       "unchanged": "Unchanged",
       "changed": "Changed",
       "saved": "Saved"
+    },
+    "keys": {
+      "heading": "Keyboard",
+      "commands": "Run any command",
+      "shortcuts": "All keyboard shortcuts"
     }
   },
   "tabs": {

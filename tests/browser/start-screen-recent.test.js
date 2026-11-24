@@ -262,3 +262,32 @@ test('a start screen come back to, already ready (New project, leaving a room), 
   await nextTick();
   expect(document.activeElement).toBe(document.body);
 });
+
+test('a Keyboard box gives the keys to the command list and the shortcuts list, and opens each; on a phone, the width of the list', async () => {
+  const { createPinia, setActivePinia } = await import('pinia');
+  const { useWorkspaceStore } = await import('@/store/WorkspaceStore');
+  const { keyLabel } = await import('@/lib/keymap');
+  setActivePinia(createPinia());
+  const workspace = useWorkspaceStore();
+  await onAComputer();
+  mount([row('a')], 900);
+  const box = host.querySelector('section.keys');
+  expect(matchMedia('(any-pointer: fine)').matches).toBe(true); // the test browser has a mouse: the box shows
+  expect(box.querySelector('h2').textContent).toBe('Keyboard');
+  const buttons = [...box.querySelectorAll('button')];
+  expect(buttons.map((b) => [b.querySelector('span').textContent, b.querySelector('kbd').textContent]))
+    .toEqual([['Run any command', keyLabel('Mod+KeyK')], ['All keyboard shortcuts', '?']]);
+  // In the drop zone's bottom right corner, clear of the list.
+  const zone = rect('div.drop-zone'), at = box.getBoundingClientRect();
+  expect(Math.round(zone.right - at.right)).toBe(21); // 20px in, past the line
+  expect(at.top).toBeGreaterThan(rect('section.recent').bottom);
+  buttons[0].click();
+  expect(workspace.commandListOpen).toBe(true);
+  buttons[1].click();
+  expect(workspace.shortcutsOpen).toBe(true);
+
+  await sized(...PHONE);
+  const narrow = rect('section.keys'), list = rect('section.recent');
+  expect([narrow.left, narrow.width]).toEqual([list.left, list.width]);
+  expect(narrow.top).toBeGreaterThan(list.bottom);
+});
