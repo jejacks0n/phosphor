@@ -8,10 +8,26 @@ import { keyLayer, layerKey } from '../../src/document/layerInfo.js';
 
 // The ledger's own: 64 MB in a room, and what a cell counts for.
 const MOST_BYTES = 64 * 1024 * 1024, CELL_BYTES = 128;
+// The tests that fill a ledger to those 64 MB: half a million cells, or thousands of tiles each read, written and
+// undone, is work no smaller ledger can stand in for. The cells one takes 0.8 s on a laptop and 2.4 to 3.7 s in CI,
+// and 5.4 s once on a loaded runner, past the 5 s default; this leaves several times that.
+const AT_THE_LIMIT = 30_000;
 
 const RED = 0xff0000ff, GREEN = 0x00ff00ff, BLUE = 0x0000ffff, GRAY = 0x80808080;
 const cell = (char) => Object.freeze({ char });
 const X = cell('x'), Y = cell('y'), Z = cell('z'), START = cell('s');
+
+// A pixel's key as its layer and place, worked out once a key: readTile goes through every pixel held for each tile it
+// reads, and the tests at the byte limit read thousands of tiles over thousands of pixels.
+const places = new Map();
+const placeOf = (at) => {
+  let place = places.get(at);
+  if (!place) {
+    const { id, key } = keyLayer(at), [x, y] = key.split(',').map(Number);
+    places.set(at, place = { id, x, y });
+  }
+  return place;
+};
 
 // A picture over Maps, as a store would be: reads for the ledger, and apply for what comes back. Pixels are 'x,y' on the
 // edit layer and 'id:x,y' on another (layerKey).
@@ -23,9 +39,8 @@ function picture({ cells = [], pixels = [] } = {}) {
       held.tileReads++;
       const data = new Uint8ClampedArray(TILE * TILE * 4);
       for (const [at, rgba] of held.pixels) {
-        if (at !== layerKey(id, at.slice(at.indexOf(':') + 1))) continue;
-        const [px, py] = at.slice(at.indexOf(':') + 1).split(',').map(Number);
-        if (px < x || py < y || px >= x + TILE || py >= y + TILE) continue;
+        const { id: on, x: px, y: py } = placeOf(at);
+        if (on !== id || px < x || py < y || px >= x + TILE || py >= y + TILE) continue;
         const i = ((py - y) * TILE + (px - x)) * 4;
         data.set([rgba >>> 24, (rgba >>> 16) & 0xff, (rgba >>> 8) & 0xff, rgba & 0xff], i);
       }
@@ -463,7 +478,7 @@ test('past 64 MB in all the oldest stroke goes first, and the newest stays howev
   const alone = setup(undefined, { limits: true });
   alone.drawRuns('a', 'huge', [...stroke(0), ...stroke(TILE * 2), ...stroke(TILE * 4)]);
   assert.ok(alone.undo('a', 'huge'));
-});
+}, AT_THE_LIMIT);
 
 test('a stroke that keeps writing past 50 strokes is never the oldest, and undoes whole', () => {
   const { ledger, pic, drawCell, undo } = setup(undefined, { limits: true });
@@ -884,7 +899,7 @@ test('a ledger with as many cells as its bytes hold passes keptFromWire, and one
   assert.throws(() => keptFromWire({ ...full, cells: [...full.cells, ['0,99', null, []]] }), /Not a ledger/);
   ledger.submit('ann', 'more', { cells: [['0,99', { char: 'y' }]], runs: [] });
   assert.ok(keptFromWire(keptForWire(ledger.kept())));   // past its bytes, the oldest went
-});
+}, AT_THE_LIMIT);
 
 test('a ledger kept for the wire and read back keeps each tile\'s layer', () => {
   const { pic, ledger, go } = setup({ pixels: [['L2:1,0', GREEN]] }, { epoch: 'e' });
