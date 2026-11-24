@@ -66,6 +66,7 @@ export function readArtFile(bytes, name, knownBlocks) {
   let depth = 0; // the deepest color a cell got: 0 the 16 colors, 1 one of the other 240, 2 a 24-bit one
   let col = 0, row = 0, pending = false, saved = [0, 0];
   let bold = false, blink = false, inverse = false, fg = { i: 7 }, bg = { i: 0 };
+  let blinked = false, iceCode = null; // whether SGR 5 or 6 came, and the last ESC[?33h (true) or ESC[?33l (false)
   let pen = null; // fg and bg as a cell gets them; cleared when the colors change
 
   const colsNow = () => fixed || widest;
@@ -131,7 +132,7 @@ export function readArtFile(bytes, name, knownBlocks) {
       if (p === 0) { bold = blink = inverse = false; fg = { i: 7 }; bg = { i: 0 }; }
       else if (p === 1) bold = true;
       else if (p === 22) bold = false;
-      else if (p === 5 || p === 6) blink = true;
+      else if (p === 5 || p === 6) blink = blinked = true;
       else if (p === 25) blink = false;
       else if (p === 7) inverse = true;
       else if (p === 27) inverse = false;
@@ -191,6 +192,7 @@ export function readArtFile(bytes, name, knownBlocks) {
       const final = single(items[j] ?? '');
       if (final < 0x40 || final > 0x7e) { i = j - 1; continue; } // not a sequence after all
       if (!/^[?=<>]/.test(text)) csi(text === '' ? [] : text.split(';').map((s) => parseInt(s, 10) || 0), items[j]);
+      else if (text === '?33' && (items[j] === 'h' || items[j] === 'l')) iceCode = items[j] === 'h';
       i = j;
     } else if (code === 26) break;
     else if (code === 10 || (code === 13 && crOnly)) { col = 0; row++; pending = false; }
@@ -213,5 +215,9 @@ export function readArtFile(bytes, name, knownBlocks) {
     const line = lines.get(r);
     for (let c = 0; c < cols; c++) cells[r * cols + c] = line?.[c] ?? { char: ' ', fg: DEFAULT_FG, bg: DEFAULT_BG };
   }
-  return { cols, rows, cells, sauce, palette: ['cga', 'vga', 'none'][depth], notUtf8 };
+  // iCE colors: whether a bright background (blink, SGR 5, kept as bright) shows bright or blinks. A CP437 file's record
+  // says (its flag, bit 0); with none, ESC[?33h says on, else a file that blinks is off, as on DOS, and one that never
+  // does is on (nothing in it blinks either way). A UTF-8 file's bright backgrounds are colors of their own, never blink.
+  const iceColors = !cp437 || (sauce ? sauce.iceColors : iceCode ?? !blinked);
+  return { cols, rows, cells, sauce, palette: ['cga', 'vga', 'none'][depth], notUtf8, iceColors };
 }

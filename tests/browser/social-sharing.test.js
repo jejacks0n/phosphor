@@ -1097,6 +1097,19 @@ test('applySettings takes only the document\'s saved settings', async () => {
   expect(project.editCells.size).toBe(0);
 });
 
+test('a host\'s iCE colors goes out with its settings, and an artist\'s drawing takes it', async () => {
+  const { project: host, sent } = await drawing('host');
+  host.sauceIceColors = false;
+  host.sendSettings();
+  const message = sent.find(({ t }) => t === 'settings');
+  expect(message.values.sauceIceColors).toBe(false);
+  const { project: artist } = await drawing('artist');
+  expect(artist.sauceIceColors).toBe(true);
+  artist.hearDrawing({ ...message, n: 1 });
+  artist.flushHeard();
+  expect(artist.sauceIceColors).toBe(false);
+});
+
 test('a settings message with a bad value is refused whole, and what\'s fine goes on', async () => {
   const { project } = await drawing('artist');
   const before = project.brightness;

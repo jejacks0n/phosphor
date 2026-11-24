@@ -17,6 +17,7 @@ import { usePluginStore } from '@/store/PluginStore.js';
 import { useRoomStore } from '@/store/RoomStore.js';
 import { ANSI_OF_DOS } from '@/lib/XBinFile.js';
 import { PALETTES, parseColorList } from '@/lib/ColorUtils.js';
+import { blinkingBackgrounds } from '@/lib/blink.js';
 import { blocksOf, fontChars, fontKey, pixelAspectOf } from '@/lib/BitmapFont.js';
 import { t } from '@/i18n/index.js';
 import { notSetUp } from '@/lib/fontSetup.js';
@@ -213,6 +214,19 @@ export const useProjectStore = defineStore('project', {
     // Why the drawing's font can't go into a room, or null: a room can't edit its blocks, so all eight need a slot.
     fontNotSetUp() {
       return notSetUp(this.drawingFont);
+    },
+    // The drawing's 16 colors when it's a 16-color drawing, the kind iCE colors is for: CGA (in ANSI order), or a Custom
+    // list of exactly 16 (as an XBin opens its own, in DOS order: the order an XBin export writes it in). Either way 8 to
+    // 15 are the bright ones. Else null.
+    sixteenColors(state) {
+      if (state.quantize === 'cga') return PALETTES.cga;
+      const list = state.quantize === 'palette' ? parseColorList(state.palette) : [];
+      return list.length === 16 ? list : null;
+    },
+    // Without iCE colors, in a 16-color drawing: the bright backgrounds that blink, each to the color its cell shows under
+    // it (blink.js); null when nothing blinks.
+    blinkingBackgrounds() {
+      return !this.sauceIceColors && this.sixteenColors ? blinkingBackgrounds(this.sixteenColors) : null;
     },
     // The 16 colors an XBin export holds, as hexes in XBin's DOS order, or null when the drawing's palette is more.
     xbinPalette(state) {
