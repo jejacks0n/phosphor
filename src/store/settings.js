@@ -4,7 +4,7 @@ import { goodBaseScale, goodFit, goodScale } from '@/document/projectIO.js';
 import { MAX_COLS, maxRowsBeside } from '@/lib/Cells.js';
 import { SAUCE_WIDTHS, charCount } from '@/lib/Sauce.js';
 import { t } from '@/i18n/index.js';
-import { cleanFilterOptions, goodPluginRef } from '@/plugins/filters.js';
+import { cleanFilterOptions, cleanSolverNames, goodPluginRef } from '@/plugins/filters.js';
 
 // A list of characters or colors, in characters: every CP437 character 64 times over, or 2000 colors.
 const MOST_LIST = 16 * 1024;
@@ -34,6 +34,9 @@ export const SETTINGS = [
   { key: 'charChoiceAscii', default: 'weight', group: 'setup', pipeline: false, get help() { return t('settings.charChoiceAscii.help'); } },
   // A plugin solver's options, kept per solver: { [ref]: { [optionId]: number | boolean } } (plugins/solvers.js optionValues).
   { key: 'solverOptions', default: () => ({}), object: true, group: 'setup', pipeline: false },
+  // The plugin solvers a layer of the drawing chose, named as they were then: { [ref]: { name, plugin } }, the solver's
+  // name and its plugin's (cleanSolverNames), so a drawing opened without the plugin can say what to install.
+  { key: 'solverNames', default: () => ({}), object: true, group: 'setup', pipeline: false, clean: cleanSolverNames },
   { key: 'solids', default: 25, group: 'setup', pipeline: false, get label() { return t('settings.solids.label'); }, min: 0, max: 100, unit: '%', ticks: [0], get help() { return t('settings.solids.help'); } },
   { key: 'patternLight', default: 100, group: 'setup', pipeline: false, get label() { return t('settings.patternLight.label'); }, min: 0, max: 100, unit: '%', ticks: [0, 100], get help() { return t('settings.patternLight.help'); } },
   { key: 'quantize', default: 'none', group: 'setup', get help() { return t('settings.quantize.help'); } },

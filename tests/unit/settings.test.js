@@ -14,7 +14,7 @@ import { generateSlug } from 'random-word-slugs';
 
 test("Settings schema: same keys, storage keys and reset defaults as before the schema existed, so users' persisted settings survive", async () => {
   // same 23 keys as the pre-schema SETTING_KEYS; order follows the table
-  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'aspectRatio', 'renderStyle', 'chars', 'fontBitmap', 'fontName', 'fontBlocks', 'fontLines', 'fontSets', 'fontWidth', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness', 'filterOptions'].sort());
+  assert.deepEqual([...SETTING_KEYS].sort(), ['cols', 'rows', 'aspectLock', 'aspectRatio', 'renderStyle', 'chars', 'fontBitmap', 'fontName', 'fontBlocks', 'fontLines', 'fontSets', 'fontWidth', 'charsAscii', 'seed', 'charChoice', 'charChoiceAscii', 'solverOptions', 'solids', 'patternLight', 'smoothing', 'quantize', 'palette', 'colorCount', 'ditherStyle', 'dither', 'invert', 'brightness', 'contrast', 'saturation', 'hue', 'colorize', 'colorizeStrength', 'levelsBlack', 'levelsWhite', 'levelsMid', 'posterize', 'threshold', 'thresholdDark', 'thresholdLight', 'blur', 'sharpen', 'flatten', 'edges', 'edgeColor', 'edgeThickness', 'filterOptions', 'solverNames'].sort());
   assert.deepEqual(SAUCE_KEYS, ['sauceUse9pxFont', 'sauceFontName', 'sauceTitle', 'sauceAuthor', 'sauceGroup', 'sauceDate', 'sauceUserComments', 'sauceRecord', 'sauceLetterSpacing']);
   assert.equal(getSetting('brightness').storageKey ?? 'current_file.brightness', 'current_file.brightness');
   assert.equal(getSetting('sauceUse9pxFont').storageKey, 'current_file.sauce.use9pxFont');
@@ -156,6 +156,18 @@ test('filterOptions from a stranger are cleaned as a filter\'s (name and values)
   const good = { 'plugin:jane.fx/glow': { name: 'Glow', values: { soft: true, tint: '#00ff00' } } };
   assert.deepEqual(settingsFromStranger({ ...GOOD, filterOptions: { ...good, nope: { name: 'N', values: {} } } }), { ...GOOD, filterOptions: good });
   for (const bad of [null, 'x', [], 4]) assert.equal(settingsFromStranger({ ...GOOD, filterOptions: bad }), null);
+});
+
+test('solverNames from a stranger keep a good ref\'s solver and plugin names, plain text of at most 60 characters, at most 32 of them', () => {
+  const good = { 'plugin:jane.fx/shades': { name: 'Shades', plugin: 'Jane\'s effects' } };
+  const bad = {
+    nope: { name: 'N', plugin: 'P' }, 'plugin:p.p/a': { name: 'A' }, 'plugin:p.p/b': { name: 'B', plugin: 'two\nlines' },
+    'plugin:p.p/c': { name: 'x'.repeat(61), plugin: 'P' }, 'plugin:p.p/d': { name: 4, plugin: 'P' }, 'plugin:p.p/e': 'E',
+  };
+  assert.deepEqual(settingsFromStranger({ ...GOOD, solverNames: { ...good, ...bad } }), { ...GOOD, solverNames: good });
+  const many = Object.fromEntries(Array.from({ length: 40 }, (_, i) => [`plugin:p.p/s${i}`, { name: 'S', plugin: 'P' }]));
+  assert.equal(Object.keys(settingsFromStranger({ ...GOOD, solverNames: many }).solverNames).length, 32);
+  for (const wrong of [null, 'x', [], 4]) assert.equal(settingsFromStranger({ ...GOOD, solverNames: wrong }), null);
 });
 
 test('cleanOptions keeps a color option as a lowercase #rrggbb and drops other text', () => {

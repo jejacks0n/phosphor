@@ -22,7 +22,7 @@ import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
 import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
 import { chunk, crc32 } from '../lib/PngFile.js';
-import { cleanFilterOptions } from '../plugins/filters.js';
+import { cleanFilterOptions, cleanSolverNames } from '../plugins/filters.js';
 
 export const PROJECT_EXTENSION = '.pho', OLD_PROJECT_EXTENSION = '.phosphor', PROJECT_MIME = 'image/x-phosphor';
 export const isProjectFile = (name) => [PROJECT_EXTENSION, OLD_PROJECT_EXTENSION].some((ext) => name.toLowerCase().endsWith(ext));
@@ -187,6 +187,7 @@ export async function readProject(file) {
   if (!goodScale(paintScale, size)) delete settings.paintScale;
   if (typeof settings.imageIsWorkingCopy !== 'boolean') delete settings.imageIsWorkingCopy;
   if ('filterOptions' in settings) settings.filterOptions = cleanFilterOptions(settings.filterOptions); // untrusted: a plugin filter's values, shown and run
+  if ('solverNames' in settings) settings.solverNames = cleanSolverNames(settings.solverNames); // untrusted: words shown
   const imageBuffer = buffer.slice(offset, offset += imageLen);
   const hasBase = Number.isInteger(baseLength) && baseLength > 0;
   if (stacked) return readStack({ buffer, offset, imageBuffer, baseLength: hasBase ? baseLength : 0, settings, base, shapes, rawStack, frames, frame, fps, motion, cellsCarry });

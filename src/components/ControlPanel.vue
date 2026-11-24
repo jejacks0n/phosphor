@@ -138,7 +138,7 @@ const solverChoices = computed(() => (room.inRoom ? [] : Object.entries(plugins.
 const notOffered = computed(() => {
   const ref = ansi.value ? own.charChoice : own.charChoiceAscii;
   if (!isSolverRef(ref) || solverChoices.value.some((choice) => choice.ref === ref)) return null;
-  return { ref, name: t('panel.solver.notHere', { name: solverName(plugins, ref) }) };
+  return { ref, name: t('panel.solver.notHere', { name: solverName(plugins, store, ref) }) };
 });
 // The plugin solver drawing the layer, if one is (not a stand-in), and its options' values (params' solverOptions). A
 // change replaces the layer's options for that solver and keeps the others' (setLayerChars), each an undo step as a

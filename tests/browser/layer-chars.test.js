@@ -13,7 +13,7 @@ import { rectShape, ellipseShape, makeShape } from '@/document/shapes.js';
 import { readScript } from '@/plugins/script';
 import { unregisterScript } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
-import { onSolver } from '../support/pluginSolvers.js';
+import { onPlugin, onSolver } from '../support/pluginSolvers.js';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -787,6 +787,26 @@ test('a layer on a plugin solver: params carry it while it is registered and on;
   if (plugins.setEnabled) expect(project.layerParams.get('edit')).toMatchObject({ solver: null, standIn: 'off' });
   project.setLayerChars('edit', { charChoice: 'shape' });
   expect(project.layerParams.get('edit')).toMatchObject({ solver: null, wantedSolver: null, standIn: null, solverOptions: {} });
+});
+
+test('a layer choosing a plugin solver keeps its name and its plugin\'s with the drawing, the latest last, at most 32', async () => {
+  const { project, pinia } = await blank();
+  const ref = await onSolver(OUTLINES, { pinia });
+  expect(project.solverNames).toEqual({});
+  project.setLayerChars('edit', { charChoice: ref });
+  project.commitLayerChars();
+  expect(project.solverNames).toEqual({ [ref]: { name: 'Outlines', plugin: 'Midnight' } }); // the helper's plugin is Midnight's manifest
+  project.setLayerChars('base', { charChoiceAscii: ref.replace('/outlines', '/gone') }); // not registered: nothing to name
+  expect(Object.keys(project.solverNames)).toEqual([ref]);
+  const many = [];
+  for (let p = 0; p < 5; p++) {
+    many.push(...(await onPlugin({ solvers: Array.from({ length: 8 }, (_, i) => ({ ...OUTLINES, id: `s${i}` })) }, { pinia, pluginId: `jane.many${p}` })).solvers);
+  }
+  for (const each of many) project.setLayerChars('edit', { charChoice: each });
+  expect(Object.keys(project.solverNames)).toEqual(many.slice(-32)); // Outlines and the first 7 gone
+  project.setLayerChars('edit', { charChoice: many[20] });
+  expect(Object.keys(project.solverNames).at(-1)).toBe(many[20]); // chosen again: the latest
+  expect(Object.keys(project.solverNames)).toHaveLength(32);
 });
 
 test('a plugin solver chosen for the other style does not count', async () => {

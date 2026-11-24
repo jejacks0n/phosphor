@@ -170,8 +170,8 @@ test('a missing solver keeps its option and the note says By shape stands in', a
 
   plugins.dropScript('phosphor.outlines');
   await nextTick();
-  expect(note()).toBe('outlines isn\'t installed. Showing By shape.');
-  expect(choices(select)).toEqual(['Random', 'Best match', 'By shape', 'outlines (not here)']);
+  expect(note()).toBe('Midnight isn\'t installed. Showing By shape.'); // the plugin's name: it's the plugin to install
+  expect(choices(select)).toEqual(['Random', 'Best match', 'By shape', 'Outlines (not here)']);
   expect(select.value).toBe(ref);
   expect(host.querySelector('.solver-options')).toBe(null); // nothing to set while it isn't there
 
@@ -195,6 +195,24 @@ test('a missing solver keeps its option and the note says By shape stands in', a
   expect(note()).toBe('Lines doesn\'t do Color ASCII. Showing By shape.');
 });
 
+test('a solver whose plugin is gone is named by what the drawing kept: the plugin in the note, the solver in the choice; with nothing kept, by its id', async () => {
+  const { project } = await blank();
+  const { ref } = await installed();
+  project.setLayerChars('edit', { charChoice: ref });
+  project.commitLayerChars();
+  const host = await mount(ControlPanel);
+  const note = () => host.querySelector('fieldset.characters p.note').textContent;
+  const select = host.querySelector('#charChoice');
+  await usePluginStore().uninstall('phosphor.outlines');
+  await nextTick();
+  expect(note()).toBe('Midnight isn\'t installed. Showing By shape.');
+  expect(choices(select).at(-1)).toBe('Outlines (not here)');
+  project.solverNames = {}; // a drawing saved before names were kept
+  await nextTick();
+  expect(note()).toBe('outlines isn\'t installed. Showing By shape.');
+  expect(choices(select).at(-1)).toBe('outlines (not here)');
+});
+
 test('the layer\'s row shows the stand-in warning', async () => {
   const { project, workspace } = await blank();
   workspace.editorTab = 'output';
@@ -206,8 +224,8 @@ test('the layer\'s row shows the stand-in warning', async () => {
   usePluginStore().dropScript('phosphor.outlines');
   await nextTick();
   expect(warning().textContent).toBe('⚠');
-  expect(warning().title).toBe('outlines isn\'t installed. Showing By shape.');
-  await expect.element(page.getByRole('img', { name: 'outlines isn\'t installed. Showing By shape.' })).toBeVisible();
+  expect(warning().title).toBe('Midnight isn\'t installed. Showing By shape.');
+  await expect.element(page.getByRole('img', { name: 'Midnight isn\'t installed. Showing By shape.' })).toBeVisible();
   expect(host.querySelector('li[data-id="base"] .stand-in')).toBe(null);
   expect(host.querySelector('li[data-id="edit"] button.pick').textContent.trim()).toBe('Layer 1'); // the name stays the name
 });

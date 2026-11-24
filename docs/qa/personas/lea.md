@@ -525,6 +525,6 @@ and sideways.
   times.
 - Rated: no (touch only: no keyboard shows here)
 
-**Free time:** she'd open Midnight's homepage link and How plugins work, switch the language with Midnight in use, and tap Remove on Outlines to see what her drawing says when its plugin is gone (the note then says "outlines isn't installed", the solver's id, as the plugin's name is gone with it), and remove Aberration to see its group say "Aberration isn't installed. The picture shows without it.", then press Reset on it.
+**Free time:** she'd open Midnight's homepage link and How plugins work, switch the language with Midnight in use, and tap Remove on Outlines to see what her drawing says when its plugin is gone (the note then says "Outlines isn't installed", the plugin's name as the drawing kept it, and the choice reads "Outlines (not here)"), and remove Aberration to see its group say "Aberration isn't installed. The picture shows without it.", then press Reset on it.
 
 ## Known

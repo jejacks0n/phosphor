@@ -145,8 +145,8 @@ test('a drawing on Outlines opened without the plugin shows By shape and says so
   await imageInput(other).setInputFiles({ name: 'square.pho', mimeType: 'image/png', buffer: file });
   await settled(other);
   await pickLayer(other, 'Base');
-  await expect(other.locator('aside.control-panel').getByText("outlines isn't installed. Showing By shape.")).toBeVisible();
-  await expect(charChoice(other).locator('option:checked')).toHaveText('outlines (not here)');
+  await expect(other.locator('aside.control-panel').getByText("Outlines isn't installed. Showing By shape.")).toBeVisible(); // its name kept with the drawing
+  await expect(charChoice(other).locator('option:checked')).toHaveText('Outlines (not here)');
   expect(await middleColumn(other)).toBe(byShape);
   await other.context().close();
 });
