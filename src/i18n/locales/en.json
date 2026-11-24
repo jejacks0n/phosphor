@@ -1264,6 +1264,7 @@
     "iceColors": "iCE colors",
     "iceHelp": "On: bright backgrounds. Off: they blink, as on DOS.",
     "iceOnly16": "Only for 16-color drawings.",
+    "iceStill": "Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.",
     "commentLines": "{count} of {most} SAUCE lines",
     "commentLinesOwn": "{count} of {most} SAUCE lines ({own} are Phosphor's own)",
     "commentLinesOver": "{count} of {most} SAUCE lines. From line {line} (\"{text}\") on, comments won't be in the file.",

@@ -8,6 +8,8 @@ import ToggleGroup from '@/components/ToggleGroup.vue';
 import FieldCount from '@/components/FieldCount.vue';
 import { MOST_COMMENT_LINES, SAUCE_WIDTHS, charCount, fitField, keptFields, letterSpacingOf, sauceText } from '@/lib/Sauce.js';
 import { formatNumber } from '@/i18n/format.js';
+import { lessMotion } from '@/lib/blink.js';
+import { toast } from '@/composables/useToast.js';
 
 const project = useProjectStore();
 const drawing = useDrawingStore();
@@ -61,10 +63,14 @@ const spacing = computed({
 });
 
 // iCE colors: on, bright backgrounds; off, they blink. Only a 16-color drawing has them (sixteenColors); in another the
-// box is off and keeps its value, for when the drawing is one again.
+// box is off and keeps its value, for when the drawing is one again. Turned off where the system asks for reduced
+// motion, the ANSI view won't blink them, so it says so.
 const ice = computed({
   get: () => project.sauceIceColors,
-  set: (on) => { project.sauceIceColors = on; },
+  set: (on) => {
+    project.sauceIceColors = on;
+    if (!on && lessMotion()) toast(t('sauce.iceStill'));
+  },
 });
 
 const quoted = (text, most = 20) => ([...text].length > most ? `${[...text].slice(0, most).join('')}…` : text);

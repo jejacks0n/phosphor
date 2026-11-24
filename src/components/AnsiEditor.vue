@@ -13,7 +13,7 @@ import { wandIn } from '@/lib/MagicWand';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampViewZoom, dragViewZoom } from '@/lib/zoom';
 import { fitColumns } from '@/lib/DrawnWidth';
-import { BLINK_MS, blinkCell } from '@/lib/blink';
+import { BLINK_MS, blinkCell, lessMotion } from '@/lib/blink';
 import EditorViewport from '@/components/EditorViewport.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import AnsiStatusBar from '@/components/AnsiStatusBar.vue';
@@ -186,7 +186,6 @@ const render = () => {
 // turn over while anything can blink, and stay lit for someone who asks for less motion.
 const blinkLit = ref(true);
 let blinkTimer = null;
-const lessMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 const blinkLook = () => {
   const under = projectStore.blinkingBackgrounds, lit = blinkLit.value;
   return under && ((cell) => blinkCell(cell, under, lit));
@@ -195,7 +194,7 @@ const blinkWhile = (under) => {
   clearInterval(blinkTimer);
   blinkTimer = null;
   blinkLit.value = true;
-  if (under && !lessMotion?.matches) blinkTimer = setInterval(() => { blinkLit.value = !blinkLit.value; }, BLINK_MS);
+  if (under && !lessMotion()) blinkTimer = setInterval(() => { blinkLit.value = !blinkLit.value; }, BLINK_MS);
 };
 blinkWhile(projectStore.blinkingBackgrounds);
 watch(() => projectStore.blinkingBackgrounds, (under) => {

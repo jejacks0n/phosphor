@@ -23,5 +23,9 @@ export function blinkCell(cell, under, lit) {
   return dark ? { ...cell, bg: dark, ...(!lit && { fg: dark }) } : cell;
 }
 
+// Whether the system asks for reduced motion: then nothing blinks, the letters staying lit (asked each time, as it can
+// change while the page is open).
+export const lessMotion = () => !!globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+
 // How long each half of a blink lasts: DOS's text mode turned it over every 16 frames at 70 Hz, about 229 ms.
 export const BLINK_MS = 229;
