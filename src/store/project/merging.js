@@ -814,7 +814,10 @@ export const mergingActions = {
   // layer goes into the picture (mergeIntoPicture, with its rules: docs/model.md R3). The vector layer leaves the stack,
   // or stays with its guides. Whether it merged; false, nothing changed, where Merge down is refused (above the bottom,
   // frames, a hidden layer either side, character settings of its own: with its toast), in a room, which keeps its
-  // layers (Merge down presses there), and with nothing on it that draws.
+  // layers (Merge down presses there), and with nothing on it that draws. Shapes that reach no cell (all off the canvas)
+  // are pressed instead, so the layer leaves as it would. While the picture is made the drawing is held (_paused: no
+  // stroke, paste, shape, layer change, undo or redo), since the shapes are paint on a layer of this step's meanwhile; a
+  // slider moved then is merged over, as mergeIntoPicture does, and another document opened is left alone.
   async mergeShapesIntoPicture(id) {
     const at = this.layers.findIndex((layer) => layer.id === id), layer = this.layers[at];
     if (layer?.kind !== 'vector' || this.layers[at - 1]?.id !== 'base' || !this.image || this._merging || this.hasFrames || this._sharing) return false;
@@ -834,8 +837,19 @@ export const mergingActions = {
     };
     const made = putLayer(this, 'cells', 'base', this.baseChars);
     shapesOnCells(this, id, made.id, { step: false });
+    if (!this.cellsOf(made.id).size && !this.paintOf(made.id)?.hasPaint) { // they reach no cell: nothing for the picture
+      back();
+      return this.mergeDown(id);
+    }
     const shapes = this.shapes; // without the layer's, as redo leaves them
-    await this.mergeIntoPicture(null, made.id);
+    const doc = this._document, paused = this._paused;
+    this._paused = true;
+    try {
+      await this.mergeIntoPicture(null, made.id);
+    } finally {
+      this._paused = paused;
+    }
+    if (this._document !== doc) return false; // another document meanwhile: none of this one's goes into it
     const entry = this.history.last !== last && this.history.last;
     if (!entry || this.layerById(made.id)) { // nothing went in (the picture couldn't be made): as it was
       back();

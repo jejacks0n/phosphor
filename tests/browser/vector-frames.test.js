@@ -174,3 +174,15 @@ test('at the most layers, shapes pasted over a cells layer say so and nothing ch
   expect(project.history.version).toBe(version);
   expect(toastMessage.value).toBe(`A drawing can have up to ${MOST_LAYERS} layers.`);
 });
+
+test('while the drawing is held, shapes pasted over a cells layer are refused, as any shape is', async () => {
+  const { project, workspace } = await animated();
+  workspace.vectorSelected = [project.addShape(rectShape(2, 2, 8, 8, RED))];
+  copyShapes(project, workspace);
+  workspace.pickLayer('edit');
+  const shapes = project.shapes, layers = project.layers;
+  project.setPaused(true);
+  expect(pasteShapes(project, workspace, workspace.vectorClipboard, workspace.vectorClipboardKeys, 'edit')).toBe(false);
+  project.setPaused(false);
+  expect([project.shapes, project.layers]).toEqual([shapes, layers]);
+});

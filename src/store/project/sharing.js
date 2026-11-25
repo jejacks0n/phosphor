@@ -48,7 +48,7 @@ export const DRAWING_ACTIONS = [
   'writeEditCells', 'writeBlocks', 'colorsOnlyCells', 'clearEditCells', 'unlockCells', 'flipCell', 'flipPaint', 'clearEditLayer',
   'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'moveSelection',
   'deleteIn', 'pasteAt', 'selectionEdit',
-  'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'penPoint', 'penBack',
+  'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'addShapesAbove', 'penPoint', 'penBack',
   'followPath', 'stopFollowing', 'setFollow', 'setGuide',
   'addLayer', 'deleteLayer', 'moveLayer', 'duplicateLayer', 'renameLayer', // a layers message is numbered, and nothing is while paused
   'undo', 'redo',
@@ -57,7 +57,7 @@ export const DRAWING_ACTIONS = [
 // Refused for artists: the picture, the settings, the grid and which document this is.
 export const HOST_ONLY_ACTIONS = [
   'eraseBase', 'eraseBasePixels', 'flipBase', 'writeBase', 'writeBaseCells', 'shiftBaseCells', 'shiftBaseLines', 'shiftBaseColumns', 'paintBasePixels', 'addPictureToLayer',
-  'bake', 'flattenDrawing', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'clearEditLayer',
+  'bake', 'flattenDrawing', 'mergeCellOf', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'mergeShapesIntoPicture', 'clearEditLayer',
   'setSlider', 'commitSliders', 'resetSliders', 'resetGroup', 'randomizeSeed', 'setLayerChars', 'setDrawingFont', 'setDrawingFontWidth', 'setIceColors',
   'updateCols', 'updateRows',
   'setImageFromFile', 'setBlankCanvas', 'replaceImage', 'newDocument', 'clearImage', 'loadProject', 'restoreDocument', 'openParts', 'openArtFile',
@@ -65,7 +65,7 @@ export const HOST_ONLY_ACTIONS = [
 
 // Refused while someone else is drawing in an art layer, with a toast saying who: a whole-layer action or a new grid
 // goes to the room as the project, which would step them out and lose what they hadn't sent.
-export const WHOLE_LAYER_ACTIONS = ['clearEditLayer', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'bake', 'flattenDrawing', 'updateCols', 'updateRows', 'setDrawingFont'];
+export const WHOLE_LAYER_ACTIONS = ['clearEditLayer', 'mergeDown', 'mergeIntoPicture', 'mergeShapes', 'mergeShapesIntoPicture', 'bake', 'flattenDrawing', 'updateCols', 'updateRows', 'setDrawingFont'];
 export function lockedOut(project) {
   const words = anyoneInside(project);
   if (words) toast(words);
