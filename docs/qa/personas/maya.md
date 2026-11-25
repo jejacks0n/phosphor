@@ -574,7 +574,9 @@ back, hide the base under it all, and export the .ans after each merge to see it
   off"; `undo-redo`: after reopening, press Cmd+Z (nothing to undo: opening isn't an edit).
 - Rated: yes, wants Cmd+S, then Enter
 
-**Free time:** she'd export .utf8ans and compare it with the .ans in the terminal, export with a layer hidden, open the
+**Free time:** she'd copy a selection of the caption, press Cmd+K and run New from clipboard (it asks about her unsaved
+work first; the new drawing is the selection's size, with it on Layer 1), then do the same with text copied from another
+app. She'd also export .utf8ans and compare it with the .ans in the terminal, export with a layer hidden, open the
 .ans back in Phosphor and compare it with her screen, and save under a name she typed and check the next save starts
 from it.
 

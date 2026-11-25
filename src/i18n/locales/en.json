@@ -1232,6 +1232,12 @@
       "z": "Stack"
     }
   },
+  "clipboard": {
+    "nothing": "The clipboard has nothing to open. Copy a selection or shapes in Phosphor, a block in Moebius, text or a picture first.",
+    "refused": "Phosphor couldn't read the clipboard. Allow clipboard access for this page, or copy something in this tab first.",
+    "tooBig": "The clipboard holds {cols} × {rows} cells. A drawing has at most {maxCols} columns, {maxLines} lines and {maxCells} cells.",
+    "failed": "Could not make a drawing of what the clipboard holds."
+  },
   "actions": {
     "replacesUnsaved": "Replaces this drawing's unsaved changes. It stays in this browser, under Pick up where you left off.",
     "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .pho and .phosphor projects, SVGs, and art files (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
@@ -1246,6 +1252,7 @@
     "exportPng": "Export .png",
     "versions": "Versions",
     "newProject": "New project",
+    "newFromClipboard": "New from clipboard",
     "artDropTitle": "Add {name}?",
     "artDropSub": "Add it to this artwork, or open it as a new project.",
     "artDropSubAddOnly": "Add it to this drawing.",
