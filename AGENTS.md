@@ -94,7 +94,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   `dist-desktop/` from, quitting), `preload.cjs` (`window.phosphorDesktop`, the page's one way in), `roomService.js`
   (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
   `selfPass.js` (passes checked in Node), `lospec.js` (the Palettes page's Search Lospec: one palette asked of
-  lospec.com by its slug), `issueReport.js` (an issue report's one post, checked first), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
+  lospec.com by its slug), `issueReport.js` (an issue report's one post, checked first), `clipboard.js` (the clipboard read at the click of File > New from Clipboard, handed to the page, which has no leave to read it), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
   saved and kept in Open Recent, and the user data folder, `work.phosphor.app`) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
   a close or quit). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join),

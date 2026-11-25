@@ -90,12 +90,12 @@ async function canvasOf(url) {
 // block copied in Phosphor (this tab's own copy as it is now, another tab's as it came), a Moebius block, a picture, text.
 // { shapes, keys }, { block }, { picture: File } or { text }; null with none of those. When the browser won't say, what
 // this tab copied itself stands in (on VECTOR its shapes first, elsewhere its block), and with neither, { refused: true }.
-export async function clipboardHeld(workspace) {
+// items: the clipboard as read already, in read's form (the desktop app's menu hands it: handedItems).
+export async function clipboardHeld(workspace, items = null) {
   const ownShapes = workspace.vectorClipboard && { shapes: workspace.vectorClipboard, keys: workspace.vectorClipboardKeys };
   const ownBlock = workspace.clipboard && { block: workspace.clipboard };
-  let items;
   try {
-    items = await navigator.clipboard.read();
+    items ??= await navigator.clipboard.read();
   } catch {
     return (workspace.editorTab === 'vector' ? ownShapes || ownBlock : ownBlock || ownShapes) || { refused: true };
   }
@@ -114,6 +114,13 @@ export async function clipboardHeld(workspace) {
   if (picture) return { picture: new File([picture], `clipboard.${picture.type.slice(6).replace(/[^a-z0-9].*$/, '')}`, { type: picture.type }) };
   const text = (await (await part((type) => type === 'text/plain'))?.text() ?? '').replace(/\r\n/g, '\n');
   return text.trim() ? { text } : null;
+}
+
+// What the desktop app's menu hands over ({ html, text, png }, each null when there's none: desktop/clipboard.js), as
+// navigator.clipboard.read gives a clipboard: one item with a type for each part there is.
+export function handedItems({ html = null, text = null, png = null } = {}) {
+  const parts = { ...(html && { 'text/html': html }), ...(png && { 'image/png': new Blob([png], { type: 'image/png' }) }), ...(text && { 'text/plain': text }) };
+  return [{ types: Object.keys(parts), getType: async (type) => (parts[type] instanceof Blob ? parts[type] : new Blob([parts[type]], { type })) }];
 }
 
 // The canvas a drawing made of shapes takes: their bounds (shapeBounds, strokes and all), out to whole cells so an art
@@ -137,18 +144,20 @@ function shapesCanvas(shapes, aspect) {
 // bounds (shapesCanvas) with them on a vector layer, on VECTOR. The clipboard is read first, in the press that asked;
 // then unsaved work is asked about, as New project asks. Not while drawing with others. The drawing it makes is unsaved
 // whatever it's made of: it's nowhere else. Whether a drawing opened; false, with a toast saying why, with nothing to
-// open, a clipboard that can't be read or whose copy can't be read back, or a block bigger than a drawing.
-export async function newFromClipboard(project, workspace) {
+// open, a clipboard that can't be read or whose copy can't be read back, or a block bigger than a drawing. items: the
+// clipboard as the desktop app's File menu read it (clipboardHeld's); from the command list there, where the page can't
+// read it, the refusal says to use that menu.
+export async function newFromClipboard(project, workspace, items = null) {
   const withOthers = useDrawingStore().offWithOthers;
   if (withOthers) return toast(withOthers), false;
   let held;
   try {
-    held = await clipboardHeld(workspace);
+    held = await clipboardHeld(workspace, items);
   } catch (error) { // read, but not something that can be read back (another tab's block with a picture that won't decode)
     console.warn('Could not read what the clipboard holds', error);
     return toast(t('clipboard.failed')), false;
   }
-  if (!held || held.refused) return toast(t(held ? 'clipboard.refused' : 'clipboard.nothing')), false;
+  if (!held || held.refused) return toast(t(!held ? 'clipboard.nothing' : import.meta.env.VITE_DESKTOP === '1' ? 'clipboard.useMenu' : 'clipboard.refused')), false;
   const { block, shapes, picture, text } = held;
   if (block && (block.w > MAX_COLS || block.h > MAX_LINES || block.w * block.h > MAX_CELLS)) {
     return toast(t('clipboard.tooBig', { cols: block.w, rows: block.h, maxCols: MAX_COLS, maxLines: formatNumber(MAX_LINES), maxCells: formatNumber(MAX_CELLS) })), false;

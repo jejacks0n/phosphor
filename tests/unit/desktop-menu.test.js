@@ -81,6 +81,18 @@ test('File > New Window comes second, with its shortcut, on even with no drawing
   assert.deepEqual(calls, [['newWindow']]);
 });
 
+test('File > New from Clipboard comes third, with no shortcut, on with no drawing, off while the document can\'t be replaced, and sends its command', () => {
+  const { template, calls } = menu();
+  const fromClipboard = top(template, '<file>').submenu[2];
+  assert.equal(fromClipboard.label, '<newFromClipboard>');
+  assert.equal(fromClipboard.accelerator, undefined);
+  assert.notEqual(fromClipboard.enabled, false); // nothing open: it opens one
+  fromClipboard.click();
+  assert.deepEqual(calls, [['command', 'newFromClipboard']]);
+  const drawingWithOthers = menu({ state: { hasImage: true, canChange: false, inRoom: true, hosting: false } }).template;
+  assert.equal(item(drawingWithOthers, '<file>', '<newFromClipboard>').enabled, false);
+});
+
 test('what needs a drawing, a free document or a room is off without one', () => {
   const off = (template, menuLabel, label) => item(template, menuLabel, label).enabled === false;
   let { template } = menu();

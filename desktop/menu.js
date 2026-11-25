@@ -33,6 +33,7 @@ export function menuTemplate({ labels: l, accelerators = {}, state, recent, act,
       submenu: [
         command(l.new, 'new', { enabled: state.hasImage && state.canChange }),
         { label: l.newWindow, accelerator: 'CmdOrCtrl+Shift+N', click: act.newWindow },
+        command(l.newFromClipboard, 'newFromClipboard', { enabled: state.canChange }), // with no drawing too: it opens one
         command(l.open, 'open'),
         { label: l.openRecent, submenu: openRecent },
         sep,

@@ -261,3 +261,28 @@ test('Check for Updates offers a newer release’s page, says when this is the n
   command('checkUpdates');
   await vi.waitFor(() => expect(toastMessage.value).toBe("Couldn't check for updates. Check your connection and try again."));
 });
+
+// The desktop app's page has no leave to read the clipboard: the app reads it at the menu's click and hands it over.
+test('File > New from Clipboard opens what the app read at the click, without the page reading the clipboard itself', async () => {
+  const read = vi.spyOn(navigator.clipboard, 'read');
+  command('newFromClipboard', { html: null, text: 'Hello\nWorld!!', png: null });
+  await vi.waitFor(() => expect(project.image).toBeTruthy());
+  await vi.waitFor(() => expect([project.cols, project.rows]).toEqual([7, 4]));
+  expect(read).not.toHaveBeenCalled();
+  expect(workspace.editorTab).toBe('output');
+  expect(toastMessage.value).toBeNull();
+
+  command('newFromClipboard', { html: null, text: null, png: null }); // nothing copied
+  await vi.waitFor(() => expect(toastMessage.value).toBe('The clipboard has nothing to open. Copy a selection or shapes in Phosphor, a block in Moebius, text or a picture first.'));
+  expect([project.cols, project.rows]).toEqual([7, 4]);
+  expect(read).not.toHaveBeenCalled();
+});
+
+test('the command list\'s New from clipboard, which can\'t read the clipboard in the desktop app, points at the File menu', async () => {
+  vi.spyOn(navigator.clipboard, 'read').mockRejectedValue(new DOMException('no', 'NotAllowedError'));
+  const { runCommand, commandContext } = await import('@/lib/commands.js');
+  runCommand('file.newFromClipboard', commandContext(project, workspace));
+  await vi.waitFor(() => expect(toastMessage.value).toBe('Choose New from Clipboard in the File menu to open what another window or app copied, or copy something in this window first.'));
+  expect(project.image).toBeFalsy();
+});
+
