@@ -5,7 +5,8 @@
 // puts copies on top, selected, as one step, where they were copied from (on another frame, after a cut); where the
 // frame has copies of them there already, 2 grid pixels right and down from those, so they're seen to land, and each
 // paste again past the last. A follower pasted with its path follows the pasted path; pasted alone, the path it was
-// copied from, if it can follow that here (addShapes).
+// copied from, if it can follow that here (addShapes). Pasted on PIXEL or ANSI, where a cells layer is picked, they get
+// a vector layer of their own directly above it, picked, so VECTOR shows them selected (pasteShapes' above).
 import { stacked, transformed, translation } from '@/document/shapes.js';
 import { VERSION, clipboardHtml } from '@/lib/clipboardBlocks.js';
 import { copyEvent } from '@/composables/clipboard.js';
@@ -41,15 +42,23 @@ export function cutShapes(project, workspace) {
   return true;
 }
 
-// copied: another tab's shapes, else this tab's; keys, the keys they were copied from.
-export function pasteShapes(project, workspace, copied = workspace.vectorClipboard, keys = copied === workspace.vectorClipboard ? workspace.vectorClipboardKeys : null) {
+// copied: another tab's shapes, else this tab's; keys, the keys they were copied from. above: the id of the cells layer
+// they're pasted over, for a vector layer of their own above it (one step with them), which is then picked; in a room,
+// which keeps its layers, they go on the vector layer VECTOR picks, as a paste there does. Whether any came in.
+export function pasteShapes(project, workspace, copied = workspace.vectorClipboard, keys = copied === workspace.vectorClipboard ? workspace.vectorClipboardKeys : null, above = null) {
   if (!copied) return false;
+  if (above && project._sharing) {
+    workspace.editorTab = 'vector';
+    above = null;
+  }
   const spot = (shape) => JSON.stringify([shape.points, shape.more, shape.m, shape.art]), carried = project.inheritedShapes();
   const here = new Set([...project.shapes].filter(([key]) => !carried.has(key)).map(([, shape]) => spot(shape)));
   let copies = copied;
   for (let k = 1; k <= 100 && copies.some((shape) => here.has(spot(shape))); k++) copies = moved(copied, k * OFFSET);
-  project.addShapes(copies, keys);
-  return true;
+  if (!above) return project.addShapes(copies, keys), true;
+  const [made] = project.addShapesAbove(copies, keys, above);
+  if (made) workspace.pickLayer(project.shapes.get(made).layer ?? 'vector');
+  return !!made;
 }
 
 // Duplicate (the command list's): the selected shapes pasted again as copies, as a paste does, without going on the

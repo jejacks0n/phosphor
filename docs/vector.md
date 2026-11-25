@@ -100,6 +100,8 @@ Use Vector select to select, move, scale, and rotate shapes:
 
 Pasted shapes land where they were copied from, so a paste onto another frame keeps their place. Where the frame already has copies of them there, they land a little right of and below those, so you see them land. **Cmd/Ctrl+V** also pastes shapes copied on VECTOR in another Phosphor tab; the options row's **Paste** button pastes only what this tab copied.
 
+On PIXEL or ANSI, where a drawing layer is selected, **Cmd/Ctrl+V** with shapes on the clipboard makes a new vector layer directly above that layer and pastes them there. The new layer is selected, so you're on VECTOR with the shapes selected, and one undo takes back the shapes and their layer together. A drawing that already has the most layers says so and pastes nothing. In a room, which keeps its layers, they go on the vector layer VECTOR selects instead, and inside an art layer shapes aren't pasted.
+
 With one shape selected whose fill or outline is a [gradient](#gradients), its gradient's ends and stops show too: drag an end to stretch and turn it, drag a stop to slide or remove it, click a stop to select it, or double-click a stop or an end to open its color. The gradient's line isn't a handle here (a drag inside the box still moves the shape), so stops are added with the Node tool. Where a gradient's end sits on a box handle, the gradient's end comes first; click again in the same place (after a moment) for the box's handle.
 
 Each drag, nudge, or delete is one undo step, and so is each change of what's selected (a click, a box, **Esc**, Select all), so undo brings back a selection lost to a stray click. Undoing an edit brings back the shapes that were selected when it began.

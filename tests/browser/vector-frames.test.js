@@ -5,6 +5,8 @@ import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { rectShape, translation, transformed } from '@/document/shapes.js';
 import { copyShapes, pasteShapes } from '@/composables/vectorClipboard.js';
+import { toastMessage } from '@/composables/useToast';
+import { MOST_LAYERS } from '@/document/layerInfo.js';
 
 const RED = { fill: '#ff0000' };
 
@@ -117,4 +119,58 @@ test('pasted on another frame, shapes land where they were copied from; on top o
       expect(newest(), `${kind} ${offset}`).toBe(offset);
     }
   }
+});
+
+// From PIXEL or ANSI (a cells layer picked), a paste of shapes makes its own vector layer.
+for (const frames of [1, 2]) {
+  test(`shapes pasted over a cells layer land on a new vector layer directly above it, picked, as one step (${frames} frame${frames > 1 ? 's' : ''})`, async () => {
+    const { project, workspace } = await animated();
+    const first = project.addShape(rectShape(2, 2, 8, 8, RED)), vector = project.shapes.get(first).layer ?? 'vector';
+    workspace.vectorSelected = [first];
+    expect(copyShapes(project, workspace)).toBe(true);
+    if (frames > 1) project.addFrame('blank');
+    workspace.pickLayer('edit');
+    const above = project.addLayer('cells', 'edit'); // so "above the picked layer" isn't the top
+    workspace.pickLayer('edit');
+    const stack = project.layers.map((layer) => layer.id), undoable = project.history.version;
+
+    expect(pasteShapes(project, workspace, workspace.vectorClipboard, workspace.vectorClipboardKeys, 'edit')).toBe(true);
+    const made = project.layers[stack.indexOf('edit') + 1];
+    expect(made.kind).toBe('vector');
+    expect(project.layers.map((layer) => layer.id)).toEqual([...stack.slice(0, stack.indexOf('edit') + 1), made.id, ...stack.slice(stack.indexOf('edit') + 1)]);
+    expect(made.id).not.toBe(vector);
+    const pasted = keys(project).filter((key) => key !== first);
+    expect(pasted).toHaveLength(1);
+    expect(project.shapes.get(pasted[0]).layer).toBe(made.id);
+    const past = frames > 1 ? 0 : 2; // as any paste: where it was copied from, or a little past the one that's there on this frame
+    expect(project.shapes.get(pasted[0]).m).toEqual([1, 0, 0, 1, past, past]);
+    expect(workspace.pickedLayer).toBe(made.id);
+    expect(workspace.editorTab).toBe('vector');
+    expect(workspace.vectorSelected).toEqual(pasted);
+    expect(project.history.version).toBe(undoable + 1);
+
+    project.undo(); // one step: the shapes and their layer
+    await settle(project);
+    expect(project.layers.map((layer) => layer.id)).toEqual(stack);
+    expect(keys(project)).toEqual([first]);
+    expect(project.layerById(above)).toBeTruthy();
+    project.redo();
+    await settle(project);
+    expect(project.layers[stack.indexOf('edit') + 1].id).toBe(made.id);
+    expect(keys(project).filter((key) => key !== first).map((key) => project.shapes.get(key).layer)).toEqual([made.id]);
+  });
+}
+
+test('at the most layers, shapes pasted over a cells layer say so and nothing changes', async () => {
+  const { project, workspace } = await animated();
+  workspace.vectorSelected = [project.addShape(rectShape(2, 2, 8, 8, RED))];
+  copyShapes(project, workspace);
+  workspace.pickLayer('edit');
+  while (project.layers.length < MOST_LAYERS) project.addLayer('cells', 'edit');
+  const shapes = project.shapes, version = project.history.version;
+  expect(pasteShapes(project, workspace, workspace.vectorClipboard, workspace.vectorClipboardKeys, 'edit')).toBe(false);
+  expect(project.shapes).toBe(shapes);
+  expect(project.layers).toHaveLength(MOST_LAYERS);
+  expect(project.history.version).toBe(version);
+  expect(toastMessage.value).toBe(`A drawing can have up to ${MOST_LAYERS} layers.`);
 });

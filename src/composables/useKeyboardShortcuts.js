@@ -200,7 +200,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
   };
 
   // Paste, from what the system clipboard holds (the paste event's text and HTML), the first that
-  // applies: a Phosphor block (this tab's own copy pastes Phosphor's own block, which a Bake keeps
+  // applies: shapes copied on VECTOR, which get a vector layer of their own above the picked layer (pasteShapes; not
+  // inside an art layer); a Phosphor block (this tab's own copy pastes Phosphor's own block, which a Bake keeps
   // up to date; another tab's pastes as it came); a Moebius block; or text, typed in: at the Text
   // cursor in Edit Mode, else at the selection or the top-left of the view. Phosphor's own block
   // wins when the browser refused the copy, and over text that's what the last copy put there. A
@@ -234,6 +235,11 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const ours = workspaceStore.clipboardText?.replace(/\r\n/g, '\n') ?? null;
     const own = workspaceStore.clipboard;
     const found = own && ours === null ? null : readClipboardHtml(e.clipboardData?.getData('text/html'));
+    if (found?.shapes && !projectStore.artInside) { // shapes, over the cells layer picked: on a vector layer of their own above it
+      const theirs = found.shapes.id !== workspaceStore.vectorClipboardId;
+      pasteShapes(projectStore, workspaceStore, theirs ? found.shapes.shapes : undefined, theirs ? found.shapes.keys : undefined, workspaceStore.pickedLayer);
+      return;
+    }
     if (found?.phosphor && !(own && found.phosphor.id === workspaceStore.clipboardId)) {
       decodeBlock(found.phosphor).then((block) => { if (!projectStore._paused) _pasteBlock(at, block); }, () => { if (text) _typeText(at, text); });
     } else if (found?.moebius) _pasteBlock(at, found.moebius);

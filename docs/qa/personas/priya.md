@@ -154,7 +154,8 @@ script. Every section ends with Free time.
 - Rated: yes, wants Enter to step in and Escape to step out
 
 **Free time:** she'd duplicate Vector 1 from its ⋯ menu to see if the art layers come too, copy an art layer with
-Cmd+C and paste it on VECTOR, try Join with an art layer selected (it's off), and turn Snap to Cells on before drawing
+Cmd+C and paste it on VECTOR, then pick Layer 1 and paste again on ANSI (a new vector layer above Layer 1 takes the
+copy, selected on VECTOR, and one undo takes both back), try Join with an art layer selected (it's off), and turn Snap to Cells on before drawing
 a Polygon.
 
 ## Frames

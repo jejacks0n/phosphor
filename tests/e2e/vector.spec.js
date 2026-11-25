@@ -372,6 +372,32 @@ test('Cmd+C and Cmd+V copy the selected shapes and paste them on top, selected; 
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('vselect');
 });
 
+test('Cmd+V on ANSI with shapes copied puts them on a vector layer of their own above the picked layer, on VECTOR, as one undo step', async ({ page }) => {
+  await openApp(page);
+  await pickLayer(page);
+  await settled(page);
+  const a = await addRect(page, 10, 10, 20, 20);
+  await page.keyboard.press('ControlOrMeta+a');
+  await page.keyboard.press('ControlOrMeta+c');
+  await pickLayer(page, 'Layer 1'); // back to ANSI, a cells layer picked
+  await expect(tab(page, 'ANSI')).toHaveAttribute('aria-selected', 'true');
+  const stack = () => store(page, 'project', (p) => p.layers.map(({ id, kind }) => `${kind}:${id}`));
+  const before = await stack(), picked = await store(page, 'workspace', (w) => w.pickedLayer);
+  await page.keyboard.press('ControlOrMeta+v');
+  await expect.poll(async () => (await shapeList(page)).length).toBe(2);
+  const after = await stack(), at = after.findIndex((layer) => layer === `cells:${picked}`);
+  expect(after).toHaveLength(before.length + 1);
+  expect(after[at + 1]).toMatch(/^vector:/); // directly above the layer that was picked
+  const made = after[at + 1].slice(7), pasted = (await shapeList(page)).find((s) => s.key !== a);
+  expect(pasted.layer).toBe(made);
+  await expect(tab(page, 'VECTOR')).toHaveAttribute('aria-selected', 'true');
+  expect(await store(page, 'workspace', (w) => w.pickedLayer)).toBe(made);
+  expect(await selected(page)).toEqual([pasted.key]);
+  await page.keyboard.press('ControlOrMeta+z'); // the shapes and their layer, together
+  expect(await stack()).toEqual(before);
+  expect((await shapeList(page)).map((s) => s.key)).toEqual([a]);
+});
+
 test.describe('between tabs', () => {
   test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
 
