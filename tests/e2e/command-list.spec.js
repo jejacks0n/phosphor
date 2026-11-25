@@ -9,11 +9,15 @@ const typingFocused = (page) => page.evaluate(() => document.activeElement?.data
 
 test('Cmd+K (Ctrl+K) opens the list over the browser\'s own; exp ans and Enter opens Export on .ans, exp png on .png', async ({ page }) => {
   await openApp(page);
-  const prevented = page.evaluate(() => new Promise((resolve) => {
-    addEventListener('keydown', (e) => { if (e.code === 'KeyK') resolve(e.defaultPrevented); }); // after the app's own
-  }));
+  // The page's own listener, after the app's, in place before the key is pressed: left to run beside the press, it could
+  // be added after the key had gone by and never hear it.
+  await page.evaluate(() => {
+    window.pressedK = new Promise((resolve) => {
+      addEventListener('keydown', (e) => { if (e.code === 'KeyK') resolve(e.defaultPrevented); });
+    });
+  });
   await page.keyboard.press(MOD_K);
-  expect(await prevented).toBe(true);
+  expect(await page.evaluate(() => window.pressedK)).toBe(true);
   await expect(list(page)).toBeVisible();
   await expect(list(page).getByRole('combobox')).toBeFocused();
   await page.keyboard.type('exp ans');
