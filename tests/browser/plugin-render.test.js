@@ -4,7 +4,7 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { nextTick } from 'vue';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
-import { onSolver } from '../support/pluginSolvers.js';
+import { onSolver as onSolverIn } from '../support/pluginSolvers.js';
 import { readScript } from '@/plugins/script';
 import { readManifest } from '@/plugins/manifest';
 import { failureOf, unregisterScript } from '@/plugins/solvers';
@@ -14,9 +14,12 @@ import { busyMessage } from '@/composables/useBusy';
 import { t } from '@/i18n';
 import midnight from '../../plugins/midnight/phosphor-plugin.json';
 
+// The test's own Pinia (createTestApp's): a store asked for after an await may be a test's that finished late.
+let pinia = null;
+const onSolver = (def, opts) => onSolverIn(def, { pinia, ...opts });
 const IDS = ['phosphor.outlines', 'jane.hang', 'jane.theme'];
 afterEach(() => {
-  const plugins = usePluginStore();
+  const plugins = usePluginStore(pinia);
   for (const id of IDS) plugins.dropScript(id);
   localStorage.removeItem(HANG_KEY);
 });
@@ -37,6 +40,7 @@ const RED_SLASH = { ...SLASH, fg: { r: 255, g: 0, b: 0 } };
 // A picture of stripes a cell wide (black, white, ...) as a 20 x 10 drawing: every cell's neighbors differ from it.
 async function stripes({ cols = 20, rows = 10 } = {}) {
   const app = await createTestApp();
+  ({ pinia } = app);
   const canvas = Object.assign(document.createElement('canvas'), { width: cols * 10, height: rows * 10 }), ctx = canvas.getContext('2d');
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -153,7 +157,7 @@ test('a solver that throws stands the layer in with By shape and reports the fai
   } }));
   await choose(project, ref);
   expect(failureOf(ref)).toBe('boom');
-  expect(usePluginStore().problems['phosphor.outlines']).toContain('boom');
+  expect(usePluginStore(pinia).problems['phosphor.outlines']).toContain('boom');
   expect(project.processParams).toMatchObject({ solver: null, standIn: 'failed' });
   expect(cellsKey(project)).toEqual(byShape);
   const once = calls;
@@ -192,7 +196,7 @@ test('a solver that returns a character it does not draw with is told on its row
     return cell.col === 3 ? OFF_SET : look.byShape();
   } }));
   await choose(project, ref);
-  expect(usePluginStore().problems['phosphor.outlines']).toBe(t('plugins.errors.solverFault', { name: 'Edges' }));
+  expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(t('plugins.errors.solverFault', { name: 'Edges' }));
   expect(project.processParams).toMatchObject({ solver: ref, standIn: null });
   expect(calls).toBeGreaterThan(0);
 });
@@ -209,11 +213,11 @@ test('on an upper layer, a character it does not draw with is told on its row; a
   project.paintStroke(RED_CELLS, '#ff0000');
   project.commitEdit();
   await settle(project);
-  expect(usePluginStore().problems['phosphor.outlines']).toBe(t('plugins.errors.solverFault', { name: 'Edges' }));
+  expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(t('plugins.errors.solverFault', { name: 'Edges' }));
   fails = true;
   project.brightness = 120; // the layer walked again: col 4 faults, then col 8 throws
   await settle(project);
-  expect(usePluginStore().problems['phosphor.outlines']).toContain('later');
+  expect(usePluginStore(pinia).problems['phosphor.outlines']).toContain('later');
 });
 
 test('a movie\'s built frames are built again when only an upper layer\'s solver changes: a Reload, or its plugin gone', async () => {
@@ -231,11 +235,11 @@ test('a movie\'s built frames are built again when only an upper layer\'s solver
   const built = async () => (await project.builtFrame(1), project._builder);
   const first = await built();
   expect(await built()).toBe(first); // nothing changed: kept
-  usePluginStore().useScript('phosphor.outlines', 'second', { solvers: [def] }); // a Reload: another script
+  usePluginStore(pinia).useScript('phosphor.outlines', 'second', { solvers: [def] }); // a Reload: another script
   await settle(project);
   const second = await built();
   expect(second).not.toBe(first);
-  usePluginStore().dropScript('phosphor.outlines'); // the layer stands in with By shape
+  usePluginStore(pinia).dropScript('phosphor.outlines'); // the layer stands in with By shape
   await settle(project);
   expect(await built()).not.toBe(second);
 });
@@ -254,7 +258,7 @@ async function checkered(upper) {
   await settle(project);
   expect(project.lowerGroup.upper).toEqual(upper ? ['edit'] : []);
   const shown = cellsKey(project);
-  usePluginStore().dropScript('phosphor.outlines');
+  usePluginStore(pinia).dropScript('phosphor.outlines');
   return shown;
 }
 test('a solver keyed on the cell\'s col and line draws an upper layer as it draws the lower group', async () => {
@@ -407,10 +411,10 @@ test('changing an option recomputes, and the same option twice does not', async 
   expect(project.cells.some((cell) => cell.char === '/')).toBe(false);
   calls = 0;
   expect(project.setLayerChars('base', { solverOptions: { [ref]: { level: 255 } } })).toBe(false);
-  await usePluginStore().install(readManifest(JSON.stringify({ ...midnight, id: 'jane.theme' }))); // params made again, the options the same
+  await usePluginStore(pinia).install(readManifest(JSON.stringify({ ...midnight, id: 'jane.theme' }))); // params made again, the options the same
   await settle(project);
   expect(calls).toBe(0);
-  await usePluginStore().uninstall('jane.theme');
+  await usePluginStore(pinia).uninstall('jane.theme');
 });
 
 test('choosing a plugin solver or changing its options puts the busy note up; other settings do not', async () => {
@@ -468,7 +472,7 @@ test('a solver swapped while a layer uses it: the next render calls the new one;
   const ref = await onSolver(solver({ solve: (cell, look) => (old++, look.byShape()) }));
   await choose(project, ref);
   expect(old).toBeGreaterThan(0);
-  const plugins = usePluginStore();
+  const plugins = usePluginStore(pinia);
   plugins.useScript('phosphor.outlines', 'h2', { solvers: [solver({ solve: () => (now++, SLASH) })] }); // a Reload
   await settle(project);
   expect(now).toBe(100);
@@ -485,7 +489,7 @@ test('a solver swapped while a layer uses it: the next render calls the new one;
 test('toggling a theme-only plugin does not render a drawing with no plugin solver again', async () => {
   const { project } = await stripes();
   await choose(project, 'shape');
-  const plugins = usePluginStore();
+  const plugins = usePluginStore(pinia);
   const pipeline = vi.spyOn(project.renderer, 'render');
   await plugins.install(readManifest(JSON.stringify({ ...midnight, id: 'jane.theme' })));
   await settle(project);
@@ -500,7 +504,8 @@ test('toggling a theme-only plugin does not render a drawing with no plugin solv
 // base's pixels, which the solver sees with their neighbors: the rect's right column would convert otherwise there, so
 // it's written as it showed (pinned), and nothing on the canvas changes.
 test('R12: Merge down under a plugin solver freezes what it showed', async () => {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia: own } = await createTestApp();
+  pinia = own;
   await project.setBlankCanvas({ withLayer: true, cols: 30, rows: 20 });
   await settle(project);
   const ref = await onSolver(solver({ solve(cell, look) {

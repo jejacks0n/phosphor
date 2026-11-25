@@ -3,7 +3,7 @@
 // the filter is there, named by the Export dialog when it's left out, and refusing a room (RoomStore.pluginSolversWhy).
 import { test, expect, vi, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia, setActivePinia } from 'pinia';
+import { setActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { readScript } from '@/plugins/script';
@@ -18,7 +18,7 @@ import ControlPanel from '@/components/ControlPanel.vue';
 import ExportModal from '@/components/ExportModal.vue';
 import StartRoomPage from '@/components/social/StartRoomPage.vue';
 
-let apps = [];
+let apps = [], pinia = null; // pinia: the test's own, drawing()'s
 afterEach(() => {
   unregisterScript('jane.fx');
   for (const { app, host } of apps) {
@@ -26,7 +26,7 @@ afterEach(() => {
     host.remove();
   }
   apps = [];
-  useRoomStore().role = null;
+  useRoomStore(pinia).role = null;
   vi.restoreAllMocks();
 });
 
@@ -48,12 +48,13 @@ const GLOW = solverRef('ann.fx', 'glow'); // never installed
 // The stores are asked for by the active Pinia (the plugin's by onPlugin, the room's and the plugins' by the project's
 // getters), and a test before this one, finishing late while this one waits, makes its own active again (createTestApp
 // says how): the plugin then went on in that test's store, and this one's drawing had no filter to run. So this test's
-// Pinia is made the active one again after each wait.
+// Pinia is made the active one again after each wait, and asked for by name.
 async function drawing() {
-  const stores = await createTestApp(), pinia = getActivePinia();
+  const stores = await createTestApp();
+  ({ pinia } = stores);
   await loadImage(stores.project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   setActivePinia(pinia);
-  await onPlugin({ filters: [ABERRATION, SAME, DIM] }, { pluginId: 'jane.fx' });
+  await onPlugin({ filters: [ABERRATION, SAME, DIM] }, { pluginId: 'jane.fx', pinia });
   await settle(stores.project);
   setActivePinia(pinia);
   stores.workspace.pickLayer('base'); // the groups show where Image filters do: the base picked, with a real picture
@@ -62,7 +63,7 @@ async function drawing() {
 async function mount(component, props = {}) {
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(component, props).use(getActivePinia()).use(i18n);
+  const app = createApp(component, props).use(pinia).use(i18n);
   app.mount(host);
   apps.push({ app, host });
   await nextTick();
@@ -216,7 +217,7 @@ test('a filter that isn\'t installed keeps its values through a save and an open
 
 test('a filter\'s settings held refuse a room, naming it, beside a plugin solver\'s words', async () => {
   const { project } = await drawing();
-  const room = useRoomStore();
+  const room = useRoomStore(pinia);
   const host = await mount(StartRoomPage);
   const goLive = () => [...host.querySelectorAll('button')].find((b) => b.textContent === 'Go live');
   expect(room.pluginSolversWhy).toBe(null);
@@ -238,7 +239,7 @@ test('in a room the groups aren\'t shown and no filter runs', async () => {
   expect(project.processParams.pluginFilters).toHaveLength(1);
   const host = await mount(ControlPanel);
   expect(groupOf(host, 'Aberration')).toBeTruthy();
-  useRoomStore().role = 'host';
+  useRoomStore(pinia).role = 'host';
   await nextTick();
   expect(groupOf(host, 'Aberration')).toBe(undefined);
   expect(project.filterGroups).toEqual([]);
@@ -248,7 +249,7 @@ test('in a room the groups aren\'t shown and no filter runs', async () => {
 // Two plugins whose names sort one way and whose ids the other. The Plugins dialog lists them by name; the filters show
 // and run by id, so renaming a plugin can't change how a drawing with both looks.
 test('filters show and run in the order of their ids, not their plugins\' names', async () => {
-  const { project } = await drawing(), pinia = getActivePinia(), plugins = usePluginStore();
+  const { project } = await drawing(), plugins = usePluginStore(pinia);
   for (const [id, name] of [['ann.fx', 'Zebra filters'], ['zed.fx', 'Apple filters']]) {
     await plugins.install(readManifest(JSON.stringify({ ...midnight, id, name })));
     plugins.useScript(id, 'h', { filters: [DIM] });

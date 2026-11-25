@@ -31,7 +31,7 @@ async function someone(name) {
   return makeSelfPass({ privateKey: pair.privateKey, publicKey }, name);
 }
 
-let deleteDatabase, social, room, project, drawing, desktop, fetched;
+let deleteDatabase, social, room, project, pinia, drawing, desktop, fetched;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('desktop-room-handover');
   sessionStorage.clear();
@@ -39,7 +39,7 @@ beforeEach(async () => {
   forgetKey();
   await deleteDatabase();
   useFakeSockets();
-  ({ project } = await createTestApp());
+  ({ project, pinia } = await createTestApp());
   await project.setImageFromFile(new File([gradient], 'gradient.png', { type: gradient.type }), { withLayer: true });
   Object.assign(project, { aspectLock: false, cols: 8, rows: 8 });
   project.render();
@@ -54,9 +54,9 @@ beforeEach(async () => {
     quitReady: vi.fn(),
   };
   useFakeDesktop(desktop);
-  social = useSocialStore();
-  room = useRoomStore();
-  drawing = useDrawingStore();
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
+  drawing = useDrawingStore(pinia);
   await social.boot();
   social.setDesktopName('bo');
 });

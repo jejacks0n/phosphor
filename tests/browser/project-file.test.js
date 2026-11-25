@@ -4,7 +4,6 @@ import { test, expect, vi, afterEach } from 'vitest';
 import { watch } from 'vue';
 import { createTestApp, cellsKey, settle } from '../support/app.js';
 import { busyMessage } from '@/composables/useBusy';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { startsAsProject } from '@/document/projectIO';
 import { SKIPPED } from '@/dev/skipped.js';
 
@@ -13,17 +12,17 @@ afterEach(() => vi.restoreAllMocks());
 const bytesOf = async (blob) => new Uint8Array(await blob.arrayBuffer());
 
 async function drawn() {
-  const { project } = await createTestApp();
+  const stores = await createTestApp(), { project } = stores;
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 8 });
   project.typeAt(2, 1, 'A', { fg: '#ff5555', bg: '#000000' });
   project.typeAt(3, 1, 'B', { fg: '#55ff55', bg: '#000000' });
   project.commitPending();
   await settle(project);
-  return project;
+  return stores;
 }
 
 test('projectFile is the file Save writes: a PNG with the project inside, which opens as the drawing', async () => {
-  const project = await drawn();
+  const { project } = await drawn();
   const cells = cellsKey(project);
   const file = await project.projectFile();
   expect(startsAsProject(await bytesOf(file))).toBe(true);
@@ -39,8 +38,8 @@ test('projectFile is the file Save writes: a PNG with the project inside, which 
 });
 
 test('its picture is hard-edged with Smooth text on: the drawing\'s own colors and no others', async () => {
-  const project = await drawn();
-  useWorkspaceStore().smoothText = true;
+  const { project, workspace } = await drawn();
+  workspace.smoothText = true;
   const bitmap = await createImageBitmap(new Blob([await project.projectFile()], { type: 'image/png' }));
   const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
   ctx.drawImage(bitmap, 0, 0);
@@ -50,7 +49,7 @@ test('its picture is hard-edged with Smooth text on: the drawing\'s own colors a
 });
 
 test('making it saves nothing: no download, no Saving note, and the name, the unsaved mark and the undo history as they were', async () => {
-  const project = await drawn();
+  const { project } = await drawn();
   const downloads = vi.spyOn(URL, 'createObjectURL');
   const notes = [];
   const stop = watch(busyMessage, (note) => notes.push(note), { flush: 'sync' });

@@ -20,7 +20,7 @@ const room = (id, count = 1) => ({
   liveSince: 1000, thumbnail: null, blockedInside: false,
 });
 
-let social;
+let social, pinia; // the test's own, asked for by name: after an await, the active one may be a late test's
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('store');
   forgetKey();
@@ -30,8 +30,8 @@ beforeEach(async () => {
   sessionStorage.clear();
   useFakeSockets();
   vi.stubGlobal('matchMedia', (query) => ({ matches: query === desktopQuery }));   // a desktop: links back are read
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
 });
 afterEach(() => {
   social.disconnectLobby();
@@ -50,8 +50,8 @@ test('The web build keeps no desktop name: booting writes no phosphor-desktop-na
 
 test('Until SOCIAL\'s question is answered, boot waits: no key, no IndexedDB, no request; the answer lets it go on', async () => {
   localStorage.clear();
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
   const server = fakeServer();
   const opened = vi.spyOn(indexedDB, 'open');
   let booted = false;
@@ -71,8 +71,8 @@ test('Until SOCIAL\'s question is answered, boot waits: no key, no IndexedDB, no
 test('An answer to an older version of the question isn\'t one: boot waits, with no key, no IndexedDB and no request, until this one is accepted', async () => {
   localStorage.clear();
   localStorage.setItem(CONSENT_KEY, CONSENT_VERSION - 1);
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
   const server = fakeServer();
   const opened = vi.spyOn(indexedDB, 'open');
   let booted = false;
@@ -89,16 +89,16 @@ test('An answer to an older version of the question isn\'t one: boot waits, with
 
 test('Not now forgets what a link was going to do, and closes the lobby it opened, leaving the tab as it was', async () => {
   localStorage.clear();
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
   const server = fakeServer();
-  useWorkspaceStore().editorTab = 'sauce';
+  useWorkspaceStore(pinia).editorTab = 'sauce';
   social.start(at('?reset=tok'));
   const going = social.followRoomLink('abcdefghij');
-  expect(useWorkspaceStore().sidePanelTab).toBe('social');
+  expect(useWorkspaceStore(pinia).sidePanelTab).toBe('social');
   Object.assign(social, { notice: 'Your email is confirmed' });
   social.declineConsent();
-  expect([useWorkspaceStore().editorTab, useWorkspaceStore().sidePanelTab]).toEqual(['sauce', 'layers']);
+  expect([useWorkspaceStore(pinia).editorTab, useWorkspaceStore(pinia).sidePanelTab]).toEqual(['sauce', 'layers']);
   expect([social.page, social.resetToken, social._roomLink, social._roomLinkAsks, social.notice]).toEqual(['lobby', null, null, false, null]);
 
   social.acceptConsent();
@@ -109,14 +109,14 @@ test('Not now forgets what a link was going to do, and closes the lobby it opene
 
 test('A room coming back on a reload isn\'t held up by the question', async () => {
   localStorage.clear();
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
   fakeServer();
   expect(social.allowed).toBe(false);
   await social.rejoin('abcdefghij').catch(() => {});
   expect(social.allowed).toBe(true);
   expect(social.supported).toBe(true);
-  useRoomStore().close();
+  useRoomStore(pinia).close();
 });
 
 test('A plain page load runs nothing SOCIAL: no key, no IndexedDB, no request; showing the tab starts it all', async () => {
@@ -322,8 +322,8 @@ test('reportedRooms: the rooms this account reported, kept in this browser for a
     { room: 'other', by: 'u_2', sub: '*room', at: now },            // another account's
     { room: 'stale', by: 'u_1', sub: '*room', at: now - 86_400_000 },   // a day old
   ]));
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
   expect(social.reportedRooms).toEqual([]);   // nobody yet
   social.claims = { sub: 'u_1', name: 'ansi-fan', guest: false, verified: true };
   expect(social.reportedRooms).toEqual(['quiet']);
@@ -523,8 +523,8 @@ test('A reload comes back as the same guest: the last guest pass is kept in the 
 
   social.disconnectLobby();   // the page reloads: a new store, the same browser (its key and its storage)
   forgetKey();
-  setActivePinia(createPinia());
-  social = useSocialStore();
+  setActivePinia(pinia = createPinia());
+  social = useSocialStore(pinia);
   await social.start(at(''));
   await social.showLobby();
   await goLive(await lastSocket(2));
@@ -905,7 +905,7 @@ const joinSpy = (rooms) => vi.spyOn(rooms, 'join').mockImplementation((id) => { 
 
 // A guest watching a room (the room store's state set as a join leaves it), its join spied on.
 function watching(password) {
-  const rooms = useRoomStore();
+  const rooms = useRoomStore(pinia);
   Object.assign(rooms, { role: 'watch', id: 'abcdefghij', _password: password });
   return { rooms, join: joinSpy(rooms) };
 }
@@ -915,7 +915,7 @@ test('A guest watching a room who signs in joins it again with the same password
   await social.start(at(''));
   await social.showLobby();
   const { join } = watching('hush');
-  useWorkspaceStore().editorTab = 'room';
+  useWorkspaceStore(pinia).editorTab = 'room';
   server.route('POST /api/auth/sign-in/email', () => ((server.session = member()), [200, { token: 't' }]));
   expect(await social.signIn('fan@example.com', 'right-password')).toBe(true);
   expect(join).toHaveBeenCalledOnce();
@@ -938,7 +938,7 @@ test('Signing in with Discord from a room keeps its id (never a password) for th
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe('abcdefghij');
   expect(JSON.stringify({ ...sessionStorage })).not.toContain('hush');
 
-  useRoomStore().close();
+  useRoomStore(pinia).close();
   await social.signInWith('github', location);
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
 });
@@ -965,7 +965,7 @@ test('A two-factor code that signs you in joins the room kept before Discord, on
   const server = twoFactorServer();
   await social.start(at(''));
   await social.showLobby();
-  const rooms = useRoomStore();
+  const rooms = useRoomStore(pinia);
   const join = joinSpy(rooms);
   sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
   expect(await social.verifyTwoFactor('000000')).toBe(true);
@@ -995,7 +995,7 @@ test('A room id left from an abandoned code page is forgotten by a password sign
   twoFactorServer();
   await social.start(at(''));
   await social.showLobby();
-  const join = joinSpy(useRoomStore());
+  const join = joinSpy(useRoomStore(pinia));
   sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
   await social.signIn('fan@example.com', 'right-password');
   expect(sessionStorage.getItem('phosphor-rejoin')).toBe(null);
@@ -1015,7 +1015,7 @@ test('Back from Discord needing a username: no room is joined until onboarding i
   const server = fakeServer();
   server.session = member({ username: null, needsOnboarding: true, providers: ['discord'] });
   server.route('POST /api/me/onboarding', (body) => ((server.session = member({ username: body.username })), [200, server.session]));
-  const join = joinSpy(useRoomStore());
+  const join = joinSpy(useRoomStore(pinia));
   sessionStorage.setItem('phosphor-rejoin', 'abcdefghij');
   await social.start(at('?social=signed-in'));
   await social.showLobby();

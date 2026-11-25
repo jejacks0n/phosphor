@@ -2638,7 +2638,6 @@ const sentHandOver = (room) => room.socket?.find((msg) => msg.type === 'hand-ove
 // A host whose socket's messages are kept.
 async function hostingWithSocket() {
   const room = await hosting();
-  room.pinia = getActivePinia();
   room.socket = [];
   const send = room.host.send;
   room.host.send = (msg) => { room.socket.push(msg); return send(msg); };
@@ -2735,7 +2734,6 @@ test('a host hands over a four-layer room: the new host\'s stack and ledger matc
 
 test('a sudden handover keeps all the drawing, empties undo and shows the notice', async () => {
   const room = await hosting();
-  room.pinia = getActivePinia();
   const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
   ann.project.editCell(1, 1, { char: 'A' });
   ann.project.commitEdit();
@@ -2770,7 +2768,6 @@ test('a sudden handover keeps all the drawing, empties undo and shows the notice
 
 test('an unnumbered stroke is sent again after a handover, and lands', async () => {
   const room = await hosting();
-  room.pinia = getActivePinia();
   const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
   await allMatch(room, ann, bob);
   room.host.close();   // the host's gone, and these never reach it
@@ -2800,7 +2797,6 @@ test('an unnumbered stroke is sent again after a handover, and lands', async () 
 
 test('a float an artist still holds goes once after a handover', async () => {
   const room = await hosting();
-  room.pinia = getActivePinia();
   const ann = await artist(room, 'ann'), bob = await artist(room, 'bob');
   await allMatch(room, ann, bob);
   const sent = [];
@@ -3972,8 +3968,7 @@ async function makeArtistButton(room, watcher, label = 'Make artist') {
 
 test('the host can\'t make more artists than the cap', async () => {
   const room = await hosting();
-  const pinia = getActivePinia();
-  room.pinia = pinia;
+  const { pinia } = room;
   listedUpTo(room, 1);
   const ann = await join(room, 'ann'), bob = await join(room, 'bob');
   setActivePinia(pinia);
@@ -4007,7 +4002,6 @@ test('the host can\'t make more artists than the cap', async () => {
 
 test('a yes that finds the room full isn\'t listed, and is told so', async () => {
   const room = await hosting();
-  room.pinia = getActivePinia();
   listedUpTo(room, 0);
   const bob = await join(room, 'bob');
   setActivePinia(room.pinia);
@@ -4048,7 +4042,6 @@ test('someone listed keeps their place: back on a new connection at the cap, the
 
 test('Make host is off while drawing is paused, and says why', async () => {
   const room = await hosting();
-  room.pinia = getActivePinia();
   await artist(room, 'ann');
   setActivePinia(room.pinia);
   const button = await makeArtistButton(room, 'ann', 'Make host');
@@ -4416,10 +4409,10 @@ test('back from a reload, an artist can\'t draw until the project has come: noth
 });
 
 test('the wait for the project of a reload holds through a live connection, and ends if the list says otherwise', async () => {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   project.ensureLayer();
-  const drawing = useDrawingStore();
+  const drawing = useDrawingStore(pinia);
   toStop.push(() => drawing.close());
   sessionStorage.setItem('phosphor-artist:room:ann', project.documentId);
   drawing.watching({ post: () => true }, { me: () => 'ann', roomId: 'room', roomName: () => 'Night shift' });
@@ -4435,10 +4428,10 @@ test('the wait for the project of a reload holds through a live connection, and 
 });
 
 test('the wait for the project of a reload ends when the connection fails, as nothing is coming', async () => {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   project.ensureLayer();
-  const drawing = useDrawingStore();
+  const drawing = useDrawingStore(pinia);
   toStop.push(() => drawing.close());
   sessionStorage.setItem('phosphor-artist:room:ann', project.documentId);
   drawing.watching({ post: () => true }, { me: () => 'ann', roomId: 'room', roomName: () => 'Night shift' });

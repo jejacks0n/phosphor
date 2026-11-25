@@ -22,7 +22,7 @@ const info = (fields = {}) => ({ id: ID, name: 'Night shift', hostSub: 'u_1', ho
 const copyOf = (fields = {}) => ({ id: ID, sub: 'u_1', documentId: 'doc', room: { name: 'Night shift', hostName: 'ansi-fan' }, host: { log: [], only: [] }, session: { people: [] }, ...fields });
 const held = async () => (await navigator.locks.query()).held.some((lock) => lock.name === LOCK);
 
-let server, social, room, project, letGo, ahead;
+let server, social, room, project, pinia, letGo, ahead; // pinia: the test's own, asked for by name after the awaits
 beforeEach(async () => {
   const deleteDatabases = ownDatabase(['phosphor-social', 'phosphor-host-records', 'phosphor-room-ledgers'], 'reclaim');
   forgetKey();
@@ -30,16 +30,16 @@ beforeEach(async () => {
   sessionStorage.clear();
   useFakeSockets();
   vi.stubGlobal('matchMedia', (query) => ({ matches: query === desktopQuery }));
-  ({ project } = await createTestApp());
+  ({ project, pinia } = await createTestApp());
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   server = fakeServer();
   server.session = member();
   server.route('POST /api/rooms', () => [200, { id: ID, link: `http://localhost/?room=${ID}` }]);
-  social = useSocialStore();
-  room = useRoomStore();
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
   await social.boot();
   await social.getPass();
-  useDrawingStore().autosavedBy(async () => true);
+  useDrawingStore(pinia).autosavedBy(async () => true);
   vi.mocked(readLatest).mockReset().mockResolvedValue({ record: {}, imageBuffer: new ArrayBuffer(1) });
   letGo = null;
   ahead = 0;
@@ -258,7 +258,7 @@ test('a card naming you is the room as you left it', async () => {
 test('going back saves what\'s open first, then leaves the record and document for the reload', async () => {
   await keepHostCopy(copyOf());
   const order = [];
-  useDrawingStore().autosavedBy(async () => { order.push('saved'); return true; });
+  useDrawingStore(pinia).autosavedBy(async () => { order.push('saved'); return true; });
   const reload = vi.fn(() => order.push('reload'));
   await room.goBackToRoom(ID, { reload });
   expect(order).toEqual(['saved', 'reload']);
@@ -300,7 +300,7 @@ test('going back to a document that never gets written says so and takes nothing
 
 test('going back with autosave failing keeps what\'s open and says so', async () => {
   await keepHostCopy(copyOf());
-  useDrawingStore().autosavedBy(async () => false);
+  useDrawingStore(pinia).autosavedBy(async () => false);
   const reload = vi.fn();
   await room.goBackToRoom(ID, { reload });
   expect(reload).not.toHaveBeenCalled();
@@ -325,7 +325,7 @@ test('a tab that comes back while going back saves what\'s open keeps its room',
   await keepHostCopy(copyOf());
   await look();
   await look();
-  useDrawingStore().autosavedBy(async () => {
+  useDrawingStore(pinia).autosavedBy(async () => {
     await anotherTabHosts();
     return true;
   });
@@ -370,7 +370,7 @@ test('art that won\'t open after the reload says so, and leaves the copy and led
   sessionStorage.setItem('phosphor-hosting', record);
   project.clearImage();
   room.resume();
-  useWorkspaceStore().documentAnswered = true;
+  useWorkspaceStore(pinia).documentAnswered = true;
   await expect.poll(() => room.role).toBe(null);
   expect(social.notice).toBe('The room\'s art couldn\'t be opened.');
   expect(sessionStorage.getItem('phosphor-hosting')).toBe(null);

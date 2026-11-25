@@ -1,12 +1,11 @@
 // The PIXEL view mounted on its own, over fresh stores: a project file's drawing, an ANSI or text file opened to draw
 // on top of, or the gradient at cols x rows with a layer, in a bitmap font if one is given. seen(x, y) is a grid pixel's color as the view shows it.
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { createTestApp, loadImage, settle } from './app.js';
 import InputEditor from '@/components/InputEditor.vue';
 
 export async function mountPixelView(file = null, { cols = 20, rows = 20, overlay = 100, font = null } = {}) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   if (font) await project.setDrawingFont(font);
   const bytes = file && await (await fetch(file)).arrayBuffer();
   if (file?.endsWith('.phosphor')) await project.loadProject(new File([bytes], 'x.phosphor'));
@@ -17,7 +16,7 @@ export async function mountPixelView(file = null, { cols = 20, rows = 20, overla
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
   document.body.append(host);
   const app = createApp({ render: () => h(InputEditor) });
-  app.use(getActivePinia());
+  app.use(pinia); // the test's own: after the awaits, the active one may be a late test's
   app.mount(host);
   await nextTick();
   await settle(project);

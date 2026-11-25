@@ -77,9 +77,9 @@ test('the reason has a button that opens the font\'s blocks', async () => {
 });
 
 test('startRoom refuses with the reason as a toast and no request while the font isn\'t set up', async () => {
-  await drawing(noLowerHalf);
-  const request = vi.spyOn(useSocialStore(), 'request');
-  expect(await useRoomStore().startRoom({ name: 'Night', welcome: '', isPublic: true, allowGuests: true, max: 12 })).toBe(false);
+  const { pinia } = await drawing(noLowerHalf);
+  const request = vi.spyOn(useSocialStore(pinia), 'request');
+  expect(await useRoomStore(pinia).startRoom({ name: 'Night', welcome: '', isPublic: true, allowGuests: true, max: 12 })).toBe(false);
   expect(request).not.toHaveBeenCalled();
   expect(toastMessage.value).toBe(MISSING);
 });

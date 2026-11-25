@@ -6,7 +6,6 @@ import { createApp, nextTick } from 'vue';
 import { i18n } from '@/i18n';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
@@ -38,11 +37,11 @@ const artFile = async (name, cols, rows, cells, opts) => new File([new AnsiFile(
 
 // Someone worked on another image first, with the sliders and settings moved and SAUCE filled in.
 async function afterAnotherDocument() {
-  const { project } = await createTestApp();
+  const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   Object.assign(project, { brightness: 180, contrast: 60, invert: 30, hue: 90, saturation: 20, smoothing: 'low', renderStyle: 'colorAscii', quantize: 'vga', sauceTitle: 'Old', sauceAuthor: 'Someone' });
   await settle(project);
-  return project;
+  return { project, workspace };
 }
 
 // The cells show what the file does: each character and its colors; a wide character's lead holds
@@ -76,7 +75,7 @@ test('opened as an image before the reference font has loaded, a letter is drawn
 });
 
 test('a CGA .ans opens as a document: its cells, size, palette and SAUCE, nothing to undo or save', async () => {
-  const project = await afterAnotherDocument();
+  const { project, workspace } = await afterAnotherDocument();
   const cols = 10, rows = 4, cells = build(cols, rows, 'cga', CHARS.ans);
   const before = project.documentId;
   await project.openArtFile(await artFile('boat.ans', cols, rows, cells, { colorMode: 'cga', sauce: { ...SAUCE, fontName: 'Rowboat 8' } }));
@@ -97,11 +96,11 @@ test('a CGA .ans opens as a document: its cells, size, palette and SAUCE, nothin
   });
   expect(project.history.canUndo).toBe(false);
   expect(project.isDirty).toBe(false);
-  expect(useWorkspaceStore().ansiOverlayAll).toBe(false); // the PIXEL tab shows each character as it looks without it (docs/model.md R11)
+  expect(workspace.ansiOverlayAll).toBe(false); // the PIXEL tab shows each character as it looks without it (docs/model.md R11)
 });
 
 test('a 24-bit .utf8ans opens in full color, wide characters and all', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
   expect(cells.some((c) => c.wide === 'lead')).toBe(true);
   await project.openArtFile(await artFile('wide.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none', sauce: SAUCE }));
@@ -115,7 +114,7 @@ test('a 24-bit .utf8ans opens in full color, wide characters and all', async () 
 });
 
 test('opened to edit, the art is edit cells over a black base, as the file shows it, with nothing to undo or save', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
   await project.openArtFile(await artFile('wide.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none', sauce: SAUCE }), { layer: 'edit' });
   await settle(project);
@@ -137,7 +136,7 @@ test('opened to edit, the art is edit cells over a black base, as the file shows
 });
 
 test('opened to edit alone, the ledger holds none of it, and an edit after it undoes back to the file', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const cols = 12, rows = 4, cells = build(cols, rows, 'none', CHARS.utf8ans);
   const submit = vi.spyOn(project._ledger, 'submit');
   await project.openArtFile(await artFile('wide.utf8ans', cols, rows, cells, { utf8: true, colorMode: 'none', sauce: SAUCE }), { layer: 'edit' });
@@ -159,7 +158,7 @@ test('opened to edit alone, the ledger holds none of it, and an edit after it un
 });
 
 test('opened to edit by a room\'s host, every cell still goes out numbered', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const sent = [];
   project.startSharing({ send: (message) => sent.push(message), role: 'host', me: 'mine' });
   try {
@@ -203,7 +202,7 @@ const tail = (bytes) => {
 
 test('an opened file exports with its SAUCE record as it went in, and Phosphor adds no comments of its own', async () => {
   for (const layer of ['base', 'edit']) {
-    const project = await afterAnotherDocument();
+    const { project } = await afterAnotherDocument();
     const original = await openFixture(project, layer);
     const bytes = await exported(project);
     expect(tail(bytes), layer).toEqual(tail(original));
@@ -238,7 +237,7 @@ test('exported without SAUCE, a still or an animated ANSI file ends with its art
 });
 
 test('a SAUCE field the person changes is the only one that changes, and a resize changes the size', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const original = readSauce(await openFixture(project, 'edit'));
   project.sauceTitle = 'Renamed';
   const renamed = readSauce(await exported(project));
@@ -252,7 +251,7 @@ test('a SAUCE field the person changes is the only one that changes, and a resiz
 });
 
 test('Date, Font name and Letter spacing change only their own bytes; set back as they came, the record is the same', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const original = await openFixture(project, 'edit');
   const record = (bytes) => [...bytes.subarray(bytes.length - 128)];
   const changed = (bytes) => record(bytes).flatMap((byte, i) => (byte === record(original)[i] || (i >= 90 && i < 94) ? [] : [i])); // file size aside
@@ -276,7 +275,7 @@ test('Date, Font name and Letter spacing change only their own bytes; set back a
 
 test('a 256-color file opens on VGA and exports 256-color codes, not 24-bit ones', async () => {
   for (const layer of ['base', 'edit']) {
-    const project = await afterAnotherDocument();
+    const { project } = await afterAnotherDocument();
     await openFixture(project, layer);
     expect(project.quantize, layer).toBe('vga');
     const art = new TextDecoder('latin1').decode(await exported(project));
@@ -289,7 +288,7 @@ test('a 256-color file opens on VGA and exports 256-color codes, not 24-bit ones
 // file using all four, opened to edit, exports byte for byte as it was (a QA report: 16 came back 0, 231 came back 15),
 // apart from a cell changed, and so does its .phosphor saved and opened again.
 test('a 256-color file\'s 16 and 231 export as 16 and 231, edited and through a .phosphor', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const blob = await (await fetch('/tests/fixtures/ansi/fixed-black-white.ans')).blob();
   await project.openArtFile(new File([blob], 'fixed-black-white.ans'), { layer: 'edit' });
   await settle(project);
@@ -315,7 +314,7 @@ test('a 256-color file\'s 16 and 231 export as 16 and 231, edited and through a 
 const PHOSPHOR_LINES = /^Created with Phosphor Params: seed=\S+, smoothing=\S+, quantize=\S+ Adjust: .+ Effects: .+$/;
 
 test('a converted image or a blank canvas has Phosphor\'s comment lines, wrapped at a space, then the person\'s', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   project.sauceUserComments = '';
   const own = readSauce(await exported(project));
   expect(own.comments.length).toBeGreaterThan(4); // the Effects line is longer than one
@@ -336,7 +335,7 @@ test('a converted image or a blank canvas has Phosphor\'s comment lines, wrapped
 });
 
 test('an opened file, with SAUCE or without, gets no comment lines of Phosphor\'s', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   await project.openArtFile(new File(['hello\nthere'], 'note.txt'));
   await settle(project);
   expect(readSauce(await exported(project)).comments).toEqual([]);
@@ -345,7 +344,7 @@ test('an opened file, with SAUCE or without, gets no comment lines of Phosphor\'
 });
 
 test('a file with no SAUCE starts the SAUCE tab empty', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   await project.openArtFile(new File(['hello\nthere'], 'note.txt'));
   await settle(project);
   expect([project.cols, project.rows]).toEqual([5, 4]);
@@ -354,18 +353,18 @@ test('a file with no SAUCE starts the SAUCE tab empty', async () => {
 });
 
 test('a file over the limits rejects with its message, and the open document stays', async () => {
-  const project = await afterAnotherDocument();
+  const { project, workspace } = await afterAnotherDocument();
   const { documentId, filename } = project, cells = cellsKey(project);
   await expect(project.openArtFile(new File(['x'.repeat(301)], 'wide.txt'))).rejects.toMatchObject({ userMessage: expect.stringContaining('301 × 1') });
   await settle(project);
   expect(project.documentId).toBe(documentId);
   expect(project.filename).toBe(filename);
   expect(cellsKey(project)).toEqual(cells);
-  expect(useWorkspaceStore().ansiOverlayAll).toBe(false);
+  expect(workspace.ansiOverlayAll).toBe(false);
 });
 
 test('a file that can\'t open is refused before anything is asked: too big, or empty, nothing asks how to open it', async () => {
-  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const { project, workspace } = await afterAnotherDocument();
   closeToast();
   await workspace.askArt(new File(['x'.repeat(301)], 'wide.txt'));
   expect(workspace.artDrop).toBe(null);
@@ -377,7 +376,7 @@ test('a file that can\'t open is refused before anything is asked: too big, or e
 });
 
 test('a file that opens asks with what it read, and opens that without reading the file again', async () => {
-  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const { project, workspace } = await afterAnotherDocument();
   const file = new File(['ab\ncd'], 'boat.txt');
   await workspace.askArt(file, { at: { col: 1, row: 1 } });
   expect(workspace.artDrop).toMatchObject({ file, at: { col: 1, row: 1 }, art: { cols: 2, rows: 2 } });
@@ -390,7 +389,7 @@ test('a file that opens asks with what it read, and opens that without reading t
 });
 
 test('a .utf8ans that isn\'t UTF-8 asks as an .ans would, and says it was read as CP437', async () => {
-  const workspace = (await afterAnotherDocument(), useWorkspaceStore());
+  const { workspace } = await afterAnotherDocument();
   closeToast();
   await workspace.askArt(new File([Uint8Array.from([0xb0, 0xdb, 0xb1, 0x41, 0xdb, 0xb2])], 'renamed.utf8ans'));
   const { art } = workspace.artDrop;
@@ -401,7 +400,7 @@ test('a .utf8ans that isn\'t UTF-8 asks as an .ans would, and says it was read a
 // docs/model.md R2: the file's characters are pins on the base, so a layer's paint over its open ones (the spaces) is
 // converted with the layer's characters (here the base's Random), and over a letter it tints the letter.
 test('R2: a layer\'s paint over a file\'s cells tints its letters and converts its spaces with the layer\'s characters', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   await project.openArtFile(new File(['ab  \nab  '], 'note.txt'));
   await settle(project);
   project.paintStroke([{ x: 2, y: 0, alpha: 1 }, { x: 3, y: 1, alpha: 1 }, { x: 0, y: 0, alpha: 1 }], '#ffffff'); // top of (2, 0), bottom of (3, 0), top of the a
@@ -419,7 +418,7 @@ test('R2: a layer\'s paint over a file\'s cells tints its letters and converts i
 });
 
 test('a new blank canvas clears all SAUCE fields to their defaults', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(project);
   expect([project.sauceTitle, project.sauceAuthor, project.sauceGroup, project.sauceDate, project.sauceUserComments, project.sauceFontName, project.sauceUse9pxFont])
@@ -433,7 +432,7 @@ for (const [name, start] of [
   ['an SVG', (project) => project.openSvgFile(new File([SVG], 'box.svg', { type: 'image/svg+xml' }))],
 ]) {
   test(`${name} opened as a new drawing starts with every SAUCE field at its default`, async () => {
-    const project = await afterAnotherDocument();
+    const { project } = await afterAnotherDocument();
     Object.assign(project, { sauceGroup: 'Crew', sauceDate: '20261102', sauceUserComments: 'Rowing out', sauceFontName: 'IBM VGA50', sauceUse9pxFont: true });
     await start(project);
     await settle(project);
@@ -451,7 +450,7 @@ for (const [name, start] of [
   ['New project', (project) => project.clearImage()],
 ]) {
   test(`${name} starts with every slider at its default`, async () => {
-    const project = await afterAnotherDocument();
+    const { project } = await afterAnotherDocument();
     Object.assign(project, { brightness: 101, blur: 3, levelsMid: 1.5, colorizeStrength: 40 });
     await start(project);
     await settle(project);
@@ -471,7 +470,7 @@ const xbinFile = (name = 'font.xb') => {
 };
 
 test('an XBin opens with its font and palette', async () => {
-  const project = await afterAnotherDocument(), { file, font } = xbinFile();
+  const { project } = await afterAnotherDocument(), { file, font } = xbinFile();
   await project.openArtFile(file);
   await settle(project);
   const { palette } = readXBin(new Uint8Array(await file.arrayBuffer()), 'f.xb'); // the file's 6-bit colors
@@ -484,13 +483,13 @@ test('an XBin opens with its font and palette', async () => {
 });
 
 test('a renamed XBin opens as one', async () => {
-  const workspace = (await afterAnotherDocument(), useWorkspaceStore());
+  const { workspace } = await afterAnotherDocument();
   await workspace.askArt(xbinFile('renamed.txt').file);
   expect(workspace.artDrop.art.font.height).toBe(16);
 });
 
 test('an XBin of 512 characters is refused with its reason, and the open drawing stays', async () => {
-  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const { project, workspace } = await afterAnotherDocument();
   const before = project.documentId;
   closeToast();
   const bytes = new Uint8Array(await xbinFile('big.xb').file.arrayBuffer());
@@ -505,7 +504,7 @@ test('an XBin of 512 characters is refused with its reason, and the open drawing
 const bareXBin = () => new File([Uint8Array.from([0x58, 0x42, 0x49, 0x4e, 0x1a, 2, 0, 1, 0, 16, 0, 65, 7, 66, 7])], 'bare.xb');
 
 test('an XBin with no font opens with no drawing font, and no palette opens as CGA', async () => {
-  const project = await afterAnotherDocument(), { file } = xbinFile();
+  const { project } = await afterAnotherDocument(), { file } = xbinFile();
   await project.openArtFile(file);
   expect(project.drawingFont).not.toBeNull();
   await project.openArtFile(bareXBin());
@@ -515,7 +514,7 @@ test('an XBin with no font opens with no drawing font, and no palette opens as C
 });
 
 test('an XBin whose 16 colors are CGA in DOS order opens as CGA; one channel off, as its own list', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const dos = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15].map((i) => PALETTES.cga[i].hex);
   const font = { name: 'F', height: 8, bytes: new Uint8Array(8 * 256) };
   const open = async (palette) => {
@@ -529,7 +528,7 @@ test('an XBin whose 16 colors are CGA in DOS order opens as CGA; one channel off
 });
 
 test('a .xb file without the XBIN signature is refused as broken', async () => {
-  const workspace = (await afterAnotherDocument(), useWorkspaceStore());
+  const { workspace } = await afterAnotherDocument();
   closeToast();
   await workspace.askArt(new File(['just text'], 'fake.xb'));
   expect(toastMessage.value).toMatch(/fake\.xb/);
@@ -540,7 +539,7 @@ test('a .xb file without the XBIN signature is refused as broken', async () => {
 const binFixture = async (name = 'BINARYTEXT.BIN') => new File([await (await fetch('/tests/fixtures/ansi/binarytext.bin')).blob()], name);
 
 test('a BinaryText opens on CGA with its cells and SAUCE, keeps the font in use, and exports as an .ans 8 wide', async () => {
-  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const { project, workspace } = await afterAnotherDocument();
   const fontBefore = project.drawingFont;
   closeToast();
   await workspace.askArt(await binFixture());
@@ -560,7 +559,7 @@ test('a BinaryText opens on CGA with its cells and SAUCE, keeps the font in use,
 });
 
 test('a .bin with no SAUCE opens 160 wide and says so; one that isn\'t BinaryText is refused, and the drawing stays', async () => {
-  const project = await afterAnotherDocument(), workspace = useWorkspaceStore();
+  const { project, workspace } = await afterAnotherDocument();
   const before = project.documentId;
   closeToast();
   const row = Array.from({ length: 320 }, (_, i) => (i % 2 ? 0x1e : 0xdb));
@@ -576,7 +575,7 @@ test('a .bin with no SAUCE opens 160 wide and says so; one that isn\'t BinaryTex
 });
 
 test('opens an XBin and exports the same cells', async () => {
-  const project = await afterAnotherDocument(), { font } = xbinFile();
+  const { project } = await afterAnotherDocument(), { font } = xbinFile();
   const dos = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15].map((i) => PALETTES.cga[i].hex);
   const cells = [SLOT_CHARS[0], ' ', SLOT_CHARS[255], 'A', SLOT_CHARS[0], ' '].map((char, i) => ({ char, fg: plain(dos[(i + 1) % 16]), bg: plain(dos[i]) }));
   const bytes = writeXBin({ cols: 3, rows: 2, cells, palette: dos, font });
@@ -603,7 +602,7 @@ const artOf = (bytes) => bytes.subarray(0, bytes.indexOf(0x1a));
 const withRecord = (text, flags) => new File([new Sauce({ cols: 4, rows: 1 }, { flags, fileType: 1, title: 'Blinks' }).appendTo(Uint8Array.from(text, (c) => c.charCodeAt(0)))], 'blinks.ans');
 
 test('an .ans whose SAUCE leaves iCE colors off opens with it off, and exports its blink cells, its flag and no ESC[?33h as they came', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   expect(project.sauceIceColors).toBe(true); // a new drawing's
   const art = '\x1b[0m\x1b[5;37;44mAB\x1b[0;31mCD\x1b[0m';
   await project.openArtFile(withRecord(art, 2));
@@ -624,7 +623,7 @@ test('an .ans whose SAUCE leaves iCE colors off opens with it off, and exports i
 });
 
 test('an .ans written blinking, as tests/qa/files.js writes Walt\'s blink.ans, exports untouched byte for byte', async () => {
-  const project = await afterAnotherDocument(), cga = PALETTES.cga;
+  const { project } = await afterAnotherDocument(), cga = PALETTES.cga;
   const cells = ['B', 'L', ' ', 's', 't'].map((char, i) => ({ char, fg: cga[i < 2 ? 15 : 14], bg: cga[i < 2 ? 9 : 4] }));
   const original = new Uint8Array(await new AnsiFile(5, 1, cells).toBlob({ colorMode: 'cga', iceColors: false, sauce: { title: 'QA Blink', flags: 2 } }).arrayBuffer());
   await project.openArtFile(new File([original], 'blink.ans'), { layer: 'edit' });
@@ -634,7 +633,7 @@ test('an .ans written blinking, as tests/qa/files.js writes Walt\'s blink.ans, e
 });
 
 test('a file that opens blinking, where the system asks for reduced motion, says the ANSI view won\'t blink it; otherwise nothing', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   const STEADY = 'Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.';
   const art = '\x1b[0m\x1b[5;37;44mAB\x1b[0m';
   const reduced = (on) => vi.spyOn(window, 'matchMedia').mockImplementation((query) => (query === '(prefers-reduced-motion: reduce)' ? { matches: on, media: query } : realMatchMedia(query)));
@@ -663,7 +662,7 @@ test('a file that opens blinking, where the system asks for reduced motion, says
 });
 
 test('iCE colors turned off in a new CGA drawing: its .ans and animated .ans leave out ESC[?33h and the flag, its XBin NON_BLINK', async () => {
-  const project = await afterAnotherDocument();
+  const { project } = await afterAnotherDocument();
   project.quantize = 'cga';
   await settle(project);
   project.sauceIceColors = false;
@@ -688,7 +687,7 @@ test('iCE colors turned off in a new CGA drawing: its .ans and animated .ans lea
 });
 
 test('an XBin without NON_BLINK opens with iCE colors off, its own 16 blinking, and exports without it again', async () => {
-  const project = await afterAnotherDocument(), { font } = xbinFile();
+  const { project } = await afterAnotherDocument(), { font } = xbinFile();
   const ramp = Array.from({ length: 16 }, (_, i) => `#${(i * 16).toString(16).padStart(2, '0')}0000`); // not CGA: its own list
   const cells = [{ char: 'A', fg: plain(ramp[15]), bg: plain(ramp[9]) }, { char: 'B', fg: plain(ramp[15]), bg: plain(ramp[1]) }];
   const bytes = writeXBin({ cols: 2, rows: 1, cells, palette: ramp, font, iceColors: false }), own = readXBin(bytes, 'own.xb').palette; // in 6 bits a channel
@@ -703,13 +702,13 @@ test('an XBin without NON_BLINK opens with iCE colors off, its own 16 blinking, 
 });
 
 test('an XBin with a font, added to a drawing without one, brings its slot 0 in as a space; to a drawing with one, as ␀', async () => {
-  const { project } = await createTestApp(), workspace = useWorkspaceStore();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10, withLayer: true });
   const font = { name: 'F', height: 16, bytes: new Uint8Array(16 * 256) };
   const cells = [SLOT_CHARS[0], 'A'].map((char) => ({ char, fg: plain('#aaaaaa'), bg: plain('#000000') }));
   const file = new File([writeXBin({ cols: 2, rows: 1, cells, palette: PALETTES.cga.map((c) => c.hex), font, sauce: false })], 'slot0.xb');
   const host = document.body.appendChild(document.createElement('div'));
-  const app = createApp(EditWorkspace).use(i18n);
+  const app = createApp(EditWorkspace).use(pinia).use(i18n);
   app.mount(host);
   const add = async () => {
     await workspace.askArt(file, { at: { col: 0, row: 0 } });
@@ -830,7 +829,7 @@ const sameLooks = (project, art) => art.cells.filter((cell, i) => {
   return lookOf(shown.char, shown.fg.hex, shown.bg.hex) === lookOf(cell.char, cell.fg, cell.bg);
 }).length / art.cells.length;
 async function openAsPicture(file, { project = null } = {}) {
-  project ??= await afterAnotherDocument();
+  project ??= (await afterAnotherDocument()).project;
   const art = readArtFile(new Uint8Array(await file.arrayBuffer()), file.name);
   await project.openArtFile(file, { layer: 'picture' });
   await settle(project);
@@ -965,9 +964,9 @@ test('opened as an image, a file of 5,000 lines opens at one pixel a grid pixel'
 });
 
 test('the art question offers Open as an image: from the start screen beside edit and base, on a drawing after them', async () => {
-  const { project } = await createTestApp(), workspace = useWorkspaceStore();
+  const { project, workspace, pinia } = await createTestApp();
   const host = document.body.appendChild(document.createElement('div'));
-  const app = createApp(EditWorkspace).use(i18n);
+  const app = createApp(EditWorkspace).use(pinia).use(i18n);
   app.mount(host);
   const titles = () => [...document.querySelectorAll('button.choice b')].map((b) => b.textContent.trim());
   const file = new File(['ab\ncd'], 'boat.txt');

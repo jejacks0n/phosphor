@@ -8,7 +8,6 @@ import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { DISPLAY_FONT, drawGlyph, setDisplayFont } from '@/lib/displayFonts.js';
 import { measureAdvance } from '@/lib/CellCanvas.js';
 import { registerBitmapFont, addBitmapFont, loadFonts, removeFont, storedBitmapFont, storeFontPart } from '@/lib/userFonts.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { useFontActions } from '@/composables/useFontActions.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { Sauce } from '@/lib/Sauce.js';
@@ -34,13 +33,13 @@ const PATIENT = { interval: 5, timeout: 10_000 };
 const font = () => ({ name: 'Topaz', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => i % 251), blocks: [...CP437_BLOCKS] });
 
 async function blank() {
-  const { project } = await createTestApp();
+  const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10 });
-  return project;
+  return { project, workspace };
 }
 
 test('setDrawingFont is one undo step', async () => {
-  const project = await blank();
+  const { project } = await blank();
   const f = font();
   project.setDrawingFont(f);
   expect(project.drawingFont.height).toBe(8);
@@ -57,7 +56,7 @@ test('setDrawingFont is one undo step', async () => {
 });
 
 test('saves and restores the font with the project', async () => {
-  const project = await blank();
+  const { project } = await blank();
   const f = font();
   project.setDrawingFont(f);
   const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'a.phosphor');
@@ -79,7 +78,7 @@ test('a font chosen before any drawing is the blank canvas\'s, with nothing to u
 });
 
 test('the font in use stays through a new blank canvas, an ANSI file, and a project without a font of its own', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(font());
   project.clearImage(); // New
   await project.setBlankCanvas({ cols: 10, rows: 10 });
@@ -290,7 +289,7 @@ const exported = async (project) => {
 };
 
 it('exports IBM VGA when the drawing has no font', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.quantize = 'cga';
   await settle(project);
   expect(project.drawingFont).toBeNull();
@@ -315,7 +314,7 @@ it('finds the eight blocks in the app\'s own IBM VGA, uneven shades and all', as
 });
 
 it('exports a character outside CP437 as its substitute, with no font', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.quantize = 'cga';
   project.typeAt(0, 0, '★', { fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
@@ -441,7 +440,7 @@ it('set blocks stay through an .ans opened after, and an XBin with no blocks of 
 const heavy = { id: 'l1', name: 'Heavy', slots: [219, 219, 219, 219, 219, 219, 219, 219, 219, 219, 219] };
 
 test('a style added to the drawing\'s font is one undo step', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(font());
   project.setDrawingFont({ ...project.drawingFont, lines: { hide: [], styles: [heavy] } });
   expect(project.drawingFont.lines.styles[0].name).toBe('Heavy');
@@ -456,8 +455,7 @@ test('a style added to the drawing\'s font is one undo step', async () => {
 // The drawing's font kept in this browser too: an undo or redo of a change to its blocks, lines or sets puts them in
 // the browser's copy as well (the Fonts page wrote the change itself), so an XBin opened later gets what the drawing shows.
 test('undo and redo of a change to the drawing\u2019s font\u2019s lines or blocks reach this browser\u2019s copy of it', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const f = font(), stored = await addBitmapFont(new File([f.bytes], 'Topaz.F08'));
   try {
     workspace.userFonts = await loadFonts();
@@ -482,8 +480,7 @@ test('undo and redo of a change to the drawing\u2019s font\u2019s lines or block
 
 // An edit made to the copy since (the font no longer the drawing's, so with no undo) isn't lost to an undo or redo.
 test('undo and redo leave this browser\u2019s copy alone once it holds a newer edit than the step\u2019s', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const f = font(), stored = await addBitmapFont(new File([f.bytes], 'Topaz.F08'));
   const g = { ...font(), name: 'Other', bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => i % 241) };
   try {
@@ -507,7 +504,7 @@ test('undo and redo leave this browser\u2019s copy alone once it holds a newer e
 
 // Lines and sets don't change the picture, so a step that changes only them, its undo and its redo draw nothing again.
 test('a change to only the font\'s lines or sets doesn\'t render', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(font());
   const render = vi.spyOn(project, 'render');
   project.setDrawingFont({ ...project.drawingFont, lines: { hide: [], styles: [heavy] } });
@@ -520,7 +517,7 @@ test('a change to only the font\'s lines or sets doesn\'t render', async () => {
 });
 
 test('lines and sets are saved with the project', async () => {
-  const project = await blank();
+  const { project } = await blank();
   const sets = { hideStock: true, sets: [{ id: 's1', name: 'Mine', slots: [65, 66] }] };
   project.setDrawingFont({ ...font(), lines: { hide: [], styles: [heavy] }, sets });
   const file = new File([await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })], 'a.phosphor');
@@ -531,7 +528,7 @@ test('lines and sets are saved with the project', async () => {
 });
 
 test('settings from a stranger with bad lines keep the good ones', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(font());
   const fontLines = JSON.stringify({ hide: ['x'], styles: [heavy, { id: 'l2', slots: [1] }] });
   const got = settingsFromStranger({ fontLines });
@@ -565,7 +562,7 @@ function stubSauceLibrary({ fail = false } = {}) {
 const sauceAns = (fontName, name = 'art.ans') => new File([new AnsiFile(2, 1, [{ char: 'A', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }, { char: 'B', fg: { r: 255, g: 255, b: 255 }, bg: { r: 0, g: 0, b: 0 } }]).toBlob({ colorMode: 'cga', sauce: { title: '', author: '', group: '', date: '', fontName, use9pxFont: false, comments: [] } })], name);
 
 test('using a library font with a SAUCE name sets the SAUCE Font name in the same undo step', async () => {
-  const project = await blank();
+  const { project } = await blank();
   const { useLibraryFont } = useFontActions();
   stubSauceLibrary();
   const entry = { fontId: 'bitmap-topaz', name: 'TopazPlus a500', file: 'moebius/amiga/TopazPlus_a500.F16', height: 16, sauce: 'Amiga Topaz 1+' };
@@ -581,8 +578,7 @@ test('using a library font with a SAUCE name sets the SAUCE Font name in the sam
 });
 
 test('opening an .ans whose SAUCE names Amiga Topaz 1+ opens in that font', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const fetches = stubSauceLibrary();
   await project.openArtFile(sauceAns('Amiga Topaz 1+'));
   expect(project.drawingFont.name).toBe('TopazPlus a500');
@@ -594,7 +590,7 @@ test('opening an .ans whose SAUCE names Amiga Topaz 1+ opens in that font', asyn
 });
 
 test('a BinaryText whose SAUCE names Amiga Topaz 1+ opens in that font, as an .ans does', async () => {
-  const project = await blank();
+  const { project } = await blank();
   stubSauceLibrary();
   const bin = new Sauce({}, { dataType: 5, fileType: 1, width: 0, height: 0, flags: 0, fontName: 'Amiga Topaz 1+' }).appendTo(Uint8Array.of(65, 7, 66, 7));
   await project.openArtFile(new File([bin], 'art.bin'));
@@ -603,7 +599,7 @@ test('a BinaryText whose SAUCE names Amiga Topaz 1+ opens in that font, as an .a
 });
 
 test('opening an .ans whose SAUCE says IBM VGA opens as before', async () => {
-  const project = await blank();
+  const { project } = await blank();
   const fetches = stubSauceLibrary();
   await project.openArtFile(sauceAns('IBM VGA'));
   expect(project.drawingFont).toBeNull();
@@ -611,7 +607,7 @@ test('opening an .ans whose SAUCE says IBM VGA opens as before', async () => {
 });
 
 test('a SAUCE font that can\'t be fetched leaves the file open in the built-in font and says so', async () => {
-  const project = await blank();
+  const { project } = await blank();
   stubSauceLibrary({ fail: true });
   await project.openArtFile(sauceAns('Amiga Topaz 1+'));
   expect(project.drawingFont).toBeNull();
@@ -622,7 +618,7 @@ test('a SAUCE font that can\'t be fetched leaves the file open in the built-in f
 });
 
 test('opening a .utf8ans whose SAUCE names a mapped font opens as before, with nothing fetched', async () => {
-  const project = await blank();
+  const { project } = await blank();
   const fetches = stubSauceLibrary();
   await project.openArtFile(sauceAns('Amiga Topaz 1+', 'art.utf8ans'));
   expect(project.drawingFont).toBeNull();
@@ -630,8 +626,7 @@ test('opening a .utf8ans whose SAUCE names a mapped font opens as before, with n
 });
 
 test('an .ans naming a font already in Yours opens with the lines and sets kept for it', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   stubSauceLibrary();
   const file = new File([new Uint8Array(256 * 16).fill(5)], 'TopazPlus a500.F16');
   const stored = await addBitmapFont(file);
@@ -648,7 +643,7 @@ test('an .ans naming a font already in Yours opens with the lines and sets kept 
 const narrow = () => ({ name: 'Slim', height: 7, bytes: Uint8Array.from({ length: 256 * 7 }, (_, i) => (i % 251) & 0xfe), blocks: [...CP437_BLOCKS] });
 
 test('a narrow font drawn narrow: the drawing font\u2019s cellWidth is its own width', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont({ ...narrow(), width: 7 });
   expect(project.fontWidth).toBe('7');
   expect(project.drawingFont.cellWidth).toBe(7);
@@ -656,14 +651,14 @@ test('a narrow font drawn narrow: the drawing font\u2019s cellWidth is its own w
 });
 
 test('fontWidth that isn\u2019t the font\u2019s own width reads as 8', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(narrow());
   project.$patch({ fontWidth: '5' });
   expect(project.drawingFont.cellWidth).toBe(8);
 });
 
 test('Letter spacing 9px draws an 8-wide font at 9; a narrow font stays narrow', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(font());
   project.$patch({ sauceLetterSpacing: '9' });
   expect(project.drawingFont.cellWidth).toBe(9);
@@ -674,7 +669,7 @@ test('Letter spacing 9px draws an 8-wide font at 9; a narrow font stays narrow',
 });
 
 test('a drawing saved before widths opens at 8, or 9 when its SAUCE says 9px', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.setDrawingFont(font());
   const parts = await project.projectParts();
   delete parts.settings.fontWidth;
@@ -687,8 +682,7 @@ test('a drawing saved before widths opens at 8, or 9 when its SAUCE says 9px', a
 });
 
 test('the canvas view\u2019s cell is the drawn width', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const cellAt = async () => {
     await setDisplayFont(JSON.parse(JSON.stringify(workspace.displayFontSpec)));   // as App.vue sets it
     return measureAdvance(DISPLAY_FONT);
@@ -704,15 +698,14 @@ test('the canvas view\u2019s cell is the drawn width', async () => {
 });
 
 test('with no bitmap font, the cell is the display font\u2019s', async () => {
-  const project = await blank();
+  const { project } = await blank();
   project.$patch({ sauceLetterSpacing: '9' });
   expect(project.drawingFont).toBeNull();
   expect(project.pixelAspect).toBe(1);
 });
 
 test('undo of a width change keeps the browser\u2019s copy\u2019s width in step', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const f = narrow(), stored = await addBitmapFont(new File([f.bytes], 'Slim.F07'));
   try {
     workspace.userFonts = await loadFonts();
@@ -731,7 +724,7 @@ test('undo of a width change keeps the browser\u2019s copy\u2019s width in step'
 });
 
 test('a width change is one undo step with Letter spacing', async () => {
-  const project = await blank();
+  const { project } = await blank();
   await project.setDrawingFont({ ...narrow(), width: 7 });
   const spacing = project.sauceLetterSpacing;
   await project.setDrawingFontWidth(9);
@@ -753,7 +746,7 @@ test('a width change is one undo step with Letter spacing', async () => {
 });
 
 test('a font remembered narrow is drawn narrow; one remembered "keep 8" is drawn at 8 (9 with Letter spacing 9px)', async () => {
-  const project = await blank();
+  const { project } = await blank();
   expect(await project.setDrawingFont({ ...narrow(), width: 7 })).toBeUndefined();
   expect(project.drawingFont.cellWidth).toBe(7);
   await project.setDrawingFont(font());
@@ -767,7 +760,7 @@ test('a font remembered narrow is drawn narrow; one remembered "keep 8" is drawn
 });
 
 test('a narrow font with no answer draws narrow and asks', async () => {
-  const project = await blank();
+  const { project } = await blank();
   expect(await project.setDrawingFont(narrow())).toEqual({ ask: true });
   expect(project.fontWidth).toBe('7');
   expect(project.drawingFont.cellWidth).toBe(7);
@@ -777,7 +770,7 @@ test('a narrow font with no answer draws narrow and asks', async () => {
 });
 
 test('the drawing’s own narrow font kept at 8, given lines, stays at 8 and doesn’t ask', async () => {
-  const project = await blank();
+  const { project } = await blank();
   await project.setDrawingFont({ ...narrow(), width: 8 });
   expect(await project.setDrawingFont({ ...project.drawingFont, lines: { hide: [], styles: [heavy] } })).toBeUndefined();
   expect(project.fontWidth).toBe('');
@@ -786,8 +779,7 @@ test('the drawing’s own narrow font kept at 8, given lines, stays at 8 and doe
 });
 
 test('a width change remembers its answer on the browser’s copy, and undo and redo keep it in step', async () => {
-  const project = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const f = narrow(), stored = await addBitmapFont(new File([f.bytes], 'Slim.F07'));
   const kept = async (width) => {
     await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(width), PATIENT);
@@ -810,7 +802,7 @@ test('a width change remembers its answer on the browser’s copy, and undo and 
 });
 
 test('a project without a font of its own keeps the narrow drawing’s width', async () => {
-  const project = await blank();
+  const { project } = await blank();
   await project.setDrawingFont({ ...narrow(), width: 7 });
   const { project: plain } = await createTestApp();
   await plain.setBlankCanvas({ cols: 4, rows: 4 });
@@ -821,7 +813,7 @@ test('a project without a font of its own keeps the narrow drawing’s width', a
 });
 
 test('picked again with no answer, the drawing’s own narrow font keeps its width, is no step, and asks again (Ruling 4)', async () => {
-  const project = await blank();
+  const { project } = await blank();
   await project.setDrawingFont(narrow());
   const version = project.history.version;
   expect(await project.setDrawingFont(narrow())).toEqual({ ask: true });
@@ -830,7 +822,7 @@ test('picked again with no answer, the drawing’s own narrow font keeps its wid
 });
 
 test('8 or 9 at the width the drawing is drawn at still sets Letter spacing, as one step', async () => {
-  const project = await blank();
+  const { project } = await blank();
   await project.setDrawingFont({ ...narrow(), width: 8 });
   await project.setDrawingFontWidth(8); // drawn at 8 with Letter spacing unset: the export would write none
   expect([project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['8', 8]);

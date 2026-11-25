@@ -2,7 +2,6 @@
 // font, whether to keep that width or draw it 8 wide; the browser's copy of the font remembers the answer.
 import { test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { createTestApp } from '../support/app.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { useFontActions } from '@/composables/useFontActions.js';
 import { askFontWidth } from '@/composables/useFontWidth.js';
 import { toastMessage, toastAction, toastSecond, closeToast } from '@/composables/useToast.js';
@@ -59,9 +58,9 @@ async function inYours(workspace) {
 }
 // The answer as the browser's copy keeps it and Yours lists it; written after the step, so waited for (a busy machine's
 // store can take over a second).
-const kept = async (id, width) => {
+const kept = async (workspace, id, width) => {
   await vi.waitFor(async () => expect((await storedBitmapFont(id)).width).toBe(width), { timeout: 5000 });
-  await vi.waitFor(() => expect(useWorkspaceStore().userFonts.find((f) => f.id === id).width).toBe(width), { timeout: 5000 });
+  await vi.waitFor(() => expect(workspace.userFonts.find((f) => f.id === id).width).toBe(width), { timeout: 5000 });
 };
 const asked = () => {
   expect(toastMessage.value).toBe(QUESTION);
@@ -84,7 +83,7 @@ test('choosing a narrow font with no answer draws it narrow and asks; Draw it 7 
   asked();
   await toastAction.value.run();
   expect(project.fontWidth).toBe('7');
-  await kept(id, 7);
+  await kept(workspace, id, 7);
   closeToast();
   await choose(id);
   expect(toastMessage.value).toBe(null);
@@ -98,7 +97,7 @@ test('Keep it 8 wide draws at 8 and remembers it; choosing the font again asks n
   await toastSecond.value.run();
   expect(project.fontWidth).toBe('');
   expect(project.drawingFont.cellWidth).toBe(8);
-  await kept(id, 8);
+  await kept(workspace, id, 8);
   closeToast();
   await choose('jetbrains');
   await choose(id);
@@ -115,7 +114,7 @@ test('Keep it 8 wide on a drawing whose Letter spacing is 9px draws it 9 wide, k
   expect(project.drawingFont.cellWidth).toBe(7);
   await toastSecond.value.run();
   expect([project.fontWidth, project.sauceLetterSpacing, project.drawingFont.cellWidth]).toEqual(['', '9', 9]);
-  await kept(id, 8);
+  await kept(workspace, id, 8);
 });
 
 test('closing the question unanswered asks again next time', async () => {
@@ -140,7 +139,7 @@ test('a narrow font not in Yours is added to Yours when answered', async () => {
   asked();
   expect(workspace.userFonts.some((f) => f.id === fontId(slim()))).toBe(false);
   await toastAction.value.run();
-  await kept(fontId(slim()), 7);
+  await kept(workspace, fontId(slim()), 7);
   expect(project.drawingFont.cellWidth).toBe(7);
 });
 
@@ -266,14 +265,14 @@ for (const drawn of [false, true]) {
     const lines = project.rows;
     await toastSecond.value.run(); // keep 8
     expect(project.rows === lines).toBe(drawn);
-    await kept(id, 8);
+    await kept(workspace, id, 8);
     project.undo();
     expect(project.drawingFont.cellWidth).toBe(7);
-    await kept(id, undefined);
+    await kept(workspace, id, undefined);
     project.redo();
-    await kept(id, 8);
+    await kept(workspace, id, 8);
     project.undo();
-    await kept(id, undefined);
+    await kept(workspace, id, undefined);
     await choose(id); // unanswered again: asked again
     asked();
   });

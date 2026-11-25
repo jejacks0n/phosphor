@@ -3,7 +3,6 @@
 // the layers, with Add layer and Add vector layer.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick, ref } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
@@ -28,7 +27,7 @@ async function mount(before = () => {}, { withLayer = true } = {}) {
   before(stores);
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(LayersList).use(getActivePinia()).use(i18n);
+  app = createApp(LayersList).use(stores.pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return stores;
@@ -179,10 +178,10 @@ test('in a room the ⋯ items and the add buttons that change the stack are on, 
 });
 
 test('while a room\'s drawing is paused, nothing that changes the stack is on, and says why', async () => {
-  const { project } = await mount(({ project }) => {
+  const { project } = await mount(({ project, pinia }) => {
     project.addLayer('cells', 'edit');
     project.startSharing({ send: vi.fn(), role: 'host', me: 'host' });
-    useDrawingStore().paused = true;
+    useDrawingStore(pinia).paused = true;
   });
   const why = 'Not while drawing is paused.';
   for (const label of ['Add layer', 'Add vector layer']) {
@@ -441,13 +440,13 @@ test('with the cursor placed, ↓ walks from a vector row onto a cells row, the 
   textarea.dataset.textInput = '';
   let typingApp = null;
   try {
-    const { project, workspace } = await mount(({ project, workspace }) => {
+    const { project, workspace, pinia } = await mount(({ project, workspace }) => {
       const vector = project.addLayer('vector', 'edit');
       workspace.setActiveTool('text');
       workspace.textCursor = { col: 3, row: 2 };
       workspace.pickLayer(vector);
     });
-    typingApp = createApp({ setup() { useTextTool(project, workspace, ref(textarea)); return () => null; } }).use(getActivePinia()).use(i18n);
+    typingApp = createApp({ setup() { useTextTool(project, workspace, ref(textarea)); return () => null; } }).use(pinia).use(i18n);
     typingApp.mount(document.createElement('div'));
     expect(workspace.editorTab).toBe('vector');
     pickOf(0).focus();
@@ -482,13 +481,13 @@ test('with the cursor placed, a click on a cells row from a vector one hands foc
   textarea.dataset.textInput = '';
   let typingApp = null;
   try {
-    const { project, workspace } = await mount(({ project, workspace }) => {
+    const { project, workspace, pinia } = await mount(({ project, workspace }) => {
       const vector = project.addLayer('vector', 'edit');
       workspace.setActiveTool('text');
       workspace.textCursor = { col: 3, row: 2 };
       workspace.pickLayer(vector);
     });
-    typingApp = createApp({ setup() { useTextTool(project, workspace, ref(textarea)); return () => null; } }).use(getActivePinia()).use(i18n);
+    typingApp = createApp({ setup() { useTextTool(project, workspace, ref(textarea)); return () => null; } }).use(pinia).use(i18n);
     typingApp.mount(document.createElement('div'));
     window.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }));
     pickOf(1).focus(); // where the press puts focus

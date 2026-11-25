@@ -25,16 +25,16 @@ const settle = (ms = 50) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // EditWorkspace with a blank canvas open and a fake desktop whose openInNewWindow answers `answer`.
 async function overDrawing({ answer = true, before = () => {} } = {}) {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   const opened = [];
   useFakeDesktop({ openInNewWindow: vi.fn(async (file) => { opened.push(file); return answer; }) });
   await project.setBlankCanvas({ withLayer: true });
   await before({ project });
   host = document.body.appendChild(document.createElement('div'));
-  mounted = createApp(EditWorkspace).use(i18n);
+  mounted = createApp(EditWorkspace).use(pinia).use(i18n);
   mounted.mount(host);
   await settle();
-  return { project, workspace: useWorkspaceStore(), opened };
+  return { project, pinia, workspace: useWorkspaceStore(pinia), opened };
 }
 
 const drop = async (file) => {
@@ -92,8 +92,8 @@ test('a project dropped over a drawing goes to a new window without asking', asy
 });
 
 test('drawing in someone\'s room still offers Open in a new window', async () => {
-  const { opened } = await overDrawing({ before: inSomeonesRoom });
-  expect(useDrawingStore().offWithOthers).toBeTruthy();
+  const { opened, pinia } = await overDrawing({ before: inSomeonesRoom });
+  expect(useDrawingStore(pinia).offWithOthers).toBeTruthy();
   await drop(art());
   await asked();
   document.querySelector('button.cancel').click();

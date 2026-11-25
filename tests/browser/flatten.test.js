@@ -7,7 +7,6 @@ import { rectShape } from '@/document/shapes';
 import { makeArt } from '@/document/artLayers.js';
 import { charRowsOf } from '@/lib/Cells';
 import { slidersAtDefaults } from '@/store/settings';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { createApp, nextTick } from 'vue';
 import EditToolbar from '@/components/EditToolbar.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
@@ -186,8 +185,8 @@ test('steps out of an art layer first', async () => {
 });
 
 test('the toolbar asks Edit artwork or Draw on top', async () => {
-  const { project } = await drawing();
-  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  const { project, pinia } = await drawing();
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(pinia).use(i18n);
   document.body.append(host);
   toolbar.mount(host);
   try {
@@ -221,10 +220,10 @@ test('a palette without every color the cells show goes full color, so nothing s
 
 // The PIXEL tab shows the base's characters as they look without All cells (docs/model.md R11; tests/browser/pixel-characters.test.js).
 test('drawn on top of, All cells stays as it was, as when an ANSI file opens', async () => {
-  const { project } = await drawing();
-  useWorkspaceStore().ansiOverlayAll = false;
+  const { project, workspace } = await drawing();
+  workspace.ansiOverlayAll = false;
   await project.flattenDrawing({ layer: 'base' });
-  expect(useWorkspaceStore().ansiOverlayAll).toBe(false);
+  expect(workspace.ansiOverlayAll).toBe(false);
 });
 
 test('edit cells past a shrunk grid\'s edge keep their look', async () => {
@@ -305,11 +304,11 @@ test('Flatten across the stack keeps what shows', async () => {
 });
 
 test('Flatten drops hidden layers and says so first', async () => {
-  const { project, top } = await stacked();
+  const { project, top, pinia } = await stacked();
   project.setLayerHidden(top, true);
   await settle(project);
   const before = shown(project);
-  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(pinia).use(i18n);
   document.body.append(host);
   toolbar.mount(host);
   try {
@@ -331,13 +330,13 @@ test('Flatten drops hidden layers and says so first', async () => {
 });
 
 test('image filters stay after Blend into source image, a working copy the filters work on', async () => {
-  const { project } = await createTestApp(), workspace = useWorkspaceStore();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 40, rows: 40 });
   project.paintStroke(Array.from({ length: 12 }, (_, k) => ({ x: 10 + k, y: 20, alpha: 1 })), '#ff3300');
   project.commitEdit();
   await settle(project);
   workspace.pickedLayer = 'base';
-  const host = document.createElement('div'), panel = createApp(ControlPanel).use(i18n);
+  const host = document.createElement('div'), panel = createApp(ControlPanel).use(pinia).use(i18n);
   document.body.append(host);
   panel.mount(host);
   try {
@@ -357,9 +356,9 @@ test('image filters stay after Blend into source image, a working copy the filte
 });
 
 test('image filters panel hides after flatten and shows a note', async () => {
-  const { project, workspace } = await drawing();
+  const { project, workspace, pinia } = await drawing();
   workspace.pickedLayer = 'base';
-  const host = document.createElement('div'), panel = createApp(ControlPanel).use(i18n);
+  const host = document.createElement('div'), panel = createApp(ControlPanel).use(pinia).use(i18n);
   document.body.append(host);
   panel.mount(host);
   try {

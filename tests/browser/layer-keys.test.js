@@ -4,7 +4,6 @@
 // the tests run on (a Mac here, Linux on CI), with the code the keys are matched by.
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -23,14 +22,14 @@ afterEach(() => {
 // A blank drawing in the ANSI view, its layers bottom first: the base, Layer 1 ('edit') and Layer 2 above it, with the
 // app's keys (the Text tool's first, as AnsiEditor's mount before EditWorkspace's).
 async function mount() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
   await settle(project);
   workspace.editorTab = 'output';
   project.addLayer('cells', 'edit');
   workspace.pickLayer('edit');
   app = createApp({ setup() { useTextTool(project, workspace, null); useKeyboardShortcuts(project, workspace); return () => null; } })
-    .use(getActivePinia()).use(i18n);
+    .use(pinia).use(i18n);
   app.mount(document.createElement('div'));
   return { project, workspace };
 }

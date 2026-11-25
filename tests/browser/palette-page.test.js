@@ -3,12 +3,10 @@
 import { test, expect, vi, afterEach, onTestFinished } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import CharPaletteLayer from '@/components/CharPaletteLayer.vue';
 import { createTestApp } from '../support/app.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { fontId, CP437_BLOCKS } from '@/lib/BitmapFont.js';
 import { readPaletteFile, writePaletteFile } from '@/lib/PaletteFile.js';
 import { toastMessage } from '@/composables/useToast.js';
@@ -26,16 +24,16 @@ afterEach(() => {
 
 // The layer mounted over a blank canvas, with font A unless font is false; setup makes palettes first.
 async function mount({ font = true, setup } = {}) {
-  const { project } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10 });
   if (font) project.setDrawingFont(fontA());
-  const palettes = usePaletteStore();
+  const palettes = usePaletteStore(pinia);
   setup?.(palettes);
   host = document.body.appendChild(document.createElement('div'));
-  app = createApp({ render: () => h(CharPaletteLayer) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(CharPaletteLayer) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { project, palettes };
+  return { project, workspace, pinia, palettes };
 }
 const named = (palettes, name) => {
   const id = palettes.create();
@@ -395,8 +393,8 @@ test('export and import', async () => {
 });
 
 test('import says where palettes for other fonts went', async () => {
-  await mount();
-  useWorkspaceStore().userFonts = [{ id: 'bitmap-b', name: 'B', kind: 'bitmap', height: 8 }]; // kept, not in use
+  const { workspace } = await mount();
+  workspace.userFonts = [{ id: 'bitmap-b', name: 'B', kind: 'bitmap', height: 8 }]; // kept, not in use
   const topaz = { id: 'bitmap-topaz', name: 'Topaz', height: 8 }, b = { id: 'bitmap-b', name: 'B', height: 8 };
   const input = host.querySelector('input[type="file"]');
   const choose = async (list) => {
@@ -414,8 +412,8 @@ test('import says where palettes for other fonts went', async () => {
 });
 
 test('Escape leaves the editor for the list, and closes the layer from the editor reached from Fonts', async () => {
-  await mount({ font: false });
-  const workspace = useWorkspaceStore(), layer = () => host.querySelector('.palette-layer');
+  const { workspace, pinia } = await mount({ font: false });
+  const layer = () => host.querySelector('.palette-layer');
   const escape = async () => {
     layer().dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     await nextTick();
@@ -425,7 +423,7 @@ test('Escape leaves the editor for the list, and closes the layer from the edito
   expect(layer().classList.contains('editing')).toBe(false); // the list, still open
   const close = vi.fn();
   app.unmount();
-  app = createApp({ render: () => h(CharPaletteLayer, { onClose: close }) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(CharPaletteLayer, { onClose: close }) }).use(pinia).use(i18n);
   workspace.paletteLayerPage = 'fonts';
   app.mount(host);
   await nextTick();

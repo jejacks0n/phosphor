@@ -153,7 +153,7 @@ let mounted = null;
 afterEach(() => { mounted?.unmount(); mounted = null; });
 
 test('an art layer selected in VECTOR draws its box, and hits and marquees pass over it without throwing', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 3, rows: 2, cells: [[0, 'A', '#0000ff', '#ff0000']] } }));
   Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [art] });
   const box = selectionBox(project.shapes, [art]);
@@ -161,23 +161,23 @@ test('an art layer selected in VECTOR draws its box, and hits and marquees pass 
   expect(() => shapeAt(project.shapes, 3, 5, 1)).not.toThrow();
   expect(shapesTouching(project.shapes, { x0: 0, y0: 0, x1: 10, y1: 10 })).toEqual([art]);
   const host = document.createElement('div');
-  mounted = createApp(VectorOverlay, { unit: { x: 8, y: 8 } });
+  mounted = createApp(VectorOverlay, { unit: { x: 8, y: 8 } }).use(pinia);
   mounted.mount(host);
   await settle(project);
   expect(host.querySelector('[data-vector-overlay] polygon.box')).not.toBeNull();
 });
 
 test('in a room, an art layer someone else is drawing in shows its box saying who, and Edit art is off with it', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 3, rows: 2, cells: [[0, 'A', '#0000ff', '#ff0000']] } }));
   Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [art] });
-  const drawing = useDrawingStore();
+  const drawing = useDrawingStore(pinia);
   drawing.cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
   expect(project._locks).toEqual({ ann: { key: art, name: 'Ann' } });
   const host = document.createElement('div'), row = document.createElement('div');
-  mounted = createApp(VectorOverlay, { unit: { x: 8, y: 8 } });
+  mounted = createApp(VectorOverlay, { unit: { x: 8, y: 8 } }).use(pinia);
   mounted.mount(host);
-  const options = createApp(VectorOptions).use(i18n);
+  const options = createApp(VectorOptions).use(pinia).use(i18n);
   options.mount(row);
   await settle(project);
   expect(host.querySelector(`[data-locked="${art}"] text`).textContent).toBe('Ann is currently editing this layer');
@@ -186,7 +186,7 @@ test('in a room, an art layer someone else is drawing in shows its box saying wh
   expect(edit.title).toBe('Ann is currently editing this layer');
   // The canvas size is off too (it goes to the room as the project), so a keystroke can't be refused there.
   const panel = document.createElement('div');
-  const controls = createApp(ControlPanel).use(i18n);
+  const controls = createApp(ControlPanel).use(pinia).use(i18n);
   controls.mount(panel);
   await settle(project);
   for (const id of ['cols', 'rows']) {

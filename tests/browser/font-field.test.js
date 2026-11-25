@@ -2,7 +2,6 @@
 // page, where fonts are loaded, saved and removed.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { fontId } from '@/lib/BitmapFont';
@@ -30,14 +29,14 @@ afterEach(() => {
 });
 
 async function mount({ drawing = true, tab } = {}) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   if (drawing) {
     await project.setBlankCanvas({ cols: 10, rows: 10 });
     project.setDrawingFont({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
   }
   if (tab) workspace.editorTab = tab;
   host = document.body.appendChild(document.createElement('div'));
-  app = createApp({ render: () => h(FontField) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(FontField) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return { project, workspace };

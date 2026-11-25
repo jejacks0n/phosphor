@@ -29,7 +29,7 @@ async function panel(stage) {
   app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return useWorkspaceStore();
+  return useWorkspaceStore(pinia);
 }
 const banner = () => host.querySelector('p.stage');
 

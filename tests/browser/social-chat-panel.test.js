@@ -3,7 +3,6 @@
 // host's "N here" counts those connected and lists everyone; Report shows only where a confirmed member may report.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
@@ -13,7 +12,7 @@ import ChatPanel from '@/components/social/ChatPanel.vue';
 import ReportDialog from '@/components/social/ReportDialog.vue';
 import { fakeServer } from '../support/socialServer.js';
 
-let app = null, host = null, formatted = 0;
+let app = null, host = null, pinia = null, formatted = 0;
 const formatGetter = Object.getOwnPropertyDescriptor(Intl.DateTimeFormat.prototype, 'format');
 afterEach(() => {
   app?.unmount();
@@ -26,12 +25,12 @@ afterEach(() => {
 const row = (n, fields = {}) => ({ id: String(n).padStart(16, '0'), ts: 1_700_000_000_000 + n * 60_000, text: `m${n}`, sub: `u_${n}`, name: `name-${n}`, host: false, mine: false, deleted: false, ...fields });
 
 async function mount(role, count) {
-  await createTestApp();
-  const room = useRoomStore();
+  ({ pinia } = await createTestApp());
+  const room = useRoomStore(pinia);
   Object.assign(room, { role, id: 'abcdefghij', status: 'live', room: { name: 'neon harbor', welcome: '' }, chat: Array.from({ length: count }, (_, n) => row(n)) });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ChatPanel).use(getActivePinia()).use(i18n);
+  app = createApp(ChatPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return room;
@@ -230,7 +229,7 @@ const claims = (fields) => ({ sub: 'u_me', name: 'me', guest: false, verified: t
 
 test('Report shows on other people\'s messages for a confirmed member; not on your own, a deleted one, a presence line or a folded blocked one', async () => {
   const room = await mount('watch', 0);
-  const social = useSocialStore();
+  const social = useSocialStore(pinia);
   social.claims = claims({});
   social.blocked = [{ id: 'u_4', username: 'name-4', since: 1 }];
   room.chat = [row(0), row(1, { mine: true, sub: 'u_me' }), row(2, { deleted: true, text: '' }), row(3, { text: '', presence: 'joined' }), row(4), row(5)];
@@ -245,7 +244,7 @@ test('Report shows on other people\'s messages for a confirmed member; not on yo
 
 test('no Report for a guest or a member who hasn\'t confirmed their email', async () => {
   await mount('watch', 2);
-  const social = useSocialStore();
+  const social = useSocialStore(pinia);
   for (const fields of [{ guest: true, verified: false }, { verified: false }]) {
     social.claims = claims(fields);
     await nextTick();
@@ -260,7 +259,7 @@ test('the report dialog: a report that can\'t go leaves it as it is; with its Re
   const dialogButton = (name) => [...document.querySelectorAll('dialog button')].find((b) => b.textContent === name);
   for (const [role, back] of [['host', 'button.here'], ['watch', '[role=log]']]) {
     const room = await mount(role, 1);
-    useSocialStore().claims = claims({});
+    useSocialStore(pinia).claims = claims({});
     await nextTick();
     const report = vi.spyOn(room, 'report').mockReturnValue(false);
     host.querySelector('button.report').click();
@@ -289,7 +288,7 @@ test('the report dialog: a report that can\'t go leaves it as it is; with its Re
 
 test('once a report of someone goes, Report is gone from their messages and stays on other people\'s; focus goes to the messages', async () => {
   const room = await mount('watch', 0);
-  useSocialStore().claims = claims({});
+  useSocialStore(pinia).claims = claims({});
   room._connection = { send: () => true, close() {} };   // the room's socket, taking the report
   room.chat = [row(0), row(1), row(2, { sub: 'u_0', name: 'name-0' })];
   await nextTick();
@@ -307,16 +306,16 @@ test('once a report of someone goes, Report is gone from their messages and stay
 });
 
 test('the report dialog, sent: "Reported" in the status line that was there from the start, then done after 4 s; unmounted sooner, its timer goes with it', async () => {
-  await createTestApp();
-  const room = useRoomStore();
-  useSocialStore().claims = claims({});
+  ({ pinia } = await createTestApp());
+  const room = useRoomStore(pinia);
+  useSocialStore(pinia).claims = claims({});
   vi.spyOn(room, 'report').mockReturnValue(true);
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   const done = vi.fn();
   const props = { name: 'wren', sub: 'u_2', onDone: done };   // (a variable: the lint takes `name` in createApp's second argument for a component's)
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ReportDialog, props).use(getActivePinia()).use(i18n);
+  app = createApp(ReportDialog, props).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const status = document.querySelector('p.reported[role=status]');
@@ -339,7 +338,7 @@ test('the report dialog, sent: "Reported" in the status line that was there from
   host.remove();
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ReportDialog, props).use(getActivePinia()).use(i18n);
+  app = createApp(ReportDialog, props).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   document.querySelector('dialog input[value=spam]').click();
@@ -354,7 +353,7 @@ test('the report dialog, sent: "Reported" in the status line that was there from
 
 test('Report again on the same message while "Reported" shows opens the dialog again', async () => {
   const room = await mount('watch', 1);
-  useSocialStore().claims = claims({});
+  useSocialStore(pinia).claims = claims({});
   await nextTick();
   vi.spyOn(room, 'report').mockReturnValue(true);
   for (let i = 0; i < 2; i++) {
@@ -376,7 +375,7 @@ const blocks = () => [...host.querySelectorAll('button.block')].map((b) => b.get
 
 test('Block shows beside Report on other people\'s messages for a signed-in watcher; not on your own, a deleted one, a folded blocked one, for a guest or for the host', async () => {
   const room = await mount('watch', 0);
-  const social = useSocialStore();
+  const social = useSocialStore(pinia);
   social.claims = claims({});
   social.blocked = [{ id: 'u_4', username: 'name-4', since: 1 }];
   room.chat = [row(0), row(1, { mine: true, sub: 'u_me' }), row(2, { deleted: true, text: '' }), row(3, { text: '', presence: 'joined' }), row(4), row(5, { host: true })];
@@ -400,7 +399,7 @@ test('Block shows beside Report on other people\'s messages for a signed-in watc
 test('a watcher\'s Block asks first: Cancel and Escape send nothing, with focus back on Block; Block blocks them, folds their messages and puts focus on the messages', async () => {
   const server = fakeServer();
   const room = await mount('watch', 0);
-  const social = useSocialStore();
+  const social = useSocialStore(pinia);
   social.claims = claims({});
   room.chat = [row(0), row(1), row(2, { sub: 'u_0', name: 'name-0' })];
   await nextTick();
@@ -438,7 +437,7 @@ const reportRoomButton = () => [...host.querySelectorAll('header button')].find(
 
 test('a confirmed watcher has Report room under Exit; the host, a guest and an unconfirmed member don\'t', async () => {
   const room = await mount('watch', 0);
-  const social = useSocialStore();
+  const social = useSocialStore(pinia);
   social.claims = claims({});
   await nextTick();
   expect(reportRoomButton()).toBeTruthy();
@@ -464,7 +463,7 @@ test('a confirmed watcher has Report room under Exit; the host, a guest and an u
 
 test('Report room asks "Report this room?" with the inside sub, and Report sends reportRoom with the reason', async () => {
   const room = await mount('watch', 0);
-  useSocialStore().claims = claims({});
+  useSocialStore(pinia).claims = claims({});
   await nextTick();
   const reportRoom = vi.spyOn(room, 'reportRoom').mockResolvedValue(true);
   const trigger = reportRoomButton();
@@ -483,7 +482,7 @@ test('Report room asks "Report this room?" with the inside sub, and Report sends
 
 test('while Report room makes its picture, the dialog\'s buttons are off and Cancel, Escape and the backdrop wait', async () => {
   const room = await mount('watch', 0);
-  useSocialStore().claims = claims({});
+  useSocialStore(pinia).claims = claims({});
   await nextTick();
   let finish;
   vi.spyOn(room, 'reportRoom').mockReturnValue(new Promise((resolve) => { finish = resolve; }));
@@ -508,15 +507,15 @@ test('while Report room makes its picture, the dialog\'s buttons are off and Can
 test('unmounting while shown changes does not throw on the scroll', async () => {
   // The shown watcher awaits nextTick before reading list.value. If the component unmounts
   // during that gap, list.value is null; without a guard it throws on .scrollHeight.
-  await createTestApp();
-  const room = useRoomStore();
+  ({ pinia } = await createTestApp());
+  const room = useRoomStore(pinia);
   Object.assign(room, { role: 'watch', id: 'abcdefghij', status: 'live', room: { name: 'x', welcome: '' }, chat: Array.from({ length: 3 }, (_, n) => row(n)) });
   const { ref: vref, defineComponent, h } = await import('vue');
   const shown = vref(false);
   const wrapper = defineComponent({ setup: () => () => h(ChatPanel, { shown: shown.value }) });
   const el = document.createElement('div');
   document.body.append(el);
-  const wrapApp = createApp(wrapper).use(getActivePinia()).use(i18n);
+  const wrapApp = createApp(wrapper).use(pinia).use(i18n);
   wrapApp.mount(el);
   await nextTick();
   shown.value = true;    // triggers the async watcher — it now awaits nextTick internally

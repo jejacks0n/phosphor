@@ -2,10 +2,10 @@
 import { test, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { createPinia, getActivePinia, setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { createTestApp, settle } from '../support/app.js';
-import { onPlugin } from '../support/pluginSolvers.js';
+import { onPlugin as onPluginIn } from '../support/pluginSolvers.js';
 import { i18n } from '@/i18n';
 import EditToolbar from '@/components/EditToolbar.vue';
 import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
@@ -22,6 +22,9 @@ import builtinBrush from '@/tools/brush';
 import '@/assets/global.css'; // the color tokens, for the icon colors
 
 let mounted = null, host = null;
+// The test's own Pinia (start()'s): a store asked for after an await may be a test's that finished late.
+let pinia = null;
+const onPlugin = (parts, opts) => onPluginIn(parts, { pinia, ...opts });
 beforeAll(() => page.viewport(1200, 800));
 afterAll(() => page.viewport(414, 896));
 afterEach(() => { keys?.unmount(); keys = null; mounted?.unmount(); host?.remove(); mounted = host = null; localStorage.clear(); vi.restoreAllMocks(); });
@@ -39,6 +42,7 @@ const brush = (over = {}) => ({
 });
 const start = async (tab = 'output') => {
   const app = await createTestApp();
+  ({ pinia } = app);
   await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   app.workspace.editorTab = tab;
@@ -46,13 +50,13 @@ const start = async (tab = 'output') => {
 };
 let keys = null;
 const listen = ({ project, workspace }) => {
-  keys = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } }).use(getActivePinia());
+  keys = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } }).use(pinia);
   keys.mount(document.createElement('div'));
 };
 const mount = async (component) => {
   host = document.createElement('div');
   document.body.append(host);
-  mounted = createApp({ render: () => h(component) }).use(getActivePinia()).use(i18n);
+  mounted = createApp({ render: () => h(component) }).use(pinia).use(i18n);
   mounted.mount(host);
   await nextTick();
   await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -72,7 +76,7 @@ test('two plugins come in the Plugins dialog order, whatever they registered in'
   const app = await start('input');
   const [b] = (await onPlugin({ brushes: [brush({ id: 'b', key: null })] }, { pluginId: 'phosphor.b' })).brushes;
   const [a] = (await onPlugin({ brushes: [brush({ id: 'a', key: null })] }, { pluginId: 'phosphor.a' })).brushes;
-  const names = usePluginStore().plugins.map(({ id }) => id);
+  const names = usePluginStore(pinia).plugins.map(({ id }) => id);
   const wanted = [a, b].sort((x, y) => names.indexOf(x.split('/')[0].slice(7)) - names.indexOf(y.split('/')[0].slice(7)));
   expect(pluginTools().map((tool) => tool.id)).toEqual(wanted);
   expect(toolSlots('input', app.project).slice(-2).map((slot) => slot.id)).toEqual(wanted);
@@ -83,22 +87,22 @@ test('a dropped brush is no tool and the active tool reads Brush; so is a room, 
   const [ref] = (await onPlugin({ brushes: [brush()] })).brushes;
   app.workspace.setActiveTool(ref);
   expect(app.workspace.activeTool).toBe(ref);
-  useRoomStore().role = 'host';
+  useRoomStore(pinia).role = 'host';
   expect(toolSlots('input', app.project).some((slot) => slot.id === ref)).toBe(false);
   expect(app.workspace.activeTool).toBe('brush');
-  useRoomStore().role = null;
+  useRoomStore(pinia).role = null;
   expect(app.workspace.activeTool).toBe(ref);
-  usePluginStore().off = true;
+  usePluginStore(pinia).off = true;
   expect(pluginTools()).toEqual([]);
   expect(app.workspace.activeTool).toBe('brush');
-  usePluginStore().off = false;
-  const plugin = usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines');
+  usePluginStore(pinia).off = false;
+  const plugin = usePluginStore(pinia).plugins.find(({ id }) => id === 'phosphor.outlines');
   plugin.enabled = false;
   expect(pluginTools()).toEqual([]);
   expect(app.workspace.activeTool).toBe('brush');
   plugin.enabled = true;
   expect(app.workspace.activeTool).toBe(ref);
-  usePluginStore().dropScript('phosphor.outlines');
+  usePluginStore(pinia).dropScript('phosphor.outlines');
   expect(getTool(ref).id).toBe('none');
   expect(app.workspace.activeTool).toBe('brush');
 });
@@ -149,7 +153,7 @@ test('the toolbar draws the options, keeps changes, and ] steps the size to its 
   expect(JSON.parse(localStorage.getItem('phosphor.pluginTools'))[`brush:${ref}`].mode).toBe(1);
   // A fresh Pinia and workspace read the kept value back through the option's own get.
   const tool = getTool(ref);
-  const pinia = getActivePinia(), other = createPinia();
+  const other = createPinia();
   setActivePinia(other);
   const fresh = useWorkspaceStore(other);
   expect(tool.options.find((o) => o.label === 'Mode').get(fresh)).toBe(1);
@@ -333,7 +337,7 @@ test('a brush that throws: its stroke is taken back, no undo step, nothing more 
   expect([project.history.version, project.history.last, project._stroke]).toEqual([version, last, null]);
   expect([n, ended]).toEqual([2, false]);
   expect(toastMessage.value).toBe('Smear failed: boom');
-  expect(usePluginStore().problems['phosphor.outlines']).toBe('Smear failed: boom');
+  expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe('Smear failed: boom');
 });
 
 test('R5: in ANSI a put makes the cells Colors only would: a ▄ where a layer\'s own cell shows no character, as the Brush\'s', async () => {
@@ -400,7 +404,7 @@ test('an error\'s words are cut short in the toast and the plugin\'s row', async
   tool.begin(ctx, at(3, 4), {});
   tool.end(ctx);
   expect(toastMessage.value.length).toBeLessThan(300);
-  expect(usePluginStore().problems['phosphor.outlines']).toBe(toastMessage.value);
+  expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(toastMessage.value);
 });
 
 test('the plugins reloaded mid-stroke: the stroke ends on the script it began on, as one undo step, nothing left open', async () => {

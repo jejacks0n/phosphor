@@ -5,7 +5,6 @@ import { legacySlots } from '@/document/layerInfo.js';
 import { test, expect, afterEach, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
@@ -18,7 +17,6 @@ import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 let app = null, host = null;
 afterEach(() => {
@@ -115,10 +113,10 @@ test('a new layer copies the picked layer\'s settings', async () => {
   expect(project.charsOf(vector)).toEqual(topLevel(project));
 });
 
-async function mountPanel() {
+async function mountPanel(pinia) {
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
 }
@@ -126,11 +124,11 @@ const fieldsets = () => [...host.querySelectorAll('aside > fieldset')];
 const sectionOf = (words) => fieldsets().find((set) => set.querySelector('legend').textContent.includes(words));
 
 test('a long layer name in the Characters legend is cut short on one line, with the whole name on hover', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   project.renameLayer('edit', 'W'.repeat(100)); // as long as a name can be, in wide letters
   const name = project.layerById('edit').name;
   workspace.pickLayer('edit');
-  await mountPanel();
+  await mountPanel(pinia);
   host.style.width = '280px'; // the panel at its narrowest
   await nextTick();
   const legend = sectionOf(name).querySelector('legend'), fold = legend.querySelector('button.fold'), title = fold.querySelector('.title');
@@ -143,9 +141,9 @@ test('a long layer name in the Characters legend is cut short on one line, with 
 });
 
 test('the Characters legend names the picked layer, and Picture · Base and Image filters show only with Base picked', async () => {
-  const { project, workspace } = await picture();
+  const { project, workspace, pinia } = await picture();
   workspace.pickLayer('edit');
-  await mountPanel();
+  await mountPanel(pinia);
   expect(sectionOf('Characters · Layer 1')).toBeTruthy();
   expect(sectionOf('Characters · Layer 1').textContent).toContain('Controls how Layer 1 displays characters.');
   expect(sectionOf('Picture')).toBeUndefined();
@@ -171,8 +169,8 @@ test('the Characters legend names the picked layer, and Picture · Base and Imag
 // The start screen has no drawing, so no Layer 1: the left column shows the base's character settings, the ones the next
 // drawing starts with, whether the app just opened or New project left a drawing with Layer 1 picked.
 test('with no drawing open, Characters shows the base\'s, not Layer 1\'s', async () => {
-  const { project, workspace } = await picture();
-  await mountPanel();
+  const { project, workspace, pinia } = await picture();
+  await mountPanel(pinia);
   expect(sectionOf('Characters · Layer 1')).toBeTruthy();
   project.clearImage(); // New project, Start without saving
   workspace.pickLayer('edit');
@@ -184,9 +182,9 @@ test('with no drawing open, Characters shows the base\'s, not Layer 1\'s', async
 
 // A blank canvas has no picture of its own (its black is a stand-in, markUniform), so there's nothing for Smoothing to do.
 test('a blank canvas, new or reopened, shows no Picture · Base (Smoothing) with Base picked', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   workspace.pickLayer('base');
-  await mountPanel();
+  await mountPanel(pinia);
   expect(sectionOf('Characters · Base')).toBeTruthy();
   expect(sectionOf('Picture')).toBeUndefined();
   expect(host.querySelector('#smoothing')).toBeNull();
@@ -200,9 +198,9 @@ test('a blank canvas, new or reopened, shows no Picture · Base (Smoothing) with
 // #200: Bake swaps in a new picture of its own making, which was never looked at for one color: a blank canvas baked was
 // still all one color, but Smoothing and Image filters showed until a reload looked again and hid them.
 test('#200: a blank canvas baked is still a blank canvas: no Picture · Base (Smoothing) and no Image filters, before a reload as after', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   workspace.pickLayer('base');
-  await mountPanel();
+  await mountPanel(pinia);
   project.invert = 100; // a slider moved, so there's something to bake: black comes out white, all over
   await settle(project);
   expect(project.canBake).toBe(true);
@@ -223,14 +221,14 @@ test('#200: a blank canvas baked is still a blank canvas: no Picture · Base (Sm
 // Into the image on a blank canvas puts the merged cells into the picture, a flat block for every grid pixel: the filters
 // work on that, but Smoothing has nothing finer than a grid pixel to scale. Before a reload as after.
 test('#200: Into the image on a blank canvas shows Image filters and no Picture · Base (Smoothing), before a reload as after', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   workspace.pickLayer('edit');
   project.paintStroke(Array.from({ length: 6 }, (_, k) => ({ x: 4 + k, y: 6, alpha: 1 })), '#ff5555');
   project.commitEdit();
   await project.mergeIntoPicture();
   await settle(project);
   workspace.pickLayer('base');
-  await mountPanel();
+  await mountPanel(pinia);
   expect(sectionOf('Image filters')).toBeTruthy();
   expect(sectionOf('Picture')).toBeUndefined();
   await project.openParts(await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() })), { filename: 'into' });
@@ -245,12 +243,12 @@ test('#200: Into the image on a blank canvas shows Image filters and no Picture 
 // canvas's base lives in those pixels, finer than a grid pixel, so Smoothing changes it and shows; paint laid a grid pixel
 // at a time doesn't. Undo takes it away again, redo brings it back, and a reload keeps it.
 test('#200: a picture merged down onto the base shows Picture · Base (Smoothing); paint on the base alone does not', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   workspace.pickLayer('base');
   project.paintStroke(Array.from({ length: 6 }, (_, k) => ({ x: 4 + k, y: 6, alpha: 1 })), '#ff5555');
   project.commitEdit();
   await settle(project);
-  await mountPanel();
+  await mountPanel(pinia);
   expect(sectionOf('Picture')).toBeUndefined();
   const canvas = Object.assign(document.createElement('canvas'), { width: 200, height: 100 }), ctx = canvas.getContext('2d');
   ctx.fillStyle = '#55ff55';
@@ -286,9 +284,9 @@ test('#200: a picture merged down onto the base shows Picture · Base (Smoothing
 });
 
 test('Characters and Picture fold on their titles like the slider groups, and stay folded when the panel comes back', async () => {
-  const { workspace } = await picture();
+  const { workspace, pinia } = await picture();
   workspace.pickLayer('base');
-  await mountPanel();
+  await mountPanel(pinia);
   const fold = (words) => sectionOf(words).querySelector('legend button.fold');
   for (const words of ['Characters', 'Picture']) {
     expect(fold(words).getAttribute('aria-expanded')).toBe('true');
@@ -303,7 +301,7 @@ test('Characters and Picture fold on their titles like the slider groups, and st
   expect(JSON.parse(localStorage.getItem('phosphor.panel.folded'))).toEqual(['characters', 'picture']);
   app.unmount();
   host.remove();
-  await mountPanel();
+  await mountPanel(pinia);
   expect(fold('Characters').getAttribute('aria-expanded')).toBe('false');
   expect(host.querySelector('#charChoice').checkVisibility()).toBe(false);
   fold('Characters').click();
@@ -312,18 +310,18 @@ test('Characters and Picture fold on their titles like the slider groups, and st
 });
 
 test('the Characters note says what a vector layer converts', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   const id = project.addLayer('vector', 'edit');
   workspace.pickLayer(id);
-  await mountPanel();
+  await mountPanel(pinia);
   expect(sectionOf('Characters · Vector 1').textContent).toContain('Controls how Vector 1 displays characters.');
 });
 
 test('Choose characters edits the picked layer', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   const id = project.addLayer('cells', 'edit');
   workspace.pickLayer(id);
-  await mountPanel();
+  await mountPanel(pinia);
   const select = host.querySelector('#charChoice');
   select.value = 'best';
   select.dispatchEvent(new Event('change'));
@@ -384,11 +382,11 @@ test('in a room the host sets one layer\'s settings, and the others keep theirs,
 });
 
 test('in a room the Characters section follows the pick, as alone, and the host edits the picked layer', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   workspace.pickLayer('edit');
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
   try {
-    await mountPanel();
+    await mountPanel(pinia);
     expect(sectionOf('Characters · Layer 1')).toBeTruthy();
     const select = host.querySelector('#charChoice');
     select.value = 'best';
@@ -403,13 +401,13 @@ test('in a room the Characters section follows the pick, as alone, and the host 
 });
 
 test('in a room an artist sees the picked layer\'s settings, off, with the reason', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   project.setLayerChars('edit', { charChoice: 'best' });
   project.commitLayerChars();
   workspace.pickLayer('edit');
   project.startSharing({ send: () => {}, role: 'artist', me: 'ann' });
   try {
-    await mountPanel();
+    await mountPanel(pinia);
     const section = sectionOf('Characters · Layer 1');
     expect(section.disabled).toBe(true);
     expect(section.title).toBe('Only the host changes character settings in a room.');
@@ -639,12 +637,12 @@ test('the By shape samples of upper layers stay within the renderer\'s budget, a
 // Every character setting is an undo step on every layer: a pick, a set typed or picked, a slider's drag (and a run of
 // key nudges), the seed typed or rolled. Each undone puts the layer's settings back and leaves the others alone.
 async function undoable(pick) {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   workspace.pickLayer(pick);
-  await mountPanel();
+  await mountPanel(pinia);
   const version = project.history.version;
   const steps = () => project.history.version - version;
-  return { project, steps, field: (id) => host.querySelector(`#${id}`) };
+  return { project, workspace, steps, field: (id) => host.querySelector(`#${id}`) };
 }
 const change = async (el, value, type = 'change') => {
   el.value = value;
@@ -666,7 +664,7 @@ test('Choose characters picked is one undo step, on a layer and on Base', async 
 });
 
 test('the Characters set typed is one undo step, a set picked from ▾ another, and its field keeps Cmd+Z for its own typing', async () => {
-  const { project, steps, field } = await undoable('edit');
+  const { project, workspace, steps, field } = await undoable('edit');
   const was = project.charsOf('edit').chars;
   const input = field('chars');
   await change(input, '#@');
@@ -674,7 +672,7 @@ test('the Characters set typed is one undo step, a set picked from ▾ another, 
   await change(host.querySelector('.charset-field select'), '1');
   expect(project.charsOf('edit').chars).not.toBe('#@');
   expect(steps()).toBe(2);
-  const keys = createApp({ setup() { useKeyboardShortcuts(project, useWorkspaceStore()); return () => null; } });
+  const keys = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
   keys.mount(document.createElement('div'));
   try {
     input.focus();
@@ -730,8 +728,8 @@ test('the seed typed is one undo step, and the dice roll another', async () => {
 });
 
 test('with real keys: a seed typed and entered, then Cmd+Z, undoes the step and the field shows it; typing not yet entered keeps Cmd+Z its own', async () => {
-  const { project } = await undoable('edit');
-  const keys = createApp({ setup() { useKeyboardShortcuts(project, useWorkspaceStore()); return () => null; } });
+  const { project, workspace } = await undoable('edit');
+  const keys = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => null; } });
   keys.mount(document.createElement('div'));
   try {
     const was = project.charsOf('edit').seed, seed = host.querySelector('#seed');

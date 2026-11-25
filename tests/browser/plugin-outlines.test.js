@@ -164,14 +164,14 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
   });
 
   test('the renderer\'s own check keeps the shaders on, and they draw the drawing', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 24, rows: 32 });
     Object.assign(project, { quantize: 'cga', chars: SET });
     const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
-    project.charChoice = await onSolver(def);
+    project.charChoice = await onSolver(def, { pinia });
     project.setLayerChars('base', { solverOptions: { [REF]: { ...DEFAULTS, threshold: 10 } } });
     await settle(project);
-    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBeUndefined();
     expect(spy.mock.results.some((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin')).toBe(true);
     expect(project.cells.some((c) => ASCII_LINES.includes(c.char))).toBe(true);
   });
@@ -196,17 +196,17 @@ describe.skipIf(!ShapeMatcher.available())('with WebGL2', () => {
   });
 
   test('switching presets in one visit draws the right lines on the graphics card', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/square.png', { cols: 24, rows: 32 });
     project.renderStyle = 'colorAscii';
     await settle(project);
-    const ref = await onSolver(def);
+    const ref = await onSolver(def, { pinia });
     for (const set of [ASCII_CHARSETS[0].chars, ...RAMPS]) {
       const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
       project.setLayerChars('base', { charsAscii: set, charChoiceAscii: ref });
       await settle(project);
       expect(spy.mock.results.some((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin'), set).toBe(true);
-      expect(usePluginStore().problems['phosphor.outlines'], set).toBeUndefined();
+      expect(usePluginStore(pinia).problems['phosphor.outlines'], set).toBeUndefined();
       const shown = key(project.cells);
       expect(project.cells.some((c) => c.char === '-'), set).toBe(true);
       spy.mockReturnValue(null); // the JavaScript's cells

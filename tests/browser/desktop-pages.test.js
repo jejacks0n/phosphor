@@ -5,7 +5,6 @@
 import { test, expect, afterEach, vi, onTestFinished } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
@@ -36,15 +35,15 @@ afterEach(() => {
 });
 
 async function mount(component, before = () => {}, props = {}) {
-  await createTestApp();
-  const room = useRoomStore(), social = useSocialStore();
-  await before({ room, social, drawing: useDrawingStore() });
+  const { pinia } = await createTestApp();
+  const room = useRoomStore(pinia), social = useSocialStore(pinia);
+  await before({ room, social, drawing: useDrawingStore(pinia) });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(component, props).use(getActivePinia()).use(i18n);
+  app = createApp(component, props).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { room, social };
+  return { room, social, pinia };
 }
 const button = (name, within = host) => [...within.querySelectorAll('button')].find((b) => (b.textContent.trim() || b.getAttribute('aria-label')) === name); // an icon's by its label
 const field = (label, within = host) => [...within.querySelectorAll('label')].find((l) => l.textContent.trim().startsWith(label))?.querySelector('input, textarea');
@@ -102,12 +101,12 @@ test('the side panel\'s Social tab is the start page, not the lobby', async () =
 test('a join waiting counts as unread while the chat isn\'t showing', async () => {
   await page.viewport(1200, 800);   // a wide window, where the panel shows unless it's folded
   onTestFinished(() => page.viewport(414, 896));
-  const { room } = await mount(SidePanel, ({ room, social }) => {
+  const { room, pinia } = await mount(SidePanel, ({ room, social }) => {
     social.claims = claims();
     hosting()({ room });
     useWorkspaceStore().sidePanelTab = 'layers';
   });
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   workspace.sidePanelTab = 'layers';
   await nextTick();
   workspace.sidePanelUnread = 0;
@@ -385,22 +384,22 @@ test('SocialDialogs desktop: no question, no account pages, no room link; Start 
 });
 
 test('LegalDialog desktop: the app\'s privacy note in place of the hosted service\'s policy; the Terms stay', async () => {
-  await mount(LegalDialog, () => {}, { page: 'privacy' });
+  const { pinia } = await mount(LegalDialog, () => {}, { page: 'privacy' });
   const body = () => document.querySelector('.legal-body').textContent;
   expect(body()).toContain('In a room, the people you connect with see your IP address. When you choose Check for Updates, it asks GitHub for Phosphor\'s releases, and GitHub sees your IP address.');
   expect(body()).toContain('When you open Plugins, it asks phosphor.work for the plugin list, and phosphor.work sees your IP address. When you install a plugin from the Marketplace, it asks GitHub for the plugin\'s files, and GitHub sees your IP address.');
   expect(body()).toContain('When you get a palette from Lospec by name or link, the app requests it from lospec.com, which sees the request and your IP address.');
   expect(body()).not.toContain('sends nothing to Phosphor');
   app.unmount();
-  app = createApp({ render: () => h(LegalDialog, { page: 'terms' }) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(LegalDialog, { page: 'terms' }) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   expect(document.querySelector('.legal-body h1').textContent).toBe('Terms');
 });
 
 test('DesktopStartPage keeps Start a room off while a layer is on a plugin solver or a plugin filter is set, saying why', async () => {
-  const { social } = await mount(DesktopStartPage, ({ social }) => social.setDesktopName('ansi-fan'));
-  const project = useProjectStore();
+  const { social, pinia } = await mount(DesktopStartPage, ({ social }) => social.setDesktopName('ansi-fan'));
+  const project = useProjectStore(pinia);
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 4 });
   project.setLayerChars('edit', { charChoice: 'plugin:jane.lines/lines' });
   await nextTick();

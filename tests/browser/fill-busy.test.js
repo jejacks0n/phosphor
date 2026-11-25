@@ -5,7 +5,6 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, h, nextTick, watch } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { busyMessage, pressedWhileBusy } from '@/composables/useBusy';
@@ -25,11 +24,11 @@ afterEach(() => {
 });
 
 async function blank() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 30, rows: 30 });
   await settle(project);
   Object.assign(workspace, { editorTab: 'input', editFgColor: '#ff0000' });
-  return { project, workspace, ctx: { project, workspace, view: 'input' } };
+  return { project, workspace, pinia, ctx: { project, workspace, view: 'input' } };
 }
 const ev = { stopPropagation() {} };
 const frames = (n = 3) => new Promise((resolve) => {
@@ -115,10 +114,10 @@ test('the Gradient\'s fill goes under the note too', async () => {
 });
 
 test('in the view, a press while the note is up starts nothing: no fill, no stroke', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 400px; display: flex' });
   document.body.append(host);
-  app = createApp({ render: () => h(InputEditor) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(InputEditor) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   await settle(project);
@@ -139,10 +138,10 @@ test('in the view, a press while the note is up starts nothing: no fill, no stro
 });
 
 test('in the view, a click made while the fill runs, which the page only gets after, starts nothing', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 400px; display: flex' });
   document.body.append(host);
-  app = createApp({ render: () => h(InputEditor) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(InputEditor) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   await settle(project);
@@ -182,21 +181,21 @@ async function notesWhile(run) {
   }
   return seen;
 }
-const mountWith = (setup) => {
+const mountWith = (pinia, setup) => {
   let out = null;
-  app = createApp({ setup() { out = setup(); return () => null; } }).use(getActivePinia()).use(i18n);
+  app = createApp({ setup() { out = setup(); return () => null; } }).use(pinia).use(i18n);
   app.mount(document.createElement('div'));
   return out;
 };
 
 test('Merge down goes under the note, and merges when it\'s drawn', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   const top = project.addLayer('cells');
   workspace.pickLayer(top);
   project.typeAt(3, 3, 'M', { fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
   await settle(project);
-  const { mergeDown } = mountWith(useMergeDown);
+  const { mergeDown } = mountWith(pinia, useMergeDown);
   const notes = await notesWhile(async () => {
     const merged = mergeDown(top);
     expect(busyMessage.value).toBe('Merging…');
@@ -209,11 +208,11 @@ test('Merge down goes under the note, and merges when it\'s drawn', async () => 
 });
 
 test('Delete and Cut of a selection by key, and a paste of the block, go under the note', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   project.typeAt(3, 3, 'D', { fg: '#ffffff', bg: '#000000' });
   project.commitEdit();
   await settle(project);
-  mountWith(() => useKeyboardShortcuts(project, workspace));
+  mountWith(pinia, () => useKeyboardShortcuts(project, workspace));
   Object.assign(workspace, { editorTab: 'output' });
   workspace.setActiveTool('select');
   const press = (key, extra = {}) => window.dispatchEvent(new KeyboardEvent('keydown', { key, cancelable: true, ...extra }));

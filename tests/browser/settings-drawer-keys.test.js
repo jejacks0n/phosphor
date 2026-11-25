@@ -4,10 +4,8 @@
 import { afterEach, expect, test } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import ControlPanel from '@/components/ControlPanel.vue';
 import EditTabs from '@/components/EditTabs.vue';
 
@@ -20,12 +18,11 @@ afterEach(() => {
 
 test('the settings drawer takes focus when opened from the keys, and Escape shuts it', async () => {
   await page.viewport(414, 896);
-  const { project } = await createTestApp();
-  const workspace = useWorkspaceStore();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp({ render: () => [h(ControlPanel), h(EditTabs, { modelValue: 'input' })] }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => [h(ControlPanel), h(EditTabs, { modelValue: 'input' })] }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
 

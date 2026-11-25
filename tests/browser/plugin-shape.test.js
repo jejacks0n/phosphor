@@ -3,11 +3,11 @@
 import { test, expect, afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { createPinia, getActivePinia, setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { getTool } from '@/tools';
 import { createTestApp, loadImage } from '../support/app.js';
-import { onPlugin } from '../support/pluginSolvers.js';
+import { onPlugin as onPluginIn } from '../support/pluginSolvers.js';
 import { i18n, t } from '@/i18n/index.js';
 import EditToolbar from '@/components/EditToolbar.vue';
 import * as shapeTool from '@/tools/vshape.js';
@@ -19,9 +19,12 @@ import { ownHangMark } from '../support/ownHangMark.js';
 
 const vshape = shapeTool.default;
 let mounted = null, host = null;
+// The test's own Pinia (shaper()'s): a store asked for after an await may be a test's that finished late.
+let pinia = null;
+const onPlugin = (parts, opts) => onPluginIn(parts, { pinia, ...opts });
 beforeAll(() => page.viewport(1200, 800));
 afterAll(() => page.viewport(414, 896));
-afterEach(() => { mounted?.unmount(); host?.remove(); mounted = host = null; localStorage.clear(); vi.restoreAllMocks(); useRoomStore().role = null; });
+afterEach(() => { mounted?.unmount(); host?.remove(); mounted = host = null; localStorage.clear(); vi.restoreAllMocks(); useRoomStore(pinia).role = null; });
 
 const ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path d="M8 1L15 15H1z"/></svg>';
 const TRIANGLE = [{ closed: true, points: [[0, 0], [1, 0], [0.5, 1]] }];
@@ -38,6 +41,7 @@ const shape = (over = {}) => ({
 // point, end).
 async function shaper(over = {}, { hash = 'h' } = {}) {
   const app = await createTestApp();
+  ({ pinia } = app);
   await loadImage(app.project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
   app.workspace.editorTab = 'vector';
   app.workspace.setActiveTool('vshape');
@@ -60,7 +64,7 @@ const corners = (points) => points.map((p) => [p[0], p[1]]);
 const mount = async () => {
   host = document.createElement('div');
   document.body.append(host);
-  mounted = createApp({ render: () => h(EditToolbar) }).use(getActivePinia()).use(i18n);
+  mounted = createApp({ render: () => h(EditToolbar) }).use(pinia).use(i18n);
   mounted.mount(host);
   await nextTick();
   await new Promise((resolve) => requestAnimationFrame(resolve));
@@ -143,7 +147,7 @@ test('an outline that throws or is refused draws nothing, no undo step, one toas
     expect(calls).toBe(1);
     expect(project.shapes.size).toBe(0);
     expect([project.history.version, project.history.last]).toEqual([version, last]);
-    expect(usePluginStore().problems['phosphor.outlines']).toBe(words);
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(words);
   }
 });
 
@@ -176,7 +180,7 @@ test('the row shows the shape\'s icon after Polygon, and its options only while 
 test('dropScript while it\'s chosen: the kind reads Rectangle, a drag draws one, and the row lights Rectangle', async () => {
   const { project, workspace, drag } = await shaper();
   await mount();
-  usePluginStore().dropScript('phosphor.outlines');
+  usePluginStore(pinia).dropScript('phosphor.outlines');
   await nextTick();
   expect(shapeTool.shapeKind(workspace)).toBe('rect');
   drag({ x: 10, y: 10 }, { x: 30, y: 20 });
@@ -188,12 +192,12 @@ test('dropScript while it\'s chosen: the kind reads Rectangle, a drag draws one,
 
 test('in a room it isn\'t in the row, and a drag draws a rectangle', async () => {
   const { project, workspace, ref, drag } = await shaper();
-  useRoomStore().role = 'host';
+  useRoomStore(pinia).role = 'host';
   expect(vshape.options[0].choices.map((c) => c.value)).toEqual(['rect', 'ellipse', 'polygon']);
   expect(shapeTool.shapeKind(workspace)).toBe('rect');
   drag({ x: 10, y: 10 }, { x: 30, y: 20 });
   expect(only(project)[0].points).toHaveLength(4);
-  useRoomStore().role = null;
+  useRoomStore(pinia).role = null;
   expect(shapeTool.shapeKind(workspace)).toBe(ref);
 });
 
@@ -201,14 +205,13 @@ test('a brush and a shape of one id in one plugin keep their values apart, in th
   const { workspace, ref } = await shaper();
   const option = { id: 'points', kind: 'slider', name: 'Points', min: 1, max: 12, step: 1, default: 5 };
   const brush = { id: 'triangle', name: 'Triangle', icon: ICON, options: [option], move() {} };
-  usePluginStore().useScript('phosphor.outlines', 'h', { brushes: [brush], shapes: [shape({ options: [option] })] });
+  usePluginStore(pinia).useScript('phosphor.outlines', 'h', { brushes: [brush], shapes: [shape({ options: [option] })] });
   const brushOption = getTool(ref).options[0], shapeOption = vshape.options.find((o) => o.label === 'Points');
   brushOption.set(workspace, 2);
   shapeOption.set(workspace, 9);
   expect([brushOption.get(workspace), shapeOption.get(workspace)]).toEqual([2, 9]);
   await nextTick();
   await new Promise((resolve) => setTimeout(resolve, 20));
-  const pinia = getActivePinia();
   setActivePinia(createPinia());
   const fresh = useWorkspaceStore();
   expect([brushOption.get(fresh), shapeOption.get(fresh)]).toEqual([2, 9]);
@@ -373,7 +376,7 @@ test('only the chosen kind\'s options show, whatever is selected; chosen, they c
   expect(keys.map((k) => project.shapes.get(k).points.length)).toEqual([4, 4]);
   expect(project.shapes.get(keys[1]).made.box).toEqual([2, 30, 8, 36]);
   // Its plugin turned off, it's a path until it's back: no option of it shows.
-  usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;
+  usePluginStore(pinia).plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;
   expect(vshape.options.some((option) => option.label === 'Points')).toBe(false);
   expect(project.shapes.get(keys[0]).made.kind).toBe(ref);
 });
@@ -467,7 +470,7 @@ test('the row follows the selection: a shape that remembers what made it chooses
   expect(workspace.vectorSelected).toEqual([star]);
   expect(workspace.vectorShapeKind).toBe('polygon');
   // A kind that isn't on offer (its plugin off) isn't followed.
-  usePluginStore().plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;
+  usePluginStore(pinia).plugins.find(({ id }) => id === 'phosphor.outlines').enabled = false;
   await select(star);
   expect(workspace.vectorShapeKind).toBe('polygon');
   expect(project.shapes.get(star).made.kind).toBe(ref);

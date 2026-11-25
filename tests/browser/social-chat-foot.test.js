@@ -2,7 +2,6 @@
 // pass is being swapped (a rename, a renewal, signing in) and who you are isn't known; Escape in its box goes back out.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
@@ -11,7 +10,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { silencedWords, dayAndTime } from '@/social/chat';
 import ChatFoot from '@/components/social/ChatFoot.vue';
 
-let app = null, host = null;
+let app = null, host = null, pinia = null;
 afterEach(() => {
   vi.useRealTimers();
   app?.unmount();
@@ -21,14 +20,14 @@ afterEach(() => {
 const claims = (fields) => ({ sub: 'u_1', name: 'wren', guest: false, verified: true, key: 'k', exp: 0, ...fields });
 
 async function mount() {
-  await createTestApp();
-  useRoomStore().role = 'watch';
+  ({ pinia } = await createTestApp()); // the test's own: after an await, the active one may be a late test's
+  useRoomStore(pinia).role = 'watch';
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ChatFoot).use(getActivePinia()).use(i18n);
+  app = createApp(ChatFoot).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return useSocialStore();
+  return useSocialStore(pinia);
 }
 const foot = () => host.querySelector('footer').textContent.trim();
 
@@ -96,12 +95,12 @@ test('Escape in the box goes back where Alt+T came from (not an IME\'s), and a s
   const social = await mount();
   social.claims = claims({});
   await nextTick();
-  const workspace = useWorkspaceStore(), box = host.querySelector('textarea');
+  const workspace = useWorkspaceStore(pinia), box = host.querySelector('textarea');
   const back = document.createElement('button');
   host.append(back);
   workspace.chatReturn = back;
   let said;
-  vi.spyOn(useRoomStore(), 'say').mockReturnValue(new Promise((resolve) => { said = resolve; }));
+  vi.spyOn(useRoomStore(pinia), 'say').mockReturnValue(new Promise((resolve) => { said = resolve; }));
   box.focus();
   box.value = 'hi';
   box.dispatchEvent(new Event('input'));

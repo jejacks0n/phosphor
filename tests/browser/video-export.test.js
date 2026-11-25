@@ -3,22 +3,21 @@ import { ALL_FORMATS, BufferSource, Input, VideoSampleSink } from 'mediabunny';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { drawnCells } from '@/lib/GifFile.js';
 import { canExportVideo, videoFile, videoSettings } from '@/lib/VideoFile.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 async function twoFrames(cols = 8) {
-  const { project } = await createTestApp();
+  const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows: 8 });
   project.typeAt(1, 1, 'A', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
   project.addFrame('wipe');
   await settle(project);
-  return { project, frames: await project.animationCells() };
+  return { project, workspace, frames: await project.animationCells() };
 }
 
 test('the browser encodes an MP4 of the frames, each pixel 2×2, at each frame’s own time, telling progress as it goes', async () => {
   expect(canExportVideo()).toBe(true);
-  const { project, frames } = await twoFrames();
-  const smooth = useWorkspaceStore().smoothText, told = [];
+  const { project, workspace, frames } = await twoFrames();
+  const smooth = workspace.smoothText, told = [];
   const bytes = await videoFile(frames, project.cols, 4, [250, 500], { smooth, progress: (share) => told.push(share) });
   expect(told).toEqual([0.5, 1]);
   expect(new TextDecoder().decode(bytes.slice(4, 8))).toBe('ftyp');

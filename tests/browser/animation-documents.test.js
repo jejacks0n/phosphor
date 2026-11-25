@@ -9,9 +9,9 @@ import { readProject } from '@/document/projectIO.js';
 const INK = { fg: '#ffee00', bg: '#0044aa' };
 
 async function animated({ cols = 20, rows = 20 } = {}) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 const charAt = (project, col, row) => project.cells[cellIndex(col, row, project.cols)]?.char;
 const type = (project, col, row, char) => { project.typeAt(col, row, char, INK); project.commitEdit(); };
@@ -177,22 +177,22 @@ test('a new image or new document resets to one frame', async () => {
 });
 
 test('startRoom refuses a document with more than one frame', async () => {
-  const { project } = await animated();
+  const { project, pinia } = await animated();
   project.addFrame('blank');
-  const room = useRoomStore(), social = useSocialStore();
+  const room = useRoomStore(pinia), social = useSocialStore(pinia);
   const request = vi.spyOn(social, 'request');
   await expect(room.startRoom({ name: 'Night', welcome: '', isPublic: true, allowGuests: true, max: 12 })).resolves.toBe(false);
   expect(request).not.toHaveBeenCalled();
 });
 
 test('a room you host is a still from the start, with no one drawing yet: Animate turns off and stays off until it ends', async () => {
-  const { project } = await animated();
+  const { project, pinia } = await animated();
   project.setAnimate(true);
   project.addFrame('blank');
   const { writeProject } = await import('@/document/projectIO.js');
   const movie = new File([await writeProject({ imageBuffer: project.imageBuffer, ...(await project.projectParts()) })], 'movie.phosphor');
   project.deleteFrame();
-  const room = useRoomStore();
+  const room = useRoomStore(pinia);
   room.hostRoom({ id: 'abcdefghij', room: { name: 'R' } });
   expect([project.animate, project.canAnimate]).toEqual([false, false]);
   project.setAnimate(true);

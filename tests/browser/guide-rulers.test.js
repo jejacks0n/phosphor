@@ -3,7 +3,6 @@
 // them to go, they hide past the drawing's edge, and the moving label counts from zero.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick, reactive } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import GuideRulers from '@/components/GuideRulers.vue';
@@ -18,7 +17,7 @@ afterEach(() => {
 
 // A 400 × 300 view with the drawing (20 × 10 characters, 10 × 20 px each) at left 50, top 40.
 async function mount() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   workspace.rulers = true;
   root = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px; overflow: hidden' });
@@ -30,7 +29,7 @@ async function mount() {
     return { x: (e.clientX - r.left) / 10, y: (e.clientY - r.top) / 10 };
   };
   const props = reactive({ box: { left: '0px', top: '0px', width: '400px', height: '300px' }, root, display, unit: { x: 10, y: 10 }, coordsAt, hover: null });
-  app = createApp({ render: () => h(GuideRulers, props) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(GuideRulers, props) }).use(pinia).use(i18n);
   app.mount(root.appendChild(document.createElement('div')));
   await nextTick();
   return { project, workspace, props, at: display.getBoundingClientRect() };
@@ -230,12 +229,12 @@ test('zero dragged to an edge reads before the first column or after the last', 
 });
 
 test('in a real view the Brush and Eraser circle draws over the rulers, which stay under others\' cursors', async () => {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   workspace.rulers = true;
   root = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px' });
   document.body.append(root);
-  app = createApp({ render: () => h(InputEditor) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(InputEditor) }).use(pinia).use(i18n);
   app.mount(root);
   await nextTick();
   const z = (selector) => Number(getComputedStyle(root.querySelector(selector)).zIndex);

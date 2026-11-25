@@ -5,7 +5,6 @@
 // the table's keys for the platform the tests run on (a Mac here, Linux on CI).
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle, cellsKey } from '../support/app.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -25,15 +24,15 @@ afterEach(() => {
 // A blank CGA drawing in the ANSI view, with the app's keys: the Text tool's first, as AnsiEditor's mount before
 // EditWorkspace's.
 async function mount() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
   project.quantize = 'cga';
   await settle(project);
   workspace.editorTab = 'output';
   app = createApp({ setup() { useTextTool(project, workspace, null); useKeyboardShortcuts(project, workspace); return () => null; } })
-    .use(getActivePinia()).use(i18n);
+    .use(pinia).use(i18n);
   app.mount(document.createElement('div'));
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 
 const VALUES = { ArrowUp: 'ArrowUp', ArrowDown: 'ArrowDown', ArrowLeft: 'ArrowLeft', ArrowRight: 'ArrowRight', Comma: ',', Period: '.' };
@@ -96,8 +95,8 @@ test('the color steps leave a stroke under way alone', async () => {
 });
 
 test('Ctrl+. and Ctrl+, step the character set, with the cursor placed or not', async () => {
-  const { workspace } = await mount();
-  const palettes = usePaletteStore();
+  const { workspace, pinia } = await mount();
+  const palettes = usePaletteStore(pinia);
   workspace.setActiveTool('text');
   const first = palettes.active.id;
   expect(pressCommand('characters.setNext').defaultPrevented).toBe(true);

@@ -2,7 +2,6 @@
 // saying how many characters fit when an edit went past it, and the fields off for an artist in a room.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import SauceEditor from '@/components/SauceEditor.vue';
@@ -27,7 +26,7 @@ async function mount(before = () => {}) {
   before(stores);
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(SauceEditor).use(getActivePinia()).use(i18n);
+  app = createApp(SauceEditor).use(stores.pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return stores;

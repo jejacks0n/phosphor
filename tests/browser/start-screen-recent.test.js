@@ -25,10 +25,11 @@ afterEach(async () => {
 const at = (text) => new Date(text).getTime();
 const row = (id, extra) => ({ id, filename: 'long-20261113-214338', fileExt: 'ans', editedAt: at('2026-11-13T21:49:12'), openElsewhere: false, ...extra });
 
-function mount(recent, width = 900) {
+function mount(recent, width = 900, pinia = null) {
   host = Object.assign(document.createElement('div'), { style: `width: ${width}px; display: flex` });
   document.body.append(host);
   mounted = createApp(ZeroState, { recent, openRecent: () => {} }).use(i18n);
+  if (pinia) mounted.use(pinia); // a test's own: after its awaits, the active one may be a late test's
   mounted.mount(host);
   return [...host.querySelectorAll('.recent li')];
 }
@@ -267,10 +268,11 @@ test('a Keyboard box gives the keys to the command list and the shortcuts list, 
   const { createPinia, setActivePinia } = await import('pinia');
   const { useWorkspaceStore } = await import('@/store/WorkspaceStore');
   const { keyLabel } = await import('@/lib/keymap');
-  setActivePinia(createPinia());
-  const workspace = useWorkspaceStore();
+  const pinia = createPinia();
+  setActivePinia(pinia);
+  const workspace = useWorkspaceStore(pinia);
   await onAComputer();
-  mount([row('a')], 900);
+  mount([row('a')], 900, pinia);
   const box = host.querySelector('section.keys');
   expect(matchMedia('(any-pointer: fine)').matches).toBe(true); // the test browser has a mouse: the box shows
   expect(box.querySelector('h2').textContent).toBe('Keyboard');

@@ -1,7 +1,6 @@
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { drawnCells, gifFile } from '@/lib/GifFile.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { setDisplayFont } from '@/lib/displayFonts.js';
 import { font11 } from '../support/blockFonts.js';
 
@@ -21,13 +20,13 @@ async function decodedFrames(bytes, count) {
 }
 
 test('the worker writes a GIF a browser decodes, each frame matching the canvas, telling progress as it goes', async () => {
-  const { project } = await createTestApp();
+  const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   project.typeAt(1, 1, 'A', { fg: '#ffee00', bg: '#0044aa' });
   project.commitEdit();
   project.addFrame('wipe');
   await settle(project);
-  const frames = await project.animationCells(), smooth = useWorkspaceStore().smoothText, told = [];
+  const frames = await project.animationCells(), smooth = workspace.smoothText, told = [];
   const bytes = await gifFile(frames, project.cols, 4, [13, 13], { smooth, progress: (share) => told.push(share) });
   expect(told).toEqual([0.5, 1]);
   const drawn = await drawnCells(project.cols, 4, { smooth }, ({ width, height, rgba }) => ({ width, height, frames: frames.map((cells) => rgba(cells).slice()) }));

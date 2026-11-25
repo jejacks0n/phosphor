@@ -4,7 +4,7 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { createPinia, getActivePinia, setActivePinia } from 'pinia';
+import { createPinia, setActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import HistoryPanel from '@/components/dev/HistoryPanel.vue';
 import SidePanel from '@/components/SidePanel.vue';
@@ -79,10 +79,11 @@ test('the skip set leaves out queries and renders, but keeps the grid-size steps
 // The tab itself, in SidePanel, mounted as side-panel.test.js does.
 async function mountSidePanel() {
   app.unmount(); // the panel on its own, from beforeEach
-  await createTestApp();
+  const stores = await createTestApp();
+  workspace = stores.workspace; // the test's own, by name: after the awaits, the active Pinia may be a late test's
   await page.viewport(1200, 800); // a wide screen, where the side panel shows
   host.style.cssText = 'display:flex;height:600px';
-  app = createApp({ render: () => h(SidePanel) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(SidePanel) }).use(stores.pinia).use(i18n);
   app.mount(host);
   await nextTick();
 }
@@ -95,7 +96,7 @@ test('the side panel has a History tab after Social, and picking it shows the pa
   expect(host.querySelector('aside.history')).toBeNull();
   host.querySelectorAll('.side-panel [role=tab]')[2].click();
   await vi.waitFor(() => expect(host.querySelector('aside.history')).not.toBeNull()); // the component loads lazily
-  expect(useWorkspaceStore().sidePanelTab).toBe('history');
+  expect(workspace.sidePanelTab).toBe('history');
   await page.viewport(414, 896);
 });
 
@@ -122,7 +123,7 @@ test('outside development the tab is hidden until phosphor.history(true) is run,
     window.phosphor.history(false);
     await nextTick();
     expect(tabs()).toEqual(['Layers', 'Social Beta']);
-    expect(useWorkspaceStore().sidePanelTab).toBe('layers');
+    expect(workspace.sidePanelTab).toBe('layers');
     expect(host.querySelector('aside.history')).toBeNull();
     await vi.waitFor(() => expect(localStorage.getItem('phosphor.history')).toBe('false'));
 
