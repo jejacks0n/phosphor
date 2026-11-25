@@ -2,7 +2,7 @@
 // line, folds repeats, summarizes arguments (and keeps none of a store's named so), keeps window errors as lines too, and
 // keeps the newest LIMIT.
 import { beforeEach, expect, test } from 'vitest';
-import { createApp } from 'vue';
+import { computed, createApp, effect } from 'vue';
 import { createPinia, defineStore, setActivePinia } from 'pinia';
 import { LIMIT, clearLog, installActionLog, log, logText, record, recordError } from '@/dev/actionLog.js';
 
@@ -13,6 +13,7 @@ const useToy = defineStore('toy', {
     stroke() { this.paint([1]); this.paint([2]); },
     boom() { throw new Error('no'); },
     read() { return this.n; },
+    ask() { return this.n; }, // a query like read, but one the log keeps
     peek() { this.paint([1]); }, // skipped, and calls one that isn't
   },
 });
@@ -45,6 +46,56 @@ test('a store named so is logged by its actions\' names alone: no argument is ke
   store.paint('brush');
   expect(log.entries.at(-1)).toMatchObject({ text: 'toy.paint', args: '("brush")' });
   expect(logText({ version: '1', sha: 'a', userAgent: 'ua', viewport: '1×1' })).not.toMatch(/combination|another|ledger|pin/);
+});
+
+// A screen's computed value or its render often asks a store something through an action. The log's own list must be
+// no business of theirs: read while one runs, it became their dependency, and written in the same breath it made them
+// run again, each run logging a line that made the next. A built app has no guard against that, and froze.
+test('the log is no dependency of whoever calls an action: a computed that calls one runs once, and a line logged later leaves it be', () => {
+  let runs = 0;
+  const asked = computed(() => {
+    runs++;
+    return store.ask('from a computed');
+  });
+  expect(asked.value).toBe(0);
+  expect(runs).toBe(1);
+  useVault().open(); // another line in the log, which is nothing the computed read
+  expect(asked.value).toBe(0);
+  expect(runs).toBe(1);
+  expect(log.entries.map((e) => e.text)).toEqual(['toy.ask', 'vault.open']);
+  store.paint(1); // what it did read changes: it runs again, once
+  expect(asked.value).toBe(1);
+  expect(runs).toBe(2);
+});
+
+test('an effect that calls an action isn\'t run again by its own line, or by anyone else\'s', () => {
+  let runs = 0;
+  const stop = effect(() => {
+    runs++;
+    store.stroke();
+  });
+  try {
+    expect(runs).toBe(1);
+    recordError('something else happened');
+    record('toy', 'elsewhere', '');
+    expect(runs).toBe(1);
+  } finally {
+    stop.effect.stop();
+  }
+});
+
+test('what shows the log still hears of every line', () => {
+  const lines = computed(() => log.entries.length);
+  expect(lines.value).toBe(0);
+  store.paint(1);
+  expect(lines.value).toBe(1);
+  store.paint(2); // folded into the same line: a new entry in its place
+  const folded = computed(() => log.entries.at(-1).count);
+  expect(folded.value).toBe(2);
+  store.paint(3);
+  expect(folded.value).toBe(3);
+  clearLog();
+  expect(lines.value).toBe(0);
 });
 
 test('an error line keeps the first 200 characters of its message', () => {
