@@ -100,7 +100,7 @@ test('it asks what you were doing and what went wrong, and Send waits for the se
 
 test('what you write becomes public, and the note above Send says so, with the build and browser that go with it', async () => {
   await open();
-  expect(dialog().querySelector('p.public').textContent.trim()).toBe('What you write becomes a public issue on GitHub. Your drawing and steps go only to Phosphor\'s developer.');
+  expect(dialog().querySelector('p.public').textContent.trim()).toBe('What you write will create a public issue on GitHub. Your drawing and actions taken will only be visible to Phosphor\'s developer.');
   const { version, sha } = __BUILD__;
   expect(dialog().querySelector('p.with').textContent.trim()).toMatch(new RegExp(`^Sent with it: Phosphor ${version.replaceAll('.', '\\.')} \\(${sha}\\), Chrome \\d+ on \\w+\\.$`));
   const form = dialog().querySelector('form');

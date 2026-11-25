@@ -32,7 +32,7 @@ test('on a beta, Report an issue under the logo sends what was written, the draw
   await banner.getByRole('button', { name: 'Report an issue' }).click();
   const dialog = page.getByRole('dialog', { name: 'Report an issue' });
   await expect(dialog.getByLabel('What were you doing?')).toBeFocused();
-  await expect(dialog.getByText('What you write becomes a public issue on GitHub.')).toBeVisible();
+  await expect(dialog.getByText('What you write will create a public issue on GitHub.')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Send' })).toBeDisabled();
   await dialog.getByLabel('What were you doing?').fill('Opening a picture');
   await dialog.getByLabel('What went wrong?').fill('The sky came out too dark');
