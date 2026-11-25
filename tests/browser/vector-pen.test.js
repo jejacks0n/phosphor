@@ -230,3 +230,26 @@ test('the knob turns a shape on screen in an 8×8 font: a 4 x 8 square turned a 
   expect(sw).toBeCloseTo(4, 3);
   expect(sh).toBeCloseTo(8, 3);
 });
+
+// The first shape of a drawing brings its vector layer. Taken back before it's a step (a lone Pen point removed), the
+// layer goes with it: no undo step would hold it, and a later redo of a step from before it would drop it.
+test('a first Pen point taken back takes the vector layer it brought, and VECTOR stays, ready for the next', async () => {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
+  workspace.editorTab = 'vector';
+  const stack = project.layers.map((layer) => layer.id), state = () => [workspace.editorTab, workspace.pickedLayer, workspace.lastCellsPick, project.editId, project.canUndo];
+  const before = state();
+  expect(project.hasVectorLayer).toBe(false);
+  project.penPoint(5, 5, null);
+  expect(project.hasVectorLayer).toBe(true); // the point's shape brought it
+  project.penBack();
+  expect(project.shapes.size).toBe(0);
+  expect(project.layers.map((layer) => layer.id)).toEqual(stack);
+  expect(state()).toEqual(before); // still VECTOR, the layer the next shape brings picked, Layer 1 the cells layer to go back to, nothing to undo
+
+  const key = project.addShape(rectShape(2, 2, 8, 8, { fill: '#ff0000' })); // the next one brings it again, as a step
+  expect(project.layers.map((layer) => layer.kind)).toContain('vector');
+  expect(workspace.pickedLayer).toBe(project.shapes.get(key).layer ?? 'vector');
+  project.undo();
+  expect(project.layers.map((layer) => layer.id)).toEqual(stack);
+});

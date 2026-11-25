@@ -292,7 +292,9 @@ export const historyActions = {
 
   // Take back the open edit without recording it (a stroke a pinch interrupted): its paint, base
   // pixels, edit cells and pins go back as they were. A typing run or the Pen's shape isn't interrupted by a
-  // pinch: it stays (the Pen takes back the point the press made).
+  // pinch: it stays (the Pen takes back the point the press made). The vector layer its first shape brought
+  // (refreshShapes) goes with it, as that step's undo would have taken it (commitEdit): left in the stack, no step would
+  // hold it, and the redo of a step from before it would drop it.
   cancelEdit() {
     const stroke = this._stroke;
     if (!stroke || stroke.typing || stroke.pen) return;
@@ -313,6 +315,15 @@ export const historyActions = {
     this.editCells = stroke.editCells;
     this.shapes = stroke.shapes;
     this.setBaseRecords(stroke.baseRecords);
+    const brought = stroke._layersBefore && this.layers.find((layer) => layer.kind === 'vector' && !stroke._layersBefore.includes(layer));
+    if (brought) {
+      this._takingBack = true; // followLayerPick: VECTOR stays, with the layer the next shape brings picked
+      try {
+        this.layers = this.layers.filter((layer) => layer !== brought);
+      } finally {
+        this._takingBack = false;
+      }
+    }
     this.refreshChanged([[patch, this.paintLayer], [basePatch, this.baseLayer]], pairs);
     this.refreshShapes();
   },
