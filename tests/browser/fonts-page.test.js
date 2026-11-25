@@ -19,6 +19,10 @@ import { useFontActions } from '@/composables/useFontActions.js';
 import { toastMessage, toastAction, closeToast } from '@/composables/useToast.js';
 import { askFontWidth } from '@/composables/useFontWidth.js';
 
+// A font's answer reaches the browser's copy (IndexedDB) after the step that changed it returns: on a machine busy with
+// other test files that can take longer than waitFor's default second (drawing-font.test.js's did), so those waits get longer.
+const PATIENT = { interval: 5, timeout: 10_000 };
+
 // A stand-in linked font: the font whose id a test sets is FROGBLOCK, as FROGBLOCK's bytes can't be shipped.
 vi.mock('@/lib/linkedFonts', async (importOriginal) => {
   const real = await importOriginal();
@@ -399,7 +403,7 @@ test('+ Load of the drawing\u2019s own font keeps the blocks set on it, and keep
   files.items.add(new File([lowerAt240.bytes], 'L.F16'));
   input.files = files.files;
   input.dispatchEvent(new Event('change'));
-  await vi.waitFor(async () => expect((await storedBitmapFont(fontId(lowerAt240))).blocks).toEqual(blocks));
+  await vi.waitFor(async () => expect((await storedBitmapFont(fontId(lowerAt240))).blocks).toEqual(blocks), PATIENT);
   expect(project.fontBlocks).toBe(before);
 });
 
@@ -414,7 +418,7 @@ test('+ Load of the drawing\u2019s own font keeps the lines and sets made on it,
   files.items.add(new File([lowerAt240.bytes], 'L.F16'));
   input.files = files.files;
   input.dispatchEvent(new Event('change'));
-  await vi.waitFor(async () => expect((await storedBitmapFont(fontId(lowerAt240))).sets).toEqual(sets));
+  await vi.waitFor(async () => expect((await storedBitmapFont(fontId(lowerAt240))).sets).toEqual(sets), PATIENT);
   expect((await storedBitmapFont(fontId(lowerAt240))).lines).toEqual(lines);
   expect([project.fontLines, project.fontSets]).toEqual(before);
 });
@@ -595,13 +599,13 @@ test('an edit to a font only in the browser is kept with it and leaves the drawi
   await vi.waitFor(() => expect(tiles()[1]?.slot).toBe('240'));
   await press(tile('Lower'));
   await press(slotCell(254));
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks?.[1]).toBe(254));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks?.[1]).toBe(254), PATIENT);
   expect(project.fontBlocks).toBe(''); // the drawing's font is untouched
   expect(workspace.userFonts.find((f) => f.id === stored.id).blocks[1]).toBe(254);
   await vi.waitFor(async () => expect(await actions()).toContain('Find blocks again'));
   await more();
   await press(button('Find blocks again'));
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toBeUndefined());
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toBeUndefined(), PATIENT);
 });
 
 test('a palette tied to the font stays tied after its blocks change', async () => {
@@ -871,7 +875,7 @@ test('a stored font\u2019s lines are kept in this browser', async () => {
   await press(button('+ New line style'));
   await vi.waitFor(() => expect(lineTiles()).toHaveLength(11));
   await press(slotCell(1));
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots[0]).toBe(1));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots[0]).toBe(1), PATIENT);
   expect(project.historyVersion).toBe(version);
   expect(project.fontLines).toBe('');
 });
@@ -888,7 +892,7 @@ test('two clicks on a stored font\u2019s sheet, the second before the first is w
   await vi.waitFor(() => expect(lineTiles()).toHaveLength(11));
   await press(slotCell(1)); // only the page drawn again between them (as between two real clicks), not this browser's store written
   await press(slotCell(2));
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines?.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]), PATIENT);
   expect(workspace.userFonts.find((f) => f.id === stored.id).lines.styles[0].slots.slice(0, 3)).toEqual([1, 2, null]);
 });
 
@@ -907,15 +911,15 @@ test('Delete on a font kept only in this browser says so, with an Undo that puts
   await press(host.querySelector('.lines .card button.ghost')); // Heavy's Delete
   expect(toastMessage.value).toBe('Deleted Heavy.');
   expect(toastAction.value.label).toBe('Undo');
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => s.id)).toEqual(['l2']));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => s.id)).toEqual(['l2']), PATIENT);
   toastAction.value.run();
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles).toEqual([heavy, thin]));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles).toEqual([heavy, thin]), PATIENT);
   await vi.waitFor(() => expect([...host.querySelectorAll('.lines .card input')].map((el) => el.value)).toEqual(['Heavy', 'Thin']));
   await press(sectionTab('Sets'));
   await press(host.querySelector('.sets .set button.ghost'));
   expect(toastMessage.value).toBe('Deleted Grit.');
   toastAction.value.run();
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).sets.sets.map((s) => s.name)).toEqual(['Grit']));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).sets.sets.map((s) => s.name)).toEqual(['Grit']), PATIENT);
 });
 
 test('the toast\u2019s Undo puts a deleted style back under a new id when a newer style has taken its own', async () => {
@@ -932,9 +936,9 @@ test('the toast\u2019s Undo puts a deleted style back under a new id when a newe
   await press(host.querySelectorAll('.lines .card button.ghost')[1]); // Thin's Delete
   const undo = toastAction.value.run;
   await press(button('+ New line style')); // l2 again
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => s.id)).toEqual(['l1', 'l2']));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => s.id)).toEqual(['l1', 'l2']), PATIENT);
   undo();
-  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => [s.id, s.name])).toEqual([['l1', 'Heavy'], ['l3', 'Thin'], ['l2', 'Line 2']]));
+  await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines.styles.map((s) => [s.id, s.name])).toEqual([['l1', 'Heavy'], ['l3', 'Thin'], ['l2', 'Line 2']]), PATIENT);
 });
 
 test('Delete on the drawing\u2019s font is an undo step, with no toast', async () => {
@@ -1776,7 +1780,7 @@ test('a stored font not in use shows 7 · 8 and pressing stores its answer witho
   expect(Math.abs((width.top + width.bottom) / 2 - (use.top + use.bottom) / 2)).toBeLessThan(2); // on Use this font's line
   const drawn = project.drawingFont.cellWidth;
   await press(widthButtons()[1]);
-  await vi.waitFor(async () => expect((await storedBitmapFont(id)).width).toBe(8));
+  await vi.waitFor(async () => expect((await storedBitmapFont(id)).width).toBe(8), PATIENT);
   expect(pressed()).toEqual(['8']);
   expect(project.drawingFont.cellWidth).toBe(drawn);
   expect(fontId(project.drawingFont)).toBe(fontId(fontA()));

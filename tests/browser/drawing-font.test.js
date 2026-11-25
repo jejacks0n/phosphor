@@ -25,6 +25,11 @@ afterEach(async () => {
   setGlyphRasterizer(rasterizeCoverage);
 });
 
+// A font's answer is written to the browser's copy (IndexedDB) and read back into the workspace's list after the step
+// that changed it returns: on a machine busy with other test files that took longer than waitFor's default second (the
+// width test's first wait timed out twice beside a 30-seed fuzz run, and passed alone), so those waits get longer.
+const PATIENT = { interval: 5, timeout: 10_000 };
+
 // Test fonts say where their blocks are (CP437's): their glyphs are noise, in which none would be found.
 const font = () => ({ name: 'Topaz', height: 8, bytes: Uint8Array.from({ length: 256 * 8 }, (_, i) => i % 251), blocks: [...CP437_BLOCKS] });
 
@@ -463,13 +468,13 @@ test('undo and redo of a change to the drawing\u2019s font\u2019s lines or block
     project.setDrawingFont({ ...project.drawingFont, blocks });
     await storeFontPart(stored.id, 'blocks', blocks);
     project.undo();
-    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toEqual(f.blocks));
-    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).blocks).toEqual(f.blocks));
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).blocks).toEqual(f.blocks), PATIENT);
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).blocks).toEqual(f.blocks), PATIENT);
     project.undo();
-    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toBeUndefined());
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toBeUndefined(), PATIENT);
     project.redo();
-    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toEqual(lines));
-    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).lines).toEqual(lines));
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).lines).toEqual(lines), PATIENT);
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).lines).toEqual(lines), PATIENT);
   } finally {
     await removeFont(stored.id);
   }
@@ -716,10 +721,10 @@ test('undo of a width change keeps the browser\u2019s copy\u2019s width in step'
     project.setDrawingFont({ ...project.drawingFont, width: 7 }); // narrow
     await storeFontPart(stored.id, 'width', 7);
     project.undo(); // back to keeping 8
-    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(8));
-    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).width).toBe(8));
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(8), PATIENT);
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).width).toBe(8), PATIENT);
     project.redo();
-    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(7));
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(7), PATIENT);
   } finally {
     await removeFont(stored.id);
   }
@@ -785,8 +790,8 @@ test('a width change remembers its answer on the browser’s copy, and undo and 
   const workspace = useWorkspaceStore();
   const f = narrow(), stored = await addBitmapFont(new File([f.bytes], 'Slim.F07'));
   const kept = async (width) => {
-    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(width));
-    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).width).toBe(width));
+    await vi.waitFor(async () => expect((await storedBitmapFont(stored.id)).width).toBe(width), PATIENT);
+    await vi.waitFor(() => expect(workspace.userFonts.find((e) => e.id === stored.id).width).toBe(width), PATIENT);
   };
   try {
     workspace.userFonts = await loadFonts();
