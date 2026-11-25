@@ -1,6 +1,6 @@
 {
   "name": "phosphor",
-  "version": "0.1.0",
+  "version": "0.9.0-beta",
   "description": "Turn images into ANSI art in your browser, then paint, type and export .ans or .utf8ans.",
   "license": "MIT",
   "repository": {
