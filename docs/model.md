@@ -149,12 +149,18 @@ another character. In ANSI a solid character (space, `█`, `▀`, `▄`) still 
 ASCII styles, which show no halves, it's a glyph too. A frozen cell, a wide character (its glyph is two cells wide) and
 anything in the letterbox merge exactly, pinned, as Keep crisp cells writes them (`mergeKind`).
 
+A vector layer directly on the base blends the same way (`mergeShapesIntoPicture`): it's the two merges above in one
+undo step, with no rule of its own. Its shapes go as paint onto a cells layer put in its place (`shapesOnCells`, so a
+cell the paint would show otherwise is frozen as it showed and an art layer's characters are entries), and that layer
+goes into the picture (`mergeIntoPicture`).
+
 - Lives in: `onCells`, `onBase`, `mergeCellOf`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike`,
-  `mergeIntoPicture` in `src/store/project/merging.js`; `mergeKind` in `src/document/editCells.js`; `drawGlyphCell` in
+  `mergeIntoPicture`, `mergeShapesIntoPicture` in `src/store/project/merging.js`; `mergeKind` in `src/document/editCells.js`; `drawGlyphCell` in
   `src/lib/glyphPicture.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
-- Checked by: `tests/browser/merge.test.js › R3: the report: Keep crisp cells under soft paint …` (Keep crisp cells on
+- Checked by: `tests/browser/vector-merge.test.js › Blend into source image puts a vector layer's shapes in the picture …`
+  (the canvas within rounding, Blur reaching them, one undo step); `tests/browser/merge.test.js › R3: the report: Keep crisp cells under soft paint …` (Keep crisp cells on
   CGA under Best match, soft Brush and Blur strokes and a dithered vector layer above); `› R3: the report: a shape
   merged into Layer 1 leaves no border …` (the soft edge stays paint, the base shown or hidden before or after) and
   `› … keeps every cell with a palette and Levels on, the soft edges paint`;

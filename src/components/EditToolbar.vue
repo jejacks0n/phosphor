@@ -310,11 +310,12 @@ function stepOut() {
 }
 
 // Merge down into the base asks how (a ChoiceDialog): exactly, or into the picture. merging (useMergeDown's asking):
-// { id, rect } while it's open, rect a selection's or null for the whole layer.
+// { id, rect } while it's open, rect a selection's or null for the whole layer. A vector layer's shapes are pressed
+// (exactly), or go into the picture as paint does.
 function merge(kind) {
   const { id, rect } = merging.value;
   merging.value = null;
-  mergeBusy(t, () => (kind === 'exact' ? project.mergeDown(id, rect) : project.mergeIntoPicture(rect, id)));
+  mergeBusy(t, () => (kind === 'exact' ? project.mergeDown(id, rect) : project.layerById(id)?.kind === 'vector' ? project.mergeShapesIntoPicture(id) : project.mergeIntoPicture(rect, id)));
 }
 const mergeChoices = computed(() => {
   const choices = [

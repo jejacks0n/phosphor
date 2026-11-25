@@ -9,7 +9,8 @@ import { t } from '@/i18n';
 
 // Merge down of a layer into the one under it (project.mergeDown), from the toolbar's buttons, LAYERS' ⋯ menu and the
 // command list: why it's off, and doing it, under the busy note (seconds on a large drawing). A cells layer going into
-// the bottom asks how first (exactly, or into the image): asking holds { id, rect } while EditToolbar's dialog is open.
+// the bottom asks how first (exactly, or into the image), and so does a whole vector layer with shapes that can merge
+// (not in a room, where it's pressed): asking holds { id, rect } while EditToolbar's dialog is open.
 // Plain store reads, so a command runs it too.
 export const asking = ref(null);
 
@@ -38,7 +39,8 @@ export function useMergeDown() {
     ? [...project.shapes.values()].some((shape) => (shape.layer ?? 'vector') === id && !shape.guide)
     : project.cellsOf(id).size > 0 || !!project.paintOf(id)?.hasPaint);
   function mergeDown(id, rect = null) {
-    if (below(id)?.id !== 'base' || project.layerById(id)?.kind !== 'cells') return mergeBusy(t, () => project.mergeDown(id, rect));
+    const kind = project.layerById(id)?.kind, shapes = kind === 'vector' && !rect && !project._sharing && hasAny(id) && offWhy(id) === null;
+    if (below(id)?.id !== 'base' || (kind !== 'cells' && !shapes)) return mergeBusy(t, () => project.mergeDown(id, rect));
     if (refusedHidden(project, [id, 'base'])) return false; // what both merges refuse: at the press, not after the question
     asking.value = { id, rect };
     return false;

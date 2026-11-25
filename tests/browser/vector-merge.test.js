@@ -6,6 +6,8 @@ import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { ellipseShape, rectShape, withShape } from '@/document/shapes.js';
 import { makeArt } from '@/document/artLayers.js';
 import { cellIndex } from '@/lib/Cells.js';
+import { asking, useMergeDown } from '@/composables/useMergeDown';
+import { toastMessage } from '@/composables/useToast';
 
 const SLIDERS = { brightness: 140, contrast: 160, saturation: 130, hue: 40 };
 
@@ -297,4 +299,100 @@ test('Merge down with paint over a solid art character shows the cell as before'
   expect(project.mergeDown('edit')).toBe(true);
   await settle(project);
   expect(cellsKey(project)).toEqual(cells);
+});
+
+// A vector layer directly on the bottom asks how to merge, as a cells layer does: pressed as it shows, or into the picture.
+test('Merge down of a vector layer on the bottom asks how: with shapes, and not when it has none, or shapes are selected', async () => {
+  const { project, workspace } = await drawing();
+  const { mergeDown, mergePicked } = useMergeDown();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  expect(project.layers.findIndex((layer) => layer.id === id)).toBe(1); // directly on the bottom
+  await settle(project);
+  try {
+    expect(mergeDown(id)).toBe(false); // asked first: nothing merged yet
+    expect(asking.value).toEqual({ id, rect: null });
+    expect(project.shapes.size).toBe(1);
+    asking.value = null;
+
+    workspace.pickLayer(id);
+    workspace.vectorSelected = [key]; // VECTOR's Merge down of a selection: pressed, without asking
+    mergePicked(workspace);
+    await settle(project);
+    expect(asking.value).toBeNull();
+    expect(project.shapes.size).toBe(0);
+    expect(project.baseLayer.hasPaint).toBe(true);
+
+    await mergeDown(id); // nothing on it now: it just leaves the stack
+    await settle(project);
+    expect(asking.value).toBeNull();
+    expect(project.layerById(id)).toBeUndefined();
+  } finally {
+    asking.value = null;
+  }
+});
+
+// Two cells' keys (cellsKey's) alike: one character, and colors no more than a step or two apart on a channel, as the
+// same color rounds when it's worked out from the picture's pixels in place of the shape's own (docs/model.md R7).
+const alike = (a, b) => {
+  const [charA, ...colorsA] = a.split('#'), [charB, ...colorsB] = b.split('#');
+  const level = (hex, at) => parseInt(hex.slice(at, at + 2), 16);
+  return charA === charB && colorsA.every((hex, i) => [0, 2, 4].every((at) => Math.abs(level(hex, at) - level(colorsB[i], at)) <= 2));
+};
+const unlike = (now, was) => now.filter((cell, i) => !alike(cell, was[i]));
+
+test('Blend into source image puts a vector layer\'s shapes in the picture, the canvas showing as it did, as one undo step', async () => {
+  const { project, workspace } = await drawing();
+  const a = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(a).layer ?? 'vector';
+  const b = project.addShape(ellipseShape(8, 6, 26, 24, { fill: '#0044aa' }));
+  workspace.pickLayer(id);
+  await settle(project);
+  const cells = cellsKey(project), stack = project.layers.map((layer) => layer.id), image = project.image, version = project.history.version;
+  const merged = ['base', ...stack.slice(2)]; // the layer left, and none stays in its place
+
+  expect(await project.mergeShapesIntoPicture(id)).toBe(true);
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect(project.layers.map((layer) => layer.id)).toEqual(merged);
+  expect(project.image).not.toBe(image); // they're in the picture now
+  expect(project.baseLayer.hasPaint).toBe(false); // not the base's own pixels, as pressing leaves them
+  expect(unlike(cellsKey(project), cells)).toEqual([]);
+  expect(project.history.version).toBe(version + 1);
+
+  // In the picture, the image filters reach them: pressed into the base's pixels, their cells would stay as they are.
+  const inRect = (list) => list.filter((_, i) => i % 30 >= 2 && i % 30 <= 13 && Math.floor(i / 30) >= 1 && Math.floor(i / 30) <= 4);
+  project.setSlider('blur', 60);
+  project.commitSliders();
+  await settle(project);
+  expect(unlike(inRect(cellsKey(project)), inRect(cells)).length).toBeGreaterThan(0);
+
+  project.undo(); // the slider
+  project.undo(); // the merge: one step
+  await settle(project);
+  expect(keys(project)).toEqual([a, b].sort());
+  expect(project.layers.map((layer) => layer.id)).toEqual(stack);
+  expect(project.image).toBe(image);
+  expect(cellsKey(project)).toEqual(cells);
+  expect(workspace.pickedLayer).toBe(id);
+  project.redo();
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect(project.layers.map((layer) => layer.id)).toEqual(merged);
+  expect(unlike(cellsKey(project), cells)).toEqual([]);
+});
+
+test('Blend into source image is refused as Merge down is: a vector layer above the bottom, one with its own characters, and one with only guides', async () => {
+  const { project, workspace } = await drawing();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  const state = () => [project.shapes, project.layers, project.image, project.history.version];
+  workspace.pickLayer('edit');
+  const upper = project.addLayer('vector', 'edit'); // above a cells layer
+  const before = state();
+  expect(await project.mergeShapesIntoPicture(upper)).toBe(false);
+  project.setLayerChars(id, { chars: '@#' });
+  project.commitLayerChars();
+  const own = state();
+  expect(await project.mergeShapesIntoPicture(id)).toBe(false);
+  expect(toastMessage.value).toMatch(/custom character settings/);
+  expect(state()).toEqual(own);
+  expect(before[0]).toBe(project.shapes);
 });
