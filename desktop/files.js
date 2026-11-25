@@ -1,9 +1,15 @@
 // The files the desktop app opens and saves for the page: what it opens (as EditWorkspace's chooser takes), the files
 // named on its command line (a file double-clicked on Windows and Linux), a save written whole or not at all, and the
-// recently opened list (Open Recent), kept in the app's user data folder.
+// recently opened list (Open Recent), kept in the app's user data folder, and where that folder is.
 import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+
+// The user data folder (the pages' IndexedDB and localStorage, so autosaves, fonts and plugins, and recent.json):
+// electron-builder.yml's appId in the system's app data folder, not Electron's default named after the product, which
+// any other app called Phosphor would share. The end-to-end tests' own folder (PHOSPHOR_USER_DATA) comes first.
+export const DATA_FOLDER = 'work.phosphor.app';
+export const userDataPath = (appData, env) => env.PHOSPHOR_USER_DATA || path.join(appData, DATA_FOLDER);
 
 // Pictures, projects, SVGs and art files (src/lib/ArtFile.js's ART_EXTENSIONS), as the page opens them.
 export const OPENABLE = ['pho', 'phosphor', 'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'avif', 'svg', 'ans', 'utf8ans', 'asc', 'txt', 'nfo', 'diz', 'xb', 'bin'];

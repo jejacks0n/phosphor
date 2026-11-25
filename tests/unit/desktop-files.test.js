@@ -1,11 +1,11 @@
 // The desktop app's files (desktop/files.js): what it opens, the files on its command line, a save written whole, and
-// the recently opened list.
+// the recently opened list, and the user data folder it's kept in.
 import { afterEach, test } from 'vitest';
 import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { OPENABLE, filesIn, isOpenable, isProject, projectPath, recentFiles, saveBox, writeWhole } from '../../desktop/files.js';
+import { DATA_FOLDER, OPENABLE, filesIn, isOpenable, isProject, projectPath, recentFiles, saveBox, userDataPath, writeWhole } from '../../desktop/files.js';
 import { ART_EXTENSIONS } from '../../src/lib/ArtFile.js';
 
 let dir;
@@ -78,4 +78,13 @@ test('a kept list that is broken or holds anything but full paths is read as far
   writeFileSync(store, JSON.stringify(['/art/a.ans', 3, 'relative.ans', null, '/art/b.ans']));
   assert.deepEqual(recentFiles(store).list(), ['/art/a.ans', '/art/b.ans']);
   assert.deepEqual(recentFiles(path.join(dir, 'none', 'recent.json')).list(), []);
+});
+
+test('the user data folder is the appId in the app data folder, not one named Phosphor; the tests\' own folder wins', () => {
+  const yml = readFileSync(new URL('../../electron-builder.yml', import.meta.url), 'utf8');
+  assert.equal(DATA_FOLDER, /^appId: (.+)$/m.exec(yml)[1]);
+  const appData = path.join('/home', 'ann', '.config');
+  assert.equal(userDataPath(appData, {}), path.join(appData, 'work.phosphor.app'));
+  assert.equal(userDataPath(appData, { PHOSPHOR_USER_DATA: '' }), path.join(appData, 'work.phosphor.app'));
+  assert.equal(userDataPath(appData, { PHOSPHOR_USER_DATA: '/tmp/e2e-1' }), '/tmp/e2e-1');
 });

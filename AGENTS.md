@@ -95,7 +95,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   (the room API on this computer: greetings, asks, channels, hand-overs), `addresses.js` (where others can join),
   `selfPass.js` (passes checked in Node), `lospec.js` (the Palettes page's Search Lospec: one palette asked of
   lospec.com by its slug), `issueReport.js` (an issue report's one post, checked first), `menu.js` (the menu bar, in the page's words), `files.js` (files opened,
-  saved and kept in Open Recent) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
+  saved and kept in Open Recent, and the user data folder, `work.phosphor.app`) and `windows.js` (where a file opens, where a new window sits, the two-phase leave of
   a close or quit). The page's side: `src/social/desktop.js` (the door to the preload),
   `socketPeer.js` (a WebSocket in a data channel's shape), `address.js` (what someone types to join),
   `selfPass.js` (passes signed by their own key) and `windowKey.js` (a window's identity: the computer's key for one

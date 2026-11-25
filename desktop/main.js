@@ -18,7 +18,7 @@ import process from 'node:process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRoomService } from './roomService.js';
 import { reachableAddresses } from './addresses.js';
-import { OPENABLE, filesIn, isOpenable, projectPath, recentFiles, saveBox, writeWhole } from './files.js';
+import { OPENABLE, filesIn, isOpenable, projectPath, recentFiles, saveBox, userDataPath, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
 import { cascade, fileTarget, leave } from './windows.js';
 import { listUrl, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
@@ -34,8 +34,9 @@ const LIST_URL = listUrl({ version: VERSION, site: process.env.PHOSPHOR_SITE });
 
 // The end-to-end tests' settings, which a packaged app doesn't take (they run the app unpackaged).
 if (app.isPackaged) for (const name of ['PHOSPHOR_USER_DATA', 'PHOSPHOR_ADDRESSES', 'PHOSPHOR_RETURN_WITHIN_MS']) delete process.env[name];
-// Before anything else: the end-to-end tests run several instances, each with its own folder (and so its own lock).
-if (process.env.PHOSPHOR_USER_DATA) app.setPath('userData', process.env.PHOSPHOR_USER_DATA);
+// Before anything else (the lock, the session, recent.json): our own folder (files.js), or the end-to-end tests', which
+// run several instances, each with its own folder (and so its own lock).
+app.setPath('userData', userDataPath(app.getPath('appData'), process.env));
 // Their shorter wait for a host gone: a number of milliseconds above 0, or the page's own wait.
 const returnWithinMs = Number(process.env.PHOSPHOR_RETURN_WITHIN_MS);
 // standard and secure: a stable origin for IndexedDB, and a secure context for crypto.subtle.
