@@ -581,6 +581,9 @@ export function followLayerPick({ workspace, project, drawing }) {
         if (workspace.editorTab === 'vector' && now.some((layer) => layer.kind === 'vector')) pick(topVector(), { tabs: false });
         return;
       }
+      // The vector layer a first shape brought, taken back with its stroke before it was a step (cancelEdit, a lone Pen
+      // point removed): on VECTOR that's the drawing before its first shape again, so VECTOR stays, as it was then.
+      if (project._takingBack && workspace.editorTab === 'vector' && !now.some((layer) => layer.kind === 'vector')) return void pick('vector', { tabs: false });
       const under = was.slice(0, at).findLast((layer) => now.some(({ id }) => id === layer.id) && (layer.kind === 'vector' || pickable(layer)));
       pick(under?.id ?? cellsPick()); // the nearest one still there that can be picked
     }, { flush: 'sync' }),
