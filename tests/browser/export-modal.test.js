@@ -44,6 +44,51 @@ test('opens with ANS selected by default on a still drawing', async () => {
   }
 });
 
+test('a Monochrome ASCII drawing opens with ASCII selected, and says under an ANSI format that text holds all of it', async () => {
+  const { project } = await drawing();
+  project.renderStyle = 'ascii';
+  const { unmount } = mountModal();
+  try {
+    const modal = document.querySelector('.modal-dialog'), pick = (name) => [...modal.querySelectorAll('.format-btn')].find((b) => b.querySelector('.format-name').textContent === name).click();
+    expect(modal.querySelector('.format-btn.selected').textContent).toContain('ASCII');
+    expect(modal.querySelector('.format-btn.selected').textContent).toContain('.txt');
+    expect(modal.querySelector('.note.style-fit')).toBeNull(); // the format that fits: nothing to say
+    expect(modal.textContent).not.toContain('SAUCE'); // plain text has no record
+    for (const name of ['ANS', 'UTF-8 ANS', 'XBin']) {
+      pick(name);
+      await nextTick();
+      expect(modal.querySelector('.note.style-fit').textContent).toBe('This drawing is Monochrome ASCII, white characters on black: ASCII (.txt) holds all of it as plain text.');
+    }
+    pick('PNG');
+    await nextTick();
+    expect(modal.querySelector('.note.style-fit')).toBeNull();
+  } finally {
+    unmount();
+  }
+});
+
+test('ASCII picked for a drawing with colors says they aren\'t kept, and exports .txt', async () => {
+  for (const style of ['ansi', 'colorAscii']) {
+    const { project } = await drawing();
+    project.renderStyle = style;
+    const exported = vi.spyOn(project, 'exportFile').mockResolvedValue();
+    const { closed, unmount } = mountModal();
+    try {
+      const modal = document.querySelector('.modal-dialog');
+      expect(modal.querySelector('.format-btn.selected').textContent).toContain('.ans'); // colors: an ANSI file first
+      expect(modal.querySelector('.note.style-fit')).toBeNull();
+      [...modal.querySelectorAll('.format-btn')].find((b) => b.querySelector('.format-name').textContent === 'ASCII').click();
+      await nextTick();
+      expect(modal.querySelector('.note.style-fit').textContent).toBe('Plain text keeps the characters only. This drawing\'s colors aren\'t in the file: export ANS to keep them.');
+      modal.querySelector('form.foot').requestSubmit();
+      await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
+      expect(exported).toHaveBeenLastCalledWith('txt', expect.objectContaining({ filename: expect.any(String) }));
+    } finally {
+      unmount();
+    }
+  }
+});
+
 test('clicking another format selects it', async () => {
   await drawing();
   const { unmount } = mountModal();
@@ -524,7 +569,7 @@ test('names the layers showing a stand-in', async () => {
 });
 
 // XBin holds 16 colors: it's offered with CGA, and not with VGA, full color or a list past 16.
-test('with iCE colors off, every format but ANS, Animated ANS and XBin says its blinking cells come out steady', async () => {
+test('with iCE colors off, every format with colors but ANS, Animated ANS and XBin says its blinking cells come out steady', async () => {
   const { project } = await drawing();
   project.quantize = 'cga';
   project.addFrame('blank');
@@ -547,7 +592,7 @@ test('with iCE colors off, every format but ANS, Animated ANS and XBin says its 
     project.sauceIceColors = false;
     await nextTick();
     const names = await saying(), all = [...modal.querySelectorAll('.format-btn .format-name')].map((n) => n.textContent);
-    expect(all.filter((name) => !names.includes(name))).toEqual(['ANS', 'XBin', 'Animated ANS']);
+    expect(all.filter((name) => !names.includes(name))).toEqual(['ANS', 'ASCII', 'XBin', 'Animated ANS']); // (plain text has no backgrounds to come out steady)
     expect(modal.querySelector('.note.steady').textContent).toBe('Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS and XBin keep the blink.');
   } finally {
     unmount();

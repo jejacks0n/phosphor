@@ -1360,6 +1360,10 @@
       "xb": {
         "title": "Exporter en .xb",
         "sub": "XBin : l'art avec sa police et ses 16 couleurs à l'intérieur, comme l'affiche 16colo.rs."
+      },
+      "txt": {
+        "title": "Exporter en .txt",
+        "sub": "Texte brut : les caractères seuls, une ligne par rangée, sans couleurs. Pour l'art en ASCII monochrome, et partout où va du texte."
       }
     },
     "png": {
@@ -1401,9 +1405,14 @@
       "noSauceNote": "Sans SAUCE, les autres visionneuses ne connaissent ni le titre, ni l'auteur, ni la largeur, ni la police, et certaines font clignoter les fonds clairs.",
       "steadyBlink": "Les cellules qui clignotent dans la vue ANSI (couleurs iCE désactivées) sortent fixes ici, avec leur fond clair. ANS et XBin gardent le clignotement.",
       "blinkGif": "Deux images en boucle : les cellules qui clignotent, leurs lettres visibles puis masquées, comme dans la vue ANSI.",
+      "textDropsColors": "Le texte brut ne garde que les caractères. Les couleurs de ce dessin ne sont pas dans le fichier : exportez en ANS pour les garder.",
+      "textHoldsAll": "Ce dessin est en ASCII monochrome, des caractères blancs sur noir : ASCII (.txt) le contient en entier, en texte brut.",
       "formats": {
         "ans": {
           "name": "ANS"
+        },
+        "txt": {
+          "name": "ASCII"
         },
         "utf8ans": {
           "name": "UTF-8 ANS"

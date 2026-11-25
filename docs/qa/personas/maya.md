@@ -555,7 +555,10 @@ back, hide the base under it all, and export the .ans after each merge to see it
   and how many cells use it; the download saves within the `file` budget; the terminal shows every cell as the screen
   does, with hidden layers left out.
 - Probes: `again`: export twice in a row and check the two names differ; `back-out`: change the name, press Escape,
-  reopen and check the offered name; `extremes`: name the file with emoji and slashes.
+  reopen and check the offered name; `extremes`: name the file with emoji and slashes; `scope`: set Art style to
+  Monochrome ASCII and press Export: ASCII (.txt) is picked first, and the file is the characters alone, a line per row,
+  with no color codes ([Saving .txt](../../characters.md#saving-txt)); pick ANS there and it says ASCII holds all of
+  the drawing; back in ANSI, Export opens on ANS, and ASCII says the colors aren't kept.
 - Rated: yes, wants Cmd+K, then `exp ans` and Enter
 
 ### 39. Save the project and reopen it
