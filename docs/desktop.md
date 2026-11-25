@@ -35,8 +35,12 @@ beside it) or "They're on an older Phosphor. They need to update before you can 
 
 The app's own menus, in the language Phosphor shows:
 
-- **File**: New, New Window (Cmd/Ctrl+Shift+N), Open… (Cmd/Ctrl+O), Open Recent, Save (Cmd/Ctrl+S), Save As… (Cmd/Ctrl+Shift+S), Export…
-  (Cmd/Ctrl+E) and Versions…, as the buttons under the settings do.
+- **File**: New, New Window (Cmd/Ctrl+Shift+N), New from Clipboard, Open… (Cmd/Ctrl+O), Open Recent, Save (Cmd/Ctrl+S), Save As… (Cmd/Ctrl+Shift+S), Export…
+  (Cmd/Ctrl+E) and Versions…, as the buttons under the settings do. **New from Clipboard** makes a drawing the size of
+  what you last copied, in this window, in any app or in another Phosphor window: a selection, shapes, text or a picture
+  ([Saving and Exporting](characters.md#saving-and-exporting)). It's on with nothing open too, and asks about unsaved
+  work first. The app reads the clipboard only when you choose it; the command list's **New from clipboard** opens what
+  this window copied, and points at the menu for the rest.
 - **Edit**: Undo and Redo (the drawing's, or a text field's while you type in one), Cut, Copy, Paste and Select All.
 - **Room**: Start a Room… and Join a Room… open the Social tab; Copy Room Address copies the first address others can
   join at, while you host; Leave Room (End Room… for a host, which asks first).

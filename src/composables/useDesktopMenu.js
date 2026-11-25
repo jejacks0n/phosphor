@@ -6,6 +6,7 @@ import { typesIn } from '@/lib/fields';
 import { COMMANDS, commandContext, reloading, runCommand } from '@/lib/commands';
 import { accelerator, keysFor, parseKey } from '@/lib/keymap';
 import { toast } from '@/composables/useToast';
+import { handedItems, newFromClipboard } from '@/composables/clipboard.js';
 import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
@@ -16,7 +17,7 @@ import { useRoomStore } from '@/store/RoomStore';
 // changes, and its commands run here. Files the app is asked to open (double-clicked, Open
 // Recent) go to EditWorkspace as if chosen there. App.vue calls it on the desktop build only.
 export const MENU_LABELS = [
-  'file', 'new', 'newWindow', 'open', 'openRecent', 'clearRecent', 'noRecent', 'save', 'saveAs', 'export', 'versions', 'closeWindow', 'quit',
+  'file', 'new', 'newWindow', 'newFromClipboard', 'open', 'openRecent', 'clearRecent', 'noRecent', 'save', 'saveAs', 'export', 'versions', 'closeWindow', 'quit',
   'edit', 'undo', 'redo', 'cut', 'copy', 'paste', 'selectAll',
   'room', 'hostRoom', 'joinRoom', 'copyAddress', 'leaveRoom', 'endRoom',
   'view', 'actualSize', 'zoomIn', 'zoomOut', 'fullScreen', 'window',
@@ -74,12 +75,14 @@ export function useDesktopMenu() {
     ...Object.fromEntries(Object.entries(TABLE).map(([name, id]) => [name, () => runCommand(typeof id === 'function' ? id() : id, commandContext(project, workspace))])),
     undo: () => undoOrRedo('undo'),
     redo: () => undoOrRedo('redo'),
+    // New from Clipboard: what the app read at the click, in the page's place (it has no leave to read the clipboard here).
+    newFromClipboard: (parts) => newFromClipboard(project, workspace, handedItems(parts)),
     about: () => { workspace.showAboutModal = true; },
     shortcuts: () => { workspace.shortcutsOpen = true; },
     reportIssue: () => { workspace.issueReportOpen = true; },   // Help > Report an Issue…, in every version (the banner's link is a pre-release's)   // always, as before: not the ? key's where (the color box open)
     checkUpdates: checkForUpdates,
   };
-  desktop.onMenu((name) => commands[name]?.());
+  desktop.onMenu((name, data) => commands[name]?.(data));
 
   watchEffect(() => {
     void locale.value;   // a language picked in the footer: its words

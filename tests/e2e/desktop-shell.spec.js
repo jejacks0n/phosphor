@@ -225,3 +225,31 @@ test('the menu saves a project where the box says and then over it, and it opens
     rmSync(folder, { recursive: true, force: true });
   }
 });
+
+// The page is given no leave to read the clipboard (main.js), so the menu's New from Clipboard has the app read it at
+// the click and hand it over. The machine's own clipboard text is put back after.
+test('File > New from Clipboard opens what was copied, read by the app at the click, where the page alone is refused', async () => {
+  launched = await launchApp();
+  const { app, page } = launched;
+  const before = await app.evaluate(({ clipboard }) => clipboard.readText());
+  try {
+    expect(await page.evaluate(() => navigator.clipboard.read().then(() => 'read', () => 'refused'))).toBe('refused');
+    await expect.poll(() => menuLabels(app)).toContain('File');
+    expect(await menuEnabled(app, 'File', 'New from Clipboard')).toBe(true); // with nothing open: it opens one
+
+    await app.evaluate(({ clipboard }) => clipboard.writeText('Hello\nWorld!!'));
+    await clickMenu(app, 'File', 'New from Clipboard');
+    await expect.poll(() => store(page, 'project', (p) => !!p.image && [p.cols, p.rows])).toEqual([7, 4]); // its widest line, a line a row
+
+    // A block as a copy writes it (Moebius's form, in the HTML slot): the drawing just made is unsaved, so it asks first.
+    const block = JSON.stringify({ columns: 4, rows: 1, data: [...'Moeb'].map((char) => ({ code: char.charCodeAt(0), fg: 7, bg: 1 })) });
+    await app.evaluate(({ clipboard, ClipboardItem }, html) => clipboard.write([new ClipboardItem({ 'text/html': html, 'text/plain': 'Moeb' })]), block);
+    await clickMenu(app, 'File', 'New from Clipboard');
+    const asked = page.getByRole('dialog', { name: 'Start a new project?' });
+    await asked.getByRole('button', { name: /^Start without saving/ }).click();
+    await expect.poll(() => store(page, 'project', (p) => [p.cols, p.rows])).toEqual([4, 2]);
+    await expect.poll(() => store(page, 'project', (p) => p.cells.map((cell) => cell.char).join(''))).toBe('Moeb'); // once the paste is drawn: the canvas is its size a moment before
+  } finally {
+    await app.evaluate(({ clipboard }, text) => clipboard.writeText(text), before);
+  }
+});

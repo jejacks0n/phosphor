@@ -25,7 +25,7 @@ ipcRenderer.on('phosphor:unsaved', (_event, id) => {
 
 let onMenu = null;
 let onOpenedFile = null;
-ipcRenderer.on('phosphor:menu', (_event, name) => onMenu?.(name));
+ipcRenderer.on('phosphor:menu', (_event, name, data) => onMenu?.(name, data)); // data: what a command brings (New from Clipboard's clipboard)
 ipcRenderer.on('phosphor:opened-file', (_event, file) => onOpenedFile?.(file));
 
 // The end-to-end tests' shorter wait for a host gone (PHOSPHOR_RETURN_WITHIN_MS, passed on by main.js); undefined otherwise.

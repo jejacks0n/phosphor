@@ -9,7 +9,7 @@
 // opens in a window of its own when the window it's for has a drawing (windows.js), and a project already open in a
 // window brings that window forward. The Plugins dialog's marketplace fetches through here too (pluginList.js), and so
 // do the color layer's Get from Lospec (lospec.js) and an issue report's one post (issueReport.js).
-import { app, BrowserWindow, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
+import { app, BrowserWindow, clipboard, dialog, ipcMain, Menu, net, protocol, screen, session, shell } from 'electron';
 import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
@@ -20,6 +20,7 @@ import { createRoomService } from './roomService.js';
 import { reachableAddresses } from './addresses.js';
 import { OPENABLE, filesIn, isOpenable, projectPath, recentFiles, saveBox, userDataPath, writeWhole } from './files.js';
 import { REPO, menuTemplate } from './menu.js';
+import { clipboardParts } from './clipboard.js';
 import { cascade, fileTarget, leave } from './windows.js';
 import { listUrl, MOST_LIST_BYTES, fetchText, fetchFile } from './pluginList.js';
 import { fetchPalette } from './lospec.js';
@@ -175,13 +176,17 @@ const openOutside = (url) => {
   if (/^(https?|mailto):/.test(url)) shell.openExternal(url);
 };
 
-// A command from the menu goes to the focused window's page. With no window (macOS), one opens to take it, and New
-// is that window.
-function command(name) {
+// A command from the menu goes to the focused window's page (data: what it brings). With no window (macOS), one opens to
+// take it, and New is that window. New from Clipboard takes what the clipboard holds with it, read here at the click
+// (clipboard.js); a clipboard that can't be read is an empty one, which the page says.
+function command(name, data) {
+  if (name === 'newFromClipboard' && !data) {
+    return void clipboardParts(clipboard).catch(() => ({ html: null, text: null, png: null })).then((parts) => command(name, parts));
+  }
   const entry = focusedEntry();
-  if (entry) return send(entry, 'phosphor:menu', name);
+  if (entry) return send(entry, 'phosphor:menu', name, data);
   const opened = openWindow();
-  if (name !== 'new') opened.pending.push({ command: name });
+  if (name !== 'new') opened.pending.push({ command: name, data });
 }
 
 // The menu for the focused window: its state, or nothing open's.
@@ -473,7 +478,7 @@ else {
     entry.filesReady = true;
     for (const job of entry.pending.splice(0)) {
       if (job.file) sendFile(entry, job.file);
-      else send(entry, 'phosphor:menu', job.command);
+      else send(entry, 'phosphor:menu', job.command, job.data);
     }
   });
   // A window's page has handed over: it's ready to go.
