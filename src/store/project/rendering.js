@@ -14,7 +14,7 @@ import { parseKey } from '@/document/editCells.js';
 import { fitCells } from '@/lib/BitmapFont.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { charRowsOf, isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
-import { workingScale } from '@/lib/ImageProcessor.js';
+import { isUniform, workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
 import { NUDGE_MS, boundsOf, bytesHeld, lowerEdits, lowerPaint, useBase } from '@/store/project/shared.js';
 import { toast } from '@/composables/useToast.js';
@@ -307,8 +307,11 @@ export const renderingActions = {
     return workingScale(this.image, { ...this.processParams, ...params, workScale: null }) ?? 1;
   },
 
-  // Where the image fits a cols x rows grid, its pixels aspect (a grid pixel's height over width) each.
+  // Where the image fits a cols x rows grid, its pixels aspect (a grid pixel's height over width) each. A one-color
+  // picture (a blank canvas) has no shape to keep: it fills the grid, as the pipeline draws it (processImage), so
+  // Into the image takes every cell into it, none as the letterbox's (#297).
   fitFor(cols, rows, aspect = this.fitAspect) {
+    if (isUniform(this.image)) return { dx: 0, dy: 0, dw: cols, dh: rows };
     return fitRect(this.image.naturalWidth || this.image.width, this.image.naturalHeight || this.image.height, cols, rows, aspect);
   },
 
