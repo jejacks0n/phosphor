@@ -39,6 +39,25 @@ test('export .ans, then .utf8ans: each download is the store\'s cells, byte for 
   }
 });
 
+test('a Monochrome ASCII drawing\'s Export opens on ASCII, and the .txt download is its characters, a line per row', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('combobox', { name: 'Art style' }).selectOption({ label: 'Monochrome ASCII' });
+  await settled(page);
+  const modal = await openExportModal(page);
+  await expect(modal.locator('.format-btn.selected')).toContainText('ASCII'); // the style is characters alone
+  const [download] = await Promise.all([page.waitForEvent('download'), modal.getByRole('button', { name: /^Export ASCII/ }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^gradient-\d{8}-\d{6}\.txt$/);
+  const text = (await readFile(await download.path())).toString('utf8');
+  const { cols, rows, shown } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2), shown: p.cells.map((c) => (c.fg.hex === c.bg.hex ? ' ' : c.char)).join('') }));
+  const lines = text.split('\n');
+  expect(lines.pop()).toBe(''); // it ends with a line break
+  expect(lines).toHaveLength(rows);
+  expect(lines.every((line) => [...line].length === cols)).toBe(true);
+  expect(lines.join('')).toBe(shown);
+  expect(shown.trim().length).toBeGreaterThan(0); // the photo, as characters
+  expect(text.includes('\x1b')).toBe(false); // no color codes
+});
+
 test('the animated export warns above 80x25 and downloads an .ans', async ({ page }) => {
   await openApp(page);
   await page.getByRole('switch', { name: 'Animate' }).check();
