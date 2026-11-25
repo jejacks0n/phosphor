@@ -285,6 +285,10 @@ function makeActions(project, workspace, r, opts) {
   };
   if (opts.async) {
     actions.mergeIntoPicture = async () => project.mergeIntoPicture(r() < 0.5 ? rect() : null);
+    actions.mergeShapesIntoPicture = async () => { // a vector layer on the bottom, its shapes into the picture
+      const layer = project.layers[1];
+      if (layer?.kind === 'vector') await project.mergeShapesIntoPicture(layer.id);
+    };
     actions.bake = async () => {
       if (!project.canBake) { project.setSlider('brightness', 130); project.commitSliders('brightness'); return; }
       await project.bake();
@@ -334,6 +338,10 @@ function closeRun(stack, project, t, acc) {
   acc.open = false;
 }
 
+// The actions with a fuzz of their own, left out of the runs that draw from every action: one more name there changes
+// what every seed draws, and the seeds that once failed would no longer replay what failed.
+const OWN_RUNS = ['pickBase', 'resize', 'line', 'pasteShapesAbove', 'mergeShapesIntoPicture'];
+
 // Run a seeded sequence; return a description of the first mismatch, or null.
 async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20, async = true, forceRender = true, only = null } = {}) {
   const { project, workspace } = await createTestApp();
@@ -344,7 +352,7 @@ async function fuzz(seed, { quantize = 'none', renderStyle = 'ansi', steps = 20,
   const t = trackDepth(project);
   const r = rng(seed);
   const actions = makeActions(project, workspace, r, { async });
-  const names = only ?? Object.keys(actions).filter((name) => !['pickBase', 'resize', 'line'].includes(name)); // the base picked: the layers fuzz's; Dimensions and lines: their own (a new action would change every seed's run)
+  const names = only ?? Object.keys(actions).filter((name) => !OWN_RUNS.includes(name)); // the base picked: the layers fuzz's; Dimensions, lines and the vector layer steps: their own (a new action would change every seed's run)
   const stack = [await snap(project, workspace, { forceRender })];
   const log = [];
   const acc = { open: false };
@@ -435,13 +443,28 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'pasteShapesAbove', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 4, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
   }
   expect(failures).toEqual([]);
 }, 300_000);
+
+// The two steps that make or take a layer with shapes: a paste over a cells layer (its vector layer and its shapes one
+// step) and a vector layer blended into the image (its shapes as paint on a layer of the step's own, then into the
+// picture), among the steps around them. At 30 seeds, with every action drawn from, the first runs with these found a
+// lone Pen point taken back leaving the vector layer it brought, and a merged vector layer's undo leaving the base in use.
+test('fuzz: shapes pasted onto a layer of their own and a vector layer blended into the image, among shapes, layers and merges', async () => {
+  const failures = [];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'pasteShapes', 'pasteShapesAbove', 'pasteShapesAbove', 'deleteShape', 'pen', 'mergeShapes',
+    'mergeShapesIntoPicture', 'mergeShapesIntoPicture', 'mergeIntoPicture', 'mergeDown', 'addLayer', 'deleteLayer', 'pickLayer', 'type', 'paint', 'eraseBase', 'slider', 'typingRun'];
+  for (const seed of seeds([1, 2, 3, 4, 5])) {
+    const f = await fuzz(seed, { async: true, steps: 20, only });
+    if (f) failures.push(f);
+  }
+  expect(failures).toEqual([]);
+}, 400_000);
 
 test('fuzz: typing, paint and selections across two cells layers and the base, added, deleted, duplicated and picked', async () => {
   const failures = [];
@@ -652,7 +675,7 @@ async function fuzzSettings(seed, { steps = 20, forceRender = false } = {}) {
     if (k === 3) project.setLayerChars(id, { dither: [0, 50, 100][Math.floor(r() * 3)], ditherStyle: r() < 0.5 ? 'floyd' : 'bayer' }); // none on Layer 1
     project.commitLayerChars();
   };
-  const names = [...Object.keys(actions), 'settings', 'settings'];
+  const names = [...Object.keys(actions).filter((name) => !['pasteShapesAbove', 'mergeShapesIntoPicture'].includes(name)), 'settings', 'settings']; // (those two: their own fuzz, so this one's seeds draw what they drew)
   const start = await snapOwn(project, workspace, { forceRender: true });
   const stack = [start];
   const acc = { open: false };
