@@ -20,6 +20,9 @@ lead to.
   because Ubuntu restricts the unprivileged user namespaces the app's sandbox needs. Use the `.deb` there: it sets the
   sandbox up when it installs.
 
+An alpha may be the exception: one made before its signing was set up isn't signed on macOS or Windows, and each
+warns before opening it.
+
 The app doesn't update itself. **Check for Updates…** (in the Phosphor menu on macOS, in Help elsewhere) asks GitHub
 for the releases and offers the newest one's download page, or says yours is the newest. Someone on a beta or an alpha (a version
 like `1.2.0-beta`) is offered those too; everyone else only releases. It asks only when you choose it. In a room,
@@ -308,6 +311,76 @@ builds the tag as it is, without the new fonts.
 workflow's own token wouldn't start the fresh run; one with a deploy key does. If main is protected, protect it with a
 repository ruleset that lists **Deploy keys** as a bypass actor: classic branch protection can't exempt a deploy key.
 If version tags have a ruleset too, it needs the same bypass, or the tag can't be moved.
+
+### Signing
+
+The macOS and Windows packages are signed with repository secrets, and a tag is checked against them in the run's
+first step, before anything is built or published:
+
+- A release or a beta needs every one of them. With any missing, the run stops there and names them.
+- An alpha is built with what's set. A platform with none of its secrets gets unsigned packages, and the run warns of
+  it: on macOS the app is signed ad hoc (by no one) and not notarized, on Windows it isn't signed at all.
+- A platform with only some of its secrets is refused, whatever the tag.
+
+So an alpha tries the workflow before a beta: package.json's version set to the alpha's (`0.9.0-alpha` comes before
+`0.9.0-beta`), merged, and tagged. One without the secrets shows only that the packages build and publish. One with
+them is the try that counts, as it signs and notarizes as a beta will. After each macOS build the run checks the apps
+it made: that their signatures hold and, when the secrets are set, that each carries its notarization. If that fails,
+phosphor.work isn't published, and the packages already on the release are deleted by hand.
+
+**macOS** takes an Apple Developer Program membership and five secrets.
+
+1. Make a **Developer ID Application** certificate whose private key is on your Mac. No other kind will do: Apple
+   notarizes only an app signed with this one, and a **Managed** one (cloud-managed, as Xcode makes when it
+   distributes an app) keeps its key with Apple, so it can't be exported for the workflow.
+   1. In Keychain Access, choose **Keychain Access** > **Certificate Assistant** > **Request a Certificate From a
+      Certificate Authority…**, give your email and name, leave the CA's email empty, and save it to disk.
+   2. At [developer.apple.com](https://developer.apple.com/account/resources/certificates/list), under
+      **Certificates**, press **+**, choose **Developer ID Application** and the **G2 Sub-CA** profile, and upload
+      the request. Only the team's Account Holder can.
+   3. Download the certificate and open it. Keychain Access puts it in the login keychain, with the private key the
+      request made.
+2. In Keychain Access, under **My Certificates**, select that certificate (with its private key under it), choose
+   **File** > **Export Items…** and save it as a `.p12` with a password.
+3. Make an app-specific password at [account.apple.com](https://account.apple.com), under **Sign-In and Security** >
+   **App-Specific Passwords**. Notarization signs in with it in place of the account's own password.
+4. Find the Team ID (ten letters and numbers) at
+   [developer.apple.com/account](https://developer.apple.com/account), under **Membership details**.
+5. Set the secrets, in the repository's folder. Each command without a file asks for its value, so none is left in
+   the shell's history:
+
+   ```bash
+   base64 -i DeveloperID.p12 | gh secret set CSC_LINK
+   gh secret set CSC_KEY_PASSWORD               # the .p12's password
+   gh secret set APPLE_ID                       # the Apple Account's email
+   gh secret set APPLE_APP_SPECIFIC_PASSWORD
+   gh secret set APPLE_TEAM_ID
+   ```
+
+Then delete the `.p12`.
+
+**Windows** takes a code-signing certificate as a `.pfx` file and its password:
+
+```bash
+base64 -i certificate.pfx | gh secret set WIN_CSC_LINK
+gh secret set WIN_CSC_KEY_PASSWORD
+```
+
+No certificate Windows trusts comes as a file now, though. Since June 2023 the key of a publicly trusted code-signing
+certificate must be made and kept in hardware, a USB token or a cloud service, and can't be exported
+([the CA/Browser Forum's requirements](https://cabforum.org/working-groups/code-signing/requirements/)), and the last
+ones issued as files, good for 39 months at most
+([its ballot CSC-31](https://cabforum.org/2025/11/17/ballot-csc-31-maximum-validity-reduction)), have run out. So a
+`.pfx` is what the workflow reads today, and not what a new certificate is: one signs another way, and either is a
+change to `electron-builder.yml`, the workflow's secrets and the list in `scripts/release-tag.mjs`:
+
+- **Azure Artifact Signing** (it was Trusted Signing), Microsoft's own service. electron-builder signs with it once
+  `win.azureSignOptions` names the account's endpoint, the account, its certificate profile and the publisher, with
+  `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` in the environment
+  ([electron-builder's page](https://www.electron.build/code-signing-win)). Who may sign up, and what it costs, is on
+  [Microsoft's](https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart).
+- **A certificate authority's cloud signing**, or a token on a computer of your own running the build, through a
+  function of your own named in `win.signtoolOptions.sign`.
 
 ## Not in this version
 

@@ -103,7 +103,8 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   place and `src/composables/useDesktopMenu.js` running the menu's commands and Check for Updates. Packaging is `electron-builder.yml` (the icon, `build/icon.png`, drawn by `node build/make-icon.mjs`; `build/installer.nsh`, `build/phosphor-mime.xml` and `build/phosphor.thumbnailer`, a `.pho` previewed as the PNG it is on Windows and Linux; on macOS, Finder's thumbnail is the app's own extension, `build/thumbnail/`, built and signed by `build/thumbnail.mjs`), released by `.github/workflows/desktop.yml` only on a version tag (`v1.2.3`, or a
   pre-release's, `v1.2.3-beta` or `v1.2.3-alpha`, either with a number after it, `v1.2.3-beta.2`, and no other form:
   package.json's version, higher by semver than every version tag before it, checked by `scripts/release-tag.mjs`, on a
-  commit main's tests passed), which also publishes phosphor.work for a release or a beta (not an alpha, whose web side
+  commit main's tests passed, with every signing secret set unless it's an alpha: the same script's `signing`, and
+  [docs/desktop.md](docs/desktop.md)'s Signing), which also publishes phosphor.work for a release or a beta (not an alpha, whose web side
   is next); every push to main publishes next.phosphor.work (`.github/workflows/deploy.yml`). Its
   tests are the `desktop-*` files in `tests/unit`, `tests/browser` (the `browser-desktop` project) and `tests/e2e`.
 - Plugins ([docs/plugins.md](docs/plugins.md)): `src/plugins/` (`manifest.js`, a stranger's `phosphor-plugin.json` read
