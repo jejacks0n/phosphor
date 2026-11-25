@@ -5,7 +5,6 @@
 // table's keys for the platform the tests run on (a Mac here, Linux on CI), with the code the keys are matched by.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -21,13 +20,12 @@ afterEach(() => {
   app?.unmount();
   host?.remove();
   app = host = null;
-  useRoomStore().role = null;
 });
 
 // A blank drawing with Layer 1 picked, in the view given, and the app's keys (the Text tool's first, as AnsiEditor's
 // mount before EditWorkspace's); with sauce, the SAUCE tab's fields too.
 async function mount(tab = 'output', { sauce = false, drawing = true } = {}) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   if (drawing) {
     await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
     await settle(project);
@@ -37,10 +35,10 @@ async function mount(tab = 'output', { sauce = false, drawing = true } = {}) {
   host = document.createElement('div');
   document.body.append(host);
   app = createApp({ setup() { useTextTool(project, workspace, null); useKeyboardShortcuts(project, workspace); return () => (sauce ? h(SauceEditor) : null); } })
-    .use(getActivePinia()).use(i18n);
+    .use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 
 // What Option types on a US Mac's digits; elsewhere the digit.
@@ -68,17 +66,17 @@ test('on a cells layer Alt+2 shows ANSI, Alt+1 PIXEL and Alt+3 SAUCE, and from S
 });
 
 test('Alt+4 out of a room is taken and changes nothing, grayed in the command list; watching one it shows ROOM', async () => {
-  const { project, workspace } = await mount('output');
+  const { project, workspace, pinia } = await mount('output');
   const e = press('tab.room');
   expect(e.defaultPrevented).toBe(true);
   expect(workspace.editorTab).toBe('output');
   const ctx = commandContext(project, workspace);
   const row = listedCommands(ctx).find((c) => c.id === 'tab.room');
   expect(row.available(ctx)).toBe('shortcuts.reasons.notWatching');
-  useRoomStore().role = 'host'; // a host has no ROOM tab
+  useRoomStore(pinia).role = 'host'; // a host has no ROOM tab
   press('tab.room');
   expect(workspace.editorTab).toBe('output');
-  useRoomStore().role = 'watch';
+  useRoomStore(pinia).role = 'watch';
   press('tab.room');
   expect(workspace.editorTab).toBe('room');
   press('tab.ansi'); // back to the art

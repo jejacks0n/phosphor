@@ -4,7 +4,6 @@
 import { test, expect, afterEach, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -27,7 +26,7 @@ const frames = (n = 3) => new Promise((resolve) => {
 
 // A 600 × 400 view of a 120 × 200 drawing, with the app's keys.
 async function mount(tab) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 120, rows: 200 });
   workspace.editorTab = tab;
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 600px; height: 400px; display: flex' });
@@ -37,7 +36,7 @@ async function mount(tab) {
       useKeyboardShortcuts(project, workspace);
       return () => (tab === 'input' ? h(InputEditor) : h(AnsiEditor, { view: tab }));
     },
-  }).use(getActivePinia()).use(i18n);
+  }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   await settle(project);

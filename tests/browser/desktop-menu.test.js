@@ -11,9 +11,9 @@ import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { createTestApp, loadImage } from '../support/app.js';
 
-let project, workspace, desktop, scope, command, opened;
+let project, workspace, pinia, desktop, scope, command, opened;
 beforeEach(async () => {
-  ({ project, workspace } = await createTestApp());
+  ({ project, workspace, pinia } = await createTestApp());
   desktop = {
     setMenu: vi.fn(async () => {}),
     onMenu: vi.fn((cb) => { command = cb; }),
@@ -45,7 +45,7 @@ test('the menu gets every label in the language showing, and what can be done, a
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   await nextTick();
   expect(lastMenu()[1].hasImage).toBe(true);
-  useRoomStore().role = 'host';
+  useRoomStore(pinia).role = 'host';
   await nextTick();
   expect(lastMenu()[1]).toMatchObject({ inRoom: true, hosting: true });
 
@@ -120,7 +120,7 @@ test('commands open what they name, and Undo from the menu is the drawing’s ou
 
 // The Room menu's items run the command table's room rows (rooms.*), as they ran before they moved there.
 test('the Room menu starts, joins, copies the address of and leaves or ends a room, as before', async () => {
-  const room = useRoomStore(), social = useSocialStore();
+  const room = useRoomStore(pinia), social = useSocialStore(pinia);
   workspace.sidePanelTab = 'layers';
   social.desktopName = null;
   command('hostRoom');   // without a name: the page that asks for it first

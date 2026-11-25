@@ -192,10 +192,10 @@ test('installing a plugin again asks to replace it', async () => {
 });
 
 test('a browser that will not keep plugins says so and offers no install', async () => {
-  await mount();
+  const store = await mount();
   vi.spyOn(indexedDB, 'open').mockImplementation(() => { throw new DOMException('no', 'SecurityError'); });
   // the mount's load may already be under way with the real open: wait for the one this spy answers
-  await usePluginStore().load();
+  await store.load();
   await expect.element(page.getByText('This browser isn\'t keeping plugins, so none can be installed.')).toBeVisible();
   await expect.element(page.getByRole('button', { name: 'Install from a file…' })).toBeDisabled();
 });

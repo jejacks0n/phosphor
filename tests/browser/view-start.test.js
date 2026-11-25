@@ -3,7 +3,6 @@
 // already showing and scrolled.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import AnsiEditor from '@/components/AnsiEditor.vue';
@@ -22,12 +21,12 @@ const frames = (n = 3) => new Promise((resolve) => {
 
 // The ANSI view of a cols × lines drawing, in a 600 × 400 box.
 async function mount(cols, lines) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols, rows: 2 * lines });
   workspace.editorTab = 'output';
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 600px; height: 400px; display: flex' });
   document.body.append(host);
-  app = createApp({ render: () => h(AnsiEditor, { view: 'output' }) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(AnsiEditor, { view: 'output' }) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   await settle(project);

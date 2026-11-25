@@ -2,7 +2,6 @@
 // selected; and it looks as the browser draws the same file.
 import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { toastMessage } from '@/composables/useToast';
 import { IDENTITY, MOST_POINTS, MOST_SHAPES, outlines, scaling, stacked, transformed, worldPoints } from '@/document/shapes.js';
 import { paintShape } from '@/document/ShapeLayer.js';
@@ -151,8 +150,7 @@ test('stroke widths scale once with the fit, and not after', async () => {
 });
 
 test('an import is one undo step, selected, on top, with Vector select', async () => {
-  const { project } = await blank();
-  const workspace = useWorkspaceStore();
+  const { project, workspace } = await blank();
   const first = project.addSvg(svg('<rect width="10" height="10"/>'))[0];
   workspace.setActiveTool('pen');
   const keys = project.addSvg(rose);

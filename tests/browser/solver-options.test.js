@@ -4,18 +4,20 @@
 import { test, expect, afterEach, onTestFinished } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { readScript } from '@/plugins/script';
 import { unregisterScript, failSolver } from '@/plugins/solvers';
 import { usePluginStore } from '@/store/PluginStore';
 import { useRoomStore } from '@/store/RoomStore';
-import { onSolver } from '../support/pluginSolvers.js';
+import { onSolver as onSolverIn } from '../support/pluginSolvers.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 import LayersList from '@/components/LayersList.vue';
 
 let apps = [];
+// The test's own Pinia (blank()'s): a store asked for after an await may be a test's that finished late.
+let pinia = null;
+const onSolver = (def, opts) => onSolverIn(def, { pinia, ...opts });
 afterEach(() => {
   unregisterScript('phosphor.outlines');
   for (const { app, host } of apps) {
@@ -41,6 +43,7 @@ const LINES = solver({ id: 'lines', name: 'Lines', styles: ['ascii'] }); // Mono
 
 async function blank() {
   const stores = await createTestApp();
+  ({ pinia } = stores);
   await stores.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   await settle(stores.project);
   stores.workspace.pickLayer('edit');
@@ -49,7 +52,7 @@ async function blank() {
 async function mount(component) {
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(component).use(getActivePinia()).use(i18n);
+  const app = createApp(component).use(pinia).use(i18n);
   app.mount(host);
   apps.push({ app, host });
   await nextTick();
@@ -58,7 +61,7 @@ async function mount(component) {
 // Both solvers, of one plugin.
 async function installed() {
   const ref = await onSolver(OUTLINES);
-  usePluginStore().useScript('phosphor.outlines', 'h', { solvers: [OUTLINES, LINES] });
+  usePluginStore(pinia).useScript('phosphor.outlines', 'h', { solvers: [OUTLINES, LINES] });
   return { ref, lines: ref.replace('/outlines', '/lines') };
 }
 const choices = (select) => [...select.options].map((o) => o.text);
@@ -84,7 +87,7 @@ test('the choice offers the plugin solvers that do the drawing\'s style, and non
   expect(choices(select())).toEqual(['By intensity', 'By shape']);
 
   project.renderStyle = 'ansi';
-  useRoomStore().role = 'host';
+  useRoomStore(pinia).role = 'host';
   await nextTick();
   expect(choices(select())).toEqual(['Random', 'Best match', 'By shape']);
 });
@@ -158,7 +161,7 @@ test('a color option is a color input that changes as it is picked and commits w
 
 test('a missing solver keeps its option and the note says By shape stands in', async () => {
   const { project } = await blank();
-  const plugins = usePluginStore();
+  const plugins = usePluginStore(pinia);
   const { ref } = await installed();
   project.setLayerChars('edit', { charChoice: ref });
   project.commitLayerChars();
@@ -203,7 +206,7 @@ test('a solver whose plugin is gone is named by what the drawing kept: the plugi
   const host = await mount(ControlPanel);
   const note = () => host.querySelector('fieldset.characters p.note').textContent;
   const select = host.querySelector('#charChoice');
-  await usePluginStore().uninstall('phosphor.outlines');
+  await usePluginStore(pinia).uninstall('phosphor.outlines');
   await nextTick();
   expect(note()).toBe('Midnight isn\'t installed. Showing By shape.');
   expect(choices(select).at(-1)).toBe('Outlines (not here)');
@@ -221,7 +224,7 @@ test('the layer\'s row shows the stand-in warning', async () => {
   const host = await mount(LayersList);
   const warning = () => host.querySelector('li[data-id="edit"] .stand-in');
   expect(warning()).toBe(null);
-  usePluginStore().dropScript('phosphor.outlines');
+  usePluginStore(pinia).dropScript('phosphor.outlines');
   await nextTick();
   expect(warning().textContent).toBe('⚠');
   expect(warning().title).toBe('Midnight isn\'t installed. Showing By shape.');

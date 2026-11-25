@@ -6,7 +6,6 @@
 // keys are matched by.
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -28,7 +27,7 @@ const at = (project, col, row) => project.cells[row * project.cols + col];
 // A blank drawing in the ANSI view with Layer 1 picked, a red # on blue at 2,2 and a green @ on yellow at 5,5, and the
 // app's keys (the Text tool's first, as AnsiEditor's mount before EditWorkspace's).
 async function mount() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 16 });
   await settle(project);
   workspace.editorTab = 'output';
@@ -41,7 +40,7 @@ async function mount() {
   workspace.setColor('bg', '#000000');
   workspace.activeChar = '█';
   app = createApp({ setup() { useTextTool(project, workspace, null); useKeyboardShortcuts(project, workspace); return () => null; } })
-    .use(getActivePinia()).use(i18n);
+    .use(pinia).use(i18n);
   app.mount(document.createElement('div'));
   return { project, workspace };
 }

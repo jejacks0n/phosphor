@@ -7,10 +7,10 @@ import { useDrawingStore } from '@/store/DrawingStore';
 const channelsOpen = (subs) => subs.map((sub) => ({ claims: { sub }, drawing: true, peer: sub }));
 
 async function hostWith(subs, handOver = async () => true) {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 10, rows: 10 });
   project.ensureLayer();
-  const drawing = useDrawingStore();
+  const drawing = useDrawingStore(pinia); // the test's own: after the load, the active one may be a late test's
   const host = {
     roomId: 'room', gatherWithinMs: 60_000, serverAnswersWithinMs: 60_000,
     hold: vi.fn(), release: vi.fn(), send: vi.fn(() => true), sendAll: vi.fn(), sendCheck: vi.fn(), setArtists: vi.fn(), setArtistViews: vi.fn(),

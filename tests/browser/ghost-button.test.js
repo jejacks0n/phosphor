@@ -2,7 +2,6 @@
 // settings: a checkbox that turns it on or off, its strength, and how many frames before and after it shows.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
 import AnimationBar from '@/components/AnimationBar.vue';
@@ -15,7 +14,7 @@ afterEach(() => {
 });
 
 async function bar() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
   project.setAnimate(true);
   workspace.ghost = true;
@@ -24,7 +23,7 @@ async function bar() {
   workspace.ghostFramesAfter = 0;
   const host = document.createElement('div');
   document.body.append(host);
-  app = createApp({ render: () => h(AnimationBar) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(AnimationBar) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return { workspace, host };

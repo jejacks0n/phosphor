@@ -44,7 +44,7 @@ async function smearing() {
   await app.project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
   await settle(app.project);
   app.workspace.editorTab = 'input';
-  const [ref] = (await onPlugin({ brushes: [...(await read(smearText)).brushes] }, { pluginId: 'phosphor.smear' })).brushes;
+  const [ref] = (await onPlugin({ brushes: [...(await read(smearText)).brushes] }, { pluginId: 'phosphor.smear', pinia: app.pinia })).brushes;
   dropped.push('phosphor.smear');
   const tool = getTool(ref), ctx = { project: app.project, workspace: app.workspace, view: 'input' };
   const stroke = (points) => {

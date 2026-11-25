@@ -2,7 +2,6 @@
 // Animation shortcuts and the outlines of the shapes a Blank frame carries. Turning it on brings them back.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
 import { makeShape, rectShape } from '@/document/shapes.js';
@@ -11,7 +10,7 @@ import ShortcutsDialog from '@/components/ShortcutsDialog.vue';
 import VectorOverlay from '@/components/VectorOverlay.vue';
 import KeysPanel from '@/components/KeysPanel.vue';
 
-let app = null;
+let app = null, pinia = null; // pinia: framesKept's, for mount: after its awaits the active one may be a late test's
 afterEach(() => {
   app?.unmount();
   app = null;
@@ -19,7 +18,8 @@ afterEach(() => {
 
 // A movie of two Blank frames, the second carrying a shape from the first, with Animate turned off after.
 async function framesKept() {
-  const { project, workspace } = await createTestApp();
+  let project, workspace;
+  ({ project, workspace, pinia } = await createTestApp());
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
   project.setAnimate(true);
   project.addShape(rectShape(2, 2, 8, 8, { fill: '#ff0000' }));
@@ -31,7 +31,7 @@ async function framesKept() {
 async function mount(component, props = {}) {
   const host = document.createElement('div');
   document.body.append(host);
-  app = createApp({ render: () => h(component, props) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(component, props) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return host;

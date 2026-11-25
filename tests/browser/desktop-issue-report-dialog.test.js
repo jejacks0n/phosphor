@@ -4,7 +4,6 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import IssueReportDialog from '@/components/IssueReportDialog.vue';
@@ -28,7 +27,7 @@ afterEach(() => {
 const dialog = () => document.querySelector('dialog.modal-dialog');
 
 test('Send hands the report to the main process: the text, the drawing\'s bytes and the steps, and never the page\'s fetch or Turnstile', async () => {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 8 });
   project.rename('sky');
   const fetch = vi.fn();
@@ -37,7 +36,7 @@ test('Send hands the report to the main process: the text, the drawing\'s bytes 
   useFakeDesktop({ sendIssueReport });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(IssueReportDialog).use(getActivePinia()).use(i18n);
+  app = createApp(IssueReportDialog).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   expect(dialog().querySelector('div.turnstile')).toBe(null);

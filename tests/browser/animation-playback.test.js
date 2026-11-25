@@ -1,7 +1,6 @@
 // Playing, and the ghost (pictures of other frames; what a frame inherits shows solid). Playing never touches editCells, so autosave stays quiet. Exports read project.cells.
 import { test, expect } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { userEvent } from 'vitest/browser';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle } from '../support/app.js';
@@ -13,10 +12,10 @@ import AnimationBar from '@/components/AnimationBar.vue';
 const INK = { fg: '#ffee00', bg: '#0044aa' };
 
 async function animated() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
   project.setAnimate(true);
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 const at = (col, row) => cellIndex(col, row, 20);
 const type = (project, col, row, char) => { project.typeAt(col, row, char, INK); project.commitEdit(); };
@@ -195,7 +194,7 @@ test('toggle plays and pauses', async () => {
 });
 
 test('the PIXEL view plays output and overlay in place, without changing tab', async () => {
-  const { project, workspace } = await animated();
+  const { project, workspace, pinia } = await animated();
   const playback = usePlayback();
   workspace.editorTab = 'input';
   workspace.ansiOverlay = 100;
@@ -212,7 +211,7 @@ test('the PIXEL view plays output and overlay in place, without changing tab', a
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
   document.body.append(host);
   const app = createApp({ render: () => h(InputEditor) });
-  app.use(getActivePinia());
+  app.use(pinia);
   app.mount(host);
   await nextTick();
   await settle(project);
@@ -242,7 +241,7 @@ test('the PIXEL view plays output and overlay in place, without changing tab', a
 
 
 test('the PIXEL view shows what a Blank frame inherits solid, drawn or typed, with the ghost on or off, as it plays', async () => {
-  const { project, workspace } = await animated();
+  const { project, workspace, pinia } = await animated();
   const playback = usePlayback();
   workspace.editorTab = 'input';
   workspace.ansiOverlay = 100;
@@ -257,7 +256,7 @@ test('the PIXEL view shows what a Blank frame inherits solid, drawn or typed, wi
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
   document.body.append(host);
   const app = createApp({ render: () => h(InputEditor) });
-  app.use(getActivePinia());
+  app.use(pinia);
   app.mount(host);
   await nextTick();
   await settle(project);
@@ -289,7 +288,7 @@ test('the PIXEL view shows what a Blank frame inherits solid, drawn or typed, wi
 });
 
 test('cells drawn to stay on their frame show on PIXEL on the frame after as the ghost, at its strength, and not with Ghost off', async () => {
-  const { project, workspace } = await animated();
+  const { project, workspace, pinia } = await animated();
   workspace.editorTab = 'input';
   workspace.cellsStay = true;
   project.addFrame('blank');
@@ -301,7 +300,7 @@ test('cells drawn to stay on their frame show on PIXEL on the frame after as the
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
   document.body.append(host);
   const app = createApp({ render: () => h(InputEditor) });
-  app.use(getActivePinia());
+  app.use(pinia);
   app.mount(host);
   await nextTick();
   await project.buildGhost();
@@ -330,7 +329,7 @@ test('cells drawn to stay on their frame show on PIXEL on the frame after as the
 });
 
 test('with Frames after, what a frame after painted shows on PIXEL in the cool tint, at the ghost\'s strength', async () => {
-  const { project, workspace } = await animated();
+  const { project, workspace, pinia } = await animated();
   workspace.editorTab = 'input';
   project.addFrame('blank');
   project.addFrame('blank');
@@ -342,7 +341,7 @@ test('with Frames after, what a frame after painted shows on PIXEL in the cool t
   host.style.cssText = 'width:400px;height:400px;position:fixed;left:0;top:0';
   document.body.append(host);
   const app = createApp({ render: () => h(InputEditor) });
-  app.use(getActivePinia());
+  app.use(pinia);
   app.mount(host);
   await nextTick();
   await project.buildGhost();
@@ -357,11 +356,11 @@ test('with Frames after, what a frame after painted shows on PIXEL in the cool t
 });
 
 test('Escape in FPS or Hold puts the field back, and a blur after it changes nothing', async () => {
-  const { project } = await animated();
+  const { project, pinia } = await animated();
   project.addFrame('blank');
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp({ render: () => h(AnimationBar) }).use(getActivePinia()).use(i18n);
+  const app = createApp({ render: () => h(AnimationBar) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const fps = project.fps, hold = project.currentFrame.hold;

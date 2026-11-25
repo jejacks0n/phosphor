@@ -5,7 +5,6 @@
 import { legacySlots } from '@/document/layerInfo.js';
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { drawnDocument } from '../support/scenes.js';
@@ -304,22 +303,22 @@ test('going live drops a layer\'s own Dither steps, so undo in the room never br
   }
 });
 
-async function mountPanel() {
+async function mountPanel(pinia) {
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
 }
 const sectionOf = (words) => [...host.querySelectorAll('aside > fieldset')].find((set) => set.querySelector('legend').textContent.includes(words));
 
 test('Dither shows in Characters for Base and a vector layer, not a cells layer, and only with a palette', async () => {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10, quantize: 'cga' });
   await settle(project);
   const vector = project.addLayer('vector', 'edit');
   workspace.pickLayer('base');
-  await mountPanel();
+  await mountPanel(pinia);
   expect(sectionOf('Drawing').querySelector('#dither')).toBeNull();
   expect(sectionOf('Characters · Base').querySelector('#dither')).toBeTruthy();
   expect(sectionOf('Characters · Base').querySelector('#ditherStyle')).toBeTruthy();

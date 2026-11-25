@@ -25,18 +25,18 @@ afterEach(() => {
 });
 
 async function mount(state) {
-  await createTestApp();
-  const room = useRoomStore();
+  const { pinia } = await createTestApp();
+  const room = useRoomStore(pinia);
   Object.assign(room, {
     role: 'host', id: 'abcdefghij', link: 'http://localhost/?room=abcdefghij', status: 'live',
     room: { name: 'neon harbor', welcome: '', public: true, allowGuests: true, max: 12, count: 0 }, ...state,
   });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(HostRoomPage).use(getActivePinia()).use(i18n);
+  app = createApp(HostRoomPage).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { room, region: host.querySelector('[role=status]') };
+  return { room, pinia, region: host.querySelector('[role=status]') };
 }
 
 const button = (name) => [...host.querySelectorAll('button')].find((b) => (b.textContent.trim() || b.getAttribute('aria-label')) === name); // an icon's by its label
@@ -55,11 +55,11 @@ test('only connected watchers count as Here now; who they are is in the chat pan
 });
 
 test('Live for counts up from going live, as H:MM:SS', async () => {
-  const { room } = await mount({ session: { liveSince: Date.now() - 3_723_000, most: 0, messages: 0, people: [] } });
+  const { room, pinia } = await mount({ session: { liveSince: Date.now() - 3_723_000, most: 0, messages: 0, people: [] } });
   expect(host.querySelector('header').textContent).toContain('Live for 1:02:03');
   vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'], now: room.session.liveSince + 3_723_000 });
   app.unmount();   // a fresh page, its timer on the fake clock
-  app = createApp(HostRoomPage).use(getActivePinia()).use(i18n);
+  app = createApp(HostRoomPage).use(pinia).use(i18n);
   app.mount(host);
   await vi.advanceTimersByTimeAsync(1000);
   expect(host.querySelector('header').textContent).toContain('Live for 1:02:04');
@@ -188,9 +188,9 @@ test('the welcome changed from elsewhere replaces an untouched draft, and leaves
 
 test('Copy link that the browser refuses says it couldn\'t copy', async () => {
   vi.spyOn(navigator.clipboard, 'writeText').mockRejectedValue(new DOMException('Denied', 'NotAllowedError'));
-  await mount();
+  const { pinia } = await mount();
   button('Copy link').click();
-  await vi.waitFor(() => expect(useSocialStore().notice).toBe('Couldn\'t copy the link'));
+  await vi.waitFor(() => expect(useSocialStore(pinia).notice).toBe('Couldn\'t copy the link'));
   expect(button('Copy link')).toBeTruthy();
 });
 
@@ -321,11 +321,11 @@ test('ten people show no "and N more"', async () => {
 });
 
 test('Go live is on with many layers', async () => {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(StartRoomPage).use(getActivePinia()).use(i18n);
+  app = createApp(StartRoomPage).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   project.addLayer('cells', 'edit');
@@ -361,11 +361,11 @@ test('Set up your room: the signal is a select in the lobby card, and choosing o
 });
 
 test('hosting is refused while a layer is on a plugin solver, naming it and saying Flatten', async () => {
-  const { project } = await createTestApp();
+  const { project, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(StartRoomPage).use(getActivePinia()).use(i18n);
+  app = createApp(StartRoomPage).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   project.setLayerChars('edit', { charChoice: 'plugin:jane.lines/lines' });   // a stand-in counts: the drawing holds it
@@ -374,7 +374,7 @@ test('hosting is refused while a layer is on a plugin solver, naming it and sayi
   expect(host.textContent).toContain(words);
   expect(button('Go live').disabled).toBe(true);
   expect(button('Go live').title).toBe(words);
-  await expect(useRoomStore().startRoom({ name: 'Night', welcome: '', isPublic: true, allowGuests: true, max: 12 })).rejects.toMatchObject({ userMessage: words });
+  await expect(useRoomStore(pinia).startRoom({ name: 'Night', welcome: '', isPublic: true, allowGuests: true, max: 12 })).rejects.toMatchObject({ userMessage: words });
   project.setLayerChars('edit', { charChoice: 'shape' });
   await nextTick();
   expect(host.textContent).not.toContain('plugin solver');
@@ -383,9 +383,9 @@ test('hosting is refused while a layer is on a plugin solver, naming it and sayi
 
 // As the room's ⋯ menu shows it: Settings and stats, in a dialog with a ×.
 test('in Settings and stats, the title is on the ×\'s line, the page is inset once, the link\'s copy button is beside it and End room at the right', async () => {
-  await mount({});
+  const { pinia } = await mount({});
   app.unmount();
-  app = createApp({ render: () => h(ModalDialog, { wide: true, closable: true, label: 'Settings and stats' }, () => h('div', { class: 'people-forms' }, h(HostRoomPage))) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(ModalDialog, { wide: true, closable: true, label: 'Settings and stats' }, () => h('div', { class: 'people-forms' }, h(HostRoomPage))) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const dialog = document.querySelector('dialog'), rect = (el) => el.getBoundingClientRect(), mid = (r) => (r.top + r.bottom) / 2;

@@ -12,7 +12,6 @@ import { makeArt } from '@/document/artLayers.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
-import { getActivePinia } from 'pinia';
 import EditToolbar from '@/components/EditToolbar.vue';
 import ControlPanel from '@/components/ControlPanel.vue';
 import { i18n } from '@/i18n';
@@ -121,8 +120,8 @@ test('every generated option row has words, in English and French, and an id of 
 });
 
 test('the room rows: End room and Leave room unavailable outside a room, End room for the host', async () => {
-  const { project, workspace } = await drawing();
-  const room = useRoomStore();
+  const { project, workspace, pinia } = await drawing();
+  const room = useRoomStore(pinia);
   for (const id of ['rooms.end', 'rooms.copyAddress', 'rooms.stats', 'rooms.leave']) expect(reasonOf(id, project, workspace), id).toBe('Not in a room');
   expect(reasonOf('rooms.showCursors', project, workspace)).toBe('Only while drawing together in a room');
   expect(reasonOf('rooms.start', project, workspace)).toBe(true);
@@ -136,7 +135,7 @@ test('the room rows: End room and Leave room unavailable outside a room, End roo
   expect([room.statsOpen, workspace.sidePanelTab]).toEqual([true, 'social']);
   room.close();
   expect(room.statsOpen).toBe(false); // not open again in the next room
-  const drawingStore = useDrawingStore(), shown = drawingStore.showCursors;
+  const drawingStore = useDrawingStore(pinia), shown = drawingStore.showCursors;
   project.startSharing({ send: vi.fn(), role: 'host', me: 'host' });
   runCommand('rooms.showCursors', ctxOf(project, workspace));
   expect(drawingStore.showCursors).toBe(!shown);
@@ -144,14 +143,14 @@ test('the room rows: End room and Leave room unavailable outside a room, End roo
 });
 
 test('Bake runs what the Bake button runs', async () => {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 20, rows: 20 });
   await settle(project);
   project.setSlider('contrast', 130);
   const bake = vi.spyOn(workspace, 'bake').mockImplementation(() => {});
   runCommand('drawing.bake', ctxOf(project, workspace));
   expect(bake).toHaveBeenCalledTimes(1);
-  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(pinia).use(i18n);
   document.body.append(host);
   toolbar.mount(host);
   try {
@@ -211,8 +210,8 @@ test('every row added here has words in en and fr, and a reason with words in bo
 
 // The persona scripts' Cmd+K steps (docs/qa/personas): what each types finds its row first.
 test('the searches the persona scripts type find their row first', async () => {
-  const { project, workspace } = await drawing();
-  useRoomStore().role = 'host';
+  const { project, workspace, pinia } = await drawing();
+  useRoomStore(pinia).role = 'host';
   workspace.selection = { c0: 0, r0: 0, c1: 2, r1: 2 };
   const rows = listedCommands(ctxOf(project, workspace)).map((c) => ({ id: c.id, words: words(c) }));
   const first = (query) => searchCommands(query, rows)[0]?.id;
@@ -222,15 +221,15 @@ test('the searches the persona scripts type find their row first', async () => {
     flatten: 'drawing.flatten', 'art layer': 'layer.makeArt', bake: 'drawing.bake', animate: 'drawing.animate',
     'end room': 'rooms.end', stats: 'rooms.stats',
   });
-  useRoomStore().role = null;
+  useRoomStore(pinia).role = null;
   expect(searchCommands('start room', listedCommands(ctxOf(project, workspace)).map((c) => ({ id: c.id, words: words(c) })))[0].id).toBe('rooms.start');
 });
 
 // The command list's Dimensions: the cursor in the field, its number picked to type over; on a narrow screen (the
 // browser tests' window) in the settings drawer, opened first.
 test('Dimensions puts the cursor in the field, in the drawer opened for it', async () => {
-  const { project, workspace } = await drawing();
-  const host = document.body.appendChild(document.createElement('div')), panel = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const { project, workspace, pinia } = await drawing();
+  const host = document.body.appendChild(document.createElement('div')), panel = createApp(ControlPanel).use(pinia).use(i18n);
   panel.mount(host);
   try {
     runCommand('drawing.canvasSize', ctxOf(project, workspace));
@@ -265,12 +264,12 @@ test('the layer rows want the picked row there; Make art layer\'s reason names a
 
 // Fix round 1: each row grays with what its button or field says, by the same test.
 test('Dimensions is off, saying who, while someone is inside an art layer, as its field is', async () => {
-  const { project, workspace } = await drawing();
+  const { project, workspace, pinia } = await drawing();
   const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 4], art: { cols: 3, rows: 2, cells: [[0, 'A', '#0000ff', '#ff0000']] } }));
   expect(reasonOf('drawing.canvasSize', project, workspace)).toBe(true);
-  useDrawingStore().cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
+  useDrawingStore(pinia).cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
   expect(reasonOf('drawing.canvasSize', project, workspace)).toBe('Ann is currently editing an art layer');
-  expect(reasonOf('drawing.canvasSize', project, workspace)).toBe(useDrawingStore().someoneInside); // the field's title
+  expect(reasonOf('drawing.canvasSize', project, workspace)).toBe(useDrawingStore(pinia).someoneInside); // the field's title
 });
 
 test('Make art layer is off with nothing drawn in the selection, as its button is, and on with something', async () => {
@@ -283,8 +282,8 @@ test('Make art layer is off with nothing drawn in the selection, as its button i
 });
 
 test('Bake\'s and Flatten\'s questions go with the toolbar, so one left open doesn\'t come back on the next drawing', async () => {
-  const { workspace } = await drawing();
-  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(i18n);
+  const { workspace, pinia } = await drawing();
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(pinia).use(i18n);
   document.body.append(host);
   toolbar.mount(host);
   Object.assign(workspace, { baking: 'CGA', bakingFinal: true, flattening: true });

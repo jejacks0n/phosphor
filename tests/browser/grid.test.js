@@ -6,7 +6,6 @@
 import { test, expect, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
 import { ctx2d } from '@/lib/Canvas';
@@ -23,9 +22,9 @@ import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { useRoomStore } from '@/store/RoomStore';
 
 async function grid(cols = 40, rows = 40) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols, rows });
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 
 async function resize(project, cols, rows = project.rows) {
@@ -261,10 +260,10 @@ test('Into the image on a grid longer than the GPU processes keeps the drawing (
 });
 
 test('Dimensions reads the height in character rows above the inputs, which count pixel rows', async () => {
-  const { project } = await grid(40, 168);
+  const { project, pinia } = await grid(40, 168);
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const readout = () => host.querySelector('#cols').closest('.field').querySelector('.label-row .value').textContent;
@@ -280,11 +279,11 @@ test('Dimensions reads the height in character rows above the inputs, which coun
 // the half-typed size. A typed size now waits for Enter, Tab or a click elsewhere; Escape puts the field back to the
 // grid's size. The stepper arrows and the up and down keys stay live: each is a whole size.
 test('Dimensions: typed digits wait for Enter or a blur, Escape puts the field back, and the arrow keys stay live', async () => {
-  const { project } = await grid(40, 40);
+  const { project, pinia } = await grid(40, 40);
   project.aspectLock = false;
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const rows = host.querySelector('#rows');
@@ -317,17 +316,17 @@ test('Dimensions: typed digits wait for Enter or a blur, Escape puts the field b
 });
 
 // The settings column on its own, for the drawing open.
-function mountPanel() {
+function mountPanel(pinia) {
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   return { host, gone: () => { app.unmount(); host.remove(); } };
 }
 
 test('Palettes beside Color palette opens the color layer on Palettes, whatever the choice, off when settings are locked', async () => {
-  const { project, workspace } = await grid(40, 40);
-  const { host, gone } = mountPanel();
+  const { project, workspace, pinia } = await grid(40, 40);
+  const { host, gone } = mountPanel(pinia);
   const link = () => host.querySelector('#quantize').closest('.field').querySelector('button.text.palettes');
   try {
     for (const quantize of ['none', 'palette']) {
@@ -356,11 +355,11 @@ test('Palettes beside Color palette opens the color layer on Palettes, whatever 
 // The layer closes on a switch away, as the character palette layer does, so the one that opens on ANSI after SAUCE is
 // a new one, and nothing closing may take its color box from it.
 test('from SAUCE it shows ANSI first; with no drawing it opens over the start screen, the group reading New drawings', async () => {
-  const { workspace } = await grid(40, 40);
+  const { workspace, pinia } = await grid(40, 40);
   const art = document.body.appendChild(document.createElement('div'));
-  const drawing = createApp(EditWorkspace).use(getActivePinia()).use(i18n);
+  const drawing = createApp(EditWorkspace).use(pinia).use(i18n);
   drawing.mount(art);
-  let { host, gone } = mountPanel();
+  let { host, gone } = mountPanel(pinia);
   try {
     workspace.editorTab = 'output';
     workspace.openColors('fg');
@@ -387,7 +386,7 @@ test('from SAUCE it shows ANSI first; with no drawing it opens over the start sc
   const screen = document.body.appendChild(document.createElement('div'));
   const editor = createApp(EditWorkspace).use(fresh.pinia).use(i18n);
   editor.mount(screen);
-  ({ host, gone } = mountPanel());
+  ({ host, gone } = mountPanel(fresh.pinia));
   try {
     await nextTick();
     host.querySelector('button.text.palettes').click();
@@ -408,10 +407,10 @@ test('from SAUCE it shows ANSI first; with no drawing it opens over the start sc
 // now puts the field back to the size in use, as it does in Dimensions and the Custom color list's hex. A typed field that waits for
 // Enter or a blur takes Escape this way: a new one needs it too.
 test('Font size: Escape puts the field back to the size in use, and a blur after it changes nothing', async () => {
-  const { workspace } = await grid(40, 40);
+  const { workspace, pinia } = await grid(40, 40);
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const field = host.querySelector('input.size'), size = workspace.displayFontSpec.size;
@@ -725,14 +724,14 @@ test('a run of Dimensions presses is one undo step, past MAX_LAYER_DIM too, and 
 // Cmd+Z with the Dimensions field still focused after Enter takes the size back (the field holds no typing of its own
 // then), and the field shows it.
 test('Cmd+Z after a size typed in Dimensions takes it back, then the stroke before it', async () => {
-  const { project, workspace } = await grid(40, 40);
+  const { project, workspace, pinia } = await grid(40, 40);
   project.aspectLock = false;
   project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#ff0000');
   project.commitEdit();
   await settle(project);
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => h(ControlPanel); } }).use(getActivePinia()).use(i18n);
+  const app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => h(ControlPanel); } }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const cols = host.querySelector('#cols');
@@ -760,16 +759,16 @@ test('Cmd+Z after a size typed in Dimensions takes it back, then the stroke befo
 // so Dimensions asks first, once a change: as the field commits, or at a stepper press. Cancel keeps the size, and the
 // steps; the choice resizes.
 test('a host\'s change of Dimensions in a room asks first: Cancel keeps the size and the steps, the choice resizes', async () => {
-  const { project } = await grid(40, 40);
+  const { project, pinia } = await grid(40, 40);
   project.aspectLock = false;
   project.startSharing({ send: () => {}, role: 'host', me: 'mine' });
-  useRoomStore().$patch({ role: 'host' });
+  useRoomStore(pinia).$patch({ role: 'host' });
   project.paintStroke([{ x: 4, y: 4, alpha: 1 }], '#ff0000');
   project.commitEdit();
   await settle(project);
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const cols = host.querySelector('#cols'), rows = host.querySelector('#rows');
@@ -804,16 +803,16 @@ test('a host\'s change of Dimensions in a room asks first: Cancel keeps the size
     app.unmount();
     host.remove();
     project.stopSharing();
-    useRoomStore().$patch({ role: null });
+    useRoomStore(pinia).$patch({ role: null });
   }
 });
 
 test('alone, Dimensions doesn\'t ask', async () => {
-  const { project } = await grid(40, 40);
+  const { project, pinia } = await grid(40, 40);
   project.aspectLock = false;
   const host = document.createElement('div');
   document.body.append(host);
-  const app = createApp(ControlPanel).use(getActivePinia()).use(i18n);
+  const app = createApp(ControlPanel).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const cols = host.querySelector('#cols');

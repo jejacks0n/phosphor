@@ -29,7 +29,7 @@ async function toolOn(tool, settings, font = null) {
   host = document.createElement('div');
   host.style.width = '726px';
   document.body.append(host);
-  mounted = createApp(EditToolbar).use(i18n);
+  mounted = createApp(EditToolbar).use(app.pinia).use(i18n);
   mounted.mount(host);
   await frames();
   return app;
@@ -94,8 +94,8 @@ test('in a bitmap font a character it lacks is its stand-in; a wide one is refus
 });
 
 test('the picker holds the palette\'s glyphs and every slot of the font; a click sets the character, closes it and leaves the palette', async () => {
-  const { workspace } = await toolOn('shapes', { shapeDrawWith: 'char' }, font8);
-  const palette = [...usePaletteStore().active.glyphs];
+  const { workspace, pinia } = await toolOn('shapes', { shapeDrawWith: 'char' }, font8);
+  const palette = [...usePaletteStore(pinia).active.glyphs];
   await openPicker();
   const slots = [...document.querySelectorAll('.dropdown-content .char-slots button')];
   expect(slots.map((b) => b.dataset.char)).toEqual(slotChars(font8));
@@ -103,7 +103,7 @@ test('the picker holds the palette\'s glyphs and every slot of the font; a click
   await frames();
   expect(workspace.activeChar).toBe(slotChars(font8)[1]);
   expect(document.querySelector('.dropdown-content')).toBeNull();
-  expect([...usePaletteStore().active.glyphs]).toEqual(palette);
+  expect([...usePaletteStore(pinia).active.glyphs]).toEqual(palette);
   await openPicker();
   const quick = [...document.querySelectorAll('.dropdown-content .char-palette button')];
   expect(quick.map((b) => b.dataset.char)).toEqual(palette.filter(Boolean));

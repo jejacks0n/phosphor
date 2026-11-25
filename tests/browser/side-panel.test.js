@@ -4,13 +4,11 @@
 import { test, expect, afterEach, beforeAll, afterAll, onTestFinished } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
 import { toastMessage } from '@/composables/useToast';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import SidePanel, { SIDE_PANEL } from '@/components/SidePanel.vue';
 import EditTabs from '@/components/EditTabs.vue';
 
@@ -24,16 +22,18 @@ afterEach(() => {
 
 const row = (n, fields = {}) => ({ id: String(n).padStart(16, '0'), ts: 1_700_000_000_000 + n * 60_000, text: `m${n}`, sub: `u_${n}`, name: `name-${n}`, host: false, mine: false, deleted: false, ...fields });
 
+// The stores are asked for by the test's Pinia: after the awaits, the active one may be a late test's.
 async function mount(before = () => {}) {
-  await createTestApp();
-  before(useRoomStore());
+  const { pinia, workspace } = await createTestApp();
+  const room = useRoomStore(pinia), social = useSocialStore(pinia);
+  before(room, { workspace, social });
   host = document.createElement('div');
   host.style.cssText = 'display:flex;height:600px';
   document.body.append(host);
-  app = createApp({ render: () => [h(EditTabs, { modelValue: 'input' }), h(SidePanel)] }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => [h(EditTabs, { modelValue: 'input' }), h(SidePanel)] }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { room: useRoomStore(), workspace: useWorkspaceStore() };
+  return { room, workspace, social };
 }
 const panel = () => host.querySelector('.side-panel');
 const words = (b) => [...b.childNodes].filter((n) => n.nodeType !== Node.COMMENT_NODE && !n.classList?.contains('beta')).map((n) => n.textContent).join('').trim().replace(/\s+/g, ' ');
@@ -162,9 +162,9 @@ async function reloadInto(folded) {
   await nextTick();   // the chat, if it was shown, scrolled to its newest
   app.unmount();
   host.remove();
-  return mount((r) => {
-    useWorkspaceStore().sidePanelFolded = folded;
-    useSocialStore()._roomGoesOn = true;
+  return mount((r, { workspace, social }) => {
+    workspace.sidePanelFolded = folded;
+    social._roomGoesOn = true;
     inRoom(r, [row(0)]);
   });
 }
@@ -210,8 +210,7 @@ test('a reload into the room shows the panel as it was: folded stays folded, and
 });
 
 test('in a room, what SOCIAL says (the lobby\'s notice line, not showing) is a toast; out of one it isn\'t', async () => {
-  const { room } = await mount();
-  const social = useSocialStore();
+  const { room, social } = await mount();
   toastMessage.value = null;
   social.notice = 'Something went wrong. Try again.';
   await nextTick();
@@ -225,9 +224,8 @@ test('in a room, what SOCIAL says (the lobby\'s notice line, not showing) is a t
 });
 
 test('the lobby says how many of who\'s here are signed in and how many are guests', async () => {
-  const { workspace } = await mount();
+  const { workspace, social } = await mount();
   workspace.showSocial();
-  const social = useSocialStore();
   const person = (sub, guest) => [sub, { sub, name: sub, guest }];
   social.lobby = { rooms: new Map(), people: new Map([person('u_1', false), person('u_2', false), person('g_1', true)]) };
   await nextTick();

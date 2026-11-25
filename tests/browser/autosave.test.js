@@ -60,18 +60,18 @@ async function pass(ms) {
 // A store with the composable mounted, and no document yet.
 async function mounted() {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   started = vi.spyOn(project, 'projectParts'); // a write's first step, the moment it's due
-  app = createApp({ setup() { autosave = useAutosave(); return () => null; } });
+  app = createApp({ setup() { autosave = useAutosave(); return () => null; } }).use(pinia);
   app.mount(document.createElement('div'));
   await vi.waitUntil(() => autosave.ready.value, { timeout: 3000, interval: 5 });
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 
 // An image opened with the composable mounted, its opening write done and forgotten. Not opened from a file (that
 // would keep an As opened version at the first change): the counts below are the writes' own.
 async function opened() {
-  const { project, workspace } = await mounted();
+  const { project, workspace, pinia } = await mounted();
   const bytes = await (await (await fetch(GRADIENT)).blob()).arrayBuffer();
   project.replaceImage(await decodeImage(bytes), bytes, { cols: 20, rows: 20, aspectLock: false, filename: 'gradient' });
   project.markSaved();
@@ -81,7 +81,7 @@ async function opened() {
   vi.mocked(writeLatest).mockClear();
   vi.mocked(addVersion).mockClear();
   vi.mocked(evict).mockClear();
-  return { project, workspace };
+  return { project, workspace, pinia };
 }
 
 // The page goes away; the tab's sessionStorage and the database stay. mounted() is the page coming back.
@@ -667,11 +667,11 @@ test('paint the canvas can\'t encode fails the write, rather than storing no pai
 });
 
 test('a save that fails says so in the dialog, stays open and doesn\'t count as saved; trying again works', async () => {
-  const { project } = await opened();
+  const { project, pinia } = await opened();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const encoding = paintThatWontEncode(project);
   const closed = vi.fn();
-  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed }).use(i18n);
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed }).use(pinia).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     document.querySelector('.modal-dialog form').requestSubmit();
@@ -700,11 +700,11 @@ test('a blank canvas that can\'t be encoded says so and stays at the start', asy
 });
 
 test('a save that fails leaves the name as it was', async () => {
-  const { project } = await opened();
+  const { project, pinia } = await opened();
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const named = project.filename;
   paintThatWontEncode(project);
-  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: () => {} }).use(i18n);
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: () => {} }).use(pinia).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     const input = document.querySelector('.modal-dialog input');
@@ -727,13 +727,13 @@ test('an export that fails leaves the name as it was', async () => {
 });
 
 test('while a save is under way the dialog says so, and Cancel and Escape wait for it', async () => {
-  const { project } = await opened();
+  const { project, pinia } = await opened();
   let finish;
   const parts = await project.projectParts();
   started.mockImplementationOnce(() => new Promise((resolve) => { finish = () => resolve(parts); }));
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   const closed = vi.fn();
-  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed }).use(i18n);
+  const dialog = createApp(SaveDialog, { ext: 'phosphor', onClose: closed }).use(pinia).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     const root = document.querySelector('.modal-dialog');
@@ -1762,13 +1762,13 @@ test('the start screen lists at most 5 recent documents; one open elsewhere is d
 });
 
 test('the versions dialog says so when a restore fails, and stays open with the document as it was', async () => {
-  const { project } = await opened();
+  const { project, pinia } = await opened();
   edit(project);
   await pass(SAVE_AFTER_MS);
   vi.spyOn(console, 'warn').mockImplementation(() => {});
   const closed = vi.fn();
   const restoreVersion = vi.fn().mockRejectedValue(new Error('partway'));
-  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion, onClose: closed }).use(i18n);
+  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion, onClose: closed }).use(pinia).use(i18n);
   dialog.mount(document.createElement('div'));
   try {
     await vi.waitUntil(() => document.querySelector('.modal-dialog li button'), { interval: 5 });
@@ -1785,11 +1785,11 @@ test('the versions dialog says so when a restore fails, and stays open with the 
 
 // The versions dialog over a document with a version; its Close button and a Restore button.
 async function versionsDialog(props) {
-  const { project } = await opened();
+  const { project, pinia } = await opened();
   edit(project);
   await pass(SAVE_AFTER_MS);
   vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion: vi.fn(), ...props }).use(i18n);
+  const dialog = createApp(VersionsDialog, { flush: autosave.flush, restoreVersion: vi.fn(), ...props }).use(pinia).use(i18n);
   dialog.mount(document.createElement('div'));
   await vi.waitUntil(() => document.querySelector('.modal-dialog [role=alert], .modal-dialog li button'), { interval: 5 });
   return {

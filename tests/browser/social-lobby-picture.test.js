@@ -3,7 +3,6 @@
 // every scroll moves the pin. Wide art scrolls across too: the window is never wider than 80 columns.
 import { test, expect, afterEach } from 'vitest';
 import { createApp } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, loadImage } from '../support/app.js';
 import { useRoomStore } from '@/store/RoomStore';
@@ -23,15 +22,15 @@ const frames = async (n = 4) => {
 // The picture over 300 lines of art `cols` wide, the room listed and the ANSI view at `row`, in a space
 // `width` px wide.
 async function mount(row, cols = 40, width = 400) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/tall.png', { cols, rows: 600 });
-  const room = useRoomStore();
+  const room = useRoomStore(pinia);
   Object.assign(room, { role: 'host', status: 'live', room: { name: 'neon harbor', public: true } });
   Object.assign(workspace, { viewTab: 'output', ansiViewOrigin: { col: 0, row }, ansiViewSize: { cols: 40, rows: 30 }, ansiViewZoom: 1 });
   host = document.createElement('div');
   host.style.width = `${width}px`;
   document.body.append(host);
-  app = createApp(LobbyPicture).use(getActivePinia()).use(i18n);
+  app = createApp(LobbyPicture).use(pinia).use(i18n);
   app.mount(host);
   const el = host.querySelector('.room-art');
   await expect.poll(() => el.scrollTop).toBeGreaterThan(0);

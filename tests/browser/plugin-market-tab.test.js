@@ -146,7 +146,7 @@ test('a card\'s button reads Install, Installed, Update or Replace by what is in
   served['/plugins.json'] = listWith((plugins) => {
     plugins.find(({ manifest }) => manifest.id === 'kim.fog').manifest.version = '1.3.0';
   });
-  await mount(async (store) => {
+  const store = await mount(async (store) => {
     const listing = (repo, path) => ({ repo, path, commit: COMMIT, official: repo === 'jejacks0n/phosphor' });
     await store.install(JSON.parse(midnight), { listing: listing('jejacks0n/phosphor', 'plugins/midnight') });
     await store.install(JSON.parse(fog), { listing: listing('kim/phosphor-fog', '') });
@@ -161,7 +161,7 @@ test('a card\'s button reads Install, Installed, Update or Replace by what is in
   expect(button('Outlines').textContent).toBe('Replace');
   expect(button('Outlines').disabled).toBe(false);
 
-  await usePluginStore().uninstall('kim.fog');
+  await store.uninstall('kim.fog');
   await vi.waitFor(() => expect(button('Fog').textContent).toBe('Install'));
 });
 

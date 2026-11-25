@@ -24,7 +24,7 @@ const TYPED = {
   chat: 'meet me at the usual place', address: 'wren-at-home.example:99999', sub: 'u_someone-else',
 };
 
-let social;
+let social, pinia; // the test's own: after an await, the active one may be a late test's
 beforeEach(async () => {
   const deleteDatabase = ownSocialDatabase('history');
   forgetKey();
@@ -34,7 +34,7 @@ beforeEach(async () => {
   sessionStorage.clear();
   useFakeSockets();
   vi.stubGlobal('matchMedia', (query) => ({ matches: query === desktopQuery }));
-  const pinia = createPinia();
+  pinia = createPinia();
   installActionLog(pinia, SKIPPED, NAMES_ONLY);
   createApp({}).use(pinia); // plugins wait for an app, as in main.js
   setActivePinia(pinia);
@@ -52,7 +52,7 @@ test('signing in, a code, a new password and email, a room\'s password, chat and
   server.route('POST /api/auth/two-factor/verify-totp', () => [200, { token: 't' }]);
   server.route('POST /api/auth/change-password', () => [200, { status: true }]);
   server.route('POST /api/auth/change-email', () => [200, { status: true }]);
-  const room = useRoomStore(), drawing = useDrawingStore();
+  const room = useRoomStore(pinia), drawing = useDrawingStore(pinia);
 
   expect(await social.signIn(TYPED.email, TYPED.password, TYPED.token)).toBe(true);
   await social.verifyTwoFactor(TYPED.code);
@@ -62,7 +62,7 @@ test('signing in, a code, a new password and email, a room\'s password, chat and
   expect(await room.joinAddress(TYPED.address, { password: TYPED.roomPassword })).toBe(false); // no port like that: nothing is asked
   await room.say(TYPED.chat); // not in a room: it goes nowhere, and its line is written before it runs
   try { drawing.invite(TYPED.sub); } catch { /* not hosting */ }
-  useWorkspaceStore().setActiveTool('brush'); // any other store's arguments are kept, as before
+  useWorkspaceStore(pinia).setActiveTool('brush'); // any other store's arguments are kept, as before
 
   expect(server.sent('POST', '/api/auth/change-password')[0].body.newPassword).toBe(TYPED.newPassword); // it did go to the server
   const text = logText({ version: '1.0.0', sha: 'abc1234', userAgent: 'a browser', viewport: '800×600' });
@@ -78,5 +78,5 @@ test('signing in, a code, a new password and email, a room\'s password, chat and
 });
 
 test('the stores whose arguments are never kept are SOCIAL\'s three, by the names Pinia knows them by', () => {
-  expect([...NAMES_ONLY].sort()).toEqual([useDrawingStore().$id, useRoomStore().$id, useSocialStore().$id].sort());
+  expect([...NAMES_ONLY].sort()).toEqual([useDrawingStore(pinia).$id, useRoomStore(pinia).$id, useSocialStore(pinia).$id].sort());
 });

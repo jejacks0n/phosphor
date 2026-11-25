@@ -3,16 +3,15 @@
 // can't run now grayed with the reason, and those run from it first when nothing's typed.
 import { test, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import CommandList from '@/components/CommandList.vue';
 import { chooseCommand, commandById } from '@/lib/commands';
 
-let app = null, project, workspace;
+let app = null, project, workspace, pinia;
 beforeEach(async () => {
   localStorage.removeItem('phosphor.recentCommands');
-  ({ project, workspace } = await createTestApp());
+  ({ project, workspace, pinia } = await createTestApp());
 });
 afterEach(() => {
   app?.unmount();
@@ -24,7 +23,7 @@ async function open() {
   workspace.commandListOpen = true;
   app ??= createApp({
     render: () => (workspace.commandListOpen ? h(CommandList, { onClose: (id) => chooseCommand(id, project, workspace) }) : null),
-  }).use(getActivePinia()).use(i18n);
+  }).use(pinia).use(i18n);
   if (!app._container) app.mount(document.body.appendChild(document.createElement('div')));
   await nextTick();
   return document.querySelector('dialog.modal-dialog');

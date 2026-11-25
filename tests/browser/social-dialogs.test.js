@@ -3,7 +3,6 @@
 // lobby and a page from the address is tests/browser/address.test.js; the flows with a real page, tests/e2e.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { CONSENT_KEY } from '@/social/consent';
@@ -20,16 +19,16 @@ afterEach(() => {
 });
 
 async function mount({ consented = true } = {}) {
-  await createTestApp();
+  const { pinia } = await createTestApp(); // the test's own: after an await, the active one may be a late test's
   if (!consented) localStorage.removeItem(CONSENT_KEY);
-  const social = useSocialStore();
+  const social = useSocialStore(pinia);
   if (!consented) social.consentVersion = 0;
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(SocialDialogs).use(getActivePinia()).use(i18n);
+  app = createApp(SocialDialogs).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
-  return { social, workspace: useWorkspaceStore() };
+  return { social, workspace: useWorkspaceStore(pinia), pinia };
 }
 const dialog = () => document.querySelector('dialog');
 const escape = async () => {
@@ -123,9 +122,9 @@ test('a page\'s close button (×) goes where Escape does; the name page, with no
 });
 
 test('Set up your room is the wide box only with a lobby card beside its settings: a link-only room\'s is the narrow one', async () => {
-  const { social } = await mount();
+  const { social, pinia } = await mount();
   social.supported = true;
-  const room = useRoomStore();
+  const room = useRoomStore(pinia);
   room.startDraft.isPublic = true;
   social.page = 'start-room';
   await nextTick();

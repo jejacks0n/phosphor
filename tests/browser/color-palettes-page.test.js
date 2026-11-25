@@ -33,7 +33,7 @@ afterEach(() => {
 const mount = async ({ quantize = 'cga', palette = '', drawing = true, picture } = {}) => {
   const made = await createTestApp();
   ({ project, workspace } = made);
-  library = useColorLibraryStore();
+  library = useColorLibraryStore(made.pinia);
   if (picture) await loadImage(project, picture, { cols: 20, rows: 10 });
   else if (drawing) await project.setBlankCanvas({ cols: 20, rows: 10 });
   project.quantize = quantize;

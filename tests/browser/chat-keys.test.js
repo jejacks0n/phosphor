@@ -5,7 +5,6 @@
 import { test, expect, afterEach, beforeAll, afterAll, onTestFinished, vi } from 'vitest';
 import { page } from 'vitest/browser';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
@@ -30,19 +29,19 @@ const claims = (fields) => ({ sub: 'u_1', name: 'wren', guest: false, verified: 
 
 // A blank drawing in ANSI and the side panel beside it, with the app's keys; in a room watched as `me` unless out of one.
 async function mount({ me = claims({}), inRoom = true } = {}) {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
   await settle(project);
   workspace.pickLayer('edit');
   workspace.editorTab = 'output';
-  useSocialStore().claims = me;
-  const room = useRoomStore();
+  useSocialStore(pinia).claims = me;
+  const room = useRoomStore(pinia);
   if (inRoom) Object.assign(room, { role: 'watch', id: 'abcdefghij', status: 'live', room: { name: 'neon harbor', welcome: '' }, chat: [] });
   host = document.createElement('div');
   host.style.cssText = 'display:flex;height:600px';
   document.body.append(host);
   app = createApp({ setup() { useKeyboardShortcuts(project, workspace); return () => [h(AnsiEditor, { view: 'output' }), h(SidePanel)]; } })
-    .use(getActivePinia()).use(i18n);
+    .use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   workspace.sidePanelTab = 'layers';

@@ -34,7 +34,7 @@ async function someone(name) {
   return makeSelfPass({ privateKey: pair.privateKey, publicKey }, name);
 }
 
-let deleteDatabase, social, room, project, desktop, fetched;
+let deleteDatabase, social, room, project, pinia, desktop, fetched;
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('desktop-room-host');
   sessionStorage.removeItem(RECORD);
@@ -42,7 +42,7 @@ beforeEach(async () => {
   forgetKey();
   await deleteDatabase();
   useFakeSockets();
-  ({ project } = await createTestApp());
+  ({ project, pinia } = await createTestApp());
   await openArt();
   fetched = vi.fn(() => Promise.reject(new Error('no server on desktop')));
   vi.stubGlobal('fetch', fetched);
@@ -52,8 +52,8 @@ beforeEach(async () => {
     stopService: vi.fn(async () => {}),
   };
   useFakeDesktop(desktop);
-  social = useSocialStore();
-  room = useRoomStore();
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
 });
 afterEach(() => {
   room.leave();
@@ -149,7 +149,7 @@ test('artists-now\'s hostable sets canBeHost', async () => {
   const { claims } = await someone('ann');
   expect(room.canBeHost(claims.sub)).toBe(false);
   socket.receive({ type: 'artists-now', subs: [claims.sub], hostable: { [claims.sub]: ['192.168.1.30:31337'] } });
-  expect(useDrawingStore().artists).toEqual([claims.sub]);
+  expect(useDrawingStore(pinia).artists).toEqual([claims.sub]);
   expect(room.canBeHost(claims.sub)).toBe(true);
   expect(room.canBeHost('someone-else')).toBe(false);
   socket.receive({ type: 'artists-now', subs: [claims.sub], hostable: {} });
@@ -165,10 +165,10 @@ async function reload() {
   connection?.close();
   room.close();
   sessionStorage.setItem(RECORD, record);
-  ({ project } = await createTestApp());
+  ({ project, pinia } = await createTestApp());
   await openArt();
-  social = useSocialStore();
-  room = useRoomStore();
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
 }
 
 test('a host\'s reload comes back with serviceInfo\'s secret, and its password for the next host', async () => {

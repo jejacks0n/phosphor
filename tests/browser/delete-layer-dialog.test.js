@@ -2,7 +2,6 @@
 // undo that. Alone, Delete is an undo step and doesn't ask.
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import LayersList from '@/components/LayersList.vue';
@@ -26,7 +25,7 @@ async function mount({ listFirst = true } = {}) {
   stores.workspace.editorTab = 'output';
   host = document.body.appendChild(document.createElement('div'));
   const parts = listFirst ? [h(LayersList), h(DeleteLayerDialog)] : [h(DeleteLayerDialog), h(LayersList)];
-  app = createApp({ render: () => parts }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => parts }).use(stores.pinia).use(i18n);
   app.mount(host);
   await nextTick();
   return stores;

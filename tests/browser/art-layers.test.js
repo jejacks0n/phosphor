@@ -456,7 +456,7 @@ test('the same art, or too big: no step', async () => {
 
 test('Join, Add, Subtract and Separate never take an art layer: nothing changes, and Join and Add are off with one selected', async () => {
   for (const artOnTop of [false, true]) {
-    const { project, workspace } = await blank();
+    const { project, workspace, pinia } = await blank();
     const art = () => project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 2, rows: 1, cells: [[0, 'A', RED, null]] } }));
     const keys = artOnTop ? [project.addShape(rectShape(0, 0, 6, 6, { fill: '#0000ff' })), art()] : [art(), project.addShape(rectShape(0, 0, 6, 6, { fill: '#0000ff' }))];
     const shapes = project.shapes, version = project.history.version;
@@ -468,7 +468,7 @@ test('Join, Add, Subtract and Separate never take an art layer: nothing changes,
     expect(project.history.version).toBe(version);
 
     Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: keys });
-    const row = document.createElement('div'), options = createApp(VectorOptions).use(i18n);
+    const row = document.createElement('div'), options = createApp(VectorOptions).use(pinia).use(i18n);
     options.mount(row);
     await settle(project);
     const button = (name) => row.querySelector(`button[aria-label="${name}"]`);
@@ -562,7 +562,7 @@ test('a move or restack an art layer at the limit has no room for is refused, an
 });
 
 test('Fill, Stroke and Swap leave an art layer as it is: no step, nothing unsaved, and in a room a mixed selection with a locked layer still restyles the rest', async () => {
-  const { project, workspace } = await blank();
+  const { project, workspace, pinia } = await blank();
   const art = project.addShape(makeArt({ m: [1, 0, 0, 1, 2, 2], art: { cols: 1, rows: 1, cells: [[0, 'A', RED, null]] } }));
   project.markSaved();
   Object.assign(workspace, { editorTab: 'vector', activeTool: 'vselect', vectorSelected: [art] });
@@ -575,7 +575,7 @@ test('Fill, Stroke and Swap leave an art layer as it is: no step, nothing unsave
   expect(project.isDirty).toBe(false);
 
   const rect = project.addShape(rectShape(10, 10, 16, 20, { fill: '#0000ff' }));
-  useDrawingStore().cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
+  useDrawingStore(pinia).cursors = { ann: { at: null, view: null, name: 'Ann', inside: art } };
   workspace.vectorSelected = [art, rect];
   toastMessage.value = null;
   style.set('fill', '#00ff00');

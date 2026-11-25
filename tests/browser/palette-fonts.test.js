@@ -2,7 +2,6 @@
 import { test, expect } from 'vitest';
 import { createTestApp } from '../support/app.js';
 import { fontId } from '@/lib/BitmapFont.js';
-import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { usePaletteStore } from '@/store/PaletteStore.js';
 
 const fontA = () => ({ name: 'A', height: 8, bytes: new Uint8Array(2048).fill(1) });
@@ -10,9 +9,9 @@ const fontB = () => ({ name: 'B', height: 8, bytes: new Uint8Array(2048).fill(2)
 
 async function setup() {
   localStorage.clear();
-  const { project } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10 });
-  return { project, palettes: usePaletteStore(), workspace: useWorkspaceStore() };
+  return { project, palettes: usePaletteStore(pinia), workspace };
 }
 
 test('a palette made in a font drawing belongs to its font', async () => {

@@ -55,7 +55,7 @@ const info = (fields = {}) => ({
   signal: null, liveSince: 1000, count: 0, ...fields,
 });
 
-let deleteDatabase, server, social, room, project, toClose;
+let deleteDatabase, server, social, room, project, pinia, toClose; // pinia: the test's own, asked for by name after the awaits
 beforeEach(async () => {
   deleteDatabase = ownSocialDatabase('room-store');
   localStorage.removeItem('phosphor-reported');
@@ -67,14 +67,14 @@ beforeEach(async () => {
   vi.stubGlobal('matchMedia', (query) => ({ matches: query === desktopQuery }));
   vi.stubEnv('VITE_SOCIAL_STUN', 'none');   // the store's peers use no STUN server
   expect(rtcConfig()).toEqual({ iceServers: [] });
-  ({ project } = await createTestApp());
+  ({ project, pinia } = await createTestApp());
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 8, rows: 8 });   // before fetch is the fake's
   server = fakeServer();
   server.session = member();
   server.route('GET /api/pass-key', () => [200, { key: keyB64 }]);
   server.route('POST /api/rooms', () => [200, { id: ID, link: `http://localhost/?room=${ID}` }]);
-  social = useSocialStore();
-  room = useRoomStore();
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
   toClose = [];
 });
 afterEach(() => {
@@ -598,7 +598,7 @@ test('?room=<id> on a desktop opens the lobby and asks once you\'re known, joini
   const replaceState = vi.spyOn(history, 'replaceState').mockImplementation(() => {});
   const { useWorkspaceStore } = await import('@/store/WorkspaceStore');
   await social.start(at(`?room=${ID}&keep=1`));
-  expect([useWorkspaceStore().sidePanelTab, useWorkspaceStore().sidePanelFolded]).toEqual(['social', false]);
+  expect([useWorkspaceStore(pinia).sidePanelTab, useWorkspaceStore(pinia).sidePanelFolded]).toEqual(['social', false]);
   expect(replaceState.mock.calls[0][2]).toBe(`${window.location.pathname}?keep=1`);
   expect(social.roomInvite).toBe(ID);
   expect(room.role).toBe(null);
@@ -608,7 +608,7 @@ test('?room=<id> on a desktop opens the lobby and asks once you\'re known, joini
   const socket = await lastSocket(1);
   expect(server.requests.findIndex((r) => r.path === '/api/me')).toBeGreaterThanOrEqual(0);
   expect(socket.url).toMatch(new RegExp(`/api/rooms/${ID}/ws$`));
-  expect([room.role, useWorkspaceStore().editorTab]).toEqual(['watch', 'room']);   // its art shows
+  expect([room.role, useWorkspaceStore(pinia).editorTab]).toEqual(['watch', 'room']);   // its art shows
   await social.showLobby();
   expect(sockets.filter((s) => s.url.includes('/api/rooms/'))).toHaveLength(1);   // once
 });
@@ -682,7 +682,7 @@ test('A public room sends one thumbnail soon after going live, then one only aft
 
 test('A change of the host\'s view alone sends a thumbnail once 3 minutes have passed since the last', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 0 }, ansiViewSize: { cols: 10, rows: 4 } });
   const socket = await goLive();
   await vi.advanceTimersByTimeAsync(10_000);
@@ -698,7 +698,7 @@ test('A change of the host\'s view alone sends a thumbnail once 3 minutes have p
 
 test('The lobby picture follows the shared view\'s middle until pinned to a cell; pinning or tracking again is a change, and a pin picked before going live carries into the room', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 0, row: 10 }, ansiViewSize: { cols: 10, rows: 6 } });
   const socket = await goLive();
   await vi.advanceTimersByTimeAsync(10_000);
@@ -733,7 +733,7 @@ test('The lobby picture follows the shared view\'s middle until pinned to a cell
 test('on PIXEL the host sends the cells in view and the PIXEL zoom against the font\'s cell; on ANSI its view and zoom; SAUCE keeps the last one', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const setView = vi.spyOn(Host.prototype, 'setView');
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { editorTab: 'input', viewTab: 'input', inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
   await goLive();
   const zoom = 4 / measureAdvance(DISPLAY_FONT);
@@ -759,7 +759,7 @@ test('on PIXEL the host sends the cells in view and the PIXEL zoom against the f
 test('on PIXEL new cells in view don\'t measure the font again; a new font size sends a new zoom', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const setView = vi.spyOn(Host.prototype, 'setView');
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { editorTab: 'input', viewTab: 'input', inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
   await goLive();
   const was = measureAdvance(DISPLAY_FONT);
@@ -781,7 +781,7 @@ test('on PIXEL new cells in view don\'t measure the font again; a new font size 
 test('a zoom goes with the cells measured at it: a new zoom alone sends nothing, and never with the old cells', async () => {
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
   const setView = vi.spyOn(Host.prototype, 'setView');
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { editorTab: 'output', viewTab: 'output', ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
   await goLive();
   expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 1 });
@@ -804,7 +804,7 @@ test('a zoom goes with the cells measured at it: a new zoom alone sends nothing,
 
 test('going live on SOCIAL sends the last art tab\'s view at once', async () => {
   const setView = vi.spyOn(Host.prototype, 'setView');
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { editorTab: 'social', ansiViewZoom: 0.5, ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
   await goLive();
   expect(setView).toHaveBeenLastCalledWith({ col: 3, row: 1, cols: 10, rows: 5, zoom: 0.5 });
@@ -1126,7 +1126,7 @@ test('No tone while focus is in the chat panel, nor with the tone turned off', a
   room._watch.onChat({ type: 'chat', ...said(1) });
   expect(play).not.toHaveBeenCalled();
   chat.querySelector('textarea').blur();
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   workspace.chatTone = false;
   onTestFinished(() => { workspace.chatTone = true; });
   room._watch.onChat({ type: 'chat', ...said(2) });
@@ -1645,9 +1645,9 @@ async function reload({ art = true } = {}) {
   connection?.close();
   room.close();
   sessionStorage.setItem(RECORD, record);
-  ({ project } = await createTestApp());
-  social = useSocialStore();
-  room = useRoomStore();
+  ({ project, pinia } = await createTestApp());
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
   if (art) await openArt();
 }
 
@@ -1719,11 +1719,11 @@ test.each([
   ['input', { viewTab: 'input', ansiZoom: 0.75, editZoom: 7, ansiViewOrigin: { col: 8, row: 9 }, ansiViewSize: { cols: 10, rows: 11 }, ansiViewZoom: 0.75, inputView: { col: 12, row: 13, cols: 14, rows: 15, zoom: 7 } }, { col: 12, row: 13 }],
 ])('the view round-trips, and sharedView is the host\'s on resume before any editor mounts (%s)', async (tab, view, at) => {
   await goLive();
-  Object.assign(useWorkspaceStore(), view);
-  const shared = plain(useWorkspaceStore().sharedView);
+  Object.assign(useWorkspaceStore(pinia), view);
+  const shared = plain(useWorkspaceStore(pinia).sharedView);
   await reload();
   expect(keptHostingRecord().view).toEqual(view);
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   room.resume();
   expect(plain(workspace.$state)).toMatchObject(view);
   expect(plain(workspace.sharedView)).toEqual(shared);
@@ -1732,7 +1732,7 @@ test.each([
 });
 
 test('the view waits for the font to go to the Host, and goes once it\'s in', async () => {
-  const workspace = useWorkspaceStore();
+  const workspace = useWorkspaceStore(pinia);
   Object.assign(workspace, { viewTab: 'input', displayFontLoaded: null, inputView: { col: 2, row: 1, cols: 6, rows: 3, zoom: 4 } });
   await goLive();
   expect(room._host.view).toBe(null);
@@ -1748,59 +1748,59 @@ test('the view waits for the font to go to the Host, and goes once it\'s in', as
 });
 
 test('a host going live with the font in sends the view at once', async () => {
-  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
+  Object.assign(useWorkspaceStore(pinia), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 1 }, ansiViewSize: { cols: 10, rows: 5 } });
   await goLive();
   expect(room._host.view).toMatchObject({ col: 3, row: 1, cols: 10, rows: 5 });
 });
 
 test('closing a resumed room leaves no view to scroll the next art to', async () => {
   await goLive();
-  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
+  Object.assign(useWorkspaceStore(pinia), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
   await reload();
   room.resume();
-  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  expect(useWorkspaceStore(pinia).viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
   await lastSocket(2);
   room.close();
-  expect(useWorkspaceStore().viewToRestore).toBe(null);
+  expect(useWorkspaceStore(pinia).viewToRestore).toBe(null);
 });
 
 test('no art to come back to, or another account: no view to scroll the next art to', async () => {
   await goLive();
-  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
+  Object.assign(useWorkspaceStore(pinia), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
   await reload({ art: false });
   const record = sessionStorage.getItem(RECORD);
   room.resume();
-  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
-  useWorkspaceStore().documentAnswered = true;
+  expect(useWorkspaceStore(pinia).viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  useWorkspaceStore(pinia).documentAnswered = true;
   await expect.poll(() => room.role).toBe(null);
-  expect(useWorkspaceStore().viewToRestore).toBe(null);
+  expect(useWorkspaceStore(pinia).viewToRestore).toBe(null);
 
   sessionStorage.setItem(RECORD, JSON.stringify({ ...JSON.parse(record), sub: 'someone-else' }));
   room.resume();
-  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  expect(useWorkspaceStore(pinia).viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
   await expect.poll(() => room.role).toBe(null);
-  expect(useWorkspaceStore().viewToRestore).toBe(null);
+  expect(useWorkspaceStore(pinia).viewToRestore).toBe(null);
 });
 
 test('another document while hosting leaves no view to scroll its art to; the one autosave brings back at load keeps it', async () => {
   await goLive();
-  Object.assign(useWorkspaceStore(), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
+  Object.assign(useWorkspaceStore(pinia), { viewTab: 'output', ansiViewOrigin: { col: 3, row: 40 } });
   await reload({ art: false });
   room.resume();
   await social.boot();
   await expect.poll(() => social.claims?.sub).toBe('u_1');
   await openArt();   // restoring the art gives it an id: that's the same document
   await greeted();
-  expect(useWorkspaceStore().viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
+  expect(useWorkspaceStore(pinia).viewToRestore).toEqual({ tab: 'output', col: 3, row: 40 });
 
   project.documentId = 'another-document';
   await later();
-  expect(useWorkspaceStore().viewToRestore).toBe(null);
+  expect(useWorkspaceStore(pinia).viewToRestore).toBe(null);
 });
 
 test('the view is kept as it changes, not only when the page goes', async () => {
   await goLive();
-  useWorkspaceStore().ansiViewOrigin = { col: 2, row: 30 };
+  useWorkspaceStore(pinia).ansiViewOrigin = { col: 2, row: 30 };
   await expect.poll(() => keptHostingRecord().view?.ansiViewOrigin, { timeout: 3000 }).toEqual({ col: 2, row: 30 });
 });
 
@@ -1808,11 +1808,11 @@ test('a record kept without a view comes back at the view there is', async () =>
   await goLive();
   await reload();
   sessionStorage.setItem(RECORD, JSON.stringify({ ...JSON.parse(sessionStorage.getItem(RECORD)), view: null }));
-  const { viewTab, ansiViewOrigin } = useWorkspaceStore();
+  const { viewTab, ansiViewOrigin } = useWorkspaceStore(pinia);
   room.resume();
   expect(room.role).toBe('host');
-  expect(useWorkspaceStore().viewToRestore).toBe(null);
-  expect([useWorkspaceStore().viewTab, useWorkspaceStore().ansiViewOrigin]).toEqual([viewTab, ansiViewOrigin]);
+  expect(useWorkspaceStore(pinia).viewToRestore).toBe(null);
+  expect([useWorkspaceStore(pinia).viewTab, useWorkspaceStore(pinia).ansiViewOrigin]).toEqual([viewTab, ansiViewOrigin]);
   await lastSocket(2);
 });
 
@@ -1832,7 +1832,7 @@ test('resume() with no record, or one that can\'t be read, changes nothing', asy
 test('a record whose restore throws is forgotten, with nothing half set', async () => {
   const good = { sub: 'u_1', id: ID, link: 'l', room: {}, session: newSession(), muted: [], host: { log: [], only: [], removed: [], here: [] } };
   const view = { viewTab: 'output', ansiZoom: 0.5, editZoom: 9, ansiViewOrigin: { col: 3, row: 40 }, ansiViewSize: { cols: 60, rows: 20 }, ansiViewZoom: 0.5, inputView: { col: 1, row: 2, cols: 5, rows: 6, zoom: 9 } };
-  const workspace = () => { const { ansiZoom, editZoom, ansiViewOrigin, viewToRestore } = useWorkspaceStore(); return plain({ ansiZoom, editZoom, ansiViewOrigin, viewToRestore }); };
+  const workspace = () => { const { ansiZoom, editZoom, ansiViewOrigin, viewToRestore } = useWorkspaceStore(pinia); return plain({ ansiZoom, editZoom, ansiViewOrigin, viewToRestore }); };
   const before = workspace();
   for (const fields of [{ host: undefined }, { host: { ...good.host, only: [1] } }, { view: {} }, { host: { ...good.host, only: [1] }, view }]) {
     sessionStorage.setItem(RECORD, JSON.stringify({ ...good, ...fields }));
@@ -1961,7 +1961,7 @@ test('no document once autosave has answered drops the record and says the art c
   room.resume();
   await social.boot();
   await expect.poll(() => social.claims?.sub).toBe('u_1');
-  useWorkspaceStore().documentAnswered = true;
+  useWorkspaceStore(pinia).documentAnswered = true;
   await expect.poll(() => room.role).toBe(null);
   expect(social.notice).toBe(ART_NOT_OPENED_WORDS);
   expect(sessionStorage.getItem(RECORD)).toBe(null);
@@ -1990,7 +1990,7 @@ test('a slow restore isn\'t a dead room: settled with no answer yet waits, and t
   room.resume();
   await social.boot();
   await expect.poll(() => social.claims?.sub).toBe('u_1');
-  useWorkspaceStore().documentSettled = true;
+  useWorkspaceStore(pinia).documentSettled = true;
   await wait(50);
   expect([room.role, social.notice, sockets.length]).toEqual(['host', null, 1]);
   expect(sessionStorage.getItem(RECORD)).not.toBe(null);
@@ -2334,9 +2334,9 @@ test('an artist the host no longer names is no one to follow: back to the host',
 
 // Back from a reload as someone the room named while away: what they had open not back yet, as a watcher.
 async function namedWhileAway() {
-  ({ project } = await createTestApp());   // with nothing open yet
-  social = useSocialStore();
-  room = useRoomStore();
+  ({ project, pinia } = await createTestApp());   // with nothing open yet
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
   await social.boot();
   sessionStorage.setItem(`phosphor-artist:${ID}:u_1`, 'their-document');
   const socket = await joining(1);
@@ -2369,7 +2369,7 @@ test('named while away, a reload whose document turns out to be another watches 
 
 test('named while away, with nothing to come back, a reload watches as anyone does', async () => {
   await namedWhileAway();
-  useWorkspaceStore().documentAnswered = true;
+  useWorkspaceStore(pinia).documentAnswered = true;
   await wait(50);
   expect(room.role).toBe('watch');
   expect(sockets).toHaveLength(1);
@@ -2385,19 +2385,19 @@ test('named while away, and the room moved on by the time the document\'s back, 
 });
 
 test('named host before their document is back, they wait for it; then, with no art and no artist here, the room ends', async () => {
-  ({ project } = await createTestApp());   // with nothing open yet
-  social = useSocialStore();
-  room = useRoomStore();
+  ({ project, pinia } = await createTestApp());   // with nothing open yet
+  social = useSocialStore(pinia);
+  room = useRoomStore(pinia);
   await social.boot();
   const socket = await joining(1);
   socket.receive({ type: 'joined', peer: 'p1', hostName: 'ansi-fan', hostSub: 'u_9' });
-  useWorkspaceStore().documentAnswered = false;
+  useWorkspaceStore(pinia).documentAnswered = false;
   socket.receive({ type: 'new-host', name: social.claims.name, sub: social.claims.sub, planned: true });
   socket.receive({ type: 'hosting', room: info({ hostSub: social.claims.sub }), peers: [] });
   socket.receive({ type: 'artists-now', subs: ['u_9'] });   // the old host, who isn't here
   await wait(300);
   expect(socket.sent.some((msg) => msg.type === 'end')).toBe(false);
-  useWorkspaceStore().documentAnswered = true;
+  useWorkspaceStore(pinia).documentAnswered = true;
   await vi.waitFor(() => expect(socket.sent.some((msg) => msg.type === 'end')).toBe(true));
 });
 
@@ -2436,7 +2436,7 @@ test('a host naming a sub like an Object method is not followable, and breaks no
 test('art heard while drawing is dropped: someone drawing has the document, and art counts again once they\'re not', async () => {
   await social.boot();
   await joining(1);
-  const project = useProjectStore();
+  const project = useProjectStore(pinia);
   const frame = (char) => ({ cols: 1, lines: 1, font: { id: 'vga', size: 20 }, cells: [{ char }] });
   const first = frame('a');
   room._watch.onArt(first);

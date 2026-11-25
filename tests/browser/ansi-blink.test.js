@@ -3,7 +3,6 @@
 // spans: a WebGL canvas's pixels are gone by the time a test could read them.)
 import { test, expect, afterEach, vi } from 'vitest';
 import { createApp, h, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import AnsiEditor from '@/components/AnsiEditor.vue';
@@ -26,7 +25,7 @@ const css = (hex) => `rgb(${[hex.slice(1, 3), hex.slice(3, 5), hex.slice(5, 7)].
 
 // The ANSI view (its DOM view) of a CGA drawing with white A on bright blue in its first cell; the first cell's run.
 async function mountBlue() {
-  const { project, workspace } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   renderer = workspace;
   workspace.ansiRenderer = 'dom';
   await project.setBlankCanvas({ withLayer: true, cols: 4, rows: 2 });
@@ -37,7 +36,7 @@ async function mountBlue() {
   workspace.editorTab = 'output';
   host = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px; display: flex' });
   document.body.append(host);
-  app = createApp({ render: () => h(AnsiEditor, { view: 'output' }) }).use(getActivePinia()).use(i18n);
+  app = createApp({ render: () => h(AnsiEditor, { view: 'output' }) }).use(pinia).use(i18n);
   app.mount(host);
   await nextTick();
   const first = () => host.querySelector('pre span span');

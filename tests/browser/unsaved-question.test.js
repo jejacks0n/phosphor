@@ -7,7 +7,6 @@ import { createTestApp } from '../support/app.js';
 import EditWorkspace from '@/components/EditWorkspace.vue';
 import UnsavedDialog from '@/components/UnsavedDialog.vue';
 import { i18n } from '@/i18n';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 let mounted = null, host = null;
 afterEach(() => {
@@ -24,17 +23,17 @@ const PATIENT = { timeout: 10_000 };
 
 // A blank canvas open in the workspace, with a change not saved unless `clean`.
 async function drawing({ clean = false } = {}) {
-  const { project } = await createTestApp();
+  const { project, workspace, pinia } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 10 });
   if (!clean) {
     project.typeAt(1, 1, 'A', { fg: '#ffee00', bg: '#0044aa' });
     project.commitEdit();
   }
   host = document.body.appendChild(document.createElement('div'));
-  mounted = createApp({ render: () => [h(EditWorkspace), h(UnsavedDialog)] }).use(i18n);
+  mounted = createApp({ render: () => [h(EditWorkspace), h(UnsavedDialog)] }).use(pinia).use(i18n);
   mounted.mount(host);
   await settle();
-  return { project, workspace: useWorkspaceStore() };
+  return { project, workspace };
 }
 
 const drop = async (file) => {

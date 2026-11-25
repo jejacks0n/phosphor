@@ -302,12 +302,12 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
       expect(PALETTES.cga).toContain(cell.bg);
     }
 
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
-    project.charChoice = await onSolver(def, { hash: 'writes-past' });
+    project.charChoice = await onSolver(def, { hash: 'writes-past', pinia });
     await settle(project);
-    expect(usePluginStore().problems['phosphor.outlines']).toMatch(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toMatch(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
     const shown = key(project.cells);
     vi.spyOn(ShapeMatcher.prototype, 'resolve').mockReturnValue(null);
     project.renderer.reset();
@@ -340,20 +340,20 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
     unregisterScript('phosphor.outlines');
     expect(gpu.shaderProblem(REF)).toBe(null);
 
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
-    const ref = await onSolver(def, { hash: 'no-compile' });
+    const ref = await onSolver(def, { hash: 'no-compile', pinia });
     project.charChoice = ref;
     await settle(project);
-    const message = usePluginStore().problems['phosphor.outlines'];
+    const message = usePluginStore(pinia).problems['phosphor.outlines'];
     expect(message).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
     expect(message).toMatch(/error/i);
     expect(project.cells.some((c) => c.char === '/')).toBe(true); // the JavaScript's
   });
 
   test('a shader that differs from its JavaScript in a near-tie or two stays on', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
     const def = solver({
@@ -361,9 +361,9 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
       shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), cell == ivec2(0) ? 5 : 4);' }, // its first cell differs
     });
     const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
-    project.charChoice = await onSolver(def, { hash: 'near-tie' });
+    project.charChoice = await onSolver(def, { hash: 'near-tie', pinia });
     await settle(project);
-    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBeUndefined();
     expect(project.cells[0].char).toBe('\\'); // the shader's cell
     const calls = spy.mock.calls.length;
     project.brightness = 120;
@@ -372,16 +372,16 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
   });
 
   test('a shader that agrees is used, and one that disagrees with its JavaScript is switched off after the first check', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
     const spy = vi.spyOn(ShapeMatcher.prototype, 'resolve');
     const used = () => spy.mock.results.filter((r, i) => r.value && spy.mock.calls[i][3].kind === 'plugin').length;
 
-    project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'agrees' });
+    project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'agrees', pinia });
     await settle(project);
     expect(used()).toBeGreaterThan(0);
-    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBeUndefined();
     const agreed = key(project.cells);
     spy.mockReturnValue(null);
     project.renderer.reset();
@@ -390,14 +390,14 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
     expect(key(project.cells)).toEqual(agreed); // the JavaScript's
     spy.mockRestore();
 
-    usePluginStore().dropScript('phosphor.outlines');
+    usePluginStore(pinia).dropScript('phosphor.outlines');
     const wrong = vi.spyOn(ShapeMatcher.prototype, 'resolve');
     const def = solver({ solve: () => ({ char: '/', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), 5);' } });
-    project.charChoice = await onSolver(def, { hash: 'disagrees' });
+    project.charChoice = await onSolver(def, { hash: 'disagrees', pinia });
     await settle(project);
     expect(wrong.mock.results.some((r) => r.value)).toBe(true); // it ran once, for the check
     const words = t('plugins.errors.shaderDisagrees', { count: 64, total: 64, col: 0, line: 0 });
-    expect(usePluginStore().problems['phosphor.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
     expect(project.cells.every((c) => c.char === '/')).toBe(true);
     const calls = wrong.mock.calls.length;
     project.brightness = 120; // a whole render again
@@ -407,7 +407,7 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
   });
 
   test('a shader wrong only where a cell holds an edge is switched off, though the drawing\'s corner is plain', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await project.setBlankCanvas({ cols: 16, rows: 24 }); // black: no edges anywhere
     Object.assign(project, { quantize: 'cga', chars: SET });
     await settle(project);
@@ -423,32 +423,32 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
       },
       shader: { solve: 'byShape();' }, // forgets the edges
     });
-    project.charChoice = await onSolver(def, { hash: 'edges-only' });
+    project.charChoice = await onSolver(def, { hash: 'edges-only', pinia });
     await settle(project);
-    expect(usePluginStore().problems['phosphor.outlines']).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toContain(t('plugins.errors.shaderOff', { name: 'Edges', message: '' }));
   });
 
   test('a change of set checks the shader again: one that agrees on the first set and not on the next is switched off', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
     // Its own '\\' taken to be the last glyph: true while the set doesn't hold it.
     const def = solver({ solve: () => ({ char: '\\', fg: rgb(255, 0, 0), bg: rgb(0, 0, 0) }), shader: { solve: 'put(vec3(255.0, 0.0, 0.0), vec3(0.0), glyphCount - 1);' } });
-    project.charChoice = await onSolver(def, { hash: 'set-change' });
+    project.charChoice = await onSolver(def, { hash: 'set-change', pinia });
     await settle(project);
-    expect(usePluginStore().problems['phosphor.outlines']).toBeUndefined();
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBeUndefined();
     expect(project.cells.every((c) => c.char === '\\')).toBe(true);
 
     project.chars = `${SET}\\▌`; // holds '\\' now: the last glyph is ▌
     await settle(project);
     const words = t('plugins.errors.shaderDisagrees', { count: 64, total: 64, col: 0, line: 0 });
-    expect(usePluginStore().problems['phosphor.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(t('plugins.errors.shaderOff', { name: 'Edges', message: words }));
     expect(project.cells.every((c) => c.char === '\\')).toBe(true); // the JavaScript's
   });
 
   // Last: the shared context stays lost.
   test('a context lost during a solver\'s first check is put down to its shader, and the JavaScript draws', async () => {
-    const { project } = await createTestApp();
+    const { project, pinia } = await createTestApp();
     await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 16, rows: 24 });
     Object.assign(project, { quantize: 'cga', chars: SET });
     const draw = WebGL2RenderingContext.prototype.drawArrays;
@@ -458,10 +458,10 @@ float codeOf(int k) { return k >= 0 ? 40.0 + float(k) * 30.0 : 0.0; }`,
       draw.apply(this, args);
       if (!this.getContextAttributes()?.preserveDrawingBuffer) this.getExtension('WEBGL_lose_context').loseContext(); // as a watchdog does to a shader that never ends
     });
-    project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'lost' });
+    project.charChoice = await onSolver(solver(PASS_ONE), { hash: 'lost', pinia });
     await settle(project);
     const words = t('plugins.errors.shaderOff', { name: 'Edges', message: t('plugins.errors.shaderLost') });
-    expect(usePluginStore().problems['phosphor.outlines']).toBe(words);
+    expect(usePluginStore(pinia).problems['phosphor.outlines']).toBe(words);
     expect(project.cells.some((c) => c.char === '/')).toBe(true); // the JavaScript's
   });
 });

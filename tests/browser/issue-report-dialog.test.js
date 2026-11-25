@@ -3,7 +3,6 @@
 import { afterEach, beforeEach, expect, test, vi } from 'vitest';
 import { userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import IssueReportDialog from '@/components/IssueReportDialog.vue';
@@ -21,7 +20,7 @@ vi.mock('@/social/turnstile', () => ({
   },
 }));
 
-let app = null, host = null, closed = 0, project = null;
+let app = null, host = null, closed = 0, project = null, pinia = null;
 beforeEach(() => {
   Object.assign(turnstile, { token: null, mounted: [], removed: 0 });
   closed = 0;
@@ -38,7 +37,7 @@ const answers = (status, body) => vi.fn(async () => new Response(JSON.stringify(
 
 // The dialog over a drawing named sky (or with none open), two steps taken, and the server answering as given.
 async function open({ canvas = true, fetch = answers(201, { id: 'r_1', issue: 312 }), before = () => {} } = {}) {
-  ({ project } = await createTestApp());
+  ({ project, pinia } = await createTestApp());
   if (canvas) {
     await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 8 });
     project.rename('sky');
@@ -62,7 +61,7 @@ async function open({ canvas = true, fetch = answers(201, { id: 'r_1', issue: 31
 function mountDialog() {
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(IssueReportDialog, { onClose: () => { closed++; } }).use(getActivePinia()).use(i18n);
+  app = createApp(IssueReportDialog, { onClose: () => { closed++; } }).use(pinia).use(i18n);
   app.mount(host);
 }
 const dialog = () => document.querySelector('dialog.modal-dialog');
@@ -161,13 +160,13 @@ test('with no drawing open, only the steps go', async () => {
 });
 
 test('in a room the host\'s and an artist\'s line says it\'s the room\'s drawing', async () => {
-  await open({ before: () => { useRoomStore().role = 'host'; } });
+  await open({ before: () => { useRoomStore(pinia).role = 'host'; } });
   await ready();
   expect(what()).toMatch(/^This room's drawing, \d+(\.\d)? (KB|MB) · 2 steps$/);
   app.unmount();
   host.remove();
 
-  const fetch = await open({ before: () => { project._sharing = { role: 'artist' }; useRoomStore().role = 'watch'; } });
+  const fetch = await open({ before: () => { project._sharing = { role: 'artist' }; useRoomStore(pinia).role = 'watch'; } });
   await ready();
   expect(what()).toMatch(/^This room's drawing, /);
   await typed('wrong', 'A stroke went missing');
@@ -177,7 +176,7 @@ test('in a room the host\'s and an artist\'s line says it\'s the room\'s drawing
 
 // Someone only watching has their own drawing open, nothing to do with the room: it stays here, and the line says so.
 test('a watcher\'s own drawing isn\'t sent: only the steps go, and the line says why', async () => {
-  const fetch = await open({ before: () => { useRoomStore().role = 'watch'; } });
+  const fetch = await open({ before: () => { useRoomStore(pinia).role = 'watch'; } });
   await ready();
   expect(what()).toBe('2 steps. While you watch a room, your own drawing isn\'t sent.');
   await typed('wrong', 'The host\'s art froze');

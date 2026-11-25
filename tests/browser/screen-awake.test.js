@@ -24,9 +24,9 @@ function fakeWakeLock(request = async (type) => Object.assign(new EventTarget(),
 
 async function mounted() {
   const stores = await createTestApp();
-  app = createApp({ setup() { useScreenAwake(); return () => null; } });
+  app = createApp({ setup() { useScreenAwake(); return () => null; } }).use(stores.pinia);
   app.mount(document.createElement('div'));
-  return { ...stores, room: useRoomStore() };
+  return { ...stores, room: useRoomStore(stores.pinia) };
 }
 
 const held = async (wakeLock, n) => {
