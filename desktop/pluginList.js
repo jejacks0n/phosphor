@@ -6,9 +6,10 @@ export const MOST_FILE_BYTES = 1048576;
 const RAW = 'https://raw.githubusercontent.com';
 const TIMEOUT_MS = 15_000;
 
-// The one list this app reads: next's for a pre-release version (1.2.3-beta) or site 'next' (PHOSPHOR_SITE), else production's.
+// The one list this app reads: next's for an alpha version (1.2.3-alpha, 1.2.3-alpha.2), whose web side is next, or site
+// 'next' (PHOSPHOR_SITE); else production's, which a release or a beta publishes from its own commit.
 export function listUrl({ version, site }) {
-  return site === 'next' || String(version).includes('-') ? 'https://next.phosphor.work/plugins.json' : 'https://phosphor.work/plugins.json';
+  return site === 'next' || /-alpha(?:\.|$)/.test(String(version)) ? 'https://next.phosphor.work/plugins.json' : 'https://phosphor.work/plugins.json';
 }
 
 // The list (exactly `listUrl`), or a raw GitHub URL already in its plain form (no dot segments, escapes of them, backslashes or user).

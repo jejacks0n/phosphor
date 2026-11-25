@@ -254,7 +254,7 @@ people or rooms, no usage. It connects only to these, and only then:
 
 - the rooms you host or join, at the addresses you give it;
 - GitHub, for Phosphor's releases, when you choose Check for Updates;
-- phosphor.work (next.phosphor.work for a pre-release, see below), for the Marketplace's plugin list, when you open
+- phosphor.work (next.phosphor.work for an alpha, see below), for the Marketplace's plugin list, when you open
   Plugins, and raw GitHub files (`raw.githubusercontent.com`), for a plugin's files, when you install one from the
   Marketplace;
 - lospec.com, for one palette, when you search Lospec from the color layer's **Palettes** page;
@@ -269,9 +269,10 @@ computer.
 
 ## The Marketplace's list
 
-The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`. A pre-release version of the app (one like
-`1.2.3-beta`) reads `https://next.phosphor.work/plugins.json` instead, and so does any version started with
-`PHOSPHOR_SITE=next` in its environment. The app reads exactly one of the two, never both.
+The Plugins dialog's Marketplace reads `https://phosphor.work/plugins.json`, and so does a beta (`1.2.3-beta`,
+`1.2.3-beta.2`), whose tag publishes phosphor.work with the list built for its commit. An alpha version of the app
+(`1.2.3-alpha`, `1.2.3-alpha.2`) reads `https://next.phosphor.work/plugins.json` instead, as its web side is next, and so
+does any version started with `PHOSPHOR_SITE=next` in its environment. The app reads exactly one of the two, never both.
 
 ## A palette from Lospec
 
