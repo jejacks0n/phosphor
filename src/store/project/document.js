@@ -419,6 +419,7 @@ export const documentActions = {
       editCells: new Map(),
       shapes: new Map(),
       hasPaint: false,
+      lowerCells: [], // the last drawing's: an edit before the render that's queued waits for it (recompose, recomposeUpper)
     });
     newLayers(this, { baseOnly });
     this.newDocument();
