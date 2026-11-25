@@ -28,15 +28,15 @@ export const refusal = (tag, version, tags) => {
   return higher ? `The tag ${tag} isn't higher than the last version, ${higher}` : null;
 };
 
-// The secrets each platform's packages are signed with, by the names electron-builder reads. Linux's aren't signed.
+// The secrets each platform's packages are signed with, by the names electron-builder reads. Only macOS's are: Windows'
+// and Linux's packages aren't signed, as a Windows certificate costs every year and Phosphor is free.
 export const SECRETS = {
   macOS: ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'],
-  Windows: ['WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD'],
 };
 
 // The platforms a tag of each kind is signed for, or refused. An alpha needs none: it tries the workflow before the
 // certificates exist. The one place that says so.
-const SIGNED = { release: ['macOS', 'Windows'], beta: ['macOS', 'Windows'], alpha: [] };
+const SIGNED = { release: ['macOS'], beta: ['macOS'], alpha: [] };
 
 // Whether a tag can be built with the signing secrets that are set (their names): the reason it can't, or a warning for
 // each platform whose packages go out unsigned. A platform with only some of its secrets is refused whatever the tag: a

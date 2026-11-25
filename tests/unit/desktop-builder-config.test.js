@@ -9,7 +9,7 @@ const read = (file) => readFileSync(new URL(`../../${file}`, import.meta.url), '
 // The block under a top-level key, up to the next one.
 const section = (yml, key) => new RegExp(`^${key}:\\n((?:[ #].*\\n|\\n)*)`, 'm').exec(yml)?.[1] ?? '';
 
-test('builder config names the Local Network usage, opens projects and ANSI art, signs mac and windows, publishes to github', () => {
+test('builder config names the Local Network usage, opens projects and ANSI art, signs mac, publishes to github', () => {
   const yml = read('electron-builder.yml');
   assert.match(yml, /^appId: work\.phosphor\.app$/m);
   assert.match(yml, /^productName: Phosphor$/m);
@@ -57,9 +57,10 @@ test('the release workflow runs only on a version tag higher than the last, and 
   assert.match(yml, /fetch-depth: 0/);
   assert.match(yml, /os: \[macos-latest, windows-latest, ubuntu-latest\]/);
   assert.match(yml, /contents: write/);
-  for (const secret of ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD']) {
-    assert.match(yml, new RegExp(`secrets\\.${secret} \\}\\}`), secret);
+  for (const secret of ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID']) {
+    assert.match(yml, new RegExp(`secrets\\.${secret} \\|\\| '' \\}\\}`), secret);
   }
+  assert.doesNotMatch(yml, /WIN_CSC/); // Windows isn't signed
   assert.match(yml, /GH_TOKEN: \$\{\{ secrets\.GITHUB_TOKEN \}\}/);
   assert.match(yml, /::error::/);
   assert.match(yml, /--publish always/);

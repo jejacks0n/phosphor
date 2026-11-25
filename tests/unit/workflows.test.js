@@ -247,7 +247,7 @@ describe('hosting on Cloudflare Pages', () => {
 // What a tag needs to be signed is scripts/release-tag.mjs's signing (desktop-release-tag.test.js); this is the
 // workflow's side: the check told what's set, once and first, and what the builds do with it.
 describe('signing the desktop app', () => {
-  const NAMES = [...SECRETS.macOS, ...SECRETS.Windows];
+  const NAMES = SECRETS.macOS;
 
   it('the tag check is told which signing secrets are set, by name and never by value, before the run waits or builds', () => {
     const version = job(desktop, 'version');
@@ -261,9 +261,11 @@ describe('signing the desktop app', () => {
     expect(version).not.toMatch(/secrets\.\w+ \}\}/); // no secret's value reaches this job
   });
 
-  it('the builds are handed each secret under the name the check knows it by, and check none themselves', () => {
+  // Only on macOS: on Windows, with no certificate of its own, electron-builder would sign with the Apple .p12.
+  it('the macOS builds are handed each secret under the name the check knows it by, the others none, and check none themselves', () => {
     const pack = job(desktop, 'package');
-    for (const name of NAMES) expect(pack, name).toContain(`      ${name}: \${{ secrets.${name} }}\n`);
+    for (const name of NAMES) expect(pack, name).toContain(`      ${name}: \${{ matrix.os == 'macos-latest' && secrets.${name} || '' }}\n`);
+    expect(desktop).not.toContain('WIN_CSC');
     expect(pack).not.toContain("secrets aren't set");
     expect(pack).not.toContain('exit 1');
   });
