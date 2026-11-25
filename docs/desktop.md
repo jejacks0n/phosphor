@@ -15,13 +15,15 @@ lead to.
 
 - **macOS**: the `.dmg` (or the `.zip`), for Apple silicon (`arm64`) or Intel (`x64`). It's signed and notarized, so
   macOS opens it without a warning.
-- **Windows**: the installer (`.exe`), one for both x64 and Arm. It's signed.
+- **Windows**: the installer (`.exe`), one for both x64 and Arm. It isn't signed (a Windows certificate costs every
+  year, and Phosphor is free), so Windows may say "Windows protected your PC" the first time: choose **More info**,
+  then **Run anyway**.
 - **Linux**: the `.AppImage` or the `.deb`. These aren't signed. On Ubuntu 24.04 and later the AppImage may not start,
   because Ubuntu restricts the unprivileged user namespaces the app's sandbox needs. Use the `.deb` there: it sets the
   sandbox up when it installs.
 
-An alpha may be the exception: one made before its signing was set up isn't signed on macOS or Windows, and each
-warns before opening it.
+An alpha may be the exception: one made before its signing was set up isn't signed on macOS either, and macOS warns
+before opening it.
 
 The app doesn't update itself. **Check for Updates…** (in the Phosphor menu on macOS, in Help elsewhere) asks GitHub
 for the releases and offers the newest one's download page, or says yours is the newest. Someone on a beta or an alpha (a version
@@ -314,13 +316,12 @@ If version tags have a ruleset too, it needs the same bypass, or the tag can't b
 
 ### Signing
 
-The macOS and Windows packages are signed with repository secrets, and a tag is checked against them in the run's
-first step, before anything is built or published:
+The macOS packages are signed and notarized with five repository secrets, and a tag is checked against them in the
+run's first step, before anything is built or published. The Windows and Linux packages aren't signed.
 
-- A release or a beta needs every one of them. With any missing, the run stops there and names them.
-- An alpha is built with what's set. A platform with none of its secrets gets unsigned packages, and the run warns of
-  it: on macOS the app is signed ad hoc (by no one) and not notarized, on Windows it isn't signed at all.
-- A platform with only some of its secrets is refused, whatever the tag.
+- A release or a beta needs all five. With any missing, the run stops there and names them.
+- An alpha may have none of them: its app is then signed ad hoc (by no one) and not notarized, and the run warns of it.
+- Some of them and not the rest is refused, whatever the tag.
 
 So an alpha tries the workflow before a beta: package.json's version set to the alpha's (`0.9.0-alpha` comes before
 `0.9.0-beta`), merged, and tagged. One without the secrets shows only that the packages build and publish. One with
@@ -341,7 +342,9 @@ phosphor.work isn't published, and the packages already on the release are delet
    3. Download the certificate and open it. Keychain Access puts it in the login keychain, with the private key the
       request made.
 2. In Keychain Access, under **My Certificates**, select that certificate (with its private key under it), choose
-   **File** > **Export Items…** and save it as a `.p12` with a password.
+   **File** > **Export Items…** and save it as a `.p12`. It asks for a new password to protect the file: make one up.
+   That's `CSC_KEY_PASSWORD`. (It may then ask for your Mac's login password, to let the key out of the keychain; that
+   one goes nowhere.)
 3. Make an app-specific password at [account.apple.com](https://account.apple.com), under **Sign-In and Security** >
    **App-Specific Passwords**. Notarization signs in with it in place of the account's own password.
 4. Find the Team ID (ten letters and numbers) at
@@ -351,7 +354,7 @@ phosphor.work isn't published, and the packages already on the release are delet
 
    ```bash
    base64 -i DeveloperID.p12 | gh secret set CSC_LINK
-   gh secret set CSC_KEY_PASSWORD               # the .p12's password
+   gh secret set CSC_KEY_PASSWORD               # the password you gave the .p12
    gh secret set APPLE_ID                       # the Apple Account's email
    gh secret set APPLE_APP_SPECIFIC_PASSWORD
    gh secret set APPLE_TEAM_ID
@@ -359,28 +362,9 @@ phosphor.work isn't published, and the packages already on the release are delet
 
 Then delete the `.p12`.
 
-**Windows** takes a code-signing certificate as a `.pfx` file and its password:
-
-```bash
-base64 -i certificate.pfx | gh secret set WIN_CSC_LINK
-gh secret set WIN_CSC_KEY_PASSWORD
-```
-
-No certificate Windows trusts comes as a file now, though. Since June 2023 the key of a publicly trusted code-signing
-certificate must be made and kept in hardware, a USB token or a cloud service, and can't be exported
-([the CA/Browser Forum's requirements](https://cabforum.org/working-groups/code-signing/requirements/)), and the last
-ones issued as files, good for 39 months at most
-([its ballot CSC-31](https://cabforum.org/2025/11/17/ballot-csc-31-maximum-validity-reduction)), have run out. So a
-`.pfx` is what the workflow reads today, and not what a new certificate is: one signs another way, and either is a
-change to `electron-builder.yml`, the workflow's secrets and the list in `scripts/release-tag.mjs`:
-
-- **Azure Artifact Signing** (it was Trusted Signing), Microsoft's own service. electron-builder signs with it once
-  `win.azureSignOptions` names the account's endpoint, the account, its certificate profile and the publisher, with
-  `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` and `AZURE_CLIENT_SECRET` in the environment
-  ([electron-builder's page](https://www.electron.build/code-signing-win)). Who may sign up, and what it costs, is on
-  [Microsoft's](https://learn.microsoft.com/en-us/azure/artifact-signing/quickstart).
-- **A certificate authority's cloud signing**, or a token on a computer of your own running the build, through a
-  function of your own named in `win.signtoolOptions.sign`.
+Windows isn't signed. Signing it would take a certificate from a certificate authority, or Microsoft's Azure Artifact
+Signing, and either is paid every year
+([electron-builder's page](https://www.electron.build/code-signing-win) says how it would be set up).
 
 ## Not in this version
 

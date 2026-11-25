@@ -53,33 +53,25 @@ test('a release and a beta publish phosphor.work, an alpha does not, and a beta 
   assert.deepEqual(outputs('v1.0.0-alpha.2'), { prerelease: true, prod: false });
 });
 
-test('a release or a beta is signed on macOS and Windows or refused; an alpha is built with what is set and warns of what is not', () => {
-  const all = [...SECRETS.macOS, ...SECRETS.Windows];
-  assert.deepEqual(all, ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID', 'WIN_CSC_LINK', 'WIN_CSC_KEY_PASSWORD']);
-  for (const tag of ['v1.0.0', 'v1.0.0-beta', 'v1.0.0-alpha']) assert.deepEqual(signing(tag, all), { refusal: null, warnings: [] }, tag);
+test('a release or a beta is signed on macOS or refused; an alpha is built with what is set and warns of what is not', () => {
+  // Windows and Linux aren't signed: only macOS has secrets.
+  assert.deepEqual(SECRETS, { macOS: ['CSC_LINK', 'CSC_KEY_PASSWORD', 'APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID'] });
+  for (const tag of ['v1.0.0', 'v1.0.0-beta', 'v1.0.0-alpha']) assert.deepEqual(signing(tag, SECRETS.macOS), { refusal: null, warnings: [] }, tag);
 
   // Every missing name at once, so one failed run says all there is to set.
-  assert.equal(signing('v1.0.0-beta.2', []).refusal, `A beta is signed, and these secrets aren't set: ${all.join(', ')}`);
-  assert.equal(signing('v1.0.0', SECRETS.macOS).refusal, "A release is signed, and these secrets aren't set: WIN_CSC_LINK, WIN_CSC_KEY_PASSWORD");
-  assert.equal(signing('v1.0.0-beta', SECRETS.Windows).refusal, `A beta is signed, and these secrets aren't set: ${SECRETS.macOS.join(', ')}`);
+  assert.equal(signing('v1.0.0-beta.2', []).refusal, `A beta is signed, and these secrets aren't set: ${SECRETS.macOS.join(', ')}`);
+  assert.equal(signing('v1.0.0', []).refusal, `A release is signed, and these secrets aren't set: ${SECRETS.macOS.join(', ')}`);
 
-  // An alpha tries the workflow before the certificates exist: a platform with none of its secrets goes out unsigned.
-  assert.deepEqual(signing('v1.0.0-alpha', []), {
-    refusal: null,
-    warnings: [
-      "v1.0.0-alpha's macOS packages aren't signed: none of macOS's signing secrets is set",
-      "v1.0.0-alpha's Windows packages aren't signed: none of Windows's signing secrets is set",
-    ],
-  });
-  assert.deepEqual(signing('v1.0.0-alpha.2', SECRETS.macOS).warnings, ["v1.0.0-alpha.2's Windows packages aren't signed: none of Windows's signing secrets is set"]);
+  // An alpha tries the workflow before the certificate exists: with none of the secrets it goes out unsigned.
+  assert.deepEqual(signing('v1.0.0-alpha', []), { refusal: null, warnings: ["v1.0.0-alpha's macOS packages aren't signed: none of macOS's signing secrets is set"] });
+  assert.deepEqual(signing('v1.0.0-alpha.2', ['WIN_CSC_LINK']).warnings, ["v1.0.0-alpha.2's macOS packages aren't signed: none of macOS's signing secrets is set"]);
 
-  // Some of a platform's and not the rest is a mistake, whatever the tag: a certificate without the Apple account
+  // Some of the secrets and not the rest is a mistake, whatever the tag: a certificate without the Apple account
   // would sign an app that's never notarized, with only a warning in the log.
   for (const tag of ['v1.0.0', 'v1.0.0-beta', 'v1.0.0-alpha']) {
-    assert.equal(signing(tag, ['CSC_LINK', 'CSC_KEY_PASSWORD', ...SECRETS.Windows]).refusal,
+    assert.equal(signing(tag, ['CSC_LINK', 'CSC_KEY_PASSWORD']).refusal,
       'macOS has some of its signing secrets and not APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID: set them all, or none for an unsigned alpha', tag);
   }
-  assert.match(signing('v1.0.0-alpha', ['WIN_CSC_LINK']).refusal, /^Windows has some of its signing secrets and not WIN_CSC_KEY_PASSWORD: /);
 });
 
 test('Check for Updates offers the newest later release, and pre-releases only to someone on one', () => {

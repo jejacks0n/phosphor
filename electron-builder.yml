@@ -102,7 +102,7 @@ mac:
       role: Editor
       rank: Alternate
 
-# Signed with WIN_CSC_LINK and WIN_CSC_KEY_PASSWORD.
+# Not signed: a Windows certificate costs every year, and Phosphor is free. SmartScreen warns before the installer runs.
 win:
   target:
     - target: nsis
