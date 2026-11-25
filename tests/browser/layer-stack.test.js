@@ -1157,3 +1157,24 @@ test('R7: a pin changed alone under a shape on the base shows its new look, and 
   await settle(project);
   expect(at()).toBe(solid);
 });
+
+test('typing on any layer of a drawing just opened, before its first render, waits for that render and lands', async () => {
+  // A room's host sends an artist the project again (a Merge down does) while the artist types: the open resets the
+  // renderer and queues its render, and an edit heard or made in between found the last drawing's cells.
+  const { project } = await blank();
+  const upper = project.addLayer('cells', 'edit');
+  project.typeAt(1, 1, 'U', WHITE);
+  project.commitEdit();
+  await settle(project);
+  const parts = await readProject(await writeProject({ imageBuffer: project.imageBuffer, ...await project.projectParts() }));
+  for (const layer of [upper, 'edit']) {
+    await project.openParts(parts, { filename: 'again' });
+    project.useLayer(layer);
+    expect(() => {
+      project.typeAt(3, 3, 'N', WHITE);
+      project.commitEdit();
+    }).not.toThrow();
+    await settle(project);
+    expect([layer, project.cells[3 * project.cols + 3].char]).toEqual([layer, 'N']);
+  }
+});
