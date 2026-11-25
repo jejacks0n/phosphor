@@ -1445,6 +1445,7 @@ the grid's size. The stepper arrows and the **↑** and **↓** keys change the 
   with the project. A new picture starts with its own shape. A number past the largest size that keeps the shape stops
   there, and a message says the lock held it: turn the lock off to grow one number alone, up to the limits. A number
   under 1 isn't taken, and a message gives the smallest size, 1 column by 1 pixel row.
-- **Blank Canvas**: A blank canvas is one color all over, so it fills the grid at any size, and the adjustments
-  (Invert, Brightness and the rest) reach every cell.
+- **Blank Canvas**: A blank canvas is one color all over, so it fills the grid at any size (a font of another height
+  included), and the adjustments (Invert, Brightness and the rest) reach every cell. Into the image takes every cell
+  of it into the picture, where the image filters reach it.
 - **Opening a Picture**: A picture opens at the current width, or narrower if that's what it takes to fit its shape.

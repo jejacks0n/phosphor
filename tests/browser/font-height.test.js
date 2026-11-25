@@ -436,6 +436,26 @@ test('with nothing drawn, a width change refits the lines', async () => {
   expect(project.drawingFont.cellWidth).toBe(8);
 });
 
+// #297: a blank canvas made in one font, switched to another, letterboxed its one-color picture at the old grid's shape.
+// The view drew it over the whole grid (one color is never letterboxed), but Into the image merged the cells past the
+// fit exactly, as a letterbox's, so Blur never reached them.
+test('a blank canvas switched to a font of another height fills the new grid, so Into the image takes every cell into the picture', async () => {
+  const { project } = await blank(40, 30);
+  await project.setDrawingFont(font8);
+  await settle(project);
+  expect(grid(project)).toEqual({ cols: 40, rows: 60 });
+  expect(toRaw(project.fit)).toEqual({ dx: 0, dy: 0, dw: 40, dh: 60 });
+  dab(project, 0, 0); // the top corner: in the old fit's letterbox
+  dab(project, 39, 59); // and the bottom one
+  await project.mergeIntoPicture();
+  await settle(project);
+  expect(project.baseRecords.pins.size).toBe(0); // into the picture, not merged exactly
+  expect(project.baseLayer.pixelAt(0, 0)).toBeNull();
+  expect(project.baseLayer.pixelAt(39, 59)).toBeNull();
+  const { width, height } = project.image;
+  expect(width / height).toBe(40 / 60);
+});
+
 test('with frames, a width change keeps the grid and every frame takes it', async () => {
   const { project } = await photo();
   await project.setDrawingFont(cp437Font);
