@@ -10,7 +10,8 @@
 //   201 { id, issue }: issue is the public issue's number, or null while it isn't open yet
 //   400 { error: 'bad-request' } · 403 { error: 'turnstile' } · 413 { error: 'too-big' } · 429 { error: 'rate-limited' }
 // The text becomes a public issue; the drawing and the steps don't. Nothing of a report is sent but by sendIssueReport,
-// which the dialog calls on Send (the web build's Turnstile widget loads as the dialog opens: Cloudflare's, not this). The desktop app's page reaches nothing but rooms, so its report goes through the main process
+// which the dialog calls on Send (the web build's Turnstile widget loads as the dialog opens: Cloudflare's, not this).
+// The desktop app's page reaches nothing but rooms, so its report goes through the main process
 // (desktop/issueReport.js), which checks it again and has its own copies of these limits.
 import { apiOrigin } from '@/social/config.js';
 

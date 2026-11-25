@@ -44,10 +44,10 @@ test('Send hands the report to the main process: the text, the drawing\'s bytes 
   expect(turnstile.mounted).toBe(0);
 
   await userEvent.fill(dialog().querySelector('#issue-wrong'), 'The window went blank');
-  await vi.waitFor(() => expect(dialog().querySelector('p.what').textContent).toMatch(/^sky\.pho, /));
+  await vi.waitFor(() => expect(dialog().querySelector('p.what').textContent).toMatch(/^sky\.pho, /), { timeout: 15_000 }); // the drawing made ready: a second or more on a busy machine
   const send = async () => {
     await userEvent.click(dialog().querySelector('button[type=submit]'));
-    await vi.waitFor(() => expect(dialog().querySelector('button[type=submit]')?.textContent.trim()).not.toBe('Sending…'));
+    await vi.waitFor(() => expect(dialog().querySelector('button[type=submit]')?.textContent.trim()).not.toBe('Sending…'), { timeout: 15_000 });
   };
   await send();
   expect(dialog().querySelector('p.error[role=alert]').textContent).toBe('Too many reports just now. Wait a while and try again.');
