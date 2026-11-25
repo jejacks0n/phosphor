@@ -135,12 +135,19 @@ function shapesCanvas(shapes, aspect) {
 // or a Moebius block: a canvas its size with the block on Layer 1, as a paste lands (its one undo step). Text: as a text
 // file opens to edit, its widest line wide, its escape codes read. A picture: as an image opens. Shapes: a canvas their
 // bounds (shapesCanvas) with them on a vector layer, on VECTOR. The clipboard is read first, in the press that asked;
-// then unsaved work is asked about, as New project asks. Not while drawing with others. Whether a drawing opened; false,
-// with a toast saying why, with nothing to open, a clipboard that can't be read, or a block bigger than a drawing.
+// then unsaved work is asked about, as New project asks. Not while drawing with others. The drawing it makes is unsaved
+// whatever it's made of: it's nowhere else. Whether a drawing opened; false, with a toast saying why, with nothing to
+// open, a clipboard that can't be read or whose copy can't be read back, or a block bigger than a drawing.
 export async function newFromClipboard(project, workspace) {
   const withOthers = useDrawingStore().offWithOthers;
   if (withOthers) return toast(withOthers), false;
-  const held = await clipboardHeld(workspace);
+  let held;
+  try {
+    held = await clipboardHeld(workspace);
+  } catch (error) { // read, but not something that can be read back (another tab's block with a picture that won't decode)
+    console.warn('Could not read what the clipboard holds', error);
+    return toast(t('clipboard.failed')), false;
+  }
   if (!held || held.refused) return toast(t(held ? 'clipboard.refused' : 'clipboard.nothing')), false;
   const { block, shapes, picture, text } = held;
   if (block && (block.w > MAX_COLS || block.h > MAX_LINES || block.w * block.h > MAX_CELLS)) {
@@ -149,11 +156,11 @@ export async function newFromClipboard(project, workspace) {
   const open = async () => {
     try {
       if (!project.image) workspace.editorTab = shapes ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
-      if (picture) {
-        await project.setImageFromFile(picture);
-        workspace.pickLayer('base');
-      } else if (text) {
-        await project.openArtFile(new File([text], 'clipboard.utf8ans'), { layer: 'edit' });
+      if (picture || text) {
+        if (picture) await project.setImageFromFile(picture);
+        else await project.openArtFile(new File([text], 'clipboard.utf8ans'), { layer: 'edit' });
+        if (picture) workspace.pickLayer('base');
+        project.editVersion++; // opened as a file is, but it's no file: unsaved, so leaving it asks and autosave keeps it
       } else if (block) {
         if (!(await project.setBlankCanvas({ cols: block.w, rows: 2 * block.h, withLayer: true }))) return false;
         await busyWhile(t('busy.pasting'), () => project.pasteSelection(block, 0, 0));

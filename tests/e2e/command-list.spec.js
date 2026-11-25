@@ -102,4 +102,33 @@ test.describe('New from clipboard', () => {
     await expect.poll(() => chars(page, 1, 1, 2)).toBe('Hi');
     expect(await store('project', (p) => p.layers.map((layer) => layer.id))).toEqual(['base', 'edit']);
   });
+
+  test('from the start screen, another tab\'s copy opens: a selection on ANSI at its size, shapes on VECTOR at their bounds', async ({ page }) => {
+    const read = (at, name, fn) => at.evaluate(([name, source]) => new Function('s', `return (${source})(s)`)(document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get(name)), [name, fn.toString()]);
+    const fromStart = async () => {
+      const other = await page.context().newPage();
+      await other.goto('/');
+      await expect(other.getByRole('button', { name: 'Start with a blank canvas' })).toBeVisible(); // nothing open
+      await other.bringToFront();
+      await other.keyboard.press(MOD_K);
+      await other.keyboard.type('new from clip');
+      await other.keyboard.press('Enter');
+      return other;
+    };
+    await openApp(page);
+    await read(page, 'workspace', (w) => w.selectAll({ c0: 0, r0: 0, c1: 11, r1: 3 })); // 12 × 4 cells
+    await page.keyboard.press('ControlOrMeta+c');
+    const block = await fromStart();
+    await expect.poll(() => read(block, 'project', (p) => p.image && [p.cols, p.rows])).toEqual([12, 8]);
+    await expect(block.getByRole('tab', { name: 'ANSI', exact: true })).toHaveAttribute('aria-selected', 'true');
+
+    await page.bringToFront();
+    await read(page, 'workspace', (w) => { w.editorTab = 'vector'; });
+    await read(page, 'project', (p) => p.addShape({ z: 0, closed: true, fill: '#ff0000', stroke: null, width: 1, m: [1, 0, 0, 1, 0, 0], points: [[10, 10, 0, 0, 0, 0, 0], [30, 10, 0, 0, 0, 0, 0], [30, 24, 0, 0, 0, 0, 0], [10, 24, 0, 0, 0, 0, 0]] }));
+    await page.keyboard.press('ControlOrMeta+a');
+    await page.keyboard.press('ControlOrMeta+c');
+    const shapes = await fromStart();
+    await expect.poll(() => read(shapes, 'project', (p) => p.image && [p.cols, p.rows, p.shapes.size])).toEqual([20, 14, 1]);
+    await expect(shapes.getByRole('tab', { name: 'VECTOR', exact: true })).toHaveAttribute('aria-selected', 'true');
+  });
 });

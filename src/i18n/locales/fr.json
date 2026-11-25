@@ -1234,7 +1234,7 @@
   },
   "clipboard": {
     "nothing": "Le presse-papiers ne contient rien à ouvrir. Copiez d'abord une sélection ou des formes dans Phosphor, un bloc dans Moebius, du texte ou une image.",
-    "refused": "Phosphor n'a pas pu lire le presse-papiers. Autorisez l'accès au presse-papiers pour cette page, ou copiez d'abord quelque chose dans cet onglet.",
+    "refused": "Phosphor n'a pas pu lire le presse-papiers. Autorisez l'accès au presse-papiers quand il est demandé, ou copiez d'abord quelque chose ici.",
     "tooBig": "Le presse-papiers contient {cols} × {rows} cellules. Un dessin a au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
     "failed": "Impossible de créer un dessin à partir du contenu du presse-papiers."
   },
