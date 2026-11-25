@@ -27,7 +27,8 @@ import FieldCount from '@/components/FieldCount.vue';
 // the steps don't. Nothing of it is sent until Send. The checkbox is on, and the line under it says exactly what it sends: the
 // drawing's name and size and how many steps; a drawing too big for a report isn't sent, and says so; with none open,
 // only the steps. In a room the drawing open is the room's for its host and its artists, and the line says so; someone
-// only watching still has their own drawing open, and it's that one. The drawing is made ready as the dialog opens (the
+// only watching still has their own drawing open, nothing to do with the room, so none goes: only the steps, and the line
+// says why (what a watcher is shown is the host's cells, no project to open). The drawing is made ready as the dialog opens (the
 // .pho Save would write, with nothing saved: ProjectStore.projectFile), so its size is known before Send.
 // Sent, the form gives way to a thank-you with the issue's number, linked, or without one if the issue isn't open yet.
 // One that didn't go says why and keeps what was written. Escape, Cancel and × close it; the backdrop doesn't, with
@@ -57,8 +58,9 @@ const ready = computed(() => draft.wrong.trim() !== '' && draft.doing.length <= 
 const stepsText = () => logText({ version, sha, userAgent: navigator.userAgent, viewport: `${window.innerWidth}×${window.innerHeight}` });
 const bytesOf = (text) => new Blob([text]).size;
 const roomsDrawing = room.role === 'host' || drawing.mayDraw;
+const watching = room.role === 'watch' && !drawing.mayDraw;
 const file = shallowRef(undefined);
-const made = Promise.resolve().then(() => project.projectFile())
+const made = Promise.resolve().then(() => (watching ? null : project.projectFile()))
   .then((blob) => blob && new File([blob], `${project.filename}${PROJECT_EXTENSION}`, { type: 'image/png' }), () => null);
 made.then((it) => { file.value = it; });
 const fits = (it, steps) => drawingFits(it.size, bytesOf(steps));
@@ -67,7 +69,7 @@ const size = (bytes) => (bytes < 2 ** 20 ? t('versions.kb', { n: Math.max(1, Mat
 const what = computed(() => {
   const steps = t('issueReport.steps', { count: log.entries.length }, log.entries.length);
   if (file.value === undefined) return t('issueReport.what.preparing');
-  if (!file.value) return t('issueReport.what.stepsOnly', { steps });
+  if (!file.value) return t(`issueReport.what.${watching ? 'watching' : 'stepsOnly'}`, { steps });
   const key = `${roomsDrawing ? 'room' : 'drawing'}${fits(file.value, stepsText()) ? '' : 'TooBig'}`;
   return t(`issueReport.what.${key}`, { name: file.value.name, size: size(file.value.size), most: size(MOST_REQUEST_BYTES), steps });
 });
