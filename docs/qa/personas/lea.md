@@ -543,8 +543,8 @@ and sideways.
   and a faint bar rolls down the screen (with reduced motion on, neither moves); the form fills the phone's screen, with focus in the first box and the phone's
   keyboard up; each box has its count and stops at its most (2,000 and 4,000); Send is off until **What went wrong?** has
   words; the checkbox is ticked and its line names her drawing, its size and how many steps ("selfie.pho, 240 KB ·
-  52 steps"); the note says "What you write becomes a public issue on GitHub. Your drawing and steps go only to
-  Phosphor's developer.", and under it which Phosphor and browser go too; nothing is in the list before Send; after it
+  52 steps"); the note says "What you write will create a public issue on GitHub. Your drawing and actions taken
+  will only be visible to Phosphor's developer.", and under it which Phosphor and browser go too; nothing is in the list before Send; after it
   the form says "Sent. Thank you. It's issue #312 on GitHub." with the number a link, and the list has one report with
   her words, a `drawing` named for her file and a `steps` file listing what she did (her taps as steps, and no line of
   it holding anything typed into SOCIAL); **Close** puts her back in the settings, on **Report an issue**
