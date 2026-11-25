@@ -21,7 +21,7 @@ import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
 import { findUniform, processedImage, workingScale, fittingScale } from '@/lib/ImageProcessor.js';
 import { bakedCanvas, getEffectiveColor } from '@/lib/PixelTransforms.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putSettings, putStack, readsOf, refusedHidden, stackState } from '@/store/project/shared.js';
+import { copyOf, over, bytesHeld, blackPicture, layerName, levelCells, paintFrom, putLayer, putSettings, putStack, readsOf, refusedHidden, stackState } from '@/store/project/shared.js';
 import { layerChars, lowerGroup, sameChars } from '@/document/layerInfo.js';
 import { placedShapes } from '@/document/followers.js';
 import { CHAR_KEYS, RESET_GROUPS, getSetting, groupDefaults } from '@/store/settings.js';
@@ -320,7 +320,9 @@ function freezeUnlike(project, state, under, indexes, was, frozen, next, into, a
 // as on any paint, and the layer and its shapes go (its guides, which draw nothing, stay, and the layer with them). A cell
 // an art layer gives a character, or one the shapes cover whole where the paint shows otherwise than they did (unlike), is
 // written there instead, exactly as it showed (frozenCells; freezeUnlike): at the shapes' soft edge it stays paint.
-function shapesOnCells(project, id, under) {
+// step: false puts it in place with no undo step and nothing drawn (mergeShapesIntoPicture's first half, whose step
+// holds it).
+function shapesOnCells(project, id, under, { step = true } = {}) {
   project.syncShapeLayers();
   const shapes = project._upperShapes.get(id), { cols } = project, reached = [];
   if (shapes?.drawsShapes) {
@@ -346,7 +348,9 @@ function shapesOnCells(project, id, under) {
     return { stack: guided ? merged : without(merged, id), shapes: kept };
   };
   freezeUnlike(project, after(), under, painted, was, frozen, next, into, art);
-  return mergeStep(project, before, after(), bytesHeld(into, next));
+  if (step) return mergeStep(project, before, after(), bytesHeld(into, next));
+  putState(project, after());
+  return true;
 }
 
 // Merge down of the vector layer with the id into the vector layer under it: its shapes (only those with keys, when
@@ -803,6 +807,52 @@ export const mergingActions = {
     }
   },
 
+  // Blend into source image for the vector layer with the id, directly on the bottom: its shapes become part of the
+  // picture, so the sliders and image filters apply to them, live. Done as the two merges it's made of, in one undo step:
+  // the shapes go as paint, at their own detail, onto a cells layer put in the vector layer's place (shapesOnCells: a cell
+  // that paint would show otherwise is frozen as it showed, an art layer's characters are written as cells), and that
+  // layer goes into the picture (mergeIntoPicture, with its rules: docs/model.md R3). The vector layer leaves the stack,
+  // or stays with its guides. Whether it merged; false, nothing changed, where Merge down is refused (above the bottom,
+  // frames, a hidden layer either side, character settings of its own: with its toast), in a room, which keeps its
+  // layers (Merge down presses there), and with nothing on it that draws.
+  async mergeShapesIntoPicture(id) {
+    const at = this.layers.findIndex((layer) => layer.id === id), layer = this.layers[at];
+    if (layer?.kind !== 'vector' || this.layers[at - 1]?.id !== 'base' || !this.image || this._merging || this.hasFrames || this._sharing) return false;
+    if (refusedHidden(this, [id, 'base'])) return false;
+    if (!sameChars(layer.chars, this.baseChars)) {
+      toast(t('toolbar.mergeOwnChars', { name: layerName(layer) }));
+      return false;
+    }
+    if (![...this.shapes.values()].some((shape) => (shape.layer ?? 'vector') === id && !shape.guide)) return false;
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
+    this.ensureLayer();
+    this.commitPending();
+    const start = { stack: stackState(this), shapes: this.shapes }, last = this.history.last;
+    const back = () => {
+      putState(this, start);
+      this.render();
+    };
+    const made = putLayer(this, 'cells', 'base', this.baseChars);
+    shapesOnCells(this, id, made.id, { step: false });
+    const shapes = this.shapes; // without the layer's, as redo leaves them
+    await this.mergeIntoPicture(null, made.id);
+    const entry = this.history.last !== last && this.history.last;
+    if (!entry || this.layerById(made.id)) { // nothing went in (the picture couldn't be made): as it was
+      back();
+      return false;
+    }
+    const { undo, redo } = entry; // the cells layer's merge: this step is that one, with the shapes either side of it
+    entry.undo = () => {
+      undo();
+      back();
+    };
+    entry.redo = () => {
+      this.shapes = shapes;
+      redo();
+    };
+    return true;
+  },
+
   // Merge down: the layer with the id into the one under it (docs/layers.md, "Moving things between layers"); whether it
   // merged. rect: only what's inside a cell rect (a selection's); keys: only those shapes of a vector layer (VECTOR's Merge
   // down of a selection); either way the layer stays with the rest. Off (false) for the bottom, with nothing under it, and
@@ -810,7 +860,8 @@ export const mergingActions = {
   // (Make art layer does that), a vector layer onto a vector layer whose character settings differ, a hidden layer either side, onto a layer above the bottom in a room (which keeps its layers), a vector
   // layer with its own character settings onto the bottom (its shapes can't be pressed in as they show), and part of a
   // vector layer onto a cells layer above the bottom. Into the bottom: a cells layer exactly as it shows (onBase; the
-  // toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels (pressLayer).
+  // toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels (pressLayer;
+  // the toolbar asks first for a whole one, mergeShapesIntoPicture the other way).
   // Into another cells layer: each entry completed against what shows under it and written there, its paint staying paint
   // (onCells), and a vector layer's shapes going in as paint (shapesOnCells); a cell that paint would show otherwise is
   // frozen there exactly as it showed. Into another vector layer: its shapes (or only keys) move there, still shapes
