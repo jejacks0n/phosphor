@@ -179,12 +179,16 @@ test('the Privacy Policy (en and fr) says what an issue report sends, what of it
     'ils sont conservés 90 jours et ne sont vus que par le développeur de Phosphor', '<strong>GitHub :</strong> Publie ce que vous écrivez dans un rapport de problème',
     '<strong>Rapports de problème :</strong> Votre dessin et vos étapes, 90 jours.', 'ou envoyez un rapport de problème avec votre dessin', 'Dernière mise à jour : 24 novembre 2026.',
   ]) expect(fr, words).toContain(words);
+  // The desktop app's Help menu has it in every version, releases included; the banner's link is a pre-release's.
+  expect(text).toContain('Beta and alpha versions of Phosphor show a "Report an issue" link, and the desktop app has Report an Issue in its Help menu in every version');
+  expect(fr).toContain("l'application de bureau propose Signaler un problème dans son menu Aide dans toutes ses versions");
   // The desktop app's own privacy note, which stands in for the policy there, says the same.
   for (const code of ['en', 'fr']) {
     const note = JSON.parse((await import(`../../src/i18n/locales/${code}.json?raw`)).default).legal.desktopPrivacy;
     expect(note, code).toContain('api.phosphor.work');
     expect(note, code).toMatch(/90 (days|jours)/);
     expect(note, code).toContain('GitHub');
+    expect(note, code).not.toMatch(/beta|bêta/i); // in every version of the desktop app
   }
 });
 

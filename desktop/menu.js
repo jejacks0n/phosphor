@@ -8,20 +8,9 @@
 //            room someone else hosts), in a room, hosting it
 //   recent   the recently opened files' paths, newest first
 //   act      { command(name), newWindow(), openRecent(path), clearRecent(), openUrl(url) }
-// A pre-release version, a beta's or an alpha's (1.2.3-beta, 1.2.3-alpha.2), by the forms scripts/release-tag.mjs takes and
-// the page's banner reads (src/lib/buildStage.js): its Help > Report an Issue… is the page's issue report.
-export const preRelease = (version) => /-(alpha|beta)(?:\.|$)/.test(String(version));
-
 export const REPO = 'https://github.com/jejacks0n/phosphor';
 
-const PLATFORMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
-// A release's Report an Issue…: a new issue on GitHub, its body ending with this app's version and system, for the person to write above.
-export const issueUrl = ({ version, platform, systemVersion, arch }) => {
-  const system = `${PLATFORMS[platform] ?? platform} ${systemVersion} (${arch})`;
-  return `${REPO}/issues/new?body=${encodeURIComponent(`\n\n---\nPhosphor ${version}, ${system}`)}`;
-};
-
-export function menuTemplate({ labels: l, accelerators = {}, state, recent, act, mac, packaged, version, platform, systemVersion, arch }) {
+export function menuTemplate({ labels: l, accelerators = {}, state, recent, act, mac, packaged, version }) {
   const sep = { type: 'separator' };
   const command = (label, name, { enabled = true } = {}) => ({ label, accelerator: accelerators[name], enabled, click: () => act.command(name) });
   const link = (label, url) => ({ label, click: () => act.openUrl(url) });
@@ -100,7 +89,7 @@ export function menuTemplate({ labels: l, accelerators = {}, state, recent, act,
         sep,
         link(l.github, REPO),
         link(l.releaseNotes, `${REPO}/releases/tag/v${version}`),
-        preRelease(version) ? command(l.reportIssue, 'reportIssue') : link(l.reportIssue, issueUrl({ version, platform, systemVersion, arch })),
+        command(l.reportIssue, 'reportIssue'), // the page's issue report, in every version (the banner's is a pre-release's)
         sep,
         ...(mac ? [] : [about, updates, plugins, sep]),
         // A plugin's theme that leaves the window unreadable is got out of by loading it without plugins.
