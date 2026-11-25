@@ -111,7 +111,7 @@
       "roomTooBig": "This room's drawing is too big to send ({size}; a report holds {most}). Only the {steps} will go.",
       "stepsOnly": "{steps}. No drawing is open."
     },
-    "public": "What you write will create a public issue on GitHub. Your drawing and actions taken will only be visible to Phosphor's developer.",
+    "public": "What you write will create a public issue on GitHub. Your drawing and steps will only be visible to Phosphor's developer.",
     "with": "Sent with it: Phosphor {build}, {agent}.",
     "send": "Send",
     "sending": "Sending…",
