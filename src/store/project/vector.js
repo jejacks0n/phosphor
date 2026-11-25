@@ -167,6 +167,23 @@ export const vectorActions = {
     return keys;
   },
 
+  // Shapes (a paste's copies, as addShapes takes them) on a vector layer of their own, made directly above the layer with
+  // the id above: the layer and its shapes are one step, which undo takes back together. The layer has the character
+  // settings of the one it's above, as a layer added there does. The keys; none, with a toast, at the most layers, and none
+  // (the layer gone again) when the shapes didn't come in.
+  addShapesAbove(shapes, fromKeys = null, above = this.editId) {
+    if (this.layers.length >= MOST_LAYERS) {
+      toast(t('layers.full', { n: MOST_LAYERS }));
+      return [];
+    }
+    if (this._artInside) this.leaveArt(); // on the drawing, not the art layer you're in
+    this.commitPending(); // an edit still open is its own step, before this one
+    const version = this.history.version, made = putLayer(this, 'vector', above, this.charsOf(above));
+    const keys = this.addShapes(shapes, fromKeys, made.id);
+    withLayerMade(this, made, above, version);
+    return keys;
+  },
+
   // An SVG file's art as shapes, on top, in the file's order (readSvgFile; it throws, with its userMessage, for a
   // file that isn't SVG). Art bigger than the grid (less 2 grid pixels each side) is scaled down into it,
   // proportions kept on screen; any is centered. Each shape has its whole transform baked into its points (points round to

@@ -211,6 +211,10 @@ function makeActions(project, workspace, r, opts) {
       const shapes = [...project.shapes.values()].filter(() => r() < 0.5).slice(0, 3);
       if (shapes.length) project.addShapes(shapes);
     },
+    pasteShapesAbove: () => { // a paste over a cells layer: copies on a vector layer of their own above it, as one step
+      const shapes = [...project.shapes.values()].filter(() => r() < 0.5).slice(0, 2);
+      if (shapes.length) project.addShapesAbove(shapes, null, project.editId);
+    },
     deleteShape: () => {
       const keys = [...project.shapes.keys()];
       if (keys.length) project.deleteShapes(keys.filter(() => r() < 0.5).slice(0, 2));
@@ -431,7 +435,7 @@ for (const quantize of ['none', 'count']) {
 
 test('fuzz: shapes among typing, paint, selections and merges', async () => {
   const failures = [];
-  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
+  const only = ['addShape', 'addShape', 'moveShape', 'recolorShape', 'gradient', 'pasteShapes', 'pasteShapesAbove', 'deleteShape', 'restackShape', 'pen', 'mergeShapes', 'combineShapes', 'type', 'paint', 'eraseBase', 'move', 'mergeDown', 'clearEdit', 'slider', 'typingRun'];
   for (const seed of seeds([1, 2, 3, 4, 6])) {
     const f = await fuzz(seed, { async: false, steps: 20, only });
     if (f) failures.push(f);
