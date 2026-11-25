@@ -9,6 +9,7 @@ import { inflateSync } from 'node:zlib';
 import { harmful, escapeBytes, unescapeBytes, terminalPho } from '../../src/document/phoTerminal.js';
 import { phoFile, projectChunkOf, startsAsProject, readProject } from '../../src/document/projectIO.js';
 import { indexedPng, rgbPng } from '../../src/lib/PngFile.js';
+import { ghosttyDispatches } from '../support/ghosttyParser.js';
 
 const bytes = (...parts) => Uint8Array.from(parts.flatMap((part) => (typeof part === 'string' ? [...part].map((c) => c.charCodeAt(0)) : part)));
 const ART = new TextEncoder().encode('\x1b[0m\x1b[38;5;196;48;5;21m▀▄█\x1b[0m cat me\r\n\x1b[1m░▒▓\x1b[0m two\r\n');
@@ -48,6 +49,19 @@ function unfiltered(rows, stride) {
 }
 const project = Uint8Array.from({ length: 5000 }, (_, i) => (i * 7919) & 255); // every byte value, ESC among them
 
+// What Ghostty would do that reaches past the alternate screen, written from its parser's side: a reset or identify,
+// a CSI other than those that draw or that the file sets back, an OSC with a number not ours, a DCS ending p or q, a
+// kitty picture.
+const PRIVATE = '(1|5|7|25|1000|1002|1003|1004|1006|1015|1049)';
+const SAFE_CSI = new RegExp(`^([\\d;:]*[@A-MPSTXZ\`abdefgmrsu]|\\?[\\d;:]*[JK]|!p|\\?${PRIVATE}(;${PRIVATE})*[hl]|20[hl])$`);
+const ghosttyActs = ({ kind, text }) => ({
+  esc: () => text === 'c' || text === 'Z',
+  csi: () => !SAFE_CSI.test(text),
+  osc: () => /^\d/.test(text) && !text.startsWith('4242;'),
+  dcs: () => /[pq]$/.test(text),
+  apc: () => text.startsWith('G'),
+})[kind]();
+
 // What a terminal shows after a command, the file printed, and a plain prompt that sends no escape of its own.
 async function played(file) {
   const term = new xterm.Terminal({ cols: 100, rows: 30, allowProposedApi: true, logLevel: 'off' });
@@ -60,7 +74,11 @@ async function played(file) {
   await write(file);
   await write('$ ');
   const buffer = term.buffer.active, line = (y) => buffer.getLine(y).translateToString(true);
-  return { buffer: buffer.type, scrolled: buffer.baseY, lines: [0, 1, 2, 3, 4].map(line), answers, titles, modesKept: JSON.stringify(term.modes) === modes };
+  const shown = { buffer: buffer.type, scrolled: buffer.baseY, lines: [0, 1, 2, 3, 4].map(line), answers, titles, modesKept: JSON.stringify(term.modes) === modes };
+  const tabs = [];
+  await write('\r');
+  for (let x = 0; x < 40; x = buffer.cursorX) (await write('\t'), tabs.push(buffer.cursorX));
+  return { ...shown, tabs: tabs.join(), ghostty: ghosttyDispatches(file).filter(ghosttyActs) };
 }
 
 test('escaping the project leaves no byte a terminal reacts to, and undoes exactly', () => {
@@ -81,6 +99,39 @@ test('harmful counts what acts beyond the alternate screen, through the junk a t
   assert.equal(harmful(bytes('\x1b\x18c', '\x1b\x1bZ')), 1); // CAN ends the escape; a second ESC starts another
 });
 
+test('harmful reads bytes 0x80 to 0x9F inside an escape as Ghostty does, as C1 controls', () => {
+  assert.equal(harmful(bytes('\x1b', [0x9a])), 1); // ESC Z
+  assert.equal(harmful(bytes('\x1b(', [0xa5, 0x9a])), 1);
+  assert.equal(harmful(bytes('\x1b', [0x9b], '6n')), 1); // a CSI
+  assert.equal(harmful(bytes('\x1b', [0x9d], '2;title\x07')), 1); // an OSC
+  assert.equal(harmful(bytes([0x9a, 0x9b], '6n')), 0); // outside an escape they're UTF-8, and nothing
+  assert.equal(harmful(bytes('\x1b', [0x88], 'c')), 1); // a terminal that skips it still reads a reset
+});
+
+test('whatever Ghostty would act on in a stream of escapes and C1 bytes, harmful counts', () => {
+  let seed = 9;
+  const random = (n) => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) >>> 8) % n;
+  const ALPHABET = [0x1b, 0x1b, 0x1b, 0x18, 0x07, 0x05, 0xa5, 0xc2, ...'[[]]PX_^?>=<;;:0124569cZGpqhlmnuJK !$ +(B'].map((c) => (typeof c === 'number' ? c : c.charCodeAt(0)));
+  let acting = 0;
+  for (let run = 0; run < 20000; run++) {
+    const stream = Uint8Array.from({ length: 24 }, () => (random(5) ? ALPHABET[random(ALPHABET.length)] : 0x80 + random(32)));
+    const ghostty = ghosttyDispatches(stream).filter(ghosttyActs);
+    if (!ghostty.length) continue;
+    acting++;
+    assert.ok(harmful(stream) > 0, `${JSON.stringify(ghostty)} in ${[...stream].map((b) => b.toString(16)).join(' ')}`);
+  }
+  assert.ok(acting > 1000);
+});
+
+test('harmful lets through only the CSIs that draw on the alternate screen or that are put back, and judges strings by their start', () => {
+  for (const seq of ['\x1b[2;3H', '\x1b[0;1;38;5;9m', '\x1b[?25l', '\x1b[20h', '\x1b[!p', '\x1b[?2J', '\x1b[3g', '\x1b]4242;', '\x1b]x;', '\x1bPa', '\x1b_a', '\x1bXGq', '\x1bH', '\x1b(0']) {
+    assert.equal(harmful(bytes(seq)), 0, JSON.stringify(seq));
+  }
+  for (const seq of ['\x1b[?2004l', '\x1b[?1;2026h', '\x1b[4h', '\x1b[1$p', '\x1b[>q', '\x1b[?u', '\x1b[>1u', '\x1b[2 q', '\x1b[>4;2m', '\x1b[?1S', '\x1b[22t', '\x1b]0;x\x07', '\x1b]52;c;?\x07', '\x1b]4242', '\x1bP$qm', '\x1bP1000p', '\x1b_Ga=q']) {
+    assert.equal(harmful(bytes(seq)), 1, JSON.stringify(seq));
+  }
+});
+
 test('the escapes Phosphor writes around the art are only ones every terminal knows (one it doesn\'t, it prints)', async () => {
   const file = await terminalPho(await pngOf(picture(2), 2), project, ART);
   const dataOf = (type) => {
@@ -91,7 +142,7 @@ test('the escapes Phosphor writes around the art are only ones every terminal kn
   const ours = latin1(dataOf('phCs')) + latin1(art.subarray(0, artAt)) + latin1(art.subarray(artAt + ART.length));
   const sequences = ours.replace(/[\r\0\x0f]/g, '').split(/(?=\x1b)/); // eslint-disable-line no-control-regex
   assert.ok(sequences.length > 10);
-  for (const seq of sequences) assert.match(seq, /^\x1b(\[\??\d*[AJhlm]|\[!p|[()]B|>|\]4242;)$/); // eslint-disable-line no-control-regex
+  for (const seq of sequences) assert.match(seq, /^\x1b(\[\??\d*[ACJghlm]|\[!p|[()]B|>|H|\]4242;)$/); // eslint-disable-line no-control-regex
 });
 
 for (const colors of [2, 16, 100, 1000]) {
@@ -108,6 +159,8 @@ for (const colors of [2, 16, 100, 1000]) {
     assert.equal(shown.answers, '');
     assert.equal(shown.titles, 0);
     assert.ok(shown.modesKept);
+    assert.equal(shown.tabs, '8,16,24,32,40');
+    assert.deepEqual(shown.ghostty, []);
   });
 }
 

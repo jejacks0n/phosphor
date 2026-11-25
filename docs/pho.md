@@ -31,11 +31,17 @@ A terminal shows every byte of a file, the PNG's own and the project's, so Save 
 - `phCs`, the first chunk, erases what the terminal printed of the PNG's first bytes and switches to the alternate screen.
 - The project (`phPc`) and the picture come next, printed on the alternate screen, where none of it reaches the
   scrollback. The project's bytes a terminal acts on are escaped. When the picture's compressed bytes hold any of the
-  sequences that would reach past that screen (a reset, a question the terminal would answer by typing into the
-  prompt, printing), Phosphor compresses it again itself, a row at a time, trying the rows that spell one with other
+  sequences that would reach past that screen, Phosphor compresses it again itself, a row at a time, trying the rows that spell one with other
   PNG row filters (the same picture) until none does. That picture's data is bigger, about a third on a big drawing.
-- `phCa`, the last chunk before `IEND`, goes back to the screen, puts back the modes the picture's bytes may have set,
-  draws the art, and opens a sequence that hides the rest of the file.
+- `phCa`, the last chunk before `IEND`, goes back to the screen, puts back the modes and tab stops the picture's bytes
+  may have set, draws the art, and opens a sequence that hides the rest of the file.
+
+The sequences that would reach past the alternate screen are a reset, a question the terminal would answer by typing
+into the prompt, a mode or setting that outlives the screen (a title, the cursor's shape, the keyboard's, a color, the
+clipboard), and a picture of the terminal's own. Only what draws on that screen, and what `phCa` puts back, is let
+through. They're read as a terminal reads them, which skips most bytes inside an escape sequence, and also as Ghostty
+does: inside an escape it takes bytes 0x80 to 0x9F as C1 controls (0x9A asks the terminal to identify itself), where
+elsewhere they're UTF-8.
 - **Two bytes follow `IEND`**, `ESC \`, to close that sequence. PNG readers leave bytes after `IEND` alone; a strict
   checker (`pngcheck`, say) mentions them.
 
