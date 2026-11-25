@@ -11,7 +11,7 @@ export const MOST_AGENT = 80;
 export const MOST_REQUEST_BYTES = 25 * 1024 * 1024;
 const MOST_LINE = 100; // of the version and the build
 const MOST_NAME = 255; // of the drawing's file name
-const TIMEOUT_MS = 60_000; // a drawing of 25 MB on a slow line
+const TIMEOUT_MS = 600_000; // ten minutes: a drawing of 25 MB on a slow line takes a few, and the page can stop waiting sooner
 
 // A line break is one character, as the page's field and the server count it, though the form sends it as two.
 const text = (value, most) => typeof value === 'string' && value.replace(/\r\n?/g, '\n').length <= most;

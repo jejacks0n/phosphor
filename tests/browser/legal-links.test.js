@@ -146,7 +146,7 @@ test('the Privacy Policy (en and fr) says what an issue report sends, what of it
   const text = document.querySelector('.legal-body').textContent.replace(/\s+/g, ' ');
   expect(text).toContain('Last updated: November 24, 2026.');
   expect(text).toContain('We never receive them unless you host a room or send an issue report with your drawing (both explained below).');
-  expect(text).toContain('Nothing is sent until you press Send.');
+  expect(text).toContain('Nothing of a report is sent until you press Send (on the web, opening the form loads Cloudflare Turnstile, described below).');
   expect(text).toContain('A report sends us what you wrote, your version of Phosphor, whether you use the web or the desktop app, and your browser and operating system');
   expect(text).toContain('If you leave its box ticked, it also sends your current drawing and the steps you took in Phosphor since the page loaded');
   expect(text).toContain('The steps never include anything you typed into the SOCIAL tab: no password, email address, code, room password, or chat.');
@@ -164,7 +164,7 @@ test('the Privacy Policy (en and fr) says what an issue report sends, what of it
 
   const fr = (await import('../../src/i18n/legal/fr.vue?raw')).default.replace(/\s+/g, ' ');
   for (const words of [
-    '<h2>Rapports de problème</h2>', 'Rien n\'est envoyé tant que vous n\'appuyez pas sur Envoyer.', 'sous forme de ticket public sur GitHub',
+    '<h2>Rapports de problème</h2>', 'Rien d\'un rapport n\'est envoyé tant que vous n\'appuyez pas sur Envoyer', 'sous forme de ticket public sur GitHub',
     'ils sont conservés 90 jours et ne sont vus que par le développeur de Phosphor', '<strong>GitHub :</strong> Publie ce que vous écrivez dans un rapport de problème',
     '<strong>Rapports de problème :</strong> Votre dessin et vos étapes, 90 jours.', 'ou envoyez un rapport de problème avec votre dessin', 'Dernière mise à jour : 24 novembre 2026.',
   ]) expect(fr, words).toContain(words);

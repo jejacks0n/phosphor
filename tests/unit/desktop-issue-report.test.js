@@ -23,7 +23,7 @@ test('the main process posts the form to the server\'s issue-reports, with no Or
   assert.equal(calls[0].url, 'https://api.phosphor.work/issue-reports');
   const { method, body, headers, redirect, credentials, signal } = calls[0].options;
   assert.deepEqual([method, headers, redirect, credentials], ['POST', undefined, 'error', 'omit']);
-  assert.ok(signal instanceof AbortSignal);
+  assert.ok(signal instanceof AbortSignal); // it gives up on a server that never answers
   assert.ok(body instanceof FormData);
   assert.deepEqual([...body.keys()], ['doing', 'wrong', 'packageVersion', 'build', 'platform', 'agent', 'drawing', 'steps']); // only the fields it knows
   assert.equal(body.get('platform'), 'desktop'); // said here, whatever the page said
