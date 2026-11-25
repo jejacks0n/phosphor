@@ -28,6 +28,9 @@ test('the DOM view keeps every character in its column, as a terminal does, even
   await page.keyboard.insertText('  a.bcdef..g'); // the same columns, plain
   await page.getByRole('button', { name: 'DOM', exact: true }).click();
   await expect(page.locator('.ansi-editor pre.display')).toBeVisible();
+  // The view's rows are drawn a moment after it shows: the two typed rows are there before they're measured.
+  await expect(page.locator('.ansi-editor pre.display > span').nth(2)).toContainText('bcdef');
+  await expect(page.locator('.ansi-editor pre.display > span').nth(3)).toContainText('a.bcdef..g');
   // Each letter's left edge, row by row: the same column, the same place.
   const xs = await page.evaluate(() => {
     const rows = document.querySelectorAll('.ansi-editor pre.display > span');
