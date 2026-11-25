@@ -26,8 +26,21 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0 # every tag, to compare with
+      # The tag is the next version, and it can be signed. The check is told the names of the signing secrets that are
+      # set, never their values: a release or a beta missing any stops here, before the wait below, the font library's
+      # push and every build, and an alpha is built with what's set, a platform with none of its secrets unsigned,
+      # with a warning (docs/desktop.md, Signing).
       - id: tag
         run: node scripts/release-tag.mjs "$GITHUB_REF_NAME"
+        env:
+          SIGNING_SECRETS: >-
+            ${{ secrets.CSC_LINK != '' && 'CSC_LINK' || '' }}
+            ${{ secrets.CSC_KEY_PASSWORD != '' && 'CSC_KEY_PASSWORD' || '' }}
+            ${{ secrets.APPLE_ID != '' && 'APPLE_ID' || '' }}
+            ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD != '' && 'APPLE_APP_SPECIFIC_PASSWORD' || '' }}
+            ${{ secrets.APPLE_TEAM_ID != '' && 'APPLE_TEAM_ID' || '' }}
+            ${{ secrets.WIN_CSC_LINK != '' && 'WIN_CSC_LINK' || '' }}
+            ${{ secrets.WIN_CSC_KEY_PASSWORD != '' && 'WIN_CSC_KEY_PASSWORD' || '' }}
       # The commit was tested: deploy.yml ran on main for it, this repository's own run, and succeeded (and so published
       # it to next). A run still on its way is waited for, up to 40 minutes: a tag pushed just after a merge, and the
       # library job's moved tag, whose font commit started main's run seconds before. With none on its way (it failed,
@@ -115,7 +128,8 @@ jobs:
       contents: write # the tag's release
     env:
       # electron-builder reads these: the macOS Developer ID .p12 and its password, the Apple account that notarizes,
-      # and the Windows .pfx and its password.
+      # and the Windows .pfx and its password. The version job checked they're set (scripts/release-tag.mjs's SECRETS,
+      # the same names): all of them, or for an alpha, all or none of a platform's.
       CSC_LINK: ${{ secrets.CSC_LINK }}
       CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
       APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -132,17 +146,6 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      # A release is signed: a platform's missing secrets fail it.
-      - shell: bash
-        run: |
-          case "$RUNNER_OS" in
-            macOS) needed="CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID" ;;
-            Windows) needed="WIN_CSC_LINK WIN_CSC_KEY_PASSWORD" ;;
-            *) needed="" ;;
-          esac
-          missing=""
-          for name in $needed; do [ -n "${!name}" ] || missing="$missing $name"; done
-          [ -z "$missing" ] || { echo "::error::A release is signed, and these secrets aren't set for $RUNNER_OS:$missing"; exit 1; }
       # npm runs scripts in cmd on Windows, which can't read build:desktop's VITE_DESKTOP=1.
       - if: runner.os == 'Windows'
         run: npm config set script-shell "C:\Program Files\Git\bin\bash.exe"
@@ -150,7 +153,26 @@ jobs:
       # Electron downloads itself the first time it's required, not on install: here, rather than inside the build.
       - run: node -e "require('electron')"
       - run: npm run build:desktop
-      - run: npx electron-builder --publish always
+      # Windows without its secrets (an alpha) is left unsigned by electron-builder itself, which reads its empty
+      # WIN_CSC_LINK as no certificate.
+      - if: runner.os != 'macOS' || env.CSC_LINK != ''
+        run: npx electron-builder --publish always
+      # macOS without its secrets (an alpha) is signed ad hoc, by no one, and not notarized: left alone the app would
+      # keep a signature that no longer holds (codesign --verify fails on it), with nothing in the log to say so. The
+      # empty CSC_LINK is taken away first: electron-builder reads it as a certificate file's path, and fails on it.
+      - if: runner.os == 'macOS' && env.CSC_LINK == ''
+        run: env -u CSC_LINK npx electron-builder --publish always -c.mac.identity=-
+      # The secrets being set doesn't say the app was signed: finding no certificate it can sign with in the .p12 (an
+      # expired one, say, or one without its key), electron-builder signs nothing, notarizes nothing and says nothing.
+      # So each app made is checked: its signature holds, and one signed with the secrets carries its notarization.
+      # The packages are on the release by now; a failure here keeps phosphor.work from publishing, and leaves them to
+      # be deleted by hand.
+      - if: runner.os == 'macOS'
+        run: |
+          for app in release/mac*/Phosphor.app; do
+            codesign --verify --deep --strict "$app"
+            [ -z "$CSC_LINK" ] || xcrun stapler validate "$app"
+          done
 
   # phosphor.work (the Pages project's main branch), for a release or a beta and not an alpha, after the three builds: a
   # platform that fails to build publishes nothing, and re-running it publishes once it passes. Last in the run, so

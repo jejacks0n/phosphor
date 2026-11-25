@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync, readFileSync } from 'node:fs';
-import { outputs } from '../../scripts/release-tag.mjs';
+import { outputs, SECRETS } from '../../scripts/release-tag.mjs';
 
 const read = (name) => readFileSync(new URL(`../../.github/workflows/${name}`, import.meta.url), 'utf8');
 const deploy = read('deploy.yml');
@@ -241,5 +241,48 @@ describe('hosting on Cloudflare Pages', () => {
     for (const name of ['test', 'browser', 'e2e', 'desktop-e2e']) {
       expect(job(deploy, name), name).toMatch(/- uses: actions\/checkout@v4\n\s+with:\n\s+ref: \$\{\{ github\.event\.pull_request\.head\.sha \|\| github\.sha \}\}/);
     }
+  });
+});
+
+// What a tag needs to be signed is scripts/release-tag.mjs's signing (desktop-release-tag.test.js); this is the
+// workflow's side: the check told what's set, once and first, and what the builds do with it.
+describe('signing the desktop app', () => {
+  const NAMES = [...SECRETS.macOS, ...SECRETS.Windows];
+
+  it('the tag check is told which signing secrets are set, by name and never by value, before the run waits or builds', () => {
+    const version = job(desktop, 'version');
+    const check = version.indexOf('run: node scripts/release-tag.mjs "$GITHUB_REF_NAME"\n');
+    const wait = version.indexOf('for try in');
+    expect(check).toBeGreaterThan(-1);
+    expect(wait).toBeGreaterThan(check);
+    const step = version.slice(check, wait);
+    expect(step).toContain('SIGNING_SECRETS: >-\n');
+    for (const name of NAMES) expect(step, name).toContain(`\${{ secrets.${name} != '' && '${name}' || '' }}\n`);
+    expect(version).not.toMatch(/secrets\.\w+ \}\}/); // no secret's value reaches this job
+  });
+
+  it('the builds are handed each secret under the name the check knows it by, and check none themselves', () => {
+    const pack = job(desktop, 'package');
+    for (const name of NAMES) expect(pack, name).toContain(`      ${name}: \${{ secrets.${name} }}\n`);
+    expect(pack).not.toContain("secrets aren't set");
+    expect(pack).not.toContain('exit 1');
+  });
+
+  // An unset secret arrives as an empty CSC_LINK, which electron-builder takes for a certificate's path and fails on.
+  it('macOS without its secrets, an alpha the check let by, is signed ad hoc with the empty CSC_LINK taken away', () => {
+    const pack = job(desktop, 'package');
+    expect(pack).toContain("      - if: runner.os != 'macOS' || env.CSC_LINK != ''\n        run: npx electron-builder --publish always\n");
+    expect(pack).toContain("      - if: runner.os == 'macOS' && env.CSC_LINK == ''\n        run: env -u CSC_LINK npx electron-builder --publish always -c.mac.identity=-\n");
+    expect(pack.match(/npx electron-builder/g)).toHaveLength(2);
+  });
+
+  it('each macOS app made is checked: its signature holds, and one signed with the secrets carries its notarization', () => {
+    const pack = job(desktop, 'package');
+    const check = pack.indexOf("      - if: runner.os == 'macOS'\n        run: |\n");
+    expect(check).toBeGreaterThan(pack.lastIndexOf('npx electron-builder'));
+    const step = pack.slice(check);
+    expect(step).toContain('for app in release/mac*/Phosphor.app; do\n');
+    expect(step).toContain('codesign --verify --deep --strict "$app"\n');
+    expect(step).toContain('[ -z "$CSC_LINK" ] || xcrun stapler validate "$app"\n');
   });
 });
