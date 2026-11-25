@@ -2,7 +2,8 @@
 // the commands each sends, Open Recent, the links, and what's only on macOS or only unpackaged.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { REPO, issueUrl, menuTemplate } from '../../desktop/menu.js';
+import { REPO, issueUrl, menuTemplate, preRelease } from '../../desktop/menu.js';
+import { buildStage } from '../../src/lib/buildStage.js';
 
 const labels = new Proxy({}, { get: (_target, key) => `<${String(key)}>` });   // every label its own key
 const IDLE = { hasImage: false, canChange: true, inRoom: false, hosting: false };
@@ -13,7 +14,7 @@ const ACCELERATORS = {
   undo: 'CmdOrCtrl+Z', redo: 'Shift+CmdOrCtrl+Z', commandList: 'CmdOrCtrl+K',
 };
 
-function menu({ state = IDLE, recent = [], mac = true, packaged = true, accelerators = ACCELERATORS } = {}) {
+function menu({ state = IDLE, recent = [], mac = true, packaged = true, accelerators = ACCELERATORS, system = SYSTEM } = {}) {
   const calls = [];
   const act = {
     command: (name) => calls.push(['command', name]),
@@ -22,7 +23,7 @@ function menu({ state = IDLE, recent = [], mac = true, packaged = true, accelera
     clearRecent: () => calls.push(['clearRecent']),
     openUrl: (url) => calls.push(['openUrl', url]),
   };
-  return { template: menuTemplate({ labels, accelerators, state, recent, act, mac, packaged, ...SYSTEM }), calls };
+  return { template: menuTemplate({ labels, accelerators, state, recent, act, mac, packaged, ...system }), calls };
 }
 const top = (template, label) => template.find((m) => m.label === label);
 const item = (template, menuLabel, label) => top(template, menuLabel).submenu.find((i) => i.label === label);
@@ -111,13 +112,22 @@ test('Open Recent lists the files by name, newest first, and clears; empty, it s
   assert.deepEqual(empty, [{ label: '<noRecent>', enabled: false }]);
 });
 
-test('Help links GitHub, this version’s release notes and a new issue naming the version and system', () => {
-  const { template, calls } = menu();
+test('Help links GitHub, this version’s release notes and, in a release, a new issue naming the version and system', () => {
+  const release = { ...SYSTEM, version: '1.2.3' };
+  const { template, calls } = menu({ system: release });
   for (const label of ['<github>', '<releaseNotes>', '<reportIssue>']) item(template, '<help>', label).click();
-  assert.deepEqual(calls.map(([, url]) => url), [REPO, `${REPO}/releases/tag/v1.2.3-beta`, issueUrl(SYSTEM)]);
-  const body = new URL(issueUrl(SYSTEM)).searchParams.get('body');
-  assert.match(body, /Phosphor 1\.2\.3-beta, macOS 15\.1 \(arm64\)$/);
+  assert.deepEqual(calls.map(([, url]) => url), [REPO, `${REPO}/releases/tag/v1.2.3`, issueUrl(release)]);
+  const body = new URL(issueUrl(release)).searchParams.get('body');
+  assert.match(body, /Phosphor 1\.2\.3, macOS 15\.1 \(arm64\)$/);
   assert.match(new URL(issueUrl({ ...SYSTEM, platform: 'win32', systemVersion: '10.0.22631', arch: 'x64' })).searchParams.get('body'), /Windows 10\.0\.22631 \(x64\)$/);
+});
+
+test('in a beta or an alpha, Help > Report an Issue… opens the page’s issue report, and the other links stay links', () => {
+  for (const version of ['1.2.3-beta', '1.2.3-beta.2', '1.2.3-alpha', '1.2.3-alpha.10']) {
+    const { template, calls } = menu({ system: { ...SYSTEM, version } });
+    for (const label of ['<github>', '<releaseNotes>', '<reportIssue>']) item(template, '<help>', label).click();
+    assert.deepEqual(calls, [['openUrl', REPO], ['openUrl', `${REPO}/releases/tag/v${version}`], ['command', 'reportIssue']], version);
+  }
 });
 
 test('the developer tools and a reload with plugins off are under Help > Troubleshooting; reload only unpackaged', () => {
@@ -130,4 +140,12 @@ test('the developer tools and a reload with plugins off are under Help > Trouble
   assert.deepEqual(calls.pop(), ['command', 'pluginsOff']);
   assert.ok(!top(packaged, '<view>').submenu.some((i) => i.role === 'reload'));
   assert.ok(top(menu({ packaged: false }).template, '<view>').submenu.some((i) => i.role === 'reload'));
+});
+
+// The main process's rule (the Help menu's Report an Issue…) is the page's (the banner) for every
+// version a tag can carry (scripts/release-tag.mjs), so the menu item and the banner agree.
+test('preRelease is the page’s buildStage on the desktop app for every version a tag can carry', () => {
+  for (const version of ['1.2.3', '1.2.3-beta', '1.2.3-beta.2', '1.2.3-alpha', '1.2.3-alpha.10']) {
+    assert.equal(preRelease(version), !!buildStage({ packageVersion: version, hostname: 'phosphor', dev: false }), version);
+  }
 });

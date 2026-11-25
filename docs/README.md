@@ -37,7 +37,7 @@ A beta or an alpha version of Phosphor says so on a small screen under the logo 
 
 What you write becomes a public issue on Phosphor's GitHub, with your version of Phosphor and your browser and system (the line above Send shows them), so leave out anything private. Your drawing and steps are never published: only Phosphor's developer sees them, and they're kept for 90 days. Sent, the form thanks you and says which issue it became, with a link; when the issue takes longer to open, it only thanks you. A report that can't be sent says why and keeps what you wrote, and so does closing the form, until the page is reloaded.
 
-The desktop app's beta and alpha versions have the same line and form ([The Desktop App](desktop.md#what-the-app-connects-to)). This isn't how you report a person or a room in SOCIAL: that's [Social](social.md)'s own **Report**.
+The desktop app's beta and alpha versions have the same line and form, which **Help > Report an Issue…** opens too ([The Desktop App](desktop.md#what-the-app-connects-to)). This isn't how you report a person or a room in SOCIAL: that's [Social](social.md)'s own **Report**.
 
 ### Navigation and URLs
 The browser address bar updates to reflect your current workspace tab and, on SOCIAL, its page, so Back and Forward move between them and a reload comes back to the same place:
