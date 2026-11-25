@@ -30,9 +30,10 @@ A terminal shows every byte of a file, the PNG's own and the project's, so Save 
 
 - `phCs`, the first chunk, erases what the terminal printed of the PNG's first bytes and switches to the alternate screen.
 - The project (`phPc`) and the picture come next, printed on the alternate screen, where none of it reaches the
-  scrollback. The project's bytes a terminal acts on are escaped, and the picture is written (with other PNG row
-  filters, the same picture) until it holds none of the sequences that would reach past that screen: a reset, a
-  question the terminal would answer by typing into the prompt, printing.
+  scrollback. The project's bytes a terminal acts on are escaped. When the picture's compressed bytes hold any of the
+  sequences that would reach past that screen (a reset, a question the terminal would answer by typing into the
+  prompt, printing), Phosphor compresses it again itself, a row at a time, trying the rows that spell one with other
+  PNG row filters (the same picture) until none does. That picture's data is bigger, about a third on a big drawing.
 - `phCa`, the last chunk before `IEND`, goes back to the screen, puts back the modes the picture's bytes may have set,
   draws the art, and opens a sequence that hides the rest of the file.
 - **Two bytes follow `IEND`**, `ESC \`, to close that sequence. PNG readers leave bytes after `IEND` alone; a strict
@@ -41,6 +42,5 @@ A terminal shows every byte of a file, the PNG's own and the project's, so Save 
 Some terminals ring the bell a few times while it prints: a picture's bytes hold bell characters, which can't be escaped.
 
 When the file can't be laid out so, Save writes the plain form, `phPr` right after `IHDR`, and printing that shows the
-PNG's bytes as any binary file's. That's a big picture, whose image data holds too many of those sequences to write them
-all away (a long or wide drawing's: one 220 columns by 350 lines is past it), or a palette whose colors spell one.
+PNG's bytes as any binary file's: a palette whose colors spell one of those sequences, say, which no filter changes.
 

@@ -61,7 +61,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   place that navigates. `addresses.js` is the table of paths, where an address may land, and the path an old hash
   address (`/#/social`) means.
 - `src/document/frames.js` (a frame as data, what it resolves to) and `src/document/FrameBuilder.js` (a frame's cells, made the way a still's are), with `src/composables/usePlayback.js` (playing) and `src/lib/CastFile.js` and `src/lib/GifFile.js` (exports; a GIF's palette and file are made off the page in `src/lib/gifWorker.js`, with `src/lib/GifEncoder.js`): animation.
-- `src/document/`: the document's data (layers, cells, history, files); `projectIO.js` holds the project's file forms and the `.pho` wrapper, a PNG with the project in a chunk of its own, and `phoTerminal.js` the form of it a terminal shows when it's printed ([docs/pho.md](docs/pho.md); the picture is `cellsPng` in `src/lib/PngFile.js`); `src/lib/`: the libraries
+- `src/document/`: the document's data (layers, cells, history, files); `projectIO.js` holds the project's file forms and the `.pho` wrapper, a PNG with the project in a chunk of its own, and `phoTerminal.js` the form of it a terminal shows when it's printed, its picture compressed by `src/lib/Deflate.js` when the browser's compression won't do ([docs/pho.md](docs/pho.md); the picture is `cellsPng` in `src/lib/PngFile.js`); `src/lib/`: the libraries
   (cells, colors, the image pipeline, exports); `src/tools/`: one file per tool.
 - What a cells layer holds (paint, paint blocks, characters of someone's own) and what paint, Merge down, Retouch,
   Colors only and the PIXEL view's Overlay do with each: [docs/model.md](docs/model.md), numbered rules that say where
