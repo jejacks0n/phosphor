@@ -85,14 +85,17 @@ async function send() {
   if (!ready.value) return;
   [sending.value, error.value] = [true, null];
   const { signal } = letGo = new AbortController();
+  const { doing, wrong } = draft;
   const steps = include.value ? stepsText() : null;
   const its = include.value ? await made : null;
   const answer = await sendIssueReport({
-    fields: { doing: draft.doing.trim(), wrong: draft.wrong.trim(), packageVersion, build, platform: DESKTOP ? 'desktop' : 'web', agent },
+    fields: { doing: doing.trim(), wrong: wrong.trim(), packageVersion, build, platform: DESKTOP ? 'desktop' : 'web', agent },
     token: token(), drawing: its && fits(its, steps) ? its : null, steps,
   }, { desktop: DESKTOP ? desktop : null, signal });
   sending.value = false;
-  if (answer.ok) Object.assign(draft, { doing: '', wrong: '' }); // it went, even if the dialog has gone (the desktop app's post can't be called back)
+  // It went, even if the dialog has gone (the desktop app's post can't be called back): what was sent is cleared, unless
+  // it's been written over since.
+  if (answer.ok && draft.doing === doing && draft.wrong === wrong) Object.assign(draft, { doing: '', wrong: '' });
   if (signal.aborted) return; // closed meanwhile: nothing to say
   if (!answer.ok) {
     error.value = issueReportWords(answer.error);

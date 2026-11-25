@@ -70,13 +70,15 @@ const field = (id) => dialog().querySelector(`#issue-${id}`);
 const sendButton = () => dialog().querySelector('button[type=submit]');
 const what = () => dialog().querySelector('p.what').textContent.trim();
 const typed = async (id, text) => { await userEvent.fill(field(id), text); };
-// Once the drawing is ready: its line no longer says it's on its way.
+// Once the drawing is ready: its line no longer says it's on its way. The first one of a run takes a second or more on
+// a busy machine (the font's cells drawn for the first time), so the waits here are long ones.
+const SOON = { timeout: 15_000 };
 function ready() {
-  return vi.waitFor(() => expect(what()).not.toMatch(/ready/));
+  return vi.waitFor(() => expect(what()).not.toMatch(/ready/), SOON);
 }
 const send = async () => {
   await userEvent.click(sendButton());
-  await vi.waitFor(() => expect(sendButton()?.textContent.trim()).not.toBe('Sending…'));
+  await vi.waitFor(() => expect(sendButton()?.textContent.trim()).not.toBe('Sending…'), SOON);
 };
 
 test('it asks what you were doing and what went wrong, and Send waits for the second: nothing is sent before it', async () => {
@@ -314,7 +316,7 @@ test('Cancel while it\'s sending stops waiting for a server that doesn\'t answer
   await open({ fetch: stalled });
   await typed('wrong', 'It never answers');
   await userEvent.click(sendButton());
-  await vi.waitFor(() => expect(stalled).toHaveBeenCalledTimes(1));
+  await vi.waitFor(() => expect(stalled).toHaveBeenCalledTimes(1), SOON);
   expect(sendButton().textContent.trim()).toBe('Sending…');
   expect(signal.aborted).toBe(false);
   expect(cancelButton().disabled).toBe(false);
