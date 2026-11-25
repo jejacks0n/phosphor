@@ -109,7 +109,8 @@
       "room": "Le dessin de cette salle, {size} · {steps}",
       "drawingTooBig": "{name} est trop volumineux pour être envoyé ({size} ; un rapport contient {most} au plus). Seules les étapes partiront ({steps}).",
       "roomTooBig": "Le dessin de cette salle est trop volumineux pour être envoyé ({size} ; un rapport contient {most} au plus). Seules les étapes partiront ({steps}).",
-      "stepsOnly": "{steps}. Aucun dessin n'est ouvert."
+      "stepsOnly": "{steps}. Aucun dessin n'est ouvert.",
+      "watching": "{steps}. Pendant que vous regardez une salle, votre propre dessin n'est pas envoyé."
     },
     "public": "Ce que vous écrivez créera un ticket public sur GitHub. Votre dessin et vos étapes ne seront visibles que par le développeur de Phosphor.",
     "with": "Envoyé avec : Phosphor {build}, {agent}.",

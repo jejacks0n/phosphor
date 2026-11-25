@@ -109,7 +109,8 @@
       "room": "This room's drawing, {size} · {steps}",
       "drawingTooBig": "{name} is too big to send ({size}; a report holds {most}). Only the {steps} will go.",
       "roomTooBig": "This room's drawing is too big to send ({size}; a report holds {most}). Only the {steps} will go.",
-      "stepsOnly": "{steps}. No drawing is open."
+      "stepsOnly": "{steps}. No drawing is open.",
+      "watching": "{steps}. While you watch a room, your own drawing isn't sent."
     },
     "public": "What you write will create a public issue on GitHub. Your drawing and steps will only be visible to Phosphor's developer.",
     "with": "Sent with it: Phosphor {build}, {agent}.",

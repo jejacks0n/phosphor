@@ -160,22 +160,31 @@ test('with no drawing open, only the steps go', async () => {
   expect(await form.get('steps').text()).toContain('workspace.setActiveTool ("brush")');
 });
 
-test('in a room the host\'s and an artist\'s line says it\'s the room\'s drawing; a watcher\'s own drawing is their own', async () => {
+test('in a room the host\'s and an artist\'s line says it\'s the room\'s drawing', async () => {
   await open({ before: () => { useRoomStore().role = 'host'; } });
   await ready();
   expect(what()).toMatch(/^This room's drawing, \d+(\.\d)? (KB|MB) · 2 steps$/);
   app.unmount();
   host.remove();
 
-  await open({ before: () => { project._sharing = { role: 'artist' }; useRoomStore().role = 'watch'; } });
+  const fetch = await open({ before: () => { project._sharing = { role: 'artist' }; useRoomStore().role = 'watch'; } });
   await ready();
   expect(what()).toMatch(/^This room's drawing, /);
-  app.unmount();
-  host.remove();
+  await typed('wrong', 'A stroke went missing');
+  await send();
+  expect(fetch.mock.calls[0][1].body.get('drawing').name).toBe('sky.pho');
+});
 
-  await open({ before: () => { useRoomStore().role = 'watch'; } });
+// Someone only watching has their own drawing open, nothing to do with the room: it stays here, and the line says so.
+test('a watcher\'s own drawing isn\'t sent: only the steps go, and the line says why', async () => {
+  const fetch = await open({ before: () => { useRoomStore().role = 'watch'; } });
   await ready();
-  expect(what()).toMatch(/^sky\.pho, /);
+  expect(what()).toBe('2 steps. While you watch a room, your own drawing isn\'t sent.');
+  await typed('wrong', 'The host\'s art froze');
+  await send();
+  const form = fetch.mock.calls[0][1].body;
+  expect(form.has('drawing')).toBe(false);
+  expect(await form.get('steps').text()).toContain('project.paintStroke ([12], "#ff5555")');
 });
 
 test('Send posts one form to the server: what was written, the build, the browser, the drawing as a .pho and the steps as text', async () => {
