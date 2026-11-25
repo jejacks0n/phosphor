@@ -6,6 +6,8 @@ import { PALETTES } from '../../src/lib/ColorUtils.js';
 import { readArtFile } from '../../src/lib/ArtFile.js';
 import { makeLongAns, makeSceneAns } from '../qa/files.js';
 import { castFinalCells, diffCells, normalizeHidden, terminalCells } from '../qa/terminal.js';
+import { phoFile } from '../../src/document/projectIO.js';
+import { indexedPng } from '../../src/lib/PngFile.js';
 
 const vga = (i) => PALETTES.vga[i].hex.toLowerCase();
 const bytes = (text) => Uint8Array.from(text, (char) => char.charCodeAt(0));
@@ -34,6 +36,12 @@ test('a byte is read as CP437, and as UTF-8 when the file is', async () => {
   expect(shown.cells.map((c) => c.char)).toEqual(['█', 'Θ']);
   const utf8 = await terminalCells(new TextEncoder().encode('█é'), { cols: 2, rows: 1, encoding: 'utf8' });
   expect(utf8.cells.map((c) => c.char)).toEqual(['█', 'é']);
+});
+
+test('a whole file prints past its EOF: a .pho shows its art and none of the PNG', async () => {
+  const pho = await phoFile(await indexedPng(1, 1, new Uint8Array([0, 0, 0, 255])), new Uint8Array([0x1b, 0x63]), new TextEncoder().encode('AB\r\n'));
+  const shown = await terminalCells(pho, { cols: 4, rows: 2, encoding: 'file' });
+  expect(shown.cells.map((c) => c.char).join('')).toBe('AB      ');
 });
 
 test('a cast ends with what its last frame left in a cell', async () => {

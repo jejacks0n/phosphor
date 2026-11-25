@@ -90,6 +90,17 @@ async function paintedAndTyped() {
   project.setIceColors(false);
   return project;
 }
+// What a .pho draws when it's printed in a terminal: its phCa chunk's bytes, as text (docs/pho.md, In a terminal).
+const printedArt = async (blob) => {
+  const file = new Uint8Array(await blob.arrayBuffer()), latin1 = (b) => String.fromCharCode(...b);
+  const at = file.findIndex((_, i) => latin1(file.subarray(i + 4, i + 8)) === 'phCa');
+  return at < 0 ? '' : latin1(file.subarray(at + 8, at + 8 + new DataView(file.buffer).getUint32(at)));
+};
+const exported = async (project) => {
+  let text;
+  await project.exportFile('utf8ans', { sauce: false, deliver: async (blob) => { text = String.fromCharCode(...new Uint8Array(await blob.arrayBuffer())); } });
+  return text;
+};
 const look = ({ char, fg, bg }) => [char, fg.hex.toLowerCase(), bg.hex.toLowerCase()];
 
 test('R14: without iCE colors paint never blinks: a bright half is the foreground of a ▀, a cell all bright a █, and only the typed character keeps its bright background', async () => {
@@ -104,6 +115,13 @@ test('R14: without iCE colors paint never blinks: a bright half is the foregroun
   project.undo(); // iCE colors is an undo step
   expect(project.sauceIceColors).toBe(true);
   expect(project.steadyCells()).toBe(project.cells);
+});
+
+test('R14: a .pho printed in a terminal draws its paint steady too, as the .utf8ans export writes it', async () => {
+  const project = await paintedAndTyped();
+  const art = await printedArt(await project.projectFile()), text = await exported(project);
+  expect(text).toContain(String.fromCharCode(...new TextEncoder().encode('▀'))); // the steady half, not a blink
+  expect(art).toContain(text);
 });
 
 test('R14: an .ans exported without iCE colors writes paint steady (▀ and █ in the bright color) and blink only for the typed character', async () => {

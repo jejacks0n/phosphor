@@ -38,6 +38,31 @@ async function withArt() {
   return { ...app, key };
 }
 
+// What a .pho draws when it's printed in a terminal: its phCa chunk's bytes, as text (docs/pho.md, In a terminal).
+const printedArt = async (blob) => {
+  const file = new Uint8Array(await blob.arrayBuffer()), latin1 = (b) => String.fromCharCode(...b);
+  const at = file.findIndex((_, i) => latin1(file.subarray(i + 4, i + 8)) === 'phCa');
+  return at < 0 ? '' : latin1(file.subarray(at + 8, at + 8 + new DataView(file.buffer).getUint32(at)));
+};
+const exported = async (project) => {
+  let text;
+  await project.exportFile('utf8ans', { sauce: false, deliver: async (blob) => { text = String.fromCharCode(...new Uint8Array(await blob.arrayBuffer())); } });
+  return text;
+};
+
+test('saved inside an art layer, the .pho prints in a terminal as the export from there writes the drawing, and the layer stays stepped into', async () => {
+  const { project, key } = await withArt();
+  project.enterArt(key);
+  project.typeAt(0, 0, 'Z', { fg: GREEN });
+  project.commitEdit();
+  const art = await printedArt(await project.projectFile());
+  expect(project.artInside).toBe(key);
+  const text = await exported(project); // which steps out first
+  expect(text).toContain('X');
+  expect(text).toContain('Z');
+  expect(art).toContain(text);
+});
+
 // The frames' drawings, without their shapes.
 const drawings = (project) => project.frames.map((frame) => JSON.stringify([...frame.changes].filter(([key]) => !isShapeKey(key))));
 

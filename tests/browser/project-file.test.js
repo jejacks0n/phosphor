@@ -37,6 +37,18 @@ test('projectFile is the file Save writes: a PNG with the project inside, which 
   expect(cells.some((cell) => cell.startsWith('A'))).toBe(true);
 });
 
+test('printed in a terminal, it shows the drawing: its .utf8ans with no SAUCE, in the chunk a terminal draws (docs/pho.md)', async () => {
+  const { project } = await drawn();
+  const file = await bytesOf(await project.projectFile());
+  expect(String.fromCharCode(...file.subarray(37, 41))).toBe('phCs');
+  let exported;
+  await project.exportFile('utf8ans', { sauce: false, deliver: async (blob) => { exported = await bytesOf(blob); } });
+  const at = file.findIndex((_, i) => file[i] === 0x70 && String.fromCharCode(...file.subarray(i, i + 4)) === 'phCa');
+  const art = String.fromCharCode(...file.subarray(at + 4, at + 4 + new DataView(file.buffer).getUint32(at - 4)));
+  expect(art).toContain(String.fromCharCode(...exported));
+  expect(new TextDecoder().decode(exported)).toMatch(/A.*B/); // the two letters, each in its color
+});
+
 test('its picture is hard-edged with Smooth text on: the drawing\'s own colors and no others', async () => {
   const { project, workspace } = await drawn();
   workspace.smoothText = true;
