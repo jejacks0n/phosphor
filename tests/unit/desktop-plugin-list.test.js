@@ -1,5 +1,5 @@
 // The desktop app's marketplace fetches (desktop/pluginList.js): the main process asks only for the one list (phosphor.work's,
-// or next.phosphor.work's for a pre-release) and raw GitHub files, follows no redirect, and stops reading a body past its cap.
+// or next.phosphor.work's for an alpha) and raw GitHub files, follows no redirect, and stops reading a body past its cap.
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { listUrl, MOST_FILE_BYTES, allowedUrl, fetchText, fetchFile } from '../../desktop/pluginList.js';
@@ -38,11 +38,14 @@ test('only the list and raw GitHub URLs are allowed', () => {
   ]) assert.equal(allowedUrl(url, LIST_URL), false, String(url));
 });
 
-test('listUrl is next for a pre-release version or site next, production otherwise', () => {
+test('listUrl is next for an alpha version or site next, production for a release or a beta', () => {
   assert.equal(listUrl({ version: '1.2.3' }), LIST_URL);
   assert.equal(listUrl({ version: '1.2.3+build' }), LIST_URL);
-  assert.equal(listUrl({ version: '1.2.3-beta' }), NEXT_URL);
-  assert.equal(listUrl({ version: '1.2.3-rc.1' }), NEXT_URL);
+  assert.equal(listUrl({ version: '1.2.3-beta' }), LIST_URL);
+  assert.equal(listUrl({ version: '1.2.3-beta.2' }), LIST_URL);
+  assert.equal(listUrl({ version: '1.2.3-alpha' }), NEXT_URL);
+  assert.equal(listUrl({ version: '1.2.3-alpha.2' }), NEXT_URL);
+  assert.equal(listUrl({ version: '1.2.3-beta', site: 'next' }), NEXT_URL);
   assert.equal(listUrl({ version: '1.2.3', site: 'next' }), NEXT_URL);
   assert.equal(listUrl({ version: '1.2.3', site: 'prod' }), LIST_URL);
 });
