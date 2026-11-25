@@ -142,7 +142,7 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   the Marketplace) and, in `tests/fixtures/plugins/`, `outlines.zip`, as GitHub makes one.
 - Issue reports: a bug report to the developer from a pre-release build, never to be confused with SOCIAL's reports of
   a person or a room (`ReportDialog.vue`). `src/lib/buildStage.js` (which builds are an alpha or a beta: package.json's
-  version, or running on next), `src/components/BetaBanner.vue` (the line under the settings panel's logo),
+  version, or running on next), `src/components/BetaBanner.vue` (the small screen under the settings panel's logo),
   `src/components/IssueReportDialog.vue`, and `src/lib/issueReport.js` (what's sent and what the server answers: the
   whole contract, `POST /issue-reports`), with its error words in `src/social/messages.js`, the drawing made without
   saving by `projectFile` (`src/store/project/document.js`), and for the desktop app `desktop/issueReport.js` behind the

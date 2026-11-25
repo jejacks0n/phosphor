@@ -28,7 +28,7 @@ You can choose a color theme using the theme selector at the bottom of the setti
 Your theme choice is saved in your browser. Plugins can add themes of their own, picked in a select under the icons ([Plugins](plugins.md#picking-a-plugins-theme)).
 
 ### Betas and Reporting an Issue
-A beta or an alpha version of Phosphor says so under the logo at the top of the settings panel: **BETA** (or **ALPHA**), with **Report an issue** beside it. A version is one when its number ends in `-beta` or `-alpha` (About, opened from the logo, shows the number), and next.phosphor.work, where each change lands before it's released, is always a beta. A released version shows nothing there.
+A beta or an alpha version of Phosphor says so on a small screen under the logo at the top of the settings panel: **BETA** (or **ALPHA**) lit between shade blocks, with **Report an issue** under it. The screen's scanlines are still; its flicker and the bar rolling down it stop if your system asks for reduced motion. A version is one when its number ends in `-beta` or `-alpha` (About, opened from the logo, shows the number), and next.phosphor.work, where each change lands before it's released, is always a beta. A released version shows nothing there.
 
 **Report an issue** opens a short form for telling Phosphor's developer about a bug. You don't need a GitHub account.
 - **What were you doing?** and **What went wrong?**: The second is required. Each counts what you've written and stops at its most, 2,000 and 4,000 characters.
