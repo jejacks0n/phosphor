@@ -1232,6 +1232,12 @@
       "z": "Empilement"
     }
   },
+  "clipboard": {
+    "nothing": "Le presse-papiers ne contient rien à ouvrir. Copiez d'abord une sélection ou des formes dans Phosphor, un bloc dans Moebius, du texte ou une image.",
+    "refused": "Phosphor n'a pas pu lire le presse-papiers. Autorisez l'accès au presse-papiers pour cette page, ou copiez d'abord quelque chose dans cet onglet.",
+    "tooBig": "Le presse-papiers contient {cols} × {rows} cellules. Un dessin a au plus {maxCols} colonnes, {maxLines} lignes et {maxCells} cellules.",
+    "failed": "Impossible de créer un dessin à partir du contenu du presse-papiers."
+  },
   "actions": {
     "replacesUnsaved": "Remplace les modifications non enregistrées de ce dessin. Il reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
     "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .pho et .phosphor, les fichiers SVG et les fichiers d'art (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
@@ -1246,6 +1252,7 @@
     "exportPng": "Exporter en .png",
     "versions": "Versions",
     "newProject": "Nouveau projet",
+    "newFromClipboard": "Nouveau depuis le presse-papiers",
     "artDropTitle": "Ajouter {name} ?",
     "artDropSub": "L'ajouter à ce dessin ou l'ouvrir comme nouveau projet.",
     "artDropSubAddOnly": "L'ajouter à ce dessin.",

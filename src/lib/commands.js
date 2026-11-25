@@ -42,6 +42,7 @@ import { recentCommands } from '@/lib/recentCommands';
 import { addOff, artLayerEmpty, artLayerOff, bakeOff, dimensionsOff, flattenOff, pausedOff, reasonWords } from '@/lib/offReasons';
 import { useMergeDown } from '@/composables/useMergeDown';
 import { duplicateShapes } from '@/composables/vectorClipboard.js';
+import { newFromClipboard } from '@/composables/clipboard.js';
 import { toast } from '@/composables/useToast';
 import { useRoomStore } from '@/store/RoomStore';
 import { useSocialStore } from '@/store/SocialStore';
@@ -446,6 +447,9 @@ export const COMMANDS = [
 
   // The File menu's (ProjectActions' buttons): New and Versions are off while drawing with others, as their buttons are.
   { id: 'file.new', group: 'file', label: said('actions.newProject'), available: alone, run: ({ workspace }) => workspace.newProject() },
+  // A new drawing the size of what the clipboard holds (clipboard.js): from the start screen too, so with no drawing it's on.
+  { id: 'file.newFromClipboard', group: 'file', label: said('actions.newFromClipboard'), available: (ctx) => (ctx.project.image ? alone(ctx) : true),
+    run: ({ project, workspace }) => newFromClipboard(project, workspace) },
   { id: 'file.versions', group: 'file', label: said('actions.versions'), available: alone,
     run: ({ workspace }) => { workspace.versionsOpen = true; } },
   // Export with its format chosen, one row for each (Export… is file.export). The animated ones only with Animate on and

@@ -1388,7 +1388,8 @@ list, and opens either when clicked; it shows only with a mouse or trackpad, whe
   opens it on its own, and focus goes back where it was, Edit Mode's cursor too.
 - **What's in it**: Every command the app has a key for, each with its key at the right so you can learn it, and the
   ones that have none, each doing what its button does (and asking what its button asks):
-  - **File and panels**: **New project**, **Versions**, **Export…** and each format on its own (**Export .ans**,
+  - **File and panels**: **New project**, **New from clipboard** (a new drawing the size of what you copied:
+    [Saving and Exporting](characters.md#saving-and-exporting)), **Versions**, **Export…** and each format on its own (**Export .ans**,
     **Export .png**, **Export .gif**…, which open Export on that format), **Layers**, **Social**, **Plugins…**,
     **Reload plugins** (each plugin you picked from a file or folder, read again) and **Reload with Plugins Off**.
   - **The drawing**: **Bake**, **Flatten**, **Merge down** (into the base it asks how, **Blend into source image**

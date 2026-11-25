@@ -1,7 +1,13 @@
-import { selectionText } from '@/lib/Cells';
+import { MAX_CELLS, MAX_COLS, MAX_LINES, selectionText } from '@/lib/Cells';
 import { ctx2d } from '@/lib/Canvas';
-import { VERSION, clipboardHtml, moebiusData } from '@/lib/clipboardBlocks';
+import { VERSION, clipboardHtml, moebiusData, readClipboardHtml } from '@/lib/clipboardBlocks';
 import { flatBlock } from '@/store/project/selection.js';
+import { shapeBounds, transformed, translation } from '@/document/shapes.js';
+import { useDrawingStore } from '@/store/DrawingStore';
+import { busyWhile } from '@/composables/useBusy';
+import { toast } from '@/composables/useToast';
+import { t } from '@/i18n';
+import { formatNumber } from '@/i18n/format';
 
 // Copy a selection: the block (the picked layer's cells and paint; with All layers on, each shown layer's, the base's pixels and what shapes show) on Phosphor's own
 // clipboard, and on the system clipboard its characters as plain text (for a terminal, a chat, a
@@ -77,4 +83,94 @@ async function canvasOf(url) {
   canvas.height = image.naturalHeight;
   ctx2d(canvas).drawImage(image, 0, 0);
   return canvas;
+}
+
+// What the system clipboard holds that a drawing can be made of, read outside a paste event (navigator.clipboard.read:
+// browsers allow it in the press that asked, some after a Paste prompt of their own). The first of: shapes or a Select
+// block copied in Phosphor (this tab's own copy as it is now, another tab's as it came), a Moebius block, a picture, text.
+// { shapes, keys }, { block }, { picture: File } or { text }; null with none of those. When the browser won't say, what
+// this tab copied itself stands in (on VECTOR its shapes first, elsewhere its block), and with neither, { refused: true }.
+export async function clipboardHeld(workspace) {
+  const ownShapes = workspace.vectorClipboard && { shapes: workspace.vectorClipboard, keys: workspace.vectorClipboardKeys };
+  const ownBlock = workspace.clipboard && { block: workspace.clipboard };
+  let items;
+  try {
+    items = await navigator.clipboard.read();
+  } catch {
+    return (workspace.editorTab === 'vector' ? ownShapes || ownBlock : ownBlock || ownShapes) || { refused: true };
+  }
+  const part = async (wanted) => {
+    for (const item of items) {
+      const type = item.types.find(wanted);
+      if (type) return item.getType(type);
+    }
+    return null;
+  };
+  const html = await part((type) => type === 'text/html'), found = html && readClipboardHtml(await html.text());
+  if (found?.shapes) return found.shapes.id === workspace.vectorClipboardId && ownShapes ? ownShapes : { shapes: found.shapes.shapes, keys: found.shapes.keys ?? null };
+  if (found?.phosphor) return found.phosphor.id === workspace.clipboardId && ownBlock ? ownBlock : { block: await decodeBlock(found.phosphor) };
+  if (found?.moebius) return { block: found.moebius };
+  const picture = await part((type) => type.startsWith('image/'));
+  if (picture) return { picture: new File([picture], `clipboard.${picture.type.slice(6).replace(/[^a-z0-9].*$/, '')}`, { type: picture.type }) };
+  const text = (await (await part((type) => type === 'text/plain'))?.text() ?? '').replace(/\r\n/g, '\n');
+  return text.trim() ? { text } : null;
+}
+
+// The canvas a drawing made of shapes takes: their bounds (shapeBounds, strokes and all), out to whole cells so an art
+// layer keeps its place on them and nothing is cut mid-cell, no bigger than a drawing can be. { cols, lines, shapes }: the
+// shapes moved so the bounds' corner is the canvas's.
+function shapesCanvas(shapes, aspect) {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const shape of shapes) {
+    const { x, y, w, h } = shapeBounds(shape, aspect);
+    [x0, y0, x1, y1] = [Math.min(x0, x), Math.min(y0, y), Math.max(x1, x + w), Math.max(y1, y + h)];
+  }
+  const dx = Math.floor(x0), dy = 2 * Math.floor(y0 / 2);
+  const cols = Math.min(MAX_COLS, Math.max(1, Math.ceil(x1 - dx)));
+  const lines = Math.min(MAX_LINES, Math.floor(MAX_CELLS / cols), Math.max(1, Math.ceil((y1 - dy) / 2)));
+  return { cols, lines, shapes: shapes.map((shape) => transformed(shape, translation(-dx, -dy))) };
+}
+
+// New from clipboard (the command list's): a new drawing the size of what the clipboard holds, with it in. A Select block
+// or a Moebius block: a canvas its size with the block on Layer 1, as a paste lands (its one undo step). Text: as a text
+// file opens to edit, its widest line wide, its escape codes read. A picture: as an image opens. Shapes: a canvas their
+// bounds (shapesCanvas) with them on a vector layer, on VECTOR. The clipboard is read first, in the press that asked;
+// then unsaved work is asked about, as New project asks. Not while drawing with others. Whether a drawing opened; false,
+// with a toast saying why, with nothing to open, a clipboard that can't be read, or a block bigger than a drawing.
+export async function newFromClipboard(project, workspace) {
+  const withOthers = useDrawingStore().offWithOthers;
+  if (withOthers) return toast(withOthers), false;
+  const held = await clipboardHeld(workspace);
+  if (!held || held.refused) return toast(t(held ? 'clipboard.refused' : 'clipboard.nothing')), false;
+  const { block, shapes, picture, text } = held;
+  if (block && (block.w > MAX_COLS || block.h > MAX_LINES || block.w * block.h > MAX_CELLS)) {
+    return toast(t('clipboard.tooBig', { cols: block.w, rows: block.h, maxCols: MAX_COLS, maxLines: formatNumber(MAX_LINES), maxCells: formatNumber(MAX_CELLS) })), false;
+  }
+  const open = async () => {
+    try {
+      if (!project.image) workspace.editorTab = shapes ? 'vector' : 'output'; // from the start screen, chosen first: the address moves once
+      if (picture) {
+        await project.setImageFromFile(picture);
+        workspace.pickLayer('base');
+      } else if (text) {
+        await project.openArtFile(new File([text], 'clipboard.utf8ans'), { layer: 'edit' });
+      } else if (block) {
+        if (!(await project.setBlankCanvas({ cols: block.w, rows: 2 * block.h, withLayer: true }))) return false;
+        await busyWhile(t('busy.pasting'), () => project.pasteSelection(block, 0, 0));
+      } else {
+        const canvas = shapesCanvas(shapes, project.pixelAspect);
+        if (!(await project.setBlankCanvas({ cols: canvas.cols, rows: 2 * canvas.lines }))) return false;
+        workspace.editorTab = 'vector';
+        project.addShapes(canvas.shapes, held.keys);
+        return true;
+      }
+      workspace.editorTab = 'output';
+      return true;
+    } catch (error) {
+      console.warn('Could not make a drawing of the clipboard', error);
+      toast(error.userMessage ?? t('clipboard.failed'));
+      return false;
+    }
+  };
+  return new Promise((resolve) => workspace.confirmLeave(null, () => resolve(open()), () => resolve(false)));
 }

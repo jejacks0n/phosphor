@@ -77,3 +77,29 @@ test('from Edit Mode, Layer: Rename puts the picked row\'s name box in focus, an
   await page.keyboard.press('Enter');
   await expect(page.locator('#cols')).toBeFocused();
 });
+
+test.describe('New from clipboard', () => {
+  test.use({ permissions: ['clipboard-read', 'clipboard-write'] });
+
+  test('a copied selection becomes a new drawing its size, from the command list, with the real clipboard read, once unsaved work is answered for', async ({ page }) => {
+    await openApp(page);
+    await editAt(page, 1, 1);
+    await page.keyboard.insertText('Hi');
+    await page.keyboard.press('Escape');
+    const store = (name, read) => page.evaluate(([name, source]) => new Function('s', `return (${source})(s)`)(document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get(name)), [name, read.toString()]);
+    await store('workspace', (w) => w.selectAll({ c0: 0, r0: 0, c1: 9, r1: 4 })); // 10 × 5 cells, with the Select tool
+    await page.keyboard.press('ControlOrMeta+c');
+    await page.keyboard.press(MOD_K);
+    await page.keyboard.type('new from clip');
+    await expect(list(page).getByRole('option').first()).toContainText('New from clipboard');
+    await page.keyboard.press('Enter');
+    // The drawing has the typing unsaved: asked first, as New project asks, and nothing opens until the answer.
+    const asked = page.getByRole('dialog', { name: 'Start a new project?' });
+    await expect(asked).toBeVisible();
+    expect(await store('project', (p) => [p.cols, p.rows])).toEqual([80, 80]);
+    await asked.getByRole('button', { name: /^Start without saving/ }).click();
+    await expect.poll(() => store('project', (p) => [p.cols, p.rows])).toEqual([10, 10]);
+    await expect.poll(() => chars(page, 1, 1, 2)).toBe('Hi');
+    expect(await store('project', (p) => p.layers.map((layer) => layer.id))).toEqual(['base', 'edit']);
+  });
+});
