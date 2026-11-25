@@ -36,8 +36,9 @@ The app's own menus, in the language Phosphor shows:
 - **Room**: Start a Room… and Join a Room… open the Social tab; Copy Room Address copies the first address others can
   join at, while you host; Leave Room (End Room… for a host, which asks first).
 - **View**: Actual Size, Zoom In and Zoom Out (the whole window, as a browser's zoom) and Full Screen.
-- **Help**: Command List… (Cmd/Ctrl+K, [The Command List](layers.md#the-command-list)), Keyboard Shortcuts, Phosphor on GitHub, the Release Notes for your version, and Report an Issue…, which
-  opens a new GitHub issue with your Phosphor version and system written in (a beta's **Report an issue**, under the logo, needs no GitHub account: see [What the app connects to](#what-the-app-connects-to)). Troubleshooting has the developer tools,
+- **Help**: Command List… (Cmd/Ctrl+K, [The Command List](layers.md#the-command-list)), Keyboard Shortcuts, Phosphor on GitHub, the Release Notes for your version, and Report an Issue…. In a beta or an alpha
+  version it opens the same issue report as **Report an issue** under the logo, which needs no GitHub account (see [What the app connects to](#what-the-app-connects-to)); in a release it
+  opens a new GitHub issue with your Phosphor version and system written in. Troubleshooting has the developer tools,
   for when someone helping you asks what they say, and Reload with Plugins Off, for a plugin's theme that makes the
   window hard to read ([Plugins](plugins.md#starting-with-plugins-off)).
 - **Plugins…** (in the Phosphor menu on macOS, in Help elsewhere, after Check for Updates…) opens the Plugins dialog
@@ -259,7 +260,7 @@ people or rooms, no usage. It connects only to these, and only then:
   Marketplace;
 - lospec.com, for one palette, when you search Lospec from the color layer's **Palettes** page;
 - Phosphor's server (`api.phosphor.work`), for an issue report, when you press **Send** in **Report an issue**. Only a
-  beta or an alpha version has it, under the logo. It sends what you wrote, your version of Phosphor and your system, and,
+  beta or an alpha version has it, under the logo and in **Help > Report an Issue…**. It sends what you wrote, your version of Phosphor and your system, and,
   if you leave its box ticked, your drawing and the session's steps. What you wrote becomes a public issue on GitHub;
   the drawing and steps are seen only by Phosphor's developer and kept for 90 days
   ([Betas and reporting an issue](README.md#betas-and-reporting-an-issue)).

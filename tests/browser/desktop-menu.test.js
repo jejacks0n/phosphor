@@ -91,6 +91,8 @@ test('commands open what they name, and Undo from the menu is the drawing’s ou
   expect([workspace.showAboutModal, workspace.shortcutsOpen, workspace.exportModal]).toEqual([true, true, false]);
   command('plugins');
   expect(workspace.pluginsOpen).toBe(true);
+  command('reportIssue');   // a pre-release's Help > Report an Issue…: the banner's issue report
+  expect(workspace.issueReportOpen).toBe(true);
   const reload = vi.spyOn(reloading, 'withPluginsOff').mockImplementation(() => {});
   command('pluginsOff');
   expect(reload).toHaveBeenCalled();

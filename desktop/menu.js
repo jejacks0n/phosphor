@@ -1,16 +1,21 @@
 // The desktop app's menu bar, as a template for Menu.buildFromTemplate: in the page's words (labels, in the language it
 // shows, from its menu strings) and with what it can do now (state). The app's own actions go to the page as commands;
-// cut, copy, paste, zoom and the window are the system's roles, and the links open in the browser.
+// cut, copy, paste, zoom and the window are the system's roles, and the links open in the browser. Report an Issue… is
+// a link to a new GitHub issue in a release, and in a pre-release (a beta or an alpha) the page's own issue report.
 //   labels   the page's menu strings (en.json's menu)
 //   accelerators  { menu command: its Electron accelerator }, from the page's command table; a command with none has none
 //   state    { hasImage, canChange, inRoom, hosting }: a drawing open, the document free to replace (not drawing in a
 //            room someone else hosts), in a room, hosting it
 //   recent   the recently opened files' paths, newest first
 //   act      { command(name), newWindow(), openRecent(path), clearRecent(), openUrl(url) }
+// A pre-release version, a beta's or an alpha's (1.2.3-beta, 1.2.3-alpha.2), by the forms scripts/release-tag.mjs takes and
+// the page's banner reads (src/lib/buildStage.js): its Help > Report an Issue… is the page's issue report.
+export const preRelease = (version) => /-(alpha|beta)(?:\.|$)/.test(String(version));
+
 export const REPO = 'https://github.com/jejacks0n/phosphor';
 
 const PLATFORMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' };
-// A new issue on GitHub, its body ending with this app's version and system, for the person to write above.
+// A release's Report an Issue…: a new issue on GitHub, its body ending with this app's version and system, for the person to write above.
 export const issueUrl = ({ version, platform, systemVersion, arch }) => {
   const system = `${PLATFORMS[platform] ?? platform} ${systemVersion} (${arch})`;
   return `${REPO}/issues/new?body=${encodeURIComponent(`\n\n---\nPhosphor ${version}, ${system}`)}`;
@@ -95,7 +100,7 @@ export function menuTemplate({ labels: l, accelerators = {}, state, recent, act,
         sep,
         link(l.github, REPO),
         link(l.releaseNotes, `${REPO}/releases/tag/v${version}`),
-        link(l.reportIssue, issueUrl({ version, platform, systemVersion, arch })),
+        preRelease(version) ? command(l.reportIssue, 'reportIssue') : link(l.reportIssue, issueUrl({ version, platform, systemVersion, arch })),
         sep,
         ...(mac ? [] : [about, updates, plugins, sep]),
         // A plugin's theme that leaves the window unreadable is got out of by loading it without plugins.

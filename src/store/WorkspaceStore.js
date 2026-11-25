@@ -122,7 +122,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     isMiddleClick: false,
     settingsOpen: false,
     showAboutModal: false,
-    issueReportOpen: false,  // the issue report, from a pre-release build's banner (BetaBanner, IssueReportDialog)
+    issueReportOpen: false,  // the issue report, from a pre-release build's banner or desktop Help menu (BetaBanner, useDesktopMenu, IssueReportDialog)
     pluginsOpen: false,      // the Plugins dialog (PluginsDialog)
     shortcutsOpen: false,    // the keyboard shortcuts list (ShortcutsDialog)
     commandListOpen: false,  // the command list (CommandList), Cmd+K
