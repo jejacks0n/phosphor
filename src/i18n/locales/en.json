@@ -1363,9 +1363,8 @@
       }
     },
     "png": {
-      "ask": "Smooth text adds subtle shading colors, which makes the PNG file larger.",
       "smoothTitle": "Smooth",
-      "smoothText": "Anti-aliased characters, matching what you see in the ANSI view.",
+      "smoothText": "Anti-aliased characters, as the ANSI view draws them with Smooth on. The shading adds colors, which makes the file larger.",
       "hardTitle": "Hard-edged",
       "hardText": "Sharp pixel characters using only the drawing's palette colors (smallest file size)."
     },

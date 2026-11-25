@@ -136,10 +136,10 @@ test('a .cast download holds a frame per event at its time, a .gif download is a
 const pngHeader = (bytes) => ({ signature: [...bytes.subarray(0, 8)], width: bytes.readUInt32BE(16), height: bytes.readUInt32BE(20), colorType: bytes[25] });
 const PNG_SIGNATURE = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
 
-test('Export .png: the modal shows a smooth/hard toggle when smooth text is on; each download is a PNG of the grid', async ({ page }) => {
+test('Export .png: Text rendering is Hard-edged until Smooth is picked, whatever the status bar\'s Smooth is; each download is a PNG of the grid', async ({ page }) => {
   await openApp(page);
   const modal = await openExportModal(page, 'PNG');
-  await expect(modal).toContainText('Text rendering');
+  await expect(modal.getByRole('button', { name: /^Hard-edged/ })).toHaveAttribute('aria-pressed', 'true'); // with the status bar's Smooth on
   await modal.getByRole('button', { name: /^Smooth/ }).click();
   const [smooth] = await Promise.all([page.waitForEvent('download'), modal.getByRole('button', { name: /^Export PNG/ }).click()]);
   expect(smooth.suggestedFilename()).toMatch(/^gradient-\d{8}-\d{6}\.png$/);
@@ -148,7 +148,7 @@ test('Export .png: the modal shows a smooth/hard toggle when smooth text is on; 
 
   await page.getByRole('button', { name: 'Smooth', exact: true }).click(); // the status bar's: turn smooth text off
   const modal2 = await openExportModal(page, 'PNG');
-  await expect(modal2).not.toContainText('Text rendering'); // no toggle when smooth text is off
+  await expect(modal2.getByRole('button', { name: /^Hard-edged/ })).toHaveAttribute('aria-pressed', 'true'); // and with it off
   const [hard] = await Promise.all([page.waitForEvent('download'), modal2.getByRole('button', { name: /^Export PNG/ }).click()]);
   const hardHeader = pngHeader(await readFile(await hard.path()));
   expect(hardHeader.signature).toEqual(PNG_SIGNATURE);

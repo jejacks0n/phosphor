@@ -4,6 +4,7 @@ import { test, expect, vi, afterEach } from 'vitest';
 import { watch } from 'vue';
 import { createTestApp, cellsKey, settle } from '../support/app.js';
 import { busyMessage } from '@/composables/useBusy';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { startsAsProject } from '@/document/projectIO';
 import { SKIPPED } from '@/dev/skipped.js';
 
@@ -35,6 +36,17 @@ test('projectFile is the file Save writes: a PNG with the project inside, which 
   await settle(project);
   expect(cellsKey(project)).toEqual(cells);
   expect(cells.some((cell) => cell.startsWith('A'))).toBe(true);
+});
+
+test('its picture is hard-edged with Smooth text on: the drawing\'s own colors and no others', async () => {
+  const project = await drawn();
+  useWorkspaceStore().smoothText = true;
+  const bitmap = await createImageBitmap(new Blob([await project.projectFile()], { type: 'image/png' }));
+  const ctx = new OffscreenCanvas(bitmap.width, bitmap.height).getContext('2d');
+  ctx.drawImage(bitmap, 0, 0);
+  const { data } = ctx.getImageData(0, 0, bitmap.width, bitmap.height), colors = new Set();
+  for (let i = 0; i < data.length; i += 4) colors.add(`${data[i]},${data[i + 1]},${data[i + 2]}`);
+  expect([...colors].sort()).toEqual(['0,0,0', '255,85,85', '85,255,85']); // black, A's red and B's green: no shades between
 });
 
 test('making it saves nothing: no download, no Saving note, and the name, the unsaved mark and the undo history as they were', async () => {

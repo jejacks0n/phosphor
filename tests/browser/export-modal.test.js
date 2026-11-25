@@ -200,35 +200,29 @@ test('Enter in the file name exports, as it saves in Save project', async () => 
   }
 });
 
-test('PNG format shows smooth/hard toggle when smoothText is on', async () => {
-  const { workspace } = await drawing();
-  workspace.smoothText = true;
-  const { unmount } = mountModal();
-  try {
-    const modal = document.querySelector('.modal-dialog');
-    const buttons = [...modal.querySelectorAll('.format-btn:not(:disabled)')];
-    buttons.find((b) => b.textContent.includes('PNG')).click();
-    await nextTick();
-    expect(modal.textContent).toContain('Text rendering');
-    expect(modal.textContent).toContain('Hard-edged');
-    expect(modal.textContent).toContain('Smooth');
-  } finally {
-    unmount();
+test('PNG offers Text rendering whatever Smooth text is, Hard-edged picked first, and exports as picked', async () => {
+  const { project, workspace } = await drawing();
+  const exported = vi.spyOn(project, 'exportFile').mockResolvedValue();
+  for (const [setting, pick, smooth] of [[true, null, false], [false, null, false], [false, 'Smooth', true], [true, 'Smooth', true]]) {
+    workspace.smoothText = setting;
+    const { closed, unmount } = mountModal();
+    try {
+      const modal = document.querySelector('.modal-dialog');
+      [...modal.querySelectorAll('.format-btn:not(:disabled)')].find((b) => b.textContent.includes('PNG')).click();
+      await nextTick();
+      expect(modal.textContent).toContain('Text rendering');
+      expect(modal.querySelector('.smooth-btn.selected b').textContent).toBe('Hard-edged');
+      expect(modal.querySelector('.smooth-btn.selected').getAttribute('aria-pressed')).toBe('true');
+      if (pick) [...modal.querySelectorAll('.smooth-btn')].find((b) => b.querySelector('b').textContent === pick).click();
+      await nextTick();
+      modal.querySelector('form.foot').requestSubmit();
+      await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
+      expect(exported).toHaveBeenLastCalledWith('png', expect.objectContaining({ smooth }));
+    } finally {
+      unmount();
+    }
   }
-});
-
-test('PNG format shows no toggle when smoothText is off', async () => {
-  const { workspace } = await drawing();
-  workspace.smoothText = false;
-  const { unmount } = mountModal();
-  try {
-    const modal = document.querySelector('.modal-dialog');
-    [...modal.querySelectorAll('.format-btn:not(:disabled)')].find((b) => b.textContent.includes('PNG')).click();
-    await nextTick();
-    expect(modal.textContent).not.toContain('Text rendering');
-  } finally {
-    unmount();
-  }
+  expect(workspace.smoothText).toBe(true); // the choice is the export's alone
 });
 
 test('Cancel closes without exporting', async () => {

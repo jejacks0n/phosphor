@@ -3,16 +3,14 @@ import { ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ArrowIcon from '@/components/ArrowIcon.vue';
-import ChoiceDialog from '@/components/ChoiceDialog.vue';
 import { useProjectStore } from '@/store/ProjectStore';
-import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
 import { fileStem, timestamped } from '@/document/projectIO';
 
 // Save Project and the exports: the filename (it renames the document; every browser downloads
-// with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead. A .png with
-// smooth text on asks first whether to keep it smooth (more colors, a bigger file) or hard-edged; nothing's remembered.
+// with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead. A .png is
+// hard-edged (the Export dialog has the choice).
 const props = defineProps({
   ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'xb' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif' | 'png'
 });
@@ -43,9 +41,6 @@ const animated = computed(() => !!meta.value.animated);
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(props.ext) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 
 const name = ref(timestamped(project.filename ?? 'untitled'));
-const smooth = ref(useWorkspaceStore().smoothText);
-const asking = ref(props.ext === 'png' && smooth.value);
-const smoothChoices = computed(() => ['smooth', 'hard'].map((id) => ({ id, title: t(`save.png.${id}Title`), text: t(`save.png.${id}Text`) })));
 const saving = ref(false);
 const problem = ref('');
 const stem = computed(() => fileStem(name.value, extension.value));
@@ -63,7 +58,7 @@ async function save() {
   try {
     if (props.ext === 'phosphor') await project.saveProject(stem.value);
     else if (animated.value) await project.exportAnimation(props.ext, { filename: stem.value });
-    else await project.exportFile(props.ext, { filename: stem.value, smooth: smooth.value });
+    else await project.exportFile(props.ext, { filename: stem.value });
     emit('close');
   } catch (error) {
     console.warn('Could not save the file', error);
@@ -79,8 +74,7 @@ function cancel() {
 </script>
 
 <template>
-  <ChoiceDialog v-if="asking" :title="title" :sub="t('save.png.ask')" :choices="smoothChoices" @choose="smooth = $event === 'smooth'; asking = false" @cancel="emit('close')"/>
-  <ModalDialog v-else :title="title" :sub="sub" @cancel="cancel">
+  <ModalDialog :title="title" :sub="sub" @cancel="cancel">
     <form @submit.prevent="save">
       <label for="save-filename">{{ t('save.fileName') }}</label>
       <div class="name">

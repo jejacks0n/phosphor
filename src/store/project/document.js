@@ -752,10 +752,10 @@ export const documentActions = {
 
   // .ans is CP437: the save dialog lists the characters it can't keep (AnsiFile.unmappable) first. Out of an art layer
   // first: the cells then are the layer's alone, without the drawing.
-  // 'png' is the frame showing as the ANSI view draws it, smooth or hard-edged as asked (the view's own setting by
-  // default), at one pixel per font pixel. deliver takes the file (its blob and name): a download unless it's given.
+  // 'png' is the frame showing as the ANSI view draws it, hard-edged unless smooth is asked for (whatever the view's own
+  // setting is: the art's own colors index to a far smaller file), at one pixel per font pixel. deliver takes the file (its blob and name): a download unless it's given.
   // sauce: false writes an ANSI file with no SAUCE record.
-  async exportFile(ext, { filename = this.filename, smooth = useWorkspaceStore().smoothText, deliver = downloadBlob, sauce = true, ...opts } = {}) {
+  async exportFile(ext, { filename = this.filename, smooth = false, deliver = downloadBlob, sauce = true, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
     if (ext === 'xb' && !this.xbinPalette) throw Object.assign(new Error('XBin holds 16 colors'), { userMessage: t('export.errors.xbinPalette') });

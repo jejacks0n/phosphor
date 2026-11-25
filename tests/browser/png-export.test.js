@@ -1,5 +1,5 @@
 import { test, expect, vi, afterEach } from 'vitest';
-import { createApp, nextTick } from 'vue';
+import { createApp } from 'vue';
 import { i18n } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { drawnCells } from '@/lib/GifFile.js';
@@ -90,9 +90,20 @@ function mountDialog() {
   return { closed, unmount: () => app.unmount() };
 }
 
-test('with smooth text off, Export .png asks nothing and exports hard-edged', async () => {
+test('an export that is not told is hard-edged, whatever Smooth text is', async () => {
   const { project, workspace } = await drawing();
-  workspace.smoothText = false;
+  workspace.smoothText = true;
+  const download = nextDownload();
+  await project.exportFile('png', { filename: 'art' });
+  const png = await decoded((await download).bytes), hard = await render(project, false), smooth = await render(project, true);
+  expect(png.colorType).toBe(3); // indexed: the art's own colors and no others
+  expect(rgbOf(png.data)).toEqual(rgbOf(hard.data));
+  expect(rgbOf(png.data)).not.toEqual(rgbOf(smooth.data)); // the letter's edges would be shaded
+});
+
+test('the save dialog\'s .png asks nothing and exports hard-edged with Smooth text on', async () => {
+  const { project, workspace } = await drawing();
+  workspace.smoothText = true;
   const exported = vi.spyOn(project, 'exportFile');
   vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
   const { closed, unmount } = mountDialog();
@@ -100,45 +111,7 @@ test('with smooth text off, Export .png asks nothing and exports hard-edged', as
     expect(document.querySelector('.modal-dialog button.choice')).toBeNull();
     document.querySelector('.modal-dialog form').requestSubmit();
     await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
-    expect(exported).toHaveBeenCalledWith('png', expect.objectContaining({ smooth: false }));
-  } finally {
-    unmount();
-  }
-});
-
-test('with smooth text on, Export .png asks first, Smooth focused, and exports as chosen', async () => {
-  const { project, workspace } = await drawing();
-  workspace.smoothText = true;
-  const exported = vi.spyOn(project, 'exportFile');
-  vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-  for (const [choice, smooth] of [['Smooth', true], ['Hard-edged', false]]) {
-    const { closed, unmount } = mountDialog();
-    try {
-      const dialog = document.querySelector('.modal-dialog');
-      expect(dialog.textContent).toContain('Smooth text adds subtle shading colors, which makes the PNG file larger.');
-      expect(dialog.querySelector('form')).toBeNull();
-      expect(document.activeElement.textContent).toContain('Smooth');
-      [...dialog.querySelectorAll('button.choice')].find((button) => button.querySelector('b').textContent === choice).click();
-      await nextTick();
-      document.querySelector('.modal-dialog form').requestSubmit();
-      await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
-      expect(exported).toHaveBeenLastCalledWith('png', expect.objectContaining({ smooth }));
-    } finally {
-      unmount();
-    }
-  }
-  expect(workspace.smoothText).toBe(true); // nothing's remembered
-});
-
-test('Cancel on the question closes without exporting', async () => {
-  const { project, workspace } = await drawing();
-  workspace.smoothText = true;
-  const exported = vi.spyOn(project, 'exportFile');
-  const { closed, unmount } = mountDialog();
-  try {
-    document.querySelector('.modal-dialog button.cancel').click();
-    expect(closed).toHaveBeenCalled();
-    expect(exported).not.toHaveBeenCalled();
+    expect(exported).toHaveBeenCalledWith('png', expect.not.objectContaining({ smooth: true }));
   } finally {
     unmount();
   }
