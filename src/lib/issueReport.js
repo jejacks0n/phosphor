@@ -9,8 +9,8 @@
 //     one character, as a field counts it, though a form sends it as two.
 //   201 { id, issue }: issue is the public issue's number, or null while it isn't open yet
 //   400 { error: 'bad-request' } · 403 { error: 'turnstile' } · 413 { error: 'too-big' } · 429 { error: 'rate-limited' }
-// The text becomes a public issue; the drawing and the steps don't. Nothing is sent but by sendIssueReport, which the
-// dialog calls on Send. The desktop app's page reaches nothing but rooms, so its report goes through the main process
+// The text becomes a public issue; the drawing and the steps don't. Nothing of a report is sent but by sendIssueReport,
+// which the dialog calls on Send (the web build's Turnstile widget loads as the dialog opens: Cloudflare's, not this). The desktop app's page reaches nothing but rooms, so its report goes through the main process
 // (desktop/issueReport.js), which checks it again and has its own copies of these limits.
 import { apiOrigin } from '@/social/config.js';
 
@@ -66,15 +66,17 @@ async function answerOf(response) {
   return { ok: false, error: Object.values(ERRORS).includes(data?.error) ? data.error : ERRORS[response.status] ?? 'failed' };
 }
 
-// Sends it. Never throws: a server that can't be reached is { ok: false, error: 'network' }. No cookies go with it: a
-// report is no one's account's. With `desktop` (window.phosphorDesktop) the main process posts it.
-export async function sendIssueReport({ fields, token = null, drawing = null, steps = null }, { fetch = globalThis.fetch, origin = null, desktop = null } = {}) {
+// Sends it. Never throws: a server that can't be reached is { ok: false, error: 'network' }, and so is a send let go
+// of (`signal`, which stops the page's request: the person closed the dialog while it was on its way). No cookies go
+// with it: a report is no one's account's. With `desktop` (window.phosphorDesktop) the main process posts it, and
+// gives up on its own after ten minutes.
+export async function sendIssueReport({ fields, token = null, drawing = null, steps = null }, { fetch = globalThis.fetch, origin = null, desktop = null, signal } = {}) {
   try {
     if (desktop) {
       const bytes = drawing && new Uint8Array(await drawing.arrayBuffer());
       return await desktop.sendIssueReport(fields, { drawing: drawing && { name: drawing.name, bytes }, steps });
     }
-    return await answerOf(await fetch((origin ?? apiOrigin()) + ISSUE_REPORTS_PATH, { method: 'POST', credentials: 'omit', body: reportForm(fields, { token, drawing, steps }) }));
+    return await answerOf(await fetch((origin ?? apiOrigin()) + ISSUE_REPORTS_PATH, { method: 'POST', credentials: 'omit', body: reportForm(fields, { token, drawing, steps }), signal }));
   } catch {
     return { ok: false, error: 'network' };
   }

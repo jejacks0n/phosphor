@@ -86,11 +86,20 @@ test('a report is one POST of the form to the server\'s issue-reports, with no c
   expect(calls).toHaveLength(1);
   expect(calls[0].url).toBe('https://api.phosphor.work/issue-reports');
   expect(ISSUE_REPORTS_PATH).toBe('/issue-reports');
-  const { method, body, credentials, headers } = calls[0].options;
-  expect([method, credentials, headers]).toEqual(['POST', 'omit', undefined]); // the browser writes the form's own content type
+  const { method, body, credentials, headers, signal } = calls[0].options;
+  expect([method, credentials, headers, signal]).toEqual(['POST', 'omit', undefined, undefined]); // the browser writes the form's own content type
   expect(body).toBeInstanceOf(FormData);
   expect(body.get('wrong')).toBe('The brush left a gap');
   expect(body.get('drawing').name).toBe('sky.pho');
+});
+
+test('a send can be let go of: its signal goes with the request, and one stopped is a server not reached', async () => {
+  const aborter = new AbortController();
+  const fetch = vi.fn((url, { signal }) => new Promise((resolve, reject) => { signal.addEventListener('abort', () => reject(signal.reason)); }));
+  const sending = sendIssueReport({ fields: FIELDS }, { fetch, origin: 'http://localhost:8787', signal: aborter.signal });
+  expect(fetch.mock.calls[0][1].signal).toBe(aborter.signal);
+  aborter.abort();
+  expect(await sending).toEqual({ ok: false, error: 'network' });
 });
 
 test('a report kept with no issue open yet is still sent', async () => {

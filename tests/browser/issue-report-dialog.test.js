@@ -56,6 +56,7 @@ async function open({ canvas = true, fetch = answers(201, { id: 'r_1', issue: 31
     field(id).dispatchEvent(new Event('input'));
   }
   await nextTick();
+  await ready(); // the drawing made: nothing of this dialog's is still at work when the test ends
   return fetch;
 }
 function mountDialog() {
@@ -70,7 +71,9 @@ const sendButton = () => dialog().querySelector('button[type=submit]');
 const what = () => dialog().querySelector('p.what').textContent.trim();
 const typed = async (id, text) => { await userEvent.fill(field(id), text); };
 // Once the drawing is ready: its line no longer says it's on its way.
-const ready = () => vi.waitFor(() => expect(what()).not.toMatch(/ready/));
+function ready() {
+  return vi.waitFor(() => expect(what()).not.toMatch(/ready/));
+}
 const send = async () => {
   await userEvent.click(sendButton());
   await vi.waitFor(() => expect(sendButton()?.textContent.trim()).not.toBe('Sending…'));
@@ -248,6 +251,7 @@ test('sent, it says thank you with the issue\'s number, a link to it on GitHub, 
   mountDialog(); // opened again: a new report
   await nextTick();
   expect([field('doing').value, field('wrong').value]).toEqual(['', '']);
+  await ready();
 });
 
 test('a report kept with no issue open yet says only thank you', async () => {
@@ -283,6 +287,8 @@ test('a report that didn\'t go says why in plain words, and what was written sta
   expect(dialog().querySelector('[role=status]').textContent).toContain('issue #7');
 });
 
+const cancelButton = () => [...dialog().querySelectorAll('button')].find((button) => button.textContent.trim() === 'Cancel');
+
 test('Escape and Cancel close it, and what was written is there when it opens again', async () => {
   const fetch = await open();
   await typed('wrong', 'Half a thought');
@@ -292,8 +298,36 @@ test('Escape and Cancel close it, and what was written is there when it opens ag
   host.remove();
   mountDialog();
   await nextTick();
+  await ready();
   expect(field('wrong').value).toBe('Half a thought');
-  await userEvent.click([...dialog().querySelectorAll('button')].find((button) => button.textContent.trim() === 'Cancel'));
+  await userEvent.click(cancelButton());
   expect(closed).toBe(2);
   expect(fetch).not.toHaveBeenCalled();
+});
+
+test('Cancel while it\'s sending stops waiting for a server that doesn\'t answer: the request is let go, it closes, and what was written is kept', async () => {
+  let signal = null;
+  const stalled = vi.fn((url, options) => new Promise((resolve, reject) => {
+    signal = options.signal;
+    signal.addEventListener('abort', () => reject(signal.reason));
+  }));
+  await open({ fetch: stalled });
+  await typed('wrong', 'It never answers');
+  await userEvent.click(sendButton());
+  await vi.waitFor(() => expect(stalled).toHaveBeenCalledTimes(1));
+  expect(sendButton().textContent.trim()).toBe('Sending…');
+  expect(signal.aborted).toBe(false);
+  expect(cancelButton().disabled).toBe(false);
+
+  await userEvent.click(cancelButton());
+  expect(closed).toBe(1);
+  expect(signal.aborted).toBe(true);
+  await nextTick();
+  expect(dialog().querySelector('p.error')).toBe(null); // let go on purpose: not a failure to say
+  app.unmount();
+  host.remove();
+  mountDialog();
+  await nextTick();
+  await ready();
+  expect(field('wrong').value).toBe('It never answers');
 });

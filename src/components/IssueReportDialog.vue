@@ -24,14 +24,15 @@ import FieldCount from '@/components/FieldCount.vue';
 // send the drawing and the session's steps with it (lib/issueReport.js has what goes, and where). This is a bug report
 // to Phosphor's developer; a report of a person or a room is SOCIAL's own (social/ReportDialog.vue). What's written
 // becomes a public issue, which the note above Send says, with the build and browser that go with it; the drawing and
-// the steps don't. Nothing is sent until Send. The checkbox is on, and the line under it says exactly what it sends: the
+// the steps don't. Nothing of it is sent until Send. The checkbox is on, and the line under it says exactly what it sends: the
 // drawing's name and size and how many steps; a drawing too big for a report isn't sent, and says so; with none open,
 // only the steps. In a room the drawing open is the room's for its host and its artists, and the line says so; someone
 // only watching still has their own drawing open, and it's that one. The drawing is made ready as the dialog opens (the
 // .pho Save would write, with nothing saved: ProjectStore.projectFile), so its size is known before Send.
 // Sent, the form gives way to a thank-you with the issue's number, linked, or without one if the issue isn't open yet.
 // One that didn't go says why and keeps what was written. Escape, Cancel and × close it; the backdrop doesn't, with
-// words typed in it. Focus goes back to the banner's link.
+// words typed in it. Closed while a report is on its way, it stops waiting: the page's request is let go, so a server
+// that never answers can't hold the dialog up, and what was written is kept. Focus goes back to the banner's link.
 const DESKTOP = import.meta.env.VITE_DESKTOP === '1';
 const REPO = 'https://github.com/jejacks0n/phosphor';
 const emit = defineEmits(['close']);
@@ -79,28 +80,31 @@ onMounted(() => { if (!DESKTOP) mountTurnstile(widget.value, TURNSTILE_ACTION, {
 onBeforeUnmount(() => token.remove?.());
 
 const done = useTemplateRef('done');
+let letGo = null; // stops waiting for the report on its way
 async function send() {
   if (!ready.value) return;
   [sending.value, error.value] = [true, null];
+  const { signal } = letGo = new AbortController();
   const steps = include.value ? stepsText() : null;
   const its = include.value ? await made : null;
   const answer = await sendIssueReport({
     fields: { doing: draft.doing.trim(), wrong: draft.wrong.trim(), packageVersion, build, platform: DESKTOP ? 'desktop' : 'web', agent },
     token: token(), drawing: its && fits(its, steps) ? its : null, steps,
-  }, { desktop: DESKTOP ? desktop : null });
+  }, { desktop: DESKTOP ? desktop : null, signal });
   sending.value = false;
+  if (answer.ok) Object.assign(draft, { doing: '', wrong: '' }); // it went, even if the dialog has gone (the desktop app's post can't be called back)
+  if (signal.aborted) return; // closed meanwhile: nothing to say
   if (!answer.ok) {
     error.value = issueReportWords(answer.error);
     return;
   }
   sent.value = answer;
-  Object.assign(draft, { doing: '', wrong: '' });
   await nextTick();
   done.value?.focus();
 }
 
 function close() {
-  if (sending.value) return; // it's on its way: the answer comes first
+  letGo?.abort();
   emit('close');
   nextTick(() => document.querySelector('aside.control-panel p.stage button')?.focus()); // once it's gone: while it's up, the rest can't take focus
 }
@@ -141,7 +145,7 @@ function close() {
       <p class="with">{{ t('issueReport.with', { build, agent }) }}</p>
       <p v-if="error" class="error" role="alert">{{ error }}</p>
       <div class="actions">
-        <button type="button" :disabled="sending" @click="close">{{ t('common.cancel') }}</button>
+        <button type="button" @click="close">{{ t('common.cancel') }}</button>
         <button type="submit" class="primary" :disabled="!ready">{{ sending ? t('issueReport.sending') : t('issueReport.send') }}</button>
       </div>
     </form>

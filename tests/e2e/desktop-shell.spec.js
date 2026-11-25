@@ -69,13 +69,16 @@ test('the page asks the main process for a Lospec palette, which refuses what is
   expect(launched.refused).toEqual([]);
 });
 
-// The page's door to an issue report, through the main process to desktop/issueReport.js. One with nothing written is
-// refused before anything is asked, so this reaches no one.
-test('the page asks the main process to send an issue report, which refuses one with nothing wrong written', async () => {
+// The page's door to an issue report, through the main process to desktop/issueReport.js. One with nothing written, and
+// one with a drawing bigger than a report holds, are refused before anything is asked, so this reaches no one.
+test('the page asks the main process to send an issue report, which refuses one with nothing wrong written, and reads a drawing\'s bytes as the page sent them', async () => {
   launched = await launchApp();
   const { page } = launched;
   const fields = { doing: '', wrong: '  ', packageVersion: '1.0.0-beta', build: '1.0.0-beta (abc1234)', agent: 'Electron 45 on macOS' };
   expect(await page.evaluate((report) => window.phosphorDesktop.sendIssueReport(report, { drawing: null, steps: null }), fields)).toEqual({ ok: false, error: 'bad-request' });
+  // The drawing arrives as bytes it can measure (too big, not a file it can't read): a page's Uint8Array crosses whole.
+  const tooBig = await page.evaluate((report) => window.phosphorDesktop.sendIssueReport({ ...report, wrong: 'It broke' }, { drawing: { name: 'big.pho', bytes: new Uint8Array(26 * 1024 * 1024) }, steps: 'steps' }), fields);
+  expect(tooBig).toEqual({ ok: false, error: 'too-big' });
   expect(launched.refused).toEqual([]);
 });
 
