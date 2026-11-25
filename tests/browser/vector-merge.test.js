@@ -372,7 +372,7 @@ test('Blend into source image puts a vector layer\'s shapes in the picture, the 
   expect(project.layers.map((layer) => layer.id)).toEqual(stack);
   expect(project.image).toBe(image);
   expect(cellsKey(project)).toEqual(cells);
-  expect(workspace.pickedLayer).toBe(id);
+  expect([workspace.pickedLayer, project.editId]).toEqual([id, 'edit']); // picked again, and Layer 1 the cells layer in use, as before
   project.redo();
   await settle(project);
   expect(project.shapes.size).toBe(0);
@@ -455,4 +455,43 @@ test('another drawing opened while a vector layer blends into the image is left 
   expect(project._paused).toBe(false);
   expect([project.cols, project.rows, project.shapes.size]).toEqual([12, 8, 0]);
   expect(project.layers.map((layer) => layer.id)).toEqual(['base']);
+});
+
+// Merging the picked vector layer away moves the pick to the layer under it, and the tools with it (followLayerPick).
+// Undo brings the layer back picked, so it puts back the cells layer the tools drew on then, too.
+test('undoing a merge that took the picked vector layer puts back the cells layer in use, and the one the art tabs return to', async () => {
+  const { project, workspace } = await drawing();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  workspace.pickLayer(id); // VECTOR, with Layer 1 the cells layer in use
+  await settle(project);
+  const state = () => [workspace.pickedLayer, workspace.editorTab, project.editId, workspace.lastCellsPick];
+  const before = state();
+  expect(before).toEqual([id, 'vector', 'edit', 'edit']);
+  expect(project.mergeDown(id)).toBe(true);
+  await settle(project);
+  expect(state().slice(0, 3)).toEqual(['base', workspace.viewTab, 'base']); // the layer left: the one under it, and the tools on it
+  project.undo();
+  await settle(project);
+  expect(state()).toEqual(before);
+});
+
+test('with no cells layer above the base, undoing that merge leaves none in use again', async () => {
+  const { project, workspace } = await drawing();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  project.deleteLayer('edit'); // the last cells layer: the pick moves to the vector layer under it, and nothing's in use
+  await settle(project);
+  const state = () => [workspace.pickedLayer, workspace.editorTab, project.layerById(project.editId)?.id ?? null];
+  expect(state()).toEqual([id, 'vector', null]);
+  expect(project.mergeDown(id)).toBe(true);
+  await settle(project);
+  expect(state()).toEqual(['base', workspace.viewTab, 'base']);
+  project.undo();
+  await settle(project);
+  expect(state()).toEqual([id, 'vector', null]);
+  project.redo(); // and again: the same either way
+  await settle(project);
+  expect(project.layerById(id)).toBeUndefined();
+  project.undo();
+  await settle(project);
+  expect(state()).toEqual([id, 'vector', null]);
 });
