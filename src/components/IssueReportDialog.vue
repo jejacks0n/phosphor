@@ -20,7 +20,7 @@ import { desktop } from '@/social/desktop';
 import ModalDialog from '@/components/ModalDialog.vue';
 import FieldCount from '@/components/FieldCount.vue';
 
-// Report an issue, from a pre-release build's banner (BetaBanner): what you were doing, what went wrong, and whether to
+// Report an issue, from a pre-release build's banner (BetaBanner) or the desktop app's Help menu in any version: what you were doing, what went wrong, and whether to
 // send the drawing and the session's steps with it (lib/issueReport.js has what goes, and where). This is a bug report
 // to Phosphor's developer; a report of a person or a room is SOCIAL's own (social/ReportDialog.vue). What's written
 // becomes a public issue, which the note above Send says, with the build and browser that go with it; the drawing and

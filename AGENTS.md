@@ -146,8 +146,8 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   `src/components/IssueReportDialog.vue`, and `src/lib/issueReport.js` (what's sent and what the server answers: the
   whole contract, `POST /issue-reports`), with its error words in `src/social/messages.js`, the drawing made without
   saving by `projectFile` (`src/store/project/document.js`), and for the desktop app `desktop/issueReport.js` behind the
-  preload's `sendIssueReport` (a pre-release's Help > Report an Issue… opens it too: `desktop/menu.js`, by its
-  `preRelease`). The session's steps it can carry are the next item's log. Its tests are
+  preload's `sendIssueReport` (the desktop app's Help > Report an Issue… opens it too, in every version, releases
+  included: `desktop/menu.js`). The session's steps it can carry are the next item's log. Its tests are
   `build-info.test.js`, `issue-report.test.js` and `desktop-issue-report.test.js` in `tests/unit`, `beta-banner.test.js`,
   `issue-report-dialog.test.js`, `desktop-issue-report-dialog.test.js` and `project-file.test.js` in `tests/browser`, and
   `issue-report.spec.js` in `tests/e2e`, with `fakeIssueReports` in `tests/e2e/social-support.js`.

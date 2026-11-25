@@ -200,7 +200,7 @@ function buildMenu() {
   };
   const template = menuTemplate({
     labels, accelerators, state: focusedEntry()?.menuState ?? IDLE, recent: recent?.list() ?? [], act, mac: process.platform === 'darwin', packaged: app.isPackaged,
-    version: VERSION, platform: process.platform, systemVersion: process.getSystemVersion(), arch: process.arch,
+    version: VERSION,
   });
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }

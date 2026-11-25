@@ -165,7 +165,7 @@ const emit = defineEmits(['open']);
       and your IP address. The palettes that come with Phosphor need no request.</p>
 
     <h2>Issue Reports</h2>
-    <p>Beta and alpha versions of Phosphor show a "Report an issue" link, for telling us about a problem with Phosphor itself. Nothing
+    <p>Beta and alpha versions of Phosphor show a "Report an issue" link, and the desktop app has Report an Issue in its Help menu in every version, for telling us about a problem with Phosphor itself. Nothing
       of a report is sent until you press Send (on the web, opening the form loads Cloudflare Turnstile, described below). A report sends us what you wrote, your version of Phosphor, whether you use the web or the desktop
       app, and your browser and operating system (for example, "Chrome 142 on macOS"). If you leave its box ticked, it also sends
       your current drawing and the steps you took in Phosphor since the page loaded: the tools and commands you used, with the names of

@@ -165,7 +165,7 @@ const emit = defineEmits(['open']);
       la requête et votre adresse IP. Les palettes fournies avec Phosphor ne nécessitent aucune requête.</p>
 
     <h2>Rapports de problème</h2>
-    <p>Les versions bêta et alpha de Phosphor affichent un lien « Signaler un problème », pour nous faire part d'un problème avec Phosphor lui-même. Rien
+    <p>Les versions bêta et alpha de Phosphor affichent un lien « Signaler un problème », et l'application de bureau propose Signaler un problème dans son menu Aide dans toutes ses versions, pour nous faire part d'un problème avec Phosphor lui-même. Rien
       d'un rapport n'est envoyé tant que vous n'appuyez pas sur Envoyer (sur le web, l'ouverture du formulaire charge Cloudflare Turnstile, décrit ci-dessous). Un rapport nous envoie ce que vous avez écrit, votre version de Phosphor, si vous utilisez
       l'application web ou de bureau, ainsi que votre navigateur et votre système d'exploitation (par exemple, « Chrome 142 on macOS »). Si vous laissez
       la case cochée, il envoie aussi votre dessin en cours et les étapes que vous avez effectuées dans Phosphor depuis le chargement de la page : les outils

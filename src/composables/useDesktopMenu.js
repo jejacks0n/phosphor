@@ -76,7 +76,7 @@ export function useDesktopMenu() {
     redo: () => undoOrRedo('redo'),
     about: () => { workspace.showAboutModal = true; },
     shortcuts: () => { workspace.shortcutsOpen = true; },
-    reportIssue: () => { workspace.issueReportOpen = true; },   // a pre-release's Help > Report an Issue…, as the banner's link   // always, as before: not the ? key's where (the color box open)
+    reportIssue: () => { workspace.issueReportOpen = true; },   // Help > Report an Issue…, in every version (the banner's link is a pre-release's)   // always, as before: not the ? key's where (the color box open)
     checkUpdates: checkForUpdates,
   };
   desktop.onMenu((name) => commands[name]?.());

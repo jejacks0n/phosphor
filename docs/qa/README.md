@@ -51,7 +51,7 @@ Some traits shape the run beyond the browser:
   - The Leave or Stay question before a reload with unsaved work is answered Leave, as the session can't click it.
   - Juno and Theo never get it: their rooms go through the SOCIAL server, and the desktop app's rooms are by address.
   - **Never press Send in Report an issue** (on the small screen under the logo of a beta or an alpha version, and in the
-    desktop app's beta or alpha Help > Report an Issue…). The desktop app's
+    desktop app's Help > Report an Issue…, in any version). The desktop app's
     report goes from its main process to Phosphor's real server, where a snippet can't fake the answer, and becomes a
     public issue. Open the form and read it if a step or free time leads there; close it with Cancel. In the browser the
     answer is faked first (`social.fakeIssueReports(page)`, as Lea's step does), and a report not faked goes nowhere.
