@@ -111,7 +111,7 @@
       "roomTooBig": "Le dessin de cette salle est trop volumineux pour être envoyé ({size} ; un rapport contient {most} au plus). Seules les étapes partiront ({steps}).",
       "stepsOnly": "{steps}. Aucun dessin n'est ouvert."
     },
-    "public": "Ce que vous écrivez créera un ticket public sur GitHub. Votre dessin et les actions effectuées ne seront visibles que par le développeur de Phosphor.",
+    "public": "Ce que vous écrivez créera un ticket public sur GitHub. Votre dessin et vos étapes ne seront visibles que par le développeur de Phosphor.",
     "with": "Envoyé avec : Phosphor {build}, {agent}.",
     "send": "Envoyer",
     "sending": "Envoi…",
