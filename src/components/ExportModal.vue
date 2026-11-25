@@ -14,7 +14,7 @@ import { MOST_COMMENT_LINES, sauceUnmappable } from '@/lib/Sauce';
 import { EXPORT_FORMATS as FORMATS, fileStem, timestamped } from '@/document/projectIO';
 import { canExportVideo } from '@/lib/VideoFile';
 
-// All export formats in one modal: ANS, UTF-8 ANS, XBin, PNG (Still), GIF, Video (where the browser encodes video), Animated
+// All export formats in one modal: ANS, UTF-8 ANS, ASCII (plain text), XBin, PNG (Still), GIF, Video (where the browser encodes video), Animated
 // ANS, Animated UTF-8 ANS, Cast (Animated). Opened by Cmd/Ctrl+E or the Export button in ProjectActions, or from the command
 // list with a format chosen (the workspace's exportModal is its id then).
 
@@ -24,7 +24,9 @@ const project = useProjectStore();
 const workspace = useWorkspaceStore();
 
 const formats = FORMATS.filter((f) => f.id !== 'mp4' || canExportVideo());
-const selectedId = ref(typeof workspace.exportModal === 'string' ? workspace.exportModal : project.hasFrames && project.animate ? 'gif' : 'ans');
+// What it opens on: a movie's GIF; for a still, the file that holds what the art style shows: Monochrome ASCII is
+// characters alone, so plain text, and the styles with colors an ANSI file.
+const selectedId = ref(typeof workspace.exportModal === 'string' ? workspace.exportModal : project.hasFrames && project.animate ? 'gif' : project.renderStyle === 'ascii' ? 'txt' : 'ans');
 const selected = computed(() => FORMATS.find(f => f.id === selectedId.value));
 const name = ref(timestamped(project.filename ?? 'untitled'));
 const smooth = ref(false); // a PNG's text: hard-edged unless Smooth is picked, whatever the view's Smooth text is
@@ -48,7 +50,12 @@ const filtersLeftOut = computed(() => project.filterGroups.filter(({ ref, state 
 const BLINK_FORMATS = ['ans', 'ansimation', 'xb'];
 const moving = computed(() => project.hasFrames && project.animate);
 const blinkGif = computed(() => selectedId.value === 'gif' && !moving.value && project.blinks);
-const losesBlink = computed(() => !!project.blinkingBackgrounds && !BLINK_FORMATS.includes(selectedId.value) && !blinkGif.value);
+const losesBlink = computed(() => !!project.blinkingBackgrounds && !BLINK_FORMATS.includes(selectedId.value) && !blinkGif.value && selectedId.value !== 'txt'); // (plain text has no backgrounds)
+// Whether the format picked fits the art style: plain text drops a drawing's colors, and a Monochrome ASCII drawing has
+// none for an ANSI file to hold. The note's key, or null.
+const styleFit = computed(() => (selectedId.value === 'txt'
+  ? project.renderStyle !== 'ascii' && 'export.modal.textDropsColors'
+  : project.renderStyle === 'ascii' && ['ans', 'utf8ans', 'xb'].includes(selectedId.value) && 'export.modal.textHoldsAll') || null);
 
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(selectedId.value) && (project.cols > 80 || charRowsOf(project.rows) > 25));
 // .ans is CP437: the characters it can't keep and what each becomes. An animated .ans lists what every frame holds,
@@ -189,6 +196,7 @@ function cancel() {
           </div>
         </div>
 
+        <p v-if="styleFit" class="note style-fit">{{ t(styleFit) }}</p>
         <p v-if="standIns.length" class="note warn stand-ins">{{ t('export.standIns', { names: formatList(standIns) }, standIns.length) }}</p>
         <p v-if="filtersLeftOut.length" class="note warn filters-left-out">{{ t('export.filtersLeftOut', { names: formatList(filtersLeftOut) }, filtersLeftOut.length) }}</p>
 

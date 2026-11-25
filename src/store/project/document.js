@@ -27,7 +27,7 @@ import { pngBlob } from '@/lib/PngFile.js';
 import { videoFile } from '@/lib/VideoFile.js';
 import { findUniform, gpuMaxSide } from '@/lib/ImageProcessor.js';
 
-import { charRowsOf, lockedGrid } from '@/lib/Cells.js';
+import { charRowsOf, lockedGrid, selectionText } from '@/lib/Cells.js';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils.js';
 import { commentLines, keptFields, keptRecord, letterSpacingOf, withLetterSpacing } from '@/lib/Sauce.js';
 import { BLINK_MS, blinkCell, lessMotion } from '@/lib/blink.js';
@@ -754,13 +754,16 @@ export const documentActions = {
   // first: the cells then are the layer's alone, without the drawing.
   // 'png' is the frame showing as the ANSI view draws it, hard-edged unless smooth is asked for (whatever the view's own
   // setting is: the art's own colors index to a far smaller file), at one pixel per font pixel. deliver takes the file (its blob and name): a download unless it's given.
-  // sauce: false writes an ANSI file with no SAUCE record.
+  // sauce: false writes an ANSI file with no SAUCE record. 'txt' is the characters alone as they show, a line per row the
+  // grid's width, in UTF-8: no colors, escape codes or SAUCE record (selectionText's, as a copy puts on the clipboard),
+  // so it opens again at its size.
   async exportFile(ext, { filename = this.filename, smooth = false, deliver = downloadBlob, sauce = true, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
     if (ext === 'xb' && !this.xbinPalette) throw Object.assign(new Error('XBin holds 16 colors'), { userMessage: t('export.errors.xbinPalette') });
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
       const cells = this.steadyCells(); // without iCE colors, as the ANSI view shows them
+      if (ext === 'txt') return new Blob([`${selectionText(cells, this.cols, { c0: 0, r0: 0, c1: this.cols - 1, r1: lines - 1 })}\n`], { type: 'text/plain;charset=utf-8' });
       return (ext === 'png'
         ? drawnCells(this.cols, lines, { smooth }, ({ width, height, rgba }) => pngBlob(width, height, rgba(cells)))
         : ext === 'xb'
