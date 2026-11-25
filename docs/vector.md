@@ -140,7 +140,7 @@ Draw custom paths and curves point by point:
 - **Preview**: The shape fills (or strokes) on the canvas as you draw, with a thin line along the path and a dashed line from the last point to the pointer.
 - **Close path**: Click the starting point (with three or more points) to close the shape.
 - **Open curve**: Press **Enter** or **Esc** to finish without closing the shape. An open curve has no fill and is stroked in its Stroke color, or the foreground color if it has none.
-- **Undo last point**: Press **Backspace** (or undo) to remove the previous point while drawing. Removing the last one leaves nothing, not even an undo step.
+- **Undo last point**: Press **Backspace** (or undo) to remove the previous point while drawing. Removing the last one leaves nothing, not even an undo step: if it was the drawing's first shape, the vector layer it brought goes with it, and you stay on VECTOR.
 
 Choosing another tool or tab, moving to another frame, or saving also finishes the shape as an open curve; holding a tool for a moment (the Hand on **Space**) doesn't. A finished shape is selected, so a color change goes to it, and the whole shape is one undo step. Its box shows, and until you start the next shape its handles work without changing tools, as with [Vector select](#vector-select-v): drag a handle to scale, or the knob above the box to rotate. A click anywhere else, inside the box too, starts a new shape.
 
