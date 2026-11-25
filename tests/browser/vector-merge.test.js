@@ -380,7 +380,7 @@ test('Blend into source image puts a vector layer\'s shapes in the picture, the 
   expect(unlike(cellsKey(project), cells)).toEqual([]);
 });
 
-test('Blend into source image is refused as Merge down is: a vector layer above the bottom, one with its own characters, and one with only guides', async () => {
+test('Blend into source image is refused as Merge down is: a vector layer above the bottom, and one with its own characters', async () => {
   const { project, workspace } = await drawing();
   const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
   const state = () => [project.shapes, project.layers, project.image, project.history.version];
@@ -395,4 +395,64 @@ test('Blend into source image is refused as Merge down is: a vector layer above 
   expect(toastMessage.value).toMatch(/custom character settings/);
   expect(state()).toEqual(own);
   expect(before[0]).toBe(project.shapes);
+});
+
+test('shapes that reach no cell are pressed when Blend into source image is asked, so their layer leaves as it would', async () => {
+  const { project } = await drawing();
+  const key = project.addShape(rectShape(40, 40, 50, 50, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector'; // off the 30 × 30 grid
+  await settle(project);
+  const image = project.image;
+  expect(await project.mergeShapesIntoPicture(id)).toBe(true);
+  await settle(project);
+  expect(project.layerById(id)).toBeUndefined();
+  expect(project.layers.map((layer) => layer.kind)).not.toContain('vector');
+  expect(project.image).toBe(image);
+  project.undo();
+  await settle(project);
+  expect(keys(project)).toEqual([key]);
+});
+
+// While the picture is made the shapes are paint on a layer of the step's own: the drawing is held, so nothing done
+// meanwhile lands on that layer or takes the shapes back from under it.
+for (const what of ['paint', 'undo', 'slider']) {
+  test(`race: ${what} while a vector layer blends into the image: the merge still happens, and one undo brings the shapes back`, async () => {
+    const { project, workspace } = await drawing();
+    const a = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(a).layer ?? 'vector';
+    const b = project.addShape(ellipseShape(8, 6, 26, 24, { fill: '#0044aa' }));
+    workspace.pickLayer(id);
+    await settle(project);
+    const image = project.image, stack = project.layers.map((layer) => layer.id);
+    const merging = project.mergeShapesIntoPicture(id), held = project.history.version;
+    await new Promise((r) => setTimeout(r, 0));
+    if (what === 'paint') { project.paintStroke([{ x: 2, y: 2, alpha: 1 }], '#ff00ff'); project.commitEdit(); } // refused: held
+    if (what === 'undo') project.undo(); // refused too: the second shape stays added
+    if (what === 'slider') { project.setSlider('contrast', 150); project.commitSliders(); }
+    expect(project._merging).toBe(true); // it landed while the picture was being made
+    expect(project.history.version).toBe(what === 'slider' ? held + 1 : held); // a stroke and an undo are refused: no step, none taken back
+    expect(await merging).toBe(true);
+    await settle(project);
+    expect(project._paused).toBe(false);
+    expect(project.image).not.toBe(image);
+    expect(project.shapes.size).toBe(0);
+    expect(project.layers.map((layer) => layer.id)).toEqual(['base', ...stack.slice(2)]);
+    project.undo(); // the merge, whole
+    await settle(project);
+    expect(keys(project)).toEqual([a, b].sort());
+    expect(project.layers.map((layer) => layer.id)).toEqual(stack);
+    expect(project.contrast).toBe(what === 'slider' ? 150 : 100); // the slider's own step is under the merge's
+  });
+}
+
+test('another drawing opened while a vector layer blends into the image is left as it opened', async () => {
+  const { project, workspace } = await drawing();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  workspace.pickLayer(id);
+  await settle(project);
+  const merging = project.mergeShapesIntoPicture(id);
+  await project.setBlankCanvas({ cols: 12, rows: 8 });
+  expect(await merging).toBe(false);
+  await settle(project);
+  expect(project._paused).toBe(false);
+  expect([project.cols, project.rows, project.shapes.size]).toEqual([12, 8, 0]);
+  expect(project.layers.map((layer) => layer.id)).toEqual(['base']);
 });

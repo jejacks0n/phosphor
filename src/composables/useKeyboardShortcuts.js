@@ -235,7 +235,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     const ours = workspaceStore.clipboardText?.replace(/\r\n/g, '\n') ?? null;
     const own = workspaceStore.clipboard;
     const found = own && ours === null ? null : readClipboardHtml(e.clipboardData?.getData('text/html'));
-    if (found?.shapes && !projectStore.artInside) { // shapes, over the cells layer picked: on a vector layer of their own above it
+    if (found?.shapes) { // shapes, over the cells layer picked: on a vector layer of their own above it
+      if (projectStore.artInside) return; // not into an art layer's drawing, nor an older block in their place
       const theirs = found.shapes.id !== workspaceStore.vectorClipboardId;
       pasteShapes(projectStore, workspaceStore, theirs ? found.shapes.shapes : undefined, theirs ? found.shapes.keys : undefined, workspaceStore.pickedLayer);
       return;

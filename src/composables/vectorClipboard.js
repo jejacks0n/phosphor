@@ -56,7 +56,7 @@ export function pasteShapes(project, workspace, copied = workspace.vectorClipboa
   let copies = copied;
   for (let k = 1; k <= 100 && copies.some((shape) => here.has(spot(shape))); k++) copies = moved(copied, k * OFFSET);
   if (!above) return project.addShapes(copies, keys), true;
-  const [made] = project.addShapesAbove(copies, keys, above);
+  const [made] = project.addShapesAbove(copies, keys, above) ?? []; // (refused while the drawing is held: nothing)
   if (made) workspace.pickLayer(project.shapes.get(made).layer ?? 'vector');
   return !!made;
 }
