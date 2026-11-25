@@ -1,8 +1,9 @@
 /**
  * Getting things in and out of the app: decoding images, the project format, and saving files.
  *
- * Save writes a .pho: a PNG of the drawing with the project in a private phPr chunk right after IHDR (withProject
- * puts it there, projectChunkOf reads it back, and a .png holding one opens as the project). An older .phosphor is
+ * Save writes a .pho: a PNG of the drawing with the project in a private chunk near its start, laid out so a terminal
+ * shows the art when the file is printed (phoFile; phoTerminal.js), or plain, phPr right after IHDR, when that can't be
+ * made clean (withProject). projectChunkOf reads either back, and a .png holding one opens as the project. An older .phosphor is
  * the project alone, and still opens. The project itself, in either file, is the layout below.
  *
  * Project layout: 'PHOSPHOR' (8 bytes), three little-endian uint32 lengths, then the settings
@@ -22,6 +23,7 @@ import { EMPTY_BASE, serializeBase, deserializeBase } from './baseRecords.js';
 import { MAX_LAYER_DIM } from './PaintLayer.js';
 import { MAX_COLS, MAX_LINES, maxRowsBeside } from '../lib/Cells.js';
 import { chunk, crc32 } from '../lib/PngFile.js';
+import { terminalPho, unescapeBytes, START_CHUNK, PROJECT_CHUNK as TERMINAL_PROJECT_CHUNK } from './phoTerminal.js';
 import { cleanFilterOptions, cleanSolverNames } from '../plugins/filters.js';
 
 export const PROJECT_EXTENSION = '.pho', OLD_PROJECT_EXTENSION = '.phosphor', PROJECT_MIME = 'image/x-phosphor';
@@ -47,8 +49,9 @@ const MAGIC_HEADER = 'PHOSPHOR', STACK_HEADER = 'PHOSPHR2';
 // The most a project may be unzipped: a file, or a host's project for an artist that doesn't trust it.
 export const MOST_PROJECT_BYTES = 256 * 1024 * 1024;
 
-// A .pho is a PNG whose image is the drawing, with the project in a private phPr chunk right after IHDR (the signature
-// is 8 bytes and IHDR's chunk 25, so it starts at 33 and its type is at 37).
+// A .pho is a PNG whose image is the drawing, with the project in a private chunk near the start. In the plain form it's
+// phPr right after IHDR (the signature is 8 bytes and IHDR's chunk 25, so it starts at 33 and its type is at 37); in the
+// form a terminal shows (phoTerminal.js), phCs is there and the project, escaped, is phPc right after it.
 const PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10], PROJECT_CHUNK = 'phPr', CHUNK_AT = 33;
 const isPng = (bytes) => bytes.length >= 8 && PNG_SIGNATURE.every((b, i) => bytes[i] === b);
 const typeAt = (bytes, at) => String.fromCharCode(...bytes.subarray(at, at + 4));
@@ -61,8 +64,12 @@ export function withProject(png, project) {
   return out;
 }
 
+// The drawing's .pho: the form a terminal shows when it can be made clean, else the plain one. art: its UTF-8 ANSI, or a
+// function giving it, asked for only when it's needed.
+export const phoFile = async (png, project, art) => (await terminalPho(png, project, art)) ?? withProject(png, project);
+
 // The head of a file (its first 41 bytes) says it's a .pho.
-export const startsAsProject = (head) => head.length >= 41 && isPng(head) && typeAt(head, 37) === PROJECT_CHUNK;
+export const startsAsProject = (head) => head.length >= 41 && isPng(head) && [PROJECT_CHUNK, START_CHUNK].includes(typeAt(head, 37));
 
 // A file is a project by its name (.pho, .phosphor), or when it's a PNG (by name or type) that starts as one.
 export async function holdsProject(file) {
@@ -71,16 +78,19 @@ export async function holdsProject(file) {
   return startsAsProject(new Uint8Array(await file.slice(0, 41).arrayBuffer()));
 }
 
-// The project a .pho's phPr chunk holds. It throws for a PNG with no such chunk after IHDR, a chunk past the end, or a
-// bad CRC.
+// The project a .pho holds (phPr's bytes, or phPc's unescaped). It throws for a PNG with neither where it belongs, a chunk
+// past the end, a bad CRC, or escaping that isn't escapeBytes'.
 export function projectChunkOf(bytes) {
   if (!startsAsProject(bytes.subarray(0, 41))) throw invalidProject();
-  const length = new DataView(bytes.buffer, bytes.byteOffset, bytes.length).getUint32(33);
-  const end = 41 + length;
-  if (end + 4 > bytes.length) throw invalidProject();
-  const crc = new DataView(bytes.buffer, bytes.byteOffset, bytes.length).getUint32(end);
-  if (crc32(bytes.subarray(37, end)) !== crc) throw invalidProject();
-  return bytes.slice(41, end);
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+  const terminal = typeAt(bytes, 37) === START_CHUNK, at = terminal ? CHUNK_AT + 12 + view.getUint32(CHUNK_AT) : CHUNK_AT;
+  if (at + 12 > bytes.length || typeAt(bytes, at + 4) !== (terminal ? TERMINAL_PROJECT_CHUNK : PROJECT_CHUNK)) throw invalidProject();
+  const end = at + 8 + view.getUint32(at);
+  if (end + 4 > bytes.length || crc32(bytes.subarray(at + 4, end)) !== view.getUint32(end)) throw invalidProject();
+  if (!terminal) return bytes.slice(at + 8, end);
+  const project = unescapeBytes(bytes.subarray(at + 8, end));
+  if (!project) throw invalidProject();
+  return project;
 }
 
 export const gzipped = (blob) => new Response(blob.stream().pipeThrough(new CompressionStream('gzip'))).blob();

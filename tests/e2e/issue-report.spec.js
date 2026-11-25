@@ -58,7 +58,7 @@ test('on next, Report an issue under the logo sends what was written, the drawin
   });
   expect([files.drawing.name, files.drawing.type]).toEqual(['gradient.pho', 'image/png']);
   expect(files.drawing.bytes.subarray(1, 4).toString('latin1')).toBe('PNG');
-  expect(files.drawing.bytes.includes(Buffer.from('phPr'))).toBe(true); // the project inside it
+  expect(['phPc', 'phPr'].some((type) => files.drawing.bytes.includes(Buffer.from(type)))).toBe(true); // the project inside it, in either form (docs/pho.md)
   expect([files.steps.name, files.steps.type]).toEqual(['steps.txt', 'text/plain']);
   const steps = files.steps.bytes.toString('utf8');
   expect(steps).toMatch(/^Phosphor \S+ \(\S+\)\n/);

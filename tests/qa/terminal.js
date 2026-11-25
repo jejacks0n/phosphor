@@ -14,10 +14,11 @@ const hex2 = (n) => n.toString(16).padStart(2, '0');
 // Bytes below 0x20 the terminal acts on; every other byte is its CP437 glyph (as the app's reader has it).
 const CONTROLS = new Set([7, 8, 9, 10, 13, 26, 27]);
 const textOf = (bytes, encoding) => {
+  if (encoding === 'file') return new TextDecoder().decode(bytes); // every byte, as cat prints a file: a .pho
   const art = bytes.subarray(0, artEndOf(bytes));
   if (encoding === 'utf8') return new TextDecoder().decode(art);
   if (encoding === 'cp437') return Array.from(art, (byte) => (CONTROLS.has(byte) ? String.fromCharCode(byte) : CP437[byte])).join('');
-  throw new Error(`encoding must be "cp437" or "utf8", not "${encoding}"`);
+  throw new Error(`encoding must be "cp437", "utf8" or "file", not "${encoding}"`);
 };
 
 // A color as lowercase hex. Assumes the app writer's way of saying a bright color in CGA .ans: a bright
@@ -67,7 +68,8 @@ async function screenOf(chunks, cols, rows) {
 // hidden character in the app's cells comes back as a space by design: compare against
 // normalizeHidden(appScreen).
 //
-// The screen a .ans (encoding 'cp437') or .utf8ans ('utf8') leaves in a terminal cols by rows. A wide
+// The screen a .ans (encoding 'cp437') or .utf8ans ('utf8') leaves in a terminal cols by rows, or a whole file printed
+// as UTF-8, past any SAUCE record or EOF ('file': a .pho, docs/pho.md's In a terminal). A wide
 // character's second column is a space, as the app's cells have it. A .utf8ans ends with a line feed, so
 // give the terminal a row more than the art has, or it scrolls the first row away.
 export const terminalCells = (bytes, { cols, rows, encoding }) => screenOf([textOf(bytes, encoding)], cols, rows);

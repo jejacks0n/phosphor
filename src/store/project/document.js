@@ -6,7 +6,7 @@ import { layersFromOld, savedLayers, legacySlots, keyLayer, withChars } from '@/
 import PaintLayer from '@/document/PaintLayer.js';
 import { parseKey, withCellEdit } from '@/document/editCells.js';
 import { frameDuration, serializeFrames } from '@/document/frames.js';
-import { loadImage, readProject, writeProject, withProject, gzipped, downloadBlob, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
+import { loadImage, readProject, writeProject, phoFile, gzipped, downloadBlob, PROJECT_EXTENSION, OLD_PROJECT_EXTENSION, projectTarget, savesInPlace, writeFileHandle } from '@/document/projectIO.js';
 import { cellsPng } from '@/lib/PngFile.js';
 import { AnsiFile } from '@/lib/AnsiFile.js';
 import { readArtFile } from '@/lib/ArtFile.js';
@@ -541,13 +541,17 @@ export const documentActions = {
   // downloaded or noted as busy, and no undo step is made. An issue report carries it, if the person says so
   // (components/IssueReportDialog.vue). Null with no drawing open.
   // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too).
-  // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside.
+  // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside, and the art a terminal shows.
   // Typed as bytes, as .phosphor's were: a browser could rename a download typed image/png to .png.
   async projectFile() {
     if (!this.image || !this.imageBuffer) return null;
     const parts = await this.projectParts({ forFile: true });
     const project = new Uint8Array(await (await gzipped(await writeProject({ imageBuffer: this.imageBuffer, ...parts, settings: { ...parts.settings, fileId: this.fileId } }))).arrayBuffer());
-    return new Blob([withProject(await cellsPng(this.cols, charRowsOf(this.rows), this.artDrawingCells()), project)], { type: 'application/octet-stream' });
+    const lines = charRowsOf(this.rows);
+    // The drawing as its .utf8ans export with no SAUCE, for a terminal the file is printed in (docs/pho.md, In a
+    // terminal); made only when the file can be laid out for one.
+    const art = async () => new Uint8Array(await new AnsiFile(this.cols, lines, this.artDrawingCells({ steady: true })).toBlob({ utf8: true, colorMode: this.quantize, iceColors: this.sauceIceColors, sauce: false }).arrayBuffer());
+    return new Blob([await phoFile(await cellsPng(this.cols, lines, this.artDrawingCells()), project, art)], { type: 'application/octet-stream' });
   },
 
   // What a .pho file holds besides the image, all of it as of the call (a canvas is copied when

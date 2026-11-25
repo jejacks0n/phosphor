@@ -322,17 +322,18 @@ export const vectorActions = {
   // for a picture of the drawing: the drawing is laid back for the moment, as leaveArt does and without its other
   // effects (undo's reach, the selection and the layer's selection on VECTOR stay as they are), and the layer's
   // drawing is put back as it was. A copy: the next redraw doesn't change it. What's pending is committed first.
+  // steady: as an export writes them (steadyCells: without iCE colors, paint as the ANSI view shows it).
   // ponytail: two whole redraws; draw only the layer's box if a large grid lags on Save inside an art layer.
-  artDrawingCells() {
+  artDrawingCells({ steady = false } = {}) {
     const inside = this._artInside;
-    if (!inside) return this.cells;
+    if (!inside) return steady ? this.steadyCells() : this.cells;
     this.commitPending();
     const { editCells, paintLayer, hasPaint } = this;
     this._frameSwaps++; // autosave: not an edit (before editCells changes, as leaveArt does)
     Object.assign(this, { editCells: inside.editCells, paintLayer: inside.paintLayer, hasPaint: inside.hasPaint, _artInside: null });
     try {
       redraw(this);
-      return this.cells.slice();
+      return steady ? this.steadyCells().slice() : this.cells.slice();
     } finally {
       this._frameSwaps++;
       Object.assign(this, { editCells, paintLayer, hasPaint, _artInside: inside });

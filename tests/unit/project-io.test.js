@@ -293,7 +293,7 @@ const projectIn = async () => {
   return { project, png, bytes: withProject(png, project) };
 };
 
-test('a .pho is a PNG with the project after IHDR, and reads back as the same project', async () => {
+test('a .pho in the plain form is a PNG with the project after IHDR, and reads back as the same project', async () => {
   const { project, bytes } = await projectIn();
   assert.deepEqual([...bytes.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
   assert.equal(new TextDecoder().decode(bytes.subarray(37, 41)), 'phPr');

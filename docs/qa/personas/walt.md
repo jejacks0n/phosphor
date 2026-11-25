@@ -238,7 +238,9 @@ bytes of the original and the export outside the art.
 - Probes: `out-of-order`: switch the color mode to VGA (the checkbox goes off, saying "Only for 16-color drawings.") and
   back to CGA (it's off again, and the letters blink again); `again`: turn iCE colors on, export, and check the record's
   flags are 3 and the file starts with `ESC[?33h`; `interrupt`: save the project, reload, reopen it, and check iCE
-  colors is still off.
+  colors is still off; then play the saved .pho whole in the headless terminal (`encoding: 'file'`, 20 by 5), as `cat`
+  prints it, and compare with the cells on screen: the same cells as the .utf8ans export's, and nothing of the PNG's
+  bytes (docs/pho.md, In a terminal).
 - Rated: yes, wants Tab to iCE colors, then Space
 
 **Free time:** he'd check the SAUCE Date, Font name and Letter spacing (type a 9-digit date and a 25-character font
