@@ -2,7 +2,6 @@
 // side panel or a phone still says which layer you're on.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, nextTick } from 'vue';
-import { getActivePinia } from 'pinia';
 import { i18n, setLocale } from '@/i18n';
 import { createTestApp, settle } from '../support/app.js';
 import { rectShape } from '@/document/shapes.js';
@@ -24,7 +23,7 @@ async function mount() {
   stores.workspace.editorTab = 'output';
   host = document.createElement('div');
   document.body.append(host);
-  app = createApp(AnsiStatusBar).use(getActivePinia()).use(i18n);
+  app = createApp(AnsiStatusBar).use(stores.pinia).use(i18n); // the test's own: after the awaits, the active one may be a late test's
   app.mount(host);
   await nextTick();
   return stores;
