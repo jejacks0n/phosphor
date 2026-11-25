@@ -129,6 +129,17 @@ test('the Privacy Policy says installing from the Marketplace downloads the plug
   expect(text).toContain('When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request and your IP address.');
 });
 
+test('the Privacy Policy (en and fr) says Cloudflare hosts the app, and never GitHub Pages', async () => {
+  await mount(LegalDialog, { page: 'privacy' });
+  await vi.waitUntil(() => document.querySelector('.legal-body'));
+  const text = document.querySelector('.legal-body').textContent.replace(/\s+/g, ' ');
+  expect(text).toContain('The app itself is hosted on Cloudflare, which, like any web host, receives your IP address when your browser loads the site.');
+  expect(text).not.toMatch(/GitHub Pages/i);
+  const fr = (await import('../../src/i18n/legal/fr.vue?raw')).default.replace(/\s+/g, ' ');
+  expect(fr).toContain("L'application elle-même est hébergée sur Cloudflare, qui, comme tout hébergeur web, reçoit votre adresse IP");
+  expect(fr).not.toMatch(/GitHub Pages/i);
+});
+
 test('the Privacy Policy (en and fr) says getting a palette from Lospec asks lospec.com, and the shipped ones ask nothing', async () => {
   await mount(LegalDialog, { page: 'privacy' });
   await vi.waitUntil(() => document.querySelector('.legal-body'));

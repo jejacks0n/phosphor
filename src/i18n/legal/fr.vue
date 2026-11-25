@@ -157,8 +157,8 @@ const emit = defineEmits(['open']);
     <p>Les images que vous ouvrez, les créations que vous dessinez, vos palettes, polices et paramètres restent entièrement dans votre navigateur
       (stockés localement dans le stockage local et IndexedDB). Nous ne les recevons jamais sauf si vous hébergez une salle ou envoyez un rapport de problème avec votre dessin (tous deux expliqués ci-dessous). Effacer
       les données de ce site dans votre navigateur les supprime.</p>
-    <p>Nous n'utilisons aucun outil d'analyse d'audience, de publicité ou de cookies de suivi. L'application elle-même est hébergée sur GitHub
-      Pages, qui, comme tout hébergeur web, reçoit votre adresse IP lorsque votre navigateur charge le site.</p>
+    <p>Nous n'utilisons aucun outil d'analyse d'audience, de publicité ou de cookies de suivi. L'application elle-même est hébergée sur
+      Cloudflare, qui, comme tout hébergeur web, reçoit votre adresse IP lorsque votre navigateur charge le site.</p>
     <p>Quand vous installez un plugin depuis la place de marché, votre navigateur télécharge ses fichiers depuis GitHub, qui voit la requête
       et votre adresse IP. La liste des plugins elle-même provient de notre propre site.</p>
     <p>Quand vous prenez une palette sur Lospec par son nom ou son lien, votre navigateur la demande à lospec.com, qui voit

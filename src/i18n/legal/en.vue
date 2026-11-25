@@ -157,8 +157,8 @@ const emit = defineEmits(['open']);
     <p>Images you open, art you draw, your palettes, fonts, and settings stay entirely in your browser
       (stored locally in local storage and IndexedDB). We never receive them unless you host a room or send an issue report with your drawing (both explained below). Clearing
       this site's data in your browser deletes them.</p>
-    <p>We do not use analytics, advertising, or tracking cookies. The app itself is hosted on GitHub
-      Pages, which, like any web host, receives your IP address when your browser loads the site.</p>
+    <p>We do not use analytics, advertising, or tracking cookies. The app itself is hosted on
+      Cloudflare, which, like any web host, receives your IP address when your browser loads the site.</p>
     <p>When you install a plugin from the Marketplace, your browser downloads its files from GitHub, which sees the request
       and your IP address. The list of plugins itself comes from our own site.</p>
     <p>When you get a palette from Lospec by name or link, your browser requests it from lospec.com, which sees the request
