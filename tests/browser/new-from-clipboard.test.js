@@ -144,7 +144,7 @@ test('with nothing a drawing can be made of, or a clipboard that can\'t be read 
   stays();
   refuses();
   expect(await newFromClipboard(project, workspace)).toBe(false);
-  expect(toastMessage.value).toBe('Phosphor couldn\'t read the clipboard. Allow clipboard access for this page, or copy something in this tab first.');
+  expect(toastMessage.value).toBe('Phosphor couldn\'t read the clipboard. Allow clipboard access when asked, or copy something here first.');
   stays();
 });
 
@@ -170,4 +170,41 @@ test('unsaved work is asked about first, as New project asks, and nothing opens 
   expect(await opening).toBe(true);
   await settle(project);
   expect(size(project)).toEqual([3, 2]);
+});
+
+test('a drawing made of text or a picture is unsaved too: it exists nowhere else, so leaving it asks', async () => {
+  const canvas = Object.assign(document.createElement('canvas'), { width: 16, height: 16 });
+  canvas.getContext('2d').fillRect(0, 0, 16, 16);
+  const png = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  for (const parts of [{ 'text/plain': 'Hello' }, { 'image/png': png }]) {
+    const { project, workspace } = await drawing();
+    holds(parts);
+    expect(await newFromClipboard(project, workspace)).toBe(true);
+    await settle(project);
+    expect(project.unsavedChanges, Object.keys(parts)[0]).toBe(true);
+    vi.restoreAllMocks();
+  }
+});
+
+test('from the start screen, with no drawing open, a block opens on ANSI and shapes on VECTOR', async () => {
+  const source = await copied(), written = copies();
+  source.workspace.vectorSelected = [source.project.addShape(rectShape(2, 2, 8, 8, { fill: '#ff0000' }))];
+  copyShapes(source.project, source.workspace);
+  for (const [html, tab, cols] of [[source.html, 'output', 3], [written.at(-1).html, 'vector', 6]]) {
+    const { project, workspace } = await createTestApp(); // nothing open, nothing copied here
+    expect(project.image).toBeNull();
+    holds({ 'text/html': html });
+    expect(await newFromClipboard(project, workspace)).toBe(true);
+    await settle(project);
+    expect([workspace.editorTab, project.cols]).toEqual([tab, cols]);
+    vi.restoreAllMocks();
+  }
+});
+
+test('a copy that can\'t be read back (a block whose picture is broken) says so, and the drawing stays', async () => {
+  const { project, workspace } = await drawing();
+  holds({ 'text/html': clipboardHtml({ phosphor: { version: 1, id: 'broken', w: 2, h: 1, cells: [null, null], paint: 'data:image/png;base64,AAAA' } }) });
+  expect(await newFromClipboard(project, workspace)).toBe(false);
+  expect(toastMessage.value).toBe('Could not make a drawing of what the clipboard holds.');
+  expect(size(project)).toEqual([20, 10]);
 });

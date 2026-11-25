@@ -1234,7 +1234,7 @@
   },
   "clipboard": {
     "nothing": "The clipboard has nothing to open. Copy a selection or shapes in Phosphor, a block in Moebius, text or a picture first.",
-    "refused": "Phosphor couldn't read the clipboard. Allow clipboard access for this page, or copy something in this tab first.",
+    "refused": "Phosphor couldn't read the clipboard. Allow clipboard access when asked, or copy something here first.",
     "tooBig": "The clipboard holds {cols} × {rows} cells. A drawing has at most {maxCols} columns, {maxLines} lines and {maxCells} cells.",
     "failed": "Could not make a drawing of what the clipboard holds."
   },
