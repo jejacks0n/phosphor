@@ -5,6 +5,7 @@ import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import xterm from '@xterm/headless';
+import { inflateSync } from 'node:zlib';
 import { harmful, escapeBytes, unescapeBytes, terminalPho } from '../../src/document/phoTerminal.js';
 import { phoFile, projectChunkOf, startsAsProject, readProject } from '../../src/document/projectIO.js';
 import { indexedPng, rgbPng } from '../../src/lib/PngFile.js';
@@ -32,6 +33,18 @@ async function harmfulPng(colors) {
     if (harmful(png) && await terminalPho(png, project, ART)) return png;
   }
   throw new Error(`no ${colors}-color picture in 50 both needed the search and came out clean`);
+}
+// An 8-bit indexed picture's rows with their filters (None, Sub, Up) undone, as a PNG reader undoes them.
+function unfiltered(rows, stride) {
+  const out = new Uint8Array((rows.length / (stride + 1)) * stride);
+  for (let y = 0; y < out.length / stride; y++) {
+    const type = rows[y * (stride + 1)];
+    for (let x = 0; x < stride; x++) {
+      const near = type === 1 && x ? out[y * stride + x - 1] : type === 2 && y ? out[(y - 1) * stride + x] : 0;
+      out[y * stride + x] = (rows[y * (stride + 1) + 1 + x] + near) & 255;
+    }
+  }
+  return out;
 }
 const project = Uint8Array.from({ length: 5000 }, (_, i) => (i * 7919) & 255); // every byte value, ESC among them
 
@@ -104,14 +117,22 @@ test('when it can\'t be clean, Save writes the plain form, phPr right after IHDR
   rgba.set([0x1b, 0x63, 0x00, 255], 0);
   const spelled = await indexedPng(width, height, rgba);
   assert.equal(await terminalPho(spelled, project, ART), null);
-  // A picture too big to search.
-  const big = await pngOf(picture(200, { width: 640, height: 800 }), 200);
-  assert.equal(await terminalPho(big, project, ART), null);
-  for (const png of [spelled, big]) {
-    const file = await phoFile(png, project, ART);
-    assert.equal(typeAt(file, 37), 'phPr');
-    assert.deepEqual(projectChunkOf(file), project);
-  }
+  const file = await phoFile(spelled, project, ART);
+  assert.equal(typeAt(file, 37), 'phPr');
+  assert.deepEqual(projectChunkOf(file), project);
+});
+
+test('a big picture whose deflate says hundreds of sequences is written again clean, the same picture', async () => {
+  const big = await pngOf(picture(200, { width: 640, height: 800 }), 200), file = await terminalPho(big, project, ART);
+  assert.ok(harmful(big) > 20);
+  assert.equal(typeAt(file, 37), 'phCs');
+  assert.equal(harmful(file.subarray(41)), 0);
+  const pixels = async (png) => {
+    const idat = png.findIndex((_, i) => typeAt(png, i) === 'IDAT') - 4;
+    const data = png.subarray(idat + 8, idat + 8 + new DataView(png.buffer, png.byteOffset).getUint32(idat));
+    return unfiltered(new Uint8Array(inflateSync(data)), 640);
+  };
+  assert.deepEqual(await pixels(file), await pixels(big));
 });
 
 test('a .pho of either form opens, and one damaged in the terminal form is no project', async () => {

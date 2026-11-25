@@ -4,13 +4,15 @@
 //   signature, IHDR      unavoidable: a few bytes of noise
 //   phCs                 moves back over that noise, erases it, and switches to the alternate screen
 //   phPc                 the project, its bytes a terminal reacts to escaped (escapeBytes)
-//   PLTE, IDAT           the picture, written on the alternate screen; IDAT's rows filtered until it says nothing harmful
+//   PLTE, IDAT           the picture, written on the alternate screen; when the browser's deflate of it says something
+//                        harmful, written again with our own (FixedDeflater), rows filtered until it says nothing
 //   phCa                 back to the screen, modes undone, the art drawn, then an OSC opened that swallows the rest
 //   IEND, ESC \          the OSC closed: two bytes after IEND, which PNG readers leave alone
 //
-// When it can't come out clean (a picture too big to search, or a palette that happens to spell an escape), Save writes
-// the plain form instead (withProject), and the file is what it was before this.
+// When it can't come out clean (a palette that happens to spell an escape, say), Save writes the plain form instead
+// (withProject), and the file is what it was before this.
 import { chunk } from '../lib/PngFile.js';
+import { FixedDeflater } from '../lib/Deflate.js';
 
 export const START_CHUNK = 'phCs', PROJECT_CHUNK = 'phPc', ART_CHUNK = 'phCa';
 const E = '\x1b', SIGNATURE_AND_IHDR = 33;
@@ -115,39 +117,27 @@ function artChunk(art) {
   }
 }
 
-// The most sequences a picture may hold to be searched for a clean one (each takes a search of about log2(rows) tries),
-// and the most picture bytes deflated in all (each try deflates the whole picture again). Past either Save writes the
-// plain form.
-// ponytail: deflating the picture in flushed pieces would let a piece be tried alone, when a deflate with flushes is
-// worth having.
-const MOST_FOUND = 12, MOST_DEFLATED = 64 * 1024 * 1024;
-
 // png (as cellsPng writes it: IHDR, PLTE or not, one IDAT, IEND), the project's bytes and the art (UTF-8 ANSI, or an async
-// function giving it, called only when the picture can be searched) as a .pho a terminal shows, or null when it can't
-// be made clean.
+// function giving it, called only when it's needed) as a .pho a terminal shows, or null when it can't be made clean.
 export async function terminalPho(png, project, art) {
-  const chunks = chunksOf(png), ihdr = chunks[0][1];
-  let pixels = chunks.find(([type]) => type === 'IDAT')[1];
-  if (harmful(pixels) > MOST_FOUND) return null;
+  const chunks = chunksOf(png), ihdr = chunks[0][1], idat = chunks.find(([type]) => type === 'IDAT')[1];
   const head = png.subarray(0, SIGNATURE_AND_IHDR), start = startChunk(png);
   const before = joined([head, start, chunk(PROJECT_CHUNK, escapeBytes(project)), ...chunks.filter(([type]) => !['IHDR', 'IDAT', 'IEND'].includes(type)).map(([type, data]) => chunk(type, data))]);
   if (harmfulAt(before) >= 0) return null;
   const after = joined([artChunk(typeof art === 'function' ? await art() : art), chunk('IEND', new Uint8Array(0)), CLOSE]);
   if (harmfulAt(after) >= 0) return null;
-  // before is clean alone, so only its last escape can still be open where the picture starts: the search reads from
-  // there, and the whole file is put together once, at the end.
-  let open = before.length;
-  while (open > 0 && before[open - 1] !== 0x1b && before[open - 1] !== 0xc2) open--;
-  const tail = open ? before.subarray(open - 1) : new Uint8Array(0), pixelsAt = tail.length + 8;
-  const foundIn = (data) => harmfulAt(joined([tail, chunk('IDAT', data), after]));
+  // before is clean alone, so only a sequence it leaves open can reach the picture: a file is read from where that starts.
+  const open = openAt(before, 0, before.length), firstAt = (file) => harmfulAt(file, open);
+  const fileWith = (pixels) => joined([before, chunk('IDAT', pixels), after]);
+  const plain = fileWith(idat);
+  if (firstAt(plain) < 0) return plain; // the browser's own deflate, smaller than ours, when it already is
 
-  // The same picture, other bytes: a row filtered (None, Sub or Up, as a PNG reader undoes them) changes the deflate from
-  // where that row's block starts, and nothing before it. So each sequence, first to last, is gone by filtering the
-  // latest row whose change reaches back to it, found by halving, and kept when nothing new comes before it.
+  // The same picture, other bytes: written row by row with our own deflate, whose bytes before a row never change with
+  // what's written after it. When a sequence turns up, the latest row whose bytes reach it is filtered another way (None,
+  // Sub or Up, as a PNG reader undoes them) and written again from there; a row whose three are spent passes it back.
   const view = new DataView(ihdr.buffer, ihdr.byteOffset, ihdr.length), height = view.getUint32(4);
   const bits = ihdr[8] * { 0: 1, 2: 3, 3: 1, 4: 2, 6: 4 }[ihdr[9]], stride = Math.ceil((view.getUint32(0) * bits) / 8), step = Math.max(1, bits / 8);
-  let found = foundIn(pixels);
-  const raw = found < 0 ? null : await through(pixels, new DecompressionStream('deflate')), rows = raw?.slice(); // cellsPng's rows are all None
+  const raw = await through(idat, new DecompressionStream('deflate')), rows = raw.slice(); // cellsPng's rows are all None
   const filter = (y, type) => {
     const at = y * (stride + 1);
     rows[at] = type;
@@ -156,43 +146,56 @@ export async function terminalPho(png, project, art) {
       rows[at + 1 + x] = raw[at + 1 + x] - near;
     }
   };
-  const differsAt = (a, b) => {
-    let i = 0;
-    while (i < a.length && a[i] === b[i]) i++;
-    return i;
-  };
-  let deflated = 0;
-  const more = () => deflated + (raw?.length ?? 0) <= MOST_DEFLATED;
-  // Filtered so, does the picture lose the sequence at `found` with none before it? 'kept', 'reached' (it changed from
-  // before the sequence, but another came before), or 'past' (it changed only after).
-  const attempt = async (y, type) => {
-    const was = rows[y * (stride + 1)];
-    filter(y, type);
-    deflated += raw.length;
-    const next = await through(rows, new CompressionStream('deflate')), nextFound = foundIn(next);
-    if (nextFound < 0 || nextFound > found) {
-      pixels = next, found = nextFound;
-      return 'kept';
+  // The stream is read from where a sequence still open at a row's start could start (froms[y]), and the last row is
+  // checked in the whole file, the stream's end and the CRCs after it among it.
+  const deflater = new FixedDeflater(rows), marks = new Array(height), froms = new Array(height), tried = new Uint8Array(height);
+  const idatAt = before.length + 8;
+  let readFrom = 0, tries = 0;
+  for (let y = 0; y < height;) {
+    marks[y] = deflater.mark();
+    froms[y] = readFrom;
+    tried[y] |= 1 << rows[y * (stride + 1)];
+    deflater.encode(y * (stride + 1), (y + 1) * (stride + 1));
+    const written = deflater.written;
+    let found = harmfulAt(written, readFrom);
+    if (found < 0 && y === height - 1) {
+      const end = deflater.mark(), file = fileWith(deflater.finish());
+      deflater.rewind(end);
+      const at = firstAt(file);
+      if (at < 0) return file;
+      found = Math.max(0, at - idatAt);
     }
-    filter(y, was);
-    return differsAt(next, pixels) <= found - pixelsAt ? 'reached' : 'past';
-  };
-  while (found >= 0 && more()) {
-    let lo = 0, hi = height - 1, kept = false;
-    while (lo < hi && !kept && more()) {
-      const mid = Math.ceil((lo + hi) / 2), result = await attempt(mid, (rows[mid * (stride + 1)] + 1) % 3);
-      if (result === 'kept') kept = true;
-      else if (result === 'reached') lo = mid;
-      else hi = mid - 1;
+    if (found < 0) {
+      readFrom = openAt(written, readFrom, written.length);
+      y++;
+      continue;
     }
-    // The latest row that reaches it, then the rows before, each with the other filters.
-    for (let y = lo; !kept && y >= Math.max(0, lo - 8) && more(); y--) {
-      for (const type of [1, 2, 0]) if (!kept && type !== rows[y * (stride + 1)] && more()) kept = (await attempt(y, type)) === 'kept';
-    }
-    if (!kept) return null;
+    let r = y;
+    while (r > 0 && marks[r].length > found) r--;
+    while (r >= 0 && tried[r] === 7) r--;
+    if (r < 0 || ++tries > MOST_TRIES) return null;
+    filter(r, [0, 1, 2].find((type) => !(tried[r] & (1 << type))));
+    tried.fill(0, r + 1, y + 1);
+    deflater.rewind(marks[r]);
+    readFrom = froms[r];
+    y = r;
   }
-  return found < 0 ? joined([before, chunk('IDAT', pixels), after]) : null;
+  return null;
 }
+
+// Where a sequence still open at `to` could start, looking back no further than `from`, where one last could: the last
+// ESC (a C2 after it is inside it or after its end), else the first C2 (one after it is inside it), else `to`.
+function openAt(bytes, from, to) {
+  let c2 = to;
+  for (let i = to - 1; i >= from; i--) {
+    if (bytes[i] === 0x1b) return i;
+    if (bytes[i] === 0xc2) c2 = i;
+  }
+  return c2;
+}
+
+// The most rows written again in all, past which Save writes the plain form: a picture whose rows can't come out clean.
+const MOST_TRIES = 2000; // a 40 MB picture took 142
 
 const joined = (parts) => {
   const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
