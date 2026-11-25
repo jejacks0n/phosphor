@@ -376,18 +376,21 @@ export function levelCells(project, id, indexes = null) {
 
 // What a step that changes the stack and what's on its cells layers holds either side (Flatten, Bake, the merges): the
 // layers, every cells layer's data above the bottom by id ({ editCells, paintLayer, hasPaint }), the one in use's fields
-// among them, and the layer picked. A step never changes the objects in one: it makes new ones (paintFrom) for the other side.
+// among them, the layer picked, and the cells layer in use (use: the id the edit layer's fields were, which names no layer
+// once the last cells layer is deleted). A step never changes the objects in one: it makes new ones (paintFrom) for the other side.
 export function stackState(project) {
   const data = new Map(project._layerData);
   if (project.editId !== 'base' && project.layerById(project.editId)) data.set(project.editId, { editCells: project.editCells, paintLayer: project.paintLayer, hasPaint: project.hasPaint });
-  return { layers: project.layers, data, pick: useWorkspaceStore().pickedLayer };
+  return { layers: project.layers, data, pick: useWorkspaceStore().pickedLayer, use: project.editId };
 }
 
 // stackState's state put back (layers: left as they are when it has none): each layer's data where it waits, the one in
 // use's in the edit layer's fields (empty ones when it isn't in the stack any more), and the layers last, so a pick that
 // left the stack moves to the layer that was under it (followLayerPick), which is then the one in use. A layer picked in
-// the state (pick) that this brings back is picked again.
-export function putStack(project, { layers = project.layers, data, pick = null }) {
+// the state (pick) that this brings back is picked again, and with it the cells layer in use then (use), when its leaving
+// had moved the tools to another: a vector layer merged away puts them on the layer under it, and picking it again
+// doesn't move them back. That's also the cells layer the art tabs go back to; with none in use then, none is again.
+export function putStack(project, { layers = project.layers, data, pick = null, use = null }) {
   const back = pick && !project.layerById(pick);
   const grid = project.paintLayer;
   project._layerData.clear();
@@ -404,7 +407,14 @@ export function putStack(project, { layers = project.layers, data, pick = null }
     project.hasPaint = own.hasPaint;
   } else if (project.editId !== 'base') emptyFields(project);
   project.layers = layers;
-  if (back && project.layerById(pick)) useWorkspaceStore().pickLayer(pick);
+  if (!back || !project.layerById(pick)) return;
+  const workspace = useWorkspaceStore();
+  workspace.pickLayer(pick);
+  if (!use || use === project.editId || project._artInside) return;
+  const there = project.layerById(use);
+  if (there && !swappable(project, use)) return; // (in the stack with nothing waiting for it: not a cells layer's id)
+  swapLayer(project, use);
+  if (there) workspace.lastCellsPick = use;
 }
 
 // Whether a change a room doesn't take yet (a picture on a layer) is refused because the document is shared with a room, with a toast saying so.
