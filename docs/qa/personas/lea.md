@@ -532,13 +532,15 @@ and sideways.
 
 ### 36. Report an issue from the beta
 - Does: on a beta or an alpha version (About, from the logo, shows a version ending in `-beta` or `-alpha`), opens the
-  settings from ☰ and reads the line under the logo; taps **Report an issue**; writes a line in **What were you doing?**
+  settings from ☰ and reads the small screen under the logo; taps **Report an issue**; writes a line in **What were you doing?**
   and two lines in **What went wrong?**; reads the line under the checkbox and the note above Send; taps **Send**. Fake
   the server's answer first, so nothing leaves the computer: `await social.fakeIssueReports(page)`, which returns the
-  list the report lands in. On a version that isn't a beta there's no line under the logo: open the step with
+  list the report lands in. On a version that isn't a beta there's no screen under the logo: open the step with
   `rated: false` and note it (not a finding).
-- Expects: the line under the logo says "BETA · Report an issue" ("ALPHA" on an alpha) on one line, inside the drawer's
-  width, with nothing to dismiss it; the form fills the phone's screen, with focus in the first box and the phone's
+- Expects: under the logo there's a small dark screen with rounded corners, as wide as the drawer's column: "▓▒░ BETA ░▒▓"
+  ("ALPHA" on an alpha) lit in the theme's accent, in the art's blocky font, and "Report an issue" on the line under
+  it, with scanlines across both, nothing cut off or squeezed, and nothing to dismiss it; the word flickers now and then
+  and a faint bar rolls down the screen (with reduced motion on, neither moves); the form fills the phone's screen, with focus in the first box and the phone's
   keyboard up; each box has its count and stops at its most (2,000 and 4,000); Send is off until **What went wrong?** has
   words; the checkbox is ticked and its line names her drawing, its size and how many steps ("selfie.pho, 240 KB ·
   52 steps"); the note says "What you write becomes a public issue on GitHub. Your drawing and steps go only to

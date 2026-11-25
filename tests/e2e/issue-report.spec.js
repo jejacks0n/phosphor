@@ -23,9 +23,10 @@ test('on a beta, Report an issue under the logo sends what was written, the draw
   await tab(page, 'ANSI').click();
   await settled(page);
 
-  // A built app: the banner says Beta, and the steps are kept with no HISTORY tab showing.
+  // A built app: the screen under the logo says Beta, in the art's font, and the steps are kept with no HISTORY tab showing.
   const banner = page.locator('aside.control-panel p.stage');
-  await expect(banner).toHaveText(/^\s*Beta · Report an issue\s*$/);
+  await expect(banner).toHaveText(/^\s*▓▒░ Beta ░▒▓\s*Report an issue\s*$/);
+  await expect(banner).toHaveCSS('font-family', /IBM VGA 8x16/);
   await expect(page.locator('.side-panel').getByRole('tab', { name: 'History' })).toHaveCount(0);
 
   await banner.getByRole('button', { name: 'Report an issue' }).click();
