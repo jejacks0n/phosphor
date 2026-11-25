@@ -19,29 +19,80 @@ const E = '\x1b', SIGNATURE_AND_IHDR = 33;
 const ascii = (text) => Uint8Array.from(text, (c) => c.charCodeAt(0));
 const typeOf = (bytes, at) => String.fromCharCode(...bytes.subarray(at + 4, at + 8));
 
-// Where the first sequence at or after `from` starts that a terminal would act on beyond the alternate screen, or -1: a
-// reset (ESC c), an identify (ESC Z, which a terminal answers by typing into the prompt), and a CSI that answers (c, n, x,
-// t) or prints (i). A terminal carries on with an escape past control bytes and anything not ASCII, so this skips those
-// as it does, and UTF-8's C1 CSI (C2 9B) counts as ESC [.
+// Where the first sequence at or after `from` starts that a terminal would act on beyond the alternate screen, or -1:
+// a reset (ESC c), an identify (ESC Z, which a terminal answers by typing into the prompt), any CSI but those that draw
+// on the alternate screen or that RESETS puts back, an OSC with a number (a title, a notification, a color asked or
+// set, the clipboard) other than ours, a DCS ending p or q (a question, tmux) and an APC starting G (a kitty picture).
+// It's read two ways, and acts if either does: as a terminal that skips bytes 0x80 to 0x9F inside an escape as it does
+// other bytes not ASCII, and as Ghostty, which reads them there as C1 controls (0x9A as ESC Z, 0x9B starting a CSI).
+// Either way control bytes are skipped (a terminal runs them and carries on), CAN, SUB and ESC end an escape, and
+// UTF-8's C1 CSI (C2 9B) counts as ESC [.
 export function harmfulAt(bytes, from = 0) {
-  let at;
-  const skip = () => {
-    while (at < bytes.length && (bytes[at] < 0x20 || bytes[at] > 0x7e) && bytes[at] !== 0x18 && bytes[at] !== 0x1a && bytes[at] !== 0x1b) at++;
-  };
   for (let i = from; i < bytes.length; i++) {
-    const c1 = bytes[i] === 0xc2 && bytes[i + 1] === 0x9b;
-    if (bytes[i] !== 0x1b && !c1) continue;
-    at = i + (c1 ? 2 : 1);
-    if (!c1) {
-      for (skip(); bytes[at] >= 0x20 && bytes[at] <= 0x2f; at++, skip());
-      if (bytes[at] === 0x63 || bytes[at] === 0x5a) return i;
-      if (bytes[at] !== 0x5b) continue;
-      at++;
-    }
-    for (skip(); bytes[at] >= 0x20 && bytes[at] <= 0x3f; at++, skip());
-    if (at < bytes.length && 'cnxti'.includes(String.fromCharCode(bytes[at]))) return i;
+    const at = bytes[i] === 0x1b ? i + 1 : bytes[i] === 0xc2 && bytes[i + 1] === 0x9b ? i + 2 : -1;
+    if (at < 0) continue;
+    const state = bytes[i] === 0x1b ? 'escape' : 'csi';
+    if (acts(bytes, at, state, false) || acts(bytes, at, state, true)) return i;
   }
   return -1;
+}
+
+// What Ghostty starts at each C1 control inside an escape (0x9A is ESC Z); the others end it.
+const C1 = { 0x9a: 'Z', 0x9b: 'csi', 0x90: 'dcs', 0x9d: 'osc', 0x98: 'string', 0x9e: 'string', 0x9f: 'apc' };
+function acts(bytes, at, state, c1) {
+  let held = '';
+  for (; at < bytes.length; at++) {
+    const b = bytes[at];
+    if (b === 0x18 || b === 0x1a || b === 0x1b) return false;
+    if (c1 && b >= 0x80 && b <= 0x9f) {
+      const next = C1[b];
+      if (next === 'Z') return true;
+      if (!next) return false;
+      if (next === 'osc') return oscActs(bytes, at + 1);
+      [state, held] = [next, ''];
+      continue;
+    }
+    if (b < 0x20 || b > 0x7e || state === 'string') continue;
+    const c = String.fromCharCode(b);
+    if (state === 'apc') {
+      if (c === 'G') return true;
+      state = 'string';
+    } else if (state === 'escape') {
+      if (b <= 0x2f) held += c;
+      else if (held) return false; // a character set chosen, say
+      else if (c === '[') state = 'csi';
+      else if (c === ']') return oscActs(bytes, at + 1);
+      else if (c === 'P') state = 'dcs';
+      else if (c === '_') state = 'apc';
+      else if (c === 'X' || c === '^') state = 'string';
+      else return c === 'c' || c === 'Z';
+    } else if (b <= 0x3f) held += c;
+    else return state === 'csi' ? csiActs(held, c) : c === 'p' || c === 'q';
+  }
+  return false;
+}
+
+// The CSIs let through: those with no marker or intermediate that move the cursor, edit, erase, scroll, set colors,
+// margins or tab stops (which RESETS puts back), the soft reset, an erase with ?, and the modes RESETS sets back.
+const DRAWS = '@ABCDEFGHIJKLMPSTXZ`abdefgmrsu', MODES = new Set(['?1', '?5', '?7', '?25', '?1000', '?1002', '?1003', '?1004', '?1006', '?1015', '?1049', '20']);
+function csiActs(held, final) {
+  if (held === '!' && final === 'p') return false;
+  if (/[ -/]/.test(held)) return true;
+  const marker = /^[<=>?]/.test(held) ? held[0] : '';
+  if (/[<=>?]/.test(held.slice(marker.length))) return true;
+  if (final === 'h' || final === 'l') return !held.slice(marker.length).split(/[;:]/).every((mode) => MODES.has(marker + mode));
+  return marker ? !(marker === '?' && (final === 'J' || final === 'K')) : !DRAWS.includes(final);
+}
+
+// An OSC acts unless its payload doesn't start with a number, or is ours (artChunk's).
+function oscActs(bytes, at) {
+  let text = '';
+  for (; at < bytes.length && text.length < 5; at++) {
+    const b = bytes[at];
+    if (b === 0x07 || b === 0x18 || b === 0x1a || b === 0x1b) break;
+    if (b >= 0x20) text += String.fromCharCode(b);
+  }
+  return /^\d/.test(text) && text !== '4242;';
 }
 
 // How many such sequences the bytes hold.
@@ -101,10 +152,10 @@ function startChunk(png) {
 }
 
 // Back on the screen, the cursor where the alternate screen left it: what the binary may have set put back (only what
-// every terminal knows: an escape one doesn't is printed), the screen below erased (a reset in the binary would have
+// every terminal knows: an escape one doesn't is printed), the tab stops every 8 columns again, the screen below erased (a reset in the binary would have
 // left the cursor at the top), the art, then an OSC with a number no terminal uses, to swallow the last CRC and IEND.
 // Its CRC can't hold a byte that would end the OSC early, so NULs (which a terminal ignores) pad it until it doesn't.
-const RESETS = `${E}[?1049l${E}[!p${E}[0m${E}(B${E})B\x0f${E}[?7h${E}[?25h${E}[?1l${E}>${E}[?1000l${E}[?1002l${E}[?1003l${E}[?1004l${E}[?1006l${E}[?1015l${E}[?5l${E}[20l${E}[J`;
+const RESETS = `${E}[?1049l${E}[!p${E}[0m${E}(B${E})B\x0f${E}[?7h${E}[?25h${E}[?1l${E}>${E}[?1000l${E}[?1002l${E}[?1003l${E}[?1004l${E}[?1006l${E}[?1015l${E}[?5l${E}[20l\r${E}[3g${`${E}[8C${E}H`.repeat(63)}\r${E}[J`;
 const OPEN = `${E}[0m${E}]4242;`, CLOSE = ascii(`${E}\\`);
 function artChunk(art) {
   for (let pad = 0; ; pad++) {
@@ -195,7 +246,7 @@ function openAt(bytes, from, to) {
 }
 
 // The most rows written again in all, past which Save writes the plain form: a picture whose rows can't come out clean.
-const MOST_TRIES = 2000; // a 40 MB picture took 142
+const MOST_TRIES = 2000; // a 40 MB picture took 179
 
 const joined = (parts) => {
   const out = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
