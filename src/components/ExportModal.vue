@@ -27,7 +27,7 @@ const formats = FORMATS.filter((f) => f.id !== 'mp4' || canExportVideo());
 const selectedId = ref(typeof workspace.exportModal === 'string' ? workspace.exportModal : project.hasFrames && project.animate ? 'gif' : 'ans');
 const selected = computed(() => FORMATS.find(f => f.id === selectedId.value));
 const name = ref(timestamped(project.filename ?? 'untitled'));
-const smooth = ref(workspace.smoothText); // default follows the workspace setting, like SaveDialog
+const smooth = ref(false); // a PNG's text: hard-edged unless Smooth is picked, whatever the view's Smooth text is
 const saving = ref(false);
 const progress = ref(null); // a GIF's or video's share of frames written while it exports
 const problem = ref('');
@@ -162,21 +162,25 @@ function cancel() {
       <div class="format-detail">
         <p class="detail-desc">{{ t(`save.formats.${selectedId}.sub`) }}</p>
 
-        <!-- PNG: smooth text option when smooth text is on -->
-        <div v-if="selectedId === 'png' && workspace.smoothText" class="option-block">
+        <!-- PNG: its text hard-edged (picked first) or smooth, whatever the view's Smooth text is -->
+        <div v-if="selectedId === 'png'" class="option-block">
           <div class="option-label">{{ t('export.modal.textRendering') }}</div>
           <div class="smooth-choices">
             <button
+                type="button"
                 class="smooth-btn"
                 :class="{ selected: !smooth }"
+                :aria-pressed="!smooth"
                 @click="smooth = false"
             >
               <b>{{ t('save.png.hardTitle') }}</b>
               <span>{{ t('save.png.hardText') }}</span>
             </button>
             <button
+                type="button"
                 class="smooth-btn"
                 :class="{ selected: smooth }"
+                :aria-pressed="smooth"
                 @click="smooth = true"
             >
               <b>{{ t('save.png.smoothTitle') }}</b>

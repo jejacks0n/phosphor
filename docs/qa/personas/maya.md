@@ -539,10 +539,11 @@ back, hide the base under it all, and export the .ans after each merge to see it
 ## Getting it out
 
 ### 37. Export a PNG to post
-- Does: presses Export .png (in the left column, or on SAUCE), keeps Smooth when it asks about smooth text, and saves;
-  then turns the status bar's Smooth off and exports again.
+- Does: presses Export, picks PNG, keeps **Hard-edged** under Text rendering, and saves; then exports again with
+  **Smooth** picked, and once more with the status bar's Smooth turned off.
 - Expects: a PNG of the art as it shows, same palette, dithering and layers
-  ([Characters](../../characters.md#saving-utf8ans-and-ans)); with Smooth text off, no question, and a smaller file.
+  ([Characters](../../characters.md#exporting-png)); Text rendering there each time with Hard-edged picked first,
+  whatever the status bar's Smooth is, and the Smooth file the bigger one.
 - Probes: `out-of-order`: look on every tab and in the Actions menu of a narrow window; `free`: try the browser's own
   right-click on the canvas.
 - Rated: yes, wants Cmd+K, then `exp png` and Enter

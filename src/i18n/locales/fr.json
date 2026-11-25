@@ -1363,9 +1363,8 @@
       }
     },
     "png": {
-      "ask": "Le texte lissé ajoute des couleurs de dégradé subtiles, ce qui rend le fichier PNG plus lourd.",
       "smoothTitle": "Lissé",
-      "smoothText": "Caractères avec anticrénelage, correspondant à ce que vous voyez dans la vue ANSI.",
+      "smoothText": "Caractères avec anticrénelage, comme la vue ANSI les dessine avec Lissé activé. Les dégradés ajoutent des couleurs, ce qui rend le fichier plus lourd.",
       "hardTitle": "Contours nets",
       "hardText": "Caractères en pixels nets utilisant uniquement les couleurs de la palette du dessin (taille de fichier minimale)."
     },

@@ -388,8 +388,7 @@ On DOS a background color had three bits and the fourth was blink: a cell whose 
 
 A `.png` is a picture of the art as the ANSI view draws it, in your display font, at one pixel per font pixel: the frame that's showing, with or without Animate. A cell that blinks there ([iCE colors](#ice-colors) off) is drawn steady, its background bright.
 
-- **With Smooth text off** (the status bar's **Smooth**), every pixel is one of the art's colors and the file is small.
-- **With Smooth text on**, the Export dialog offers a **Text rendering** choice: **Smooth** (picked first) keeps the anti-aliased edges, which add colors and make the file a few times bigger, and **Hard-edged** draws the text crisp, as with Smooth text off. The choice doesn't change the Smooth setting, and isn't remembered.
+- **Text rendering**: The Export dialog asks how the text is drawn, whatever the status bar's **Smooth** is set to. **Hard-edged** (picked first) draws it crisp, so every pixel is one of the art's colors and the file is small. **Smooth** keeps the anti-aliased edges the ANSI view draws with Smooth on, which add colors and make the file a few times bigger. The choice doesn't change the Smooth setting, and isn't remembered.
 
 ### Automatic Browser Backups
 
