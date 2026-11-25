@@ -8,7 +8,7 @@
 // named in `namesOnly` (the SOCIAL stores: dev/skipped.js) is logged by its actions' names alone, with nothing of what
 // they were given: a password, an email address, a code, a line of chat. Window errors are lines too, the first
 // MOST_ERROR characters of each. The newest LIMIT lines stay. It's kept in memory only, and goes with the page.
-import { shallowReactive } from 'vue';
+import { shallowReactive, toRaw } from 'vue';
 
 export const LIMIT = 2000;
 const MOST_TEXT = 40; // of a string argument
@@ -52,14 +52,19 @@ export function recordError(message) {
 // A repeat of the last line folds into it with a count. Its arguments are the latest; when they're scalars that changed
 // (a zoom's notches, this tool then that), the first ones too: (1 → 2.5), ("brush" → "pencil"). Collections (a stroke's
 // pixels, a shape's fields) are the per-move calls' and show the latest alone.
+// The list is read here unwatched (toRaw): an action is often called from inside a screen's computed value or its
+// render, and a list read there would be that computation's dependency, which the line written a moment later would
+// then run again, logging another line, without end. Development stops such a loop after a hundred turns; a built app
+// doesn't, and froze. Writing still tells whoever shows the log.
 function push(kind, text, args) {
-  const at = performance.now() - log.start, last = log.entries.at(-1);
+  const { entries, start } = toRaw(log);
+  const at = performance.now() - start, last = entries.at(-1);
   if (last && last.kind === kind && last.text === text) {
     const shown = args === last.first || /[[{]|\w\(\d/.test(args) ? args : `(${last.first.slice(1, -1)} → ${args.slice(1, -1)})`;
-    log.entries = [...log.entries.slice(0, -1), { ...last, at, args: shown, count: last.count + 1 }];
+    log.entries = [...entries.slice(0, -1), { ...last, at, args: shown, count: last.count + 1 }];
     return;
   }
-  log.entries = [...log.entries.slice(-(LIMIT - 1)), { at, kind, text, args, first: args, count: 1 }];
+  log.entries = [...entries.slice(-(LIMIT - 1)), { at, kind, text, args, first: args, count: 1 }];
 }
 
 export function clearLog() {
