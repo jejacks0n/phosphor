@@ -21,14 +21,18 @@ async function startScreen() {
 
 const filesOf = (file) => { const data = new DataTransfer(); data.items.add(file); return data; };
 const message = () => toastMessage.value;
+// Whether a file opens is known only after it's read, and one with no type after the browser has tried it as a picture,
+// which on a busy machine takes longer than any fixed wait: each test waits for what the file comes to.
+const PATIENT = { interval: 10, timeout: 10_000 };
+const refused = (name) => vi.waitFor(() => expect(message()).toContain(`Phosphor cannot open ${name}`), PATIENT);
+const opened = (project) => vi.waitFor(() => expect(project.image).toBeTruthy(), PATIENT);
 
 test('a file chosen that Phosphor cannot open is refused with its name, and nothing opens', async () => {
   const { project, host } = await startScreen();
   const input = host.querySelector('input[type=file]');
   input.files = filesOf(new File([new Uint8Array(8)], 'theme.sue')).files;
   input.dispatchEvent(new Event('change'));
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(message()).toContain('Phosphor cannot open theme.sue');
+  await refused('theme.sue');
   expect(project.image).toBeFalsy();
 });
 
@@ -37,17 +41,17 @@ test('a file dropped that Phosphor cannot open is refused with its name', async 
   const event = new Event('drop', { bubbles: true, cancelable: true });
   event.dataTransfer = filesOf(new File([new Uint8Array(8)], 'font.ttf'));
   host.querySelector('article.drop-zone').dispatchEvent(event);
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  expect(message()).toContain('Phosphor cannot open font.ttf');
+  await refused('font.ttf');
 });
 
 test('an .nfo is not refused', async () => {
-  const { host } = await startScreen();
+  const { workspace, host } = await startScreen();
+  const ask = vi.spyOn(workspace, 'askArt');
   const input = host.querySelector('input[type=file]');
   input.files = filesOf(new File([Uint8Array.from([0xb0, 0xdb, 0x0d, 0x0a, 0x41])], 'release.nfo')).files;
   input.dispatchEvent(new Event('change'));
-  await new Promise((resolve) => setTimeout(resolve, 20));
-  expect((message() ?? '')).not.toContain("can't open");
+  await vi.waitFor(() => expect(ask).toHaveBeenCalled(), PATIENT); // asked how to open it, as art files are
+  expect(message() ?? '').not.toContain('cannot open');
 });
 
 // Some phones give a photo no type: it is tried as a picture, and refused only if it won't decode.
@@ -55,20 +59,19 @@ const choose = async (host, file) => {
   const input = host.querySelector('input[type=file]');
   input.files = filesOf(file).files;
   input.dispatchEvent(new Event('change'));
-  await new Promise((resolve) => setTimeout(resolve, 300));
 };
 
 test('a file with no type that holds a picture opens', async () => {
   const { project, host } = await startScreen();
   await choose(host, new File([await (await fetch('/tests/fixtures/images/gradient.png')).arrayBuffer()], 'photo.heic', { type: '' }));
-  expect(project.image).toBeTruthy();
-  expect(message() ?? '').not.toContain("can't open");
+  await opened(project);
+  expect(message() ?? '').not.toContain('cannot open');
 });
 
 test('a file with no type that is not a picture is refused with its name', async () => {
   const { project, host } = await startScreen();
   await choose(host, new File([new Uint8Array(64).fill(7)], 'mystery.dat', { type: '' }));
-  expect(message()).toContain('Phosphor cannot open mystery.dat');
+  await refused('mystery.dat');
   expect(project.image).toBeFalsy();
 });
 
@@ -102,15 +105,15 @@ test('a .pho renamed to .png opens as its project, not as a picture', async () =
   project.markSaved();
   const ask = vi.spyOn(workspace, 'askArt');
   await choose(host, new File([blob], 'renamed.png', { type: 'image/png' }));
+  await vi.waitFor(() => expect(cellsKey(project)).toEqual(cells), PATIENT);
   expect(ask).not.toHaveBeenCalled();
-  expect(cellsKey(project)).toEqual(cells);
   expect(project.cols).toBe(20);
 });
 
 test('a plain .png still opens as a picture', async () => {
   const { project, host } = await startScreen();
   await choose(host, new File([await (await fetch('/tests/fixtures/images/gradient.png')).arrayBuffer()], 'plain.png', { type: 'image/png' }));
-  expect(project.image).toBeTruthy();
+  await opened(project);
   expect(project.fileExt).not.toBe('pho');
 });
 
@@ -123,6 +126,6 @@ test('a .png with a broken phPr chunk says it is not a project', async () => {
   out.set(png.subarray(33), 45);
   const alert = vi.spyOn(window, 'alert').mockImplementation(() => {});
   await choose(host, new File([out], 'broken.png', { type: 'image/png' }));
-  expect(alert).toHaveBeenCalled();
+  await vi.waitFor(() => expect(alert).toHaveBeenCalled(), PATIENT);
   expect(project.image).toBeFalsy();
 });
