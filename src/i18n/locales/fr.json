@@ -1328,6 +1328,8 @@
   },
   "save": {
     "fileName": "Nom de fichier",
+    "forTerminal": "Afficher le dessin quand le fichier est lu dans un terminal",
+    "forTerminalHint": "Le fichier enregistré est plus lourd, mais avec {cat}, l’ansi s’affiche dans le terminal sans avoir à ouvrir le fichier dans Phosphor.",
     "formats": {
       "phosphor": {
         "title": "Enregistrer le projet",

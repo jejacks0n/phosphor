@@ -106,6 +106,9 @@ export const KEPT = [
   },
   { key: 'vectorShapeKind', default: 'rect', good: (v) => ['rect', 'ellipse', 'polygon'].includes(v) || isSolverRef(v) }, // the Shape tool: 'rect' | 'ellipse' | 'polygon', or a plugin shape's ref (vshape.shapeKind reads it)
   { key: 'vectorSides', default: 5, good: whole(3, 12) }, // a polygon's sides, 3 to 12
+  // How Save writes a .pho: laid out so that printed in a terminal it shows its drawing (phoTerminal.js), or (off) the
+  // plain form, smaller, which copies of Phosphor from before the terminal form open too.
+  { key: 'saveForTerminal', default: true, good: bool },
 ];
 
 export const keptKey = (entry) => `phosphor.${entry.key}`;

@@ -49,4 +49,7 @@ Some terminals ring the bell a few times while it prints: a picture's bytes hold
 
 When the file can't be laid out so, Save writes the plain form, `phPr` right after `IHDR`, and printing that shows the
 PNG's bytes as any binary file's: a palette whose colors spell one of those sequences, say, which no filter changes.
+It's also what Save writes with **Show the drawing when printed in a terminal** off, in the Save dialog: the file is
+smaller, and copies of Phosphor from before the terminal form open it. The choice is kept in the browser for the next
+Save, a save in place's too.
 

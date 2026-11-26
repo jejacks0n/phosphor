@@ -4,19 +4,22 @@ import { useI18n } from 'vue-i18n';
 import ModalDialog from '@/components/ModalDialog.vue';
 import ArrowIcon from '@/components/ArrowIcon.vue';
 import { useProjectStore } from '@/store/ProjectStore';
+import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
 import { fileStem, timestamped } from '@/document/projectIO';
 
 // Save Project and the exports: the filename (it renames the document; every browser downloads
 // with it, Safari included), and for .ans the characters CP437 can't hold, with what's written instead. A .png is
-// hard-edged (the Export dialog has the choice).
+// hard-edged (the Export dialog has the choice). A project is laid out for a terminal or not, kept for the next Save,
+// a save in place's too (saveForTerminal).
 const props = defineProps({
   ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'xb' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif' | 'png'
 });
 const emit = defineEmits(['close']);
 const { t } = useI18n();
 const project = useProjectStore();
+const workspace = useWorkspaceStore();
 
 const FORMAT_META = {
   phosphor: { action: 'save', busy: 'saving', ext: 'pho' },
@@ -82,6 +85,13 @@ function cancel() {
         <span class="ext">.{{ extension }}</span>
       </div>
 
+      <template v-if="ext === 'phosphor'">
+        <label class="choice"><input v-model="workspace.saveForTerminal" type="checkbox"> {{ t('save.forTerminal') }}</label>
+        <i18n-t v-if="workspace.saveForTerminal" keypath="save.forTerminalHint" tag="p" class="hint">
+          <template #cat><code>cat</code></template>
+        </i18n-t>
+      </template>
+
       <p v-if="tooTall" class="note">{{ t('save.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>
 
       <template v-if="replacements.length">
@@ -129,6 +139,18 @@ div.name {
 div.name input {
   flex: 1;
   min-width: 0;
+}
+
+label.choice {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  font-size: 13px;
+  font-weight: normal;
+  letter-spacing: normal;
+  text-transform: none;
+  color: var(--text);
 }
 
 span.ext {
@@ -185,6 +207,10 @@ span.count {
   margin-left: auto;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+p.hint code {
+  font-family: 'JetBrains Mono', monospace;
 }
 
 p.hint {

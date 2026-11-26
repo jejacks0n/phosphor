@@ -542,6 +542,7 @@ export const documentActions = {
   // (components/IssueReportDialog.vue). Null with no drawing open.
   // The file carries the drawing's id (projectParts doesn't: it's what a room is sent too).
   // The file is a PNG of the drawing (inside an art layer, the whole drawing with the layer as it is, never the layer's own view) with the project inside, and the art a terminal shows.
+  // Laid out for a terminal unless the person said not to (the Save dialog's choice, kept: saveForTerminal).
   // Typed as bytes, as .phosphor's were: a browser could rename a download typed image/png to .png.
   async projectFile() {
     if (!this.image || !this.imageBuffer) return null;
@@ -551,7 +552,7 @@ export const documentActions = {
     // The drawing as its .utf8ans export with no SAUCE, for a terminal the file is printed in (docs/pho.md, In a
     // terminal); made only when the file can be laid out for one.
     const art = async () => new Uint8Array(await new AnsiFile(this.cols, lines, this.artDrawingCells({ steady: true })).toBlob({ utf8: true, colorMode: this.quantize, iceColors: this.sauceIceColors, sauce: false }).arrayBuffer());
-    return new Blob([await phoFile(await cellsPng(this.cols, lines, this.artDrawingCells()), project, art)], { type: 'application/octet-stream' });
+    return new Blob([await phoFile(await cellsPng(this.cols, lines, this.artDrawingCells()), project, useWorkspaceStore().saveForTerminal ? art : null)], { type: 'application/octet-stream' });
   },
 
   // What a .pho file holds besides the image, all of it as of the call (a canvas is copied when
