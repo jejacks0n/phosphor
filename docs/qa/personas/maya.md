@@ -411,7 +411,9 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
   over the photo with VGA on and Midtones at 2 (each letter's background stays the color it was); undo and redo work.
 - Probes: `back-out`: press Escape at the question and check nothing merged; `undo-redo`: undo, redo, undo; `again`: in
   Color ASCII, type dark text over white paint on Layer 1 (its cells take the paint's color as their background), Blur
-  across it, then Keep crisp cells: the text keeps its light background on the base, as it showed.
+  across it, then Keep crisp cells: the text keeps its light background on the base, as it showed; `scope`: in
+  Monochrome ASCII, draw a circle with the Shape tool's Half-column detail on Layer 1 and type a `▄` beside it, then
+  Keep crisp cells: every `▄` stays `▄` on the base, there and back in ANSI (docs/model.md R15).
 - Rated: yes, wants Cmd+E, then Enter on Keep crisp cells
 
 ### 28. Merge my paint into the image itself

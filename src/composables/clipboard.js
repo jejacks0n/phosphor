@@ -60,7 +60,7 @@ export function encodeBlock({ w, h, cells, paint, base, looks }, id) {
     ...(cells && { cells }),
     ...(looks && { looks }),
     ...(paint && { paint: paint.toDataURL() }),
-    ...(base && { base: { pixels: base.pixels.toDataURL(), scale: base.scale, colors: base.colors.toDataURL(), pins: base.pins } }),
+    ...(base && { base: { pixels: base.pixels.toDataURL(), scale: base.scale, colors: base.colors.toDataURL(), pins: base.pins, ...(base.chars && { chars: base.chars }) } }),
   };
 }
 

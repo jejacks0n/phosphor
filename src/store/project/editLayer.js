@@ -534,17 +534,19 @@ function showsNoChar(project, col, row, cell) {
 function baseBlock(project, col, row) {
   const own = bakedEntry('ansi', project.baseCellAt(col, row));
   const { fg, bg, fgIndex, bgIndex } = project.baseRecords.pins.has(cellKey(col, row)) ? blockOver(own) : own; // with the 256-color indexes they carry
-  return { char: '▄', fg, bg, fgIndex, bgIndex };
+  return { char: '▄', fg, bg, fgIndex, bgIndex, glyph: false }; // its pixels, not a character (R15)
 }
 
 // Cells written on the base ([{ col, row, attrs }], attrs as writeEditCells takes them: undefined keeps, null clears):
 // each as it then shows, its own attributes over the base's look (completeAt), its character pinned; the half of a wide
-// character one breaks becomes a space, as on a cells layer.
+// character one breaks becomes a space, as on a cells layer. A ▄ written is a character (typed, laid) unless attrs say
+// glyph: false (baseBlock's, which is its pixels): docs/model.md R15.
 function writeOnBottom(project, list) {
-  const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([, value]) => value != null));
+  const own = (attrs) => Object.fromEntries(Object.entries(attrs).filter(([key, value]) => value != null && key !== 'glyph'));
+  const glyph = (attrs) => attrs.glyph ?? (attrs.char === '▄' || undefined);
   const blanks = overwritesAll(project.cells, project.cols, list.map(({ col, row, attrs }) => ({ col, row, char: attrs.char })));
   const reads = readsOf(project); // the looks, all read before any is written
-  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...colored(reads, col, row, reads.completeAt(col, row, own(attrs))) })));
+  project.writeBaseCells([...list, ...blanks.map((cell) => ({ ...cell, attrs: { char: ' ' } }))].map(({ col, row, attrs }) => ({ col, row, ...colored(reads, col, row, reads.completeAt(col, row, own(attrs))), glyph: glyph(attrs) })));
 }
 
 // Monochrome ASCII's look of a base cell is its character alone (reading.js baseLook), so a cell written there with no

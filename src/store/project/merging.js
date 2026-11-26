@@ -113,7 +113,8 @@ function onBase(project, id, rect) {
   for (const [key, entry] of cells) {
     const { col, row } = parseKey(key);
     if (col >= project.cols || row >= rows || !inRect(col, row)) kept.set(key, entry);
-    else if (shownEntry(entry, project.renderStyle)) merged.push(reads.mergeCellOf(col, row, entry, shownChar(col, row), paint)); // a paint block outside ANSI is its paint, which comes down as pixels
+    // A ▄ that's a character (laid or typed, not a paint block or a frozen look) stays one in every style (R15).
+    else if (shownEntry(entry, project.renderStyle)) merged.push({ ...reads.mergeCellOf(col, row, entry, shownChar(col, row), paint), glyph: entry.char === '▄' && !isPaintBlock(entry) && !isFrozen(entry) }); // a paint block outside ANSI is its paint, which comes down as pixels
   }
   if (rect && !merged.length && !paint?.hasPaintIn(rect)) return false; // nothing drawn inside: no empty undo step
   const paintedPins = [...project.baseRecords.pins.keys()].map(parseKey)
@@ -141,7 +142,7 @@ function onBase(project, id, rect) {
   const left = paint && paintFrom(paint, rect ? paint.snapshot() : null);
   if (rect) left?.clearCells(rect);
   const unpainted = (col, y, index) => (drawn?.colorAt(col, y) ? undefined : index);
-  const pins = [...merged.map(({ col, row, char, fgIndex, bgIndex }) => ({ col, row, char, fgIndex: unpainted(col, 2 * row + 1, fgIndex), bgIndex: unpainted(col, 2 * row, bgIndex) })), ...paintedPins];
+  const pins = [...merged.map(({ col, row, char, fgIndex, bgIndex, glyph }) => ({ col, row, char, glyph, fgIndex: unpainted(col, 2 * row + 1, fgIndex), bgIndex: unpainted(col, 2 * row, bgIndex) })), ...paintedPins];
   const after = {
     base: project.baseLayer.snapshot(), baseRecords: withPins(before.baseRecords, pins),
     stack: leftOn(project, before.stack, id, rect, { editCells: kept, paintLayer: left, hasPaint: !!left?.hasPaint }),
@@ -154,7 +155,7 @@ function onBase(project, id, rect) {
     const exact = shifted.flatMap(({ col, row, fg, bg }) => [{ x: col, y: 2 * row, ...hex2rgb(bg ?? fg), alpha: 1 }, { x: col, y: 2 * row + 1, ...hex2rgb(fg), alpha: 1 }]);
     project.baseLayer.erase(exact);
     project.baseLayer.paint(exact);
-    Object.assign(after, { base: project.baseLayer.snapshot(), baseRecords: withPins(after.baseRecords, shifted.map(({ col, row, char }) => ({ col, row, char }))) });
+    Object.assign(after, { base: project.baseLayer.snapshot(), baseRecords: withPins(after.baseRecords, shifted.map(({ col, row, char }) => ({ col, row, char }))) }); // a ▄ character's mark kept (withPins)
   }
   return mergeStep(project, before, after, bytesHeld(before.base, after.base, left, kept));
 }

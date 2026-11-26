@@ -1734,7 +1734,8 @@ export default class Renderer {
   // The character a cell keeps, or undefined (the conversion's): the topmost art layer's there, else the base
   // layer's pin; none where a shape reaches over either (the pin shows again once no shape covers it). A ▄ pin is two
   // pixels as ANSI shows them (Colors only pins one where paint meets a cell that shows no character), and ASCII has no
-  // ▄, so there it's no pin and the pixels are converted with the ASCII characters.
+  // ▄, so there it's no pin and the pixels are converted with the ASCII characters; but a ▄ that's a character (the
+  // records' chars: a laid or typed ▄ merged or written there) is a pin in every style (docs/model.md R15).
   pinAt(col, row) {
     const pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
     return this.#pinOf(pins.size ? pins.get(cellKey(col, row)) : undefined, col, row); // no key made for none: asked once a cell
@@ -1742,7 +1743,8 @@ export default class Renderer {
 
   // pinAt for a cell whose pin is at hand (kept: the base's, or undefined), as a walk over the pins has it.
   #pinOf(kept, col, row) {
-    const pin = kept === '▄' && this.#pinStyle !== 'ansi' ? undefined : kept;
+    const { chars } = this.baseRecords;
+    const pin = kept === '▄' && this.#pinStyle !== 'ansi' && !(chars.size && chars.has(cellKey(col, row))) ? undefined : kept;
     if (pin === undefined && !this.shapes?.hasArt) return undefined;
     const shown = this.shapes?.charAt(col, row);
     return shown === undefined ? pin : shown ?? undefined;

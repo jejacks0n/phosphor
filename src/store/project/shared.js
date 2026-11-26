@@ -17,7 +17,7 @@ import { isShapeKey } from '@/document/shapes.js';
 import { shownShapes } from '@/document/followers.js';
 import { layerChars, layerKey, newLayerId, nextNumber } from '@/document/layerInfo.js';
 import { hashCell, hashPixel, pack } from '@/document/changes.js';
-import { withoutPins } from '@/document/baseRecords.js';
+import { isCharPin, withoutPins } from '@/document/baseRecords.js';
 import { cellKey, isFrozen } from '@/document/editCells.js';
 import { plainActions } from '@/store/project/combineActions.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
@@ -218,15 +218,15 @@ export const onBottom = (project) => project.editId === 'base' && !project._artI
 // and convert again. Each keeps its look in its two pixels (the halves the PIXEL view draws, R11), not the background
 // over foreground it was stored as, so a half the paint misses shows as it did (bare, a pinned space's black over white
 // showed as bands along a soft edge). A pinned ▄ is pixels outside ANSI already (Renderer.pinAt), its look its pixels,
-// and stays, so what ANSI shows comes back (Colors only pins one). The other styles show a pin's colors, and it stays,
-// recolored (R2).
+// and stays, so what ANSI shows comes back (Colors only pins one); a ▄ that's a character is taken as any (R15). The
+// other styles show a pin's colors, and it stays, recolored (R2).
 export function takePins(project, pixels) {
   const { pins } = project.baseRecords;
   if (project.renderStyle !== 'ascii' || !pins.size) return;
   const cells = new Map();
   for (const { x, y } of pixels) {
     const key = `${x},${y >> 1}`, pin = pins.get(key);
-    if (pin !== undefined && pin !== '▄') cells.set(key, { col: x, row: y >> 1 });
+    if (pin !== undefined && (pin !== '▄' || isCharPin(project.baseRecords, key))) cells.set(key, { col: x, row: y >> 1 });
   }
   if (!cells.size) return;
   project.ensureLayer();

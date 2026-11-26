@@ -1,7 +1,7 @@
 // The base layer's own pixels and pins: erasing (black, with a pinned space), flipping a cell's
 // halves, and writing pixels. Base edits are exact: over the image as the pipeline shows it, never
 // resampled or put through the effects. Each is part of the current edit; the caller commits it.
-import { movePins, withPins, withoutPins } from '@/document/baseRecords.js';
+import { isCharPin, movePins, withPins, withoutPins } from '@/document/baseRecords.js';
 import { BLANK, cellKey, parseKey } from '@/document/editCells.js';
 import { ctx2d } from '@/lib/Canvas.js';
 import { hex2rgb } from '@/lib/ColorUtils.js';
@@ -117,7 +117,7 @@ export const baseLayerActions = {
         if (col < fromCol || !left.includes(col)) return null;
         const pixels = Object.assign(document.createElement('canvas'), { width: k, height: 2 * k });
         ctx2d(pixels).drawImage(shown, (col - c0) * k, 0, k, 2 * k, 0, 0, k, 2 * k);
-        return { pin: pins.get(key(col)) ?? null, index: indexes.get(key(col)), pixels };
+        return { pin: pins.get(key(col)) ?? null, index: indexes.get(key(col)), glyph: isCharPin(this.baseRecords, key(col)), pixels };
       }), ...was]);
     }
     for (const col of left) ctx.clearRect((col - c0) * k, 0, k, 2 * k);
@@ -131,8 +131,8 @@ export const baseLayerActions = {
     }
     this.baseLayer.pasteCells(own, c0, row, cols - c0, 1);
     const moved = [
-      ...landed.filter(([, col]) => pins.has(key(col))).map(([to, col]) => ({ col: to, row, char: pins.get(key(col)), ...indexes.get(key(col)) })),
-      ...back.filter(({ pin }) => pin != null).map(({ col, pin, index }) => ({ col, row, char: pin, ...index })),
+      ...landed.filter(([, col]) => pins.has(key(col))).map(([to, col]) => ({ col: to, row, char: pins.get(key(col)), glyph: isCharPin(this.baseRecords, key(col)), ...indexes.get(key(col)) })),
+      ...back.filter(({ pin }) => pin != null).map(({ col, pin, index, glyph = false }) => ({ col, row, char: pin, glyph, ...index })),
     ];
     const lands = new Set([...landed.map(([to]) => to), ...back.map(({ col }) => col)]);
     const touched = [...new Set([...left, ...lands])];

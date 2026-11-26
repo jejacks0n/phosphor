@@ -10,7 +10,7 @@
  * which Moebius's Advanced Color fork reads (and original Moebius ignores).
  *
  * PhosphorField = { version: 1, id, w, h, cells?: (Entry | null)[], paint?: PNG data URL,
- * base?: { pixels: PNG data URL, scale, colors: PNG data URL, pins: (char | null)[] } }: a Select
+ * base?: { pixels: PNG data URL, scale, colors: PNG data URL, pins: (char | null)[], chars?: (true | null)[] } }: a Select
  * block (ProjectStore's copySelection) with its canvases as PNGs. id says which copy it was, so the
  * tab that made it can paste its own block instead.
  *
@@ -114,9 +114,10 @@ function phosphorField(p) {
     out.paint = p.paint;
   }
   if (p.base !== undefined) {
-    const { pixels, scale, colors, pins } = p.base ?? {};
+    const { pixels, scale, colors, pins, chars } = p.base ?? {};
     if (!isPng(pixels) || !isPng(colors) || !size(scale) || !list(pins)) return null;
     out.base = { pixels, scale, colors, pins: pins.map((char) => (usableChar(char) ? char : null)) };
+    if (list(chars)) out.base.chars = chars.map((mark, i) => (mark === true && out.base.pins[i] === '▄') || null); // a ▄ pin that's a character
     if (p.looks !== undefined) { // how the base showed: whole cells, or none (the pixels show as ▄)
       const looks = list(p.looks) ? p.looks.map(cleanEntry) : [null];
       if (looks.every(Boolean)) out.looks = looks;
