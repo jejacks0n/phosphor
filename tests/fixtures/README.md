@@ -39,6 +39,8 @@ Inputs the tests read, and (under `reference/`) the outputs they must reproduce.
 | `projects/random-over-pins.phosphor` | a flattened drawing (every base cell pinned, most in their own background color, a typed word among them) under Layer 1 with Random, ░▒▓█ and a seed of its own (a report: Layer 1's strokes came out as half-blocks in the ANSI view: paint over an open pinned character showed as a ▄, where Color ASCII converted it with the layer's characters) | saved by the app |
 | `projects/vector-edge-over-pins.phosphor` | an opened 8×16 XBin (every base cell pinned: red box lines and blocks on the left) under a cells layer with paint and a vector layer above it on By shape (▄░▒▓█) holding a green circle (a report: the circle's soft edge over the red pins banded black and olive by turns, mixed into the pins' stored background over foreground instead of their look) | saved by the app |
 | `projects/blur-shape-issue.phosphor` | a shape merged down into Layer 1 (By shape, so most of its cells were written exactly) beside a painted circle, both blurred in the ANSI view (a report: the shape kept a hard edge and never faded into the clear) | saved by the app |
+| `matrix/landscape.svg`, `matrix/landscape.png`, `matrix/scene.ans`, `matrix/scene-ans.png` | the review matrix's inputs: a landscape picture and a 120×50 textmode scene ([tests/matrix/README.md](../matrix/README.md)) | `node tests/matrix/render-svg.mjs`, `node tests/matrix/make-ans.mjs` |
+| `matrix/setup-{foundation}.pho` | a foundation of the review matrix with its two-layer setup, which `tests/browser/matrix.test.js` takes through each scenario (the reports of 2026-11-25: paint changing when Vector 1 moved under Layer 1, letters lost and blocks unblurred by Blend, Vector 1 refused into Base, half cells converted by Keep crisp in the ASCII styles) | `node tests/matrix/build-setup.mjs {from style mode palette adjust} --fixture` |
 | `projects/base-character-lines.phosphor` | three diagonal lines drawn on the base with the Shape tool: a Full-block one of █ ░ ▒ ▓, a Half-column one of ▐ ▌ █ and a Half-block one, which is paint (a report: the first two showed in the PIXEL view as rows of dashes, each character cell its background over its foreground) | saved by the app |
 | `../../examples/*.phosphor` | real projects from earlier versions | committed by hand |
 | `clipboard/moebius-16-colors.html` | Moebius's clipboard HTML, 16 colors only (the Advanced Color fork, 2026-11-02) | copied in Moebius, read from the Mac clipboard |
@@ -56,8 +58,8 @@ The current `.phosphor` format is covered by the save-then-load tests (`tests/br
 
 ## Reference outputs (`reference/`)
 
-What a test's output must equal: export bytes (`export/`), converted cells (`conversion/`) and loaded
-projects' cells (`projects/`). They're written only by `npm run test:update`; a missing or different
+What a test's output must equal: export bytes (`export/`), converted cells (`conversion/`), loaded
+projects' cells (`projects/`) and the review matrix's pictures (`matrix/{foundation}/`, PNGs). They're written only by `npm run test:update`; a missing or different
 one fails the test. A reference is a claim that today's output is right: read the diff before you
 commit one. See [docs/testing.md](../../docs/testing.md).
 

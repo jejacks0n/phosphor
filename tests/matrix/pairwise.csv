@@ -1,0 +1,222 @@
+run,styleMode,palette,adjust,from,drawn,into,merge,scope,layerChars,baseHidden,after
+1,ANSI Random,Full,none,image,soft paint,cells: empty,into layer,whole layer,same as base,shown,nothing
+2,ANSI Random,VGA,none,image,soft paint,cells: paint,into layer,selection,its own,hidden,image filter
+3,ANSI Random,CGA,none,image,soft paint,cells: text,into layer,whole layer,same as base,hidden,adjustment
+4,ANSI Random,Limited,none,image,soft paint,cells: empty,into layer,selection,its own,shown,dither
+5,ANSI Best match,Full,none,image,soft paint,cells: paint,into layer,whole layer,its own,shown,color slider
+6,ANSI Best match,VGA,none,image,soft paint,cells: empty,into layer,selection,same as base,hidden,paint same layer
+7,ANSI Best match,CGA,none,image,soft paint,cells: text,into layer,whole layer,its own,shown,paint layer above
+8,ANSI Best match,Limited,none,image,soft paint,cells: paint,into layer,whole layer,same as base,hidden,eraser
+9,ANSI By shape,Full,none,image,soft paint,cells: empty,into layer,selection,same as base,hidden,retouch/dodge/burn
+10,ANSI By shape,VGA,none,image,soft paint,cells: text,into layer,whole layer,its own,shown,Colors only
+11,ANSI By shape,CGA,none,image,soft paint,cells: paint,into layer,selection,same as base,shown,hide base
+12,ANSI By shape,Limited,none,image,soft paint,cells: text,into layer,whole layer,same as base,shown,undo/redo
+13,Color ASCII By intensity,Full,none,image,soft paint,cells: text,into layer,whole layer,same as base,shown,save + reopen
+14,Color ASCII By intensity,VGA,none,image,soft paint,cells: empty,into layer,selection,its own,hidden,export
+15,Color ASCII By intensity,CGA,none,image,soft paint,cells: empty,into layer,whole layer,same as base,shown,bake/flatten
+16,Color ASCII By intensity,Limited,none,image,soft paint,cells: paint,into layer,whole layer,same as base,shown,grow grid
+17,Color ASCII By shape,Full,none,image,soft paint,cells: empty,into layer,whole layer,same as base,shown,image filter
+18,Color ASCII By shape,VGA,none,image,soft paint,cells: paint,into layer,selection,its own,hidden,nothing
+19,Color ASCII By shape,CGA,none,image,soft paint,cells: text,into layer,whole layer,same as base,shown,export
+20,Color ASCII By shape,Limited,none,image,soft paint,cells: empty,into layer,whole layer,its own,hidden,hide base
+21,Monochrome ASCII By brightness,Full,none,image,soft paint,cells: empty,into layer,selection,same as base,hidden,paint layer above
+22,Monochrome ASCII By brightness,VGA,none,image,soft paint,cells: paint,into layer,whole layer,its own,shown,retouch/dodge/burn
+23,Monochrome ASCII By brightness,CGA,none,image,soft paint,cells: text,into layer,whole layer,same as base,hidden,dither
+24,Monochrome ASCII By brightness,Limited,none,image,soft paint,cells: empty,into layer,selection,same as base,hidden,color slider
+25,Monochrome ASCII By shape,Full,none,image,soft paint,cells: empty,into layer,selection,same as base,hidden,Colors only
+26,Monochrome ASCII By shape,VGA,none,image,soft paint,cells: paint,into layer,whole layer,its own,shown,adjustment
+27,Monochrome ASCII By shape,CGA,none,image,soft paint,cells: text,into layer,whole layer,its own,shown,paint same layer
+28,Monochrome ASCII By shape,Limited,none,image,soft paint,cells: empty,into layer,selection,its own,hidden,save + reopen
+29,ANSI Random,Full,one,image,soft paint,cells: empty,into layer,selection,its own,shown,eraser
+30,ANSI Best match,Full,one,image,soft paint,cells: paint,into layer,whole layer,same as base,hidden,undo/redo
+31,ANSI By shape,Full,one,image,soft paint,cells: empty,into layer,selection,its own,hidden,grow grid
+32,Color ASCII By intensity,Full,one,image,soft paint,cells: paint,into layer,selection,its own,hidden,bake/flatten
+33,Color ASCII By shape,CGA,one,blank canvas,text with BG,base,Keep crisp cells,selection,its own,shown,undo/redo
+34,Monochrome ASCII By brightness,Full,one,image,soft paint,cells: empty,into layer,selection,same as base,shown,adjustment
+35,Monochrome ASCII By shape,Full,one,image,soft paint,cells: text,into layer,whole layer,same as base,shown,hide base
+36,ANSI Random,Full,none,blank canvas,soft paint,cells: paint,into layer,whole layer,same as base,hidden,paint same layer
+37,ANSI Random,Full,none,textmode: Edit artwork,soft paint,cells: paint,into layer,whole layer,same as base,shown,export
+38,ANSI Random,Full,none,textmode: Draw on top,soft paint,cells: empty,into layer,whole layer,same as base,shown,undo/redo
+39,ANSI Random,Full,none,textmode: Open as an image,soft paint,cells: paint,into layer,whole layer,same as base,shown,dither
+40,ANSI Best match,Full,none,blank canvas,soft paint,cells: text,into layer,whole layer,same as base,shown,nothing
+41,ANSI Best match,Full,none,textmode: Edit artwork,soft paint,cells: empty,into layer,selection,its own,hidden,image filter
+42,ANSI Best match,Limited,one,textmode: Draw on top,soft paint,cells: paint,into layer,selection,its own,hidden,Colors only
+43,ANSI Best match,Full,none,textmode: Open as an image,soft paint,cells: empty,into layer,selection,its own,hidden,adjustment
+44,ANSI By shape,VGA,one,blank canvas,text with BG,base,Keep crisp cells,whole layer,same as base,shown,dither
+45,ANSI By shape,Full,none,textmode: Edit artwork,soft paint,cells: text,into layer,whole layer,same as base,shown,color slider
+46,ANSI By shape,Full,none,textmode: Draw on top,soft paint,cells: text,into layer,whole layer,same as base,shown,image filter
+47,ANSI By shape,Full,none,textmode: Open as an image,soft paint,cells: text,into layer,whole layer,same as base,shown,eraser
+48,Color ASCII By intensity,Full,none,blank canvas,soft paint,cells: empty,into layer,whole layer,same as base,shown,image filter
+49,Color ASCII By intensity,Full,none,textmode: Edit artwork,soft paint,cells: paint,into layer,whole layer,same as base,shown,paint layer above
+50,Color ASCII By intensity,Full,none,textmode: Draw on top,soft paint,cells: text,into layer,whole layer,same as base,shown,retouch/dodge/burn
+51,Color ASCII By intensity,Full,none,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,nothing
+52,Color ASCII By shape,Full,none,textmode: Edit artwork,soft paint,cells: paint,into layer,whole layer,same as base,shown,save + reopen
+53,Color ASCII By shape,CGA,one,textmode: Draw on top,Colors only,base,Blend into source image,whole layer,its own,shown,color slider
+54,Color ASCII By shape,Full,none,textmode: Open as an image,soft paint,cells: text,into layer,whole layer,same as base,shown,bake/flatten
+55,Monochrome ASCII By brightness,Full,one,blank canvas,soft paint,cells: empty,into layer,whole layer,same as base,shown,save + reopen
+56,Monochrome ASCII By brightness,Full,none,textmode: Edit artwork,soft paint,cells: text,into layer,whole layer,same as base,shown,grow grid
+57,Monochrome ASCII By brightness,Full,none,textmode: Draw on top,soft paint,cells: empty,into layer,whole layer,same as base,shown,nothing
+58,Monochrome ASCII By brightness,Full,none,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,image filter
+59,Monochrome ASCII By shape,Limited,none,blank canvas,soft paint,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+60,Monochrome ASCII By shape,Full,none,textmode: Edit artwork,soft paint,cells: empty,into layer,whole layer,same as base,shown,nothing
+61,Monochrome ASCII By shape,Full,none,textmode: Draw on top,soft paint,cells: empty,into layer,whole layer,same as base,shown,dither
+62,Monochrome ASCII By shape,Full,none,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,color slider
+63,ANSI Random,Full,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,color slider
+64,ANSI Random,Full,none,image,Colors only,cells: empty,into layer,selection,same as base,hidden,paint layer above
+65,ANSI Random,Full,none,image,text with BG,cells: empty,into layer,whole layer,same as base,hidden,retouch/dodge/burn
+66,ANSI Random,Full,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,Colors only
+67,ANSI Random,Full,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,hide base
+68,ANSI Random,Full,none,image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,save + reopen
+69,ANSI Random,Full,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,bake/flatten
+70,ANSI Random,Full,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,grow grid
+71,ANSI Random,Full,none,image,vector shapes,base,Blend into source image,whole layer,same as base,shown,nothing
+72,ANSI Best match,Full,none,image,hard paint,cells: paint,into layer,selection,its own,hidden,dither
+73,ANSI Best match,CGA,none,image,Colors only,cells: paint,into layer,whole layer,same as base,shown,retouch/dodge/burn
+74,ANSI Best match,Full,none,image,text with BG,cells: paint,into layer,whole layer,same as base,shown,hide base
+75,ANSI Best match,Full,none,image,text no BG,cells: paint,into layer,selection,its own,hidden,save + reopen
+76,ANSI Best match,Full,none,image,solid chars (space █ ▀ ▄),cells: paint,into layer,selection,its own,hidden,export
+77,ANSI Best match,Full,none,image,Half-column blocks,cells: paint,into layer,selection,its own,hidden,bake/flatten
+78,ANSI Best match,Full,none,image,wide char 漢,cells: paint,into layer,selection,its own,hidden,grow grid
+79,ANSI Best match,Full,none,image,art layer chars,cells: paint,into layer,selection,its own,hidden,nothing
+80,ANSI Best match,Full,none,image,vector shapes,base,Keep crisp cells,whole layer,its own,shown,image filter
+81,ANSI By shape,Full,none,image,hard paint,cells: text,into layer,whole layer,same as base,shown,nothing
+82,ANSI By shape,Full,none,image,Colors only,cells: text,into layer,whole layer,same as base,shown,adjustment
+83,ANSI By shape,Full,none,image,text no BG,cells: text,into layer,whole layer,same as base,shown,paint same layer
+84,ANSI By shape,Full,none,image,solid chars (space █ ▀ ▄),cells: text,into layer,whole layer,same as base,shown,paint layer above
+85,ANSI By shape,Full,none,image,Half-column blocks,cells: text,into layer,whole layer,same as base,shown,export
+86,ANSI By shape,Full,none,image,wide char 漢,cells: text,into layer,whole layer,same as base,shown,save + reopen
+87,ANSI By shape,Full,none,image,art layer chars,cells: text,into layer,whole layer,same as base,shown,bake/flatten
+88,ANSI By shape,Full,none,blank canvas,vector shapes,cells: empty,into layer,whole layer,same as base,hidden,adjustment
+89,Color ASCII By intensity,Full,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,adjustment
+90,Color ASCII By intensity,Full,none,image,Colors only,cells: empty,into layer,whole layer,same as base,shown,dither
+91,Color ASCII By intensity,Full,none,image,text with BG,cells: text,into layer,whole layer,same as base,shown,color slider
+92,Color ASCII By intensity,Full,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,eraser
+93,Color ASCII By intensity,Full,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,paint same layer
+94,Color ASCII By intensity,Full,none,image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,Colors only
+95,Color ASCII By intensity,Full,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,hide base
+96,Color ASCII By intensity,Full,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,undo/redo
+97,Color ASCII By intensity,Full,none,image,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,paint same layer
+98,Color ASCII By shape,Full,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+99,Color ASCII By shape,Full,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,adjustment
+100,Color ASCII By shape,Full,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,dither
+101,Color ASCII By shape,Full,none,image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+102,Color ASCII By shape,Full,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,eraser
+103,Color ASCII By shape,Full,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,retouch/dodge/burn
+104,Color ASCII By shape,Full,none,image,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,Colors only
+105,Monochrome ASCII By brightness,Full,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,eraser
+106,Monochrome ASCII By brightness,Full,none,image,Colors only,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+107,Monochrome ASCII By brightness,CGA,one,blank canvas,text with BG,cells: empty,into layer,whole layer,same as base,shown,Colors only
+108,Monochrome ASCII By brightness,Full,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,hide base
+109,Monochrome ASCII By brightness,Full,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,undo/redo
+110,Monochrome ASCII By brightness,Full,one,blank canvas,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,retouch/dodge/burn
+111,Monochrome ASCII By brightness,Full,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,export
+112,Monochrome ASCII By brightness,Full,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,image filter
+113,Monochrome ASCII By brightness,Full,none,image,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,bake/flatten
+114,Monochrome ASCII By shape,Full,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,image filter
+115,Monochrome ASCII By shape,Full,none,image,Colors only,cells: empty,into layer,whole layer,same as base,shown,eraser
+116,Monochrome ASCII By shape,Full,none,image,text with BG,cells: empty,into layer,whole layer,same as base,shown,export
+117,Monochrome ASCII By shape,Full,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,retouch/dodge/burn
+118,Monochrome ASCII By shape,Full,none,textmode: Open as an image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,grow grid
+119,Monochrome ASCII By shape,Full,none,image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,undo/redo
+120,Monochrome ASCII By shape,Full,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,nothing
+121,Monochrome ASCII By shape,Full,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,adjustment
+122,Monochrome ASCII By shape,CGA,one,blank canvas,vector shapes,base,Blend into source image,whole layer,same as base,shown,eraser
+123,ANSI Random,Full,none,image,hard paint,base,Keep crisp cells,whole layer,same as base,shown,paint layer above
+124,ANSI Best match,Full,none,image,soft paint,base,Blend into source image,selection,same as base,shown,adjustment
+125,ANSI By shape,Full,none,image,text no BG,base,Blend into source image,whole layer,same as base,shown,export
+126,Color ASCII By intensity,Full,none,image,hard paint,base,Blend into source image,whole layer,same as base,shown,retouch/dodge/burn
+127,Monochrome ASCII By brightness,Full,none,image,text with BG,base,Blend into source image,whole layer,same as base,shown,save + reopen
+128,Monochrome ASCII By shape,Full,none,image,Colors only,base,Keep crisp cells,whole layer,same as base,shown,hide base
+129,Color ASCII By shape,Full,none,image,Half-column blocks,base,Keep crisp cells,whole layer,same as base,shown,grow grid
+130,Monochrome ASCII By shape,Full,none,image,solid chars (space █ ▀ ▄),base,Blend into source image,whole layer,same as base,shown,bake/flatten
+131,Color ASCII By intensity,VGA,none,textmode: Edit artwork,soft paint,cells: empty,into layer,whole layer,same as base,shown,eraser
+132,ANSI Random,VGA,none,textmode: Draw on top,soft paint,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+133,ANSI By shape,VGA,none,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,hide base
+134,Monochrome ASCII By shape,CGA,none,textmode: Edit artwork,soft paint,cells: empty,into layer,whole layer,same as base,shown,nothing
+135,Monochrome ASCII By brightness,CGA,none,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,save + reopen
+136,ANSI Random,Limited,none,textmode: Edit artwork,soft paint,cells: empty,into layer,whole layer,same as base,shown,adjustment
+137,Monochrome ASCII By shape,Limited,none,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+138,Monochrome ASCII By brightness,VGA,one,textmode: Edit artwork,hard paint,cells: empty,into layer,whole layer,same as base,shown,undo/redo
+139,Color ASCII By intensity,VGA,none,image,Colors only,cells: empty,into layer,whole layer,same as base,shown,save + reopen
+140,Monochrome ASCII By shape,VGA,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,color slider
+141,Monochrome ASCII By shape,VGA,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,nothing
+142,Color ASCII By shape,VGA,none,image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,nothing
+143,ANSI By shape,VGA,none,textmode: Draw on top,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,adjustment
+144,ANSI Best match,VGA,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,dither
+145,ANSI Best match,VGA,none,image,vector shapes,base,Blend into source image,whole layer,same as base,shown,grow grid
+146,Monochrome ASCII By brightness,CGA,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,grow grid
+147,Color ASCII By shape,CGA,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,image filter
+148,ANSI By shape,CGA,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,image filter
+149,Monochrome ASCII By shape,CGA,none,textmode: Draw on top,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+150,ANSI Best match,CGA,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,image filter
+151,Monochrome ASCII By brightness,CGA,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,color slider
+152,ANSI Best match,Limited,none,image,hard paint,cells: empty,into layer,whole layer,same as base,shown,export
+153,ANSI Random,Limited,none,blank canvas,Colors only,cells: empty,into layer,whole layer,same as base,shown,bake/flatten
+154,Monochrome ASCII By brightness,Limited,none,image,text with BG,cells: empty,into layer,whole layer,same as base,shown,nothing
+155,Monochrome ASCII By brightness,Limited,none,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,nothing
+156,ANSI Best match,Limited,none,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,retouch/dodge/burn
+157,Color ASCII By intensity,Limited,none,image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,image filter
+158,Color ASCII By shape,Limited,none,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,dither
+159,ANSI Random,Limited,none,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+160,Color ASCII By shape,Limited,none,image,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,color slider
+161,Color ASCII By intensity,Limited,none,image,hard paint,base,Blend into source image,whole layer,same as base,shown,Colors only
+162,ANSI By shape,VGA,none,image,hard paint,cells: text,into layer,selection,same as base,shown,bake/flatten
+163,ANSI By shape,CGA,one,textmode: Open as an image,soft paint,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+164,ANSI Best match,CGA,one,image,text no BG,cells: empty,into layer,whole layer,same as base,shown,nothing
+165,Color ASCII By intensity,VGA,one,image,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,image filter
+166,Color ASCII By intensity,CGA,one,image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+167,ANSI Best match,Full,one,image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,export
+168,Monochrome ASCII By shape,Full,one,blank canvas,hard paint,cells: empty,into layer,whole layer,same as base,shown,hide base
+169,ANSI By shape,Limited,one,blank canvas,text no BG,cells: empty,into layer,whole layer,same as base,shown,grow grid
+170,Monochrome ASCII By brightness,Full,none,blank canvas,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,color slider
+171,ANSI Best match,Full,none,blank canvas,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,color slider
+172,ANSI Best match,VGA,one,blank canvas,art layer chars,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+173,ANSI Best match,VGA,none,textmode: Edit artwork,Colors only,cells: empty,into layer,whole layer,same as base,shown,Colors only
+174,Monochrome ASCII By shape,VGA,none,textmode: Edit artwork,text with BG,cells: empty,into layer,whole layer,same as base,shown,paint same layer
+175,Color ASCII By shape,Full,one,textmode: Edit artwork,text no BG,cells: empty,into layer,whole layer,same as base,shown,dither
+176,Monochrome ASCII By brightness,CGA,one,textmode: Edit artwork,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,adjustment
+177,Monochrome ASCII By brightness,VGA,one,textmode: Edit artwork,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,hide base
+178,Monochrome ASCII By shape,Limited,none,textmode: Edit artwork,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,retouch/dodge/burn
+179,ANSI By shape,Full,one,textmode: Edit artwork,art layer chars,cells: empty,into layer,whole layer,same as base,shown,eraser
+180,ANSI Best match,Limited,none,textmode: Edit artwork,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,retouch/dodge/burn
+181,Color ASCII By shape,VGA,one,textmode: Draw on top,hard paint,cells: empty,into layer,whole layer,same as base,shown,save + reopen
+182,Monochrome ASCII By shape,VGA,one,textmode: Draw on top,text with BG,cells: empty,into layer,whole layer,same as base,shown,eraser
+183,Monochrome ASCII By shape,Full,none,textmode: Draw on top,text no BG,cells: empty,into layer,whole layer,same as base,shown,bake/flatten
+184,ANSI By shape,CGA,none,textmode: Draw on top,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,eraser
+185,Monochrome ASCII By shape,VGA,none,textmode: Draw on top,art layer chars,cells: empty,into layer,whole layer,same as base,shown,hide base
+186,Monochrome ASCII By brightness,Full,one,textmode: Draw on top,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,export
+187,Monochrome ASCII By shape,CGA,none,textmode: Open as an image,hard paint,cells: empty,into layer,whole layer,same as base,shown,retouch/dodge/burn
+188,Monochrome ASCII By brightness,CGA,one,textmode: Open as an image,Colors only,cells: empty,into layer,whole layer,same as base,shown,undo/redo
+189,ANSI Random,CGA,one,textmode: Open as an image,text with BG,cells: empty,into layer,whole layer,same as base,shown,image filter
+190,Color ASCII By intensity,Limited,one,textmode: Open as an image,text no BG,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+191,ANSI Best match,Full,one,textmode: Open as an image,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,adjustment
+192,Monochrome ASCII By brightness,Full,one,textmode: Open as an image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,Colors only
+193,ANSI Best match,CGA,one,textmode: Open as an image,art layer chars,cells: empty,into layer,whole layer,same as base,shown,Colors only
+194,Color ASCII By shape,VGA,none,textmode: Open as an image,vector shapes,base,Keep crisp cells,whole layer,same as base,shown,save + reopen
+195,ANSI Best match,Full,one,textmode: Edit artwork,Colors only,base,Blend into source image,whole layer,same as base,shown,image filter
+196,ANSI Best match,Full,none,textmode: Open as an image,Colors only,base,Blend into source image,whole layer,same as base,shown,export
+197,ANSI Random,Full,one,blank canvas,wide char 漢,base,Keep crisp cells,whole layer,same as base,shown,export
+198,ANSI Random,VGA,one,textmode: Edit artwork,art layer chars,base,Keep crisp cells,whole layer,same as base,shown,bake/flatten
+199,ANSI Random,CGA,one,textmode: Draw on top,soft paint,base,Keep crisp cells,whole layer,same as base,shown,grow grid
+200,Color ASCII By intensity,CGA,one,textmode: Draw on top,vector shapes,cells: paint,into layer,whole layer,same as base,shown,dither
+201,ANSI By shape,Full,one,blank canvas,vector shapes,cells: text,into layer,whole layer,same as base,shown,paint layer above
+202,Color ASCII By shape,CGA,one,textmode: Draw on top,text no BG,base,Keep crisp cells,whole layer,same as base,shown,nothing
+203,ANSI By shape,CGA,one,blank canvas,solid chars (space █ ▀ ▄),base,Keep crisp cells,whole layer,same as base,shown,adjustment
+204,Monochrome ASCII By shape,VGA,none,blank canvas,Half-column blocks,base,Blend into source image,whole layer,same as base,shown,dither
+205,Monochrome ASCII By shape,VGA,none,textmode: Draw on top,wide char 漢,base,Blend into source image,whole layer,same as base,shown,paint layer above
+206,ANSI Random,Limited,none,textmode: Edit artwork,art layer chars,base,Blend into source image,whole layer,same as base,shown,paint same layer
+207,ANSI By shape,Full,one,blank canvas,Colors only,cells: empty,into layer,whole layer,same as base,shown,nothing
+208,Color ASCII By intensity,VGA,none,image,Colors only,cells: empty,into layer,whole layer,same as base,shown,grow grid
+209,ANSI By shape,VGA,one,textmode: Draw on top,text with BG,cells: empty,into layer,whole layer,same as base,shown,adjustment
+210,ANSI By shape,Full,none,textmode: Open as an image,text with BG,cells: empty,into layer,whole layer,same as base,shown,paint layer above
+211,ANSI Random,Full,one,image,text with BG,cells: empty,into layer,whole layer,same as base,shown,bake/flatten
+212,ANSI Best match,VGA,one,image,text with BG,cells: empty,into layer,whole layer,same as base,shown,grow grid
+213,Monochrome ASCII By brightness,VGA,one,textmode: Open as an image,text no BG,base,Blend into source image,whole layer,same as base,shown,undo/redo
+214,Monochrome ASCII By brightness,CGA,none,textmode: Edit artwork,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,Colors only
+215,ANSI By shape,CGA,one,textmode: Edit artwork,solid chars (space █ ▀ ▄),cells: empty,into layer,whole layer,same as base,shown,save + reopen
+216,Color ASCII By shape,VGA,none,textmode: Draw on top,Half-column blocks,cells: empty,into layer,whole layer,same as base,shown,color slider
+217,Color ASCII By intensity,Limited,one,textmode: Edit artwork,Half-column blocks,base,Keep crisp cells,whole layer,same as base,shown,eraser
+218,ANSI By shape,Limited,one,textmode: Open as an image,wide char 漢,cells: empty,into layer,whole layer,same as base,shown,undo/redo
+219,Color ASCII By shape,Full,one,textmode: Edit artwork,art layer chars,cells: empty,into layer,whole layer,same as base,shown,save + reopen
+220,Color ASCII By intensity,Full,one,blank canvas,vector shapes,base,Blend into source image,whole layer,same as base,shown,hide base
+221,Monochrome ASCII By shape,VGA,one,textmode: Edit artwork,vector shapes,cells: empty,into layer,whole layer,same as base,shown,undo/redo
