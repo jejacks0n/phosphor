@@ -16,6 +16,14 @@ test('index.html links the manifest and the touch icon, and they exist', () => {
   }
 });
 
+test('index.html links the .ico and the SVG icon, and they exist', () => {
+  const html = readFileSync(new URL('index.html', root), 'utf8');
+  for (const href of ['/favicon.ico', '/favicon.svg']) {
+    assert.match(html, new RegExp(`<link rel="icon" href="${href}"`), `no <link rel="icon"> for ${href}`);
+    assert.ok(served(href), `${href} isn't in public/`);
+  }
+});
+
 test('the manifest opens standalone at the root, with icons that exist', () => {
   const manifest = JSON.parse(readFileSync(new URL('public/site.webmanifest', root), 'utf8'));
   assert.equal(manifest.display, 'standalone');
