@@ -241,6 +241,16 @@ only by `npm run test:update`; a missing or different reference fails the test.
 When you change output on purpose, run `npm run test:update`, then read `git diff
 tests/fixtures/reference` and commit only what you meant to change.
 
+A picture is a reference too: `matchImage` (`tests/support/references.js`) compares a PNG with the reference PNG pixel
+for pixel, not byte for byte, so a change in how a PNG is written isn't a change in the picture.
+`tests/browser/matrix.test.js` takes one after each step of each scenario of the review matrix
+([tests/matrix/README.md](../tests/matrix/README.md)), the ANSI view's cells as Export › PNG draws them. On a failure it names the cells that
+differ, as col,row, and writes two files under `.vitest/attachments/references/` (in CI, the browser job's artifact):
+the picture made (`*.actual.png`) and a diff (`*.diff.png`, the reference dimmed, what differs in red). `git diff`
+doesn't show a picture, so open each changed reference before you commit it. The pictures are drawn in a bitmap font
+(CP437 8×16, from the font library), whose glyphs are its bits on every machine: a font of outlines is rasterized by
+the system, which edges a glyph otherwise on macOS than on Linux, and a picture made on one would fail on the other.
+
 ## Reporting a bug with the History tab
 
 Every build keeps a list of the steps taken since the page loaded: tool picks, edits, layers, frames, files, room

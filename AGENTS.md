@@ -156,6 +156,12 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   nothing they were given, SOCIAL's), `src/dev/historyTab.js` and `src/components/dev/HistoryPanel.vue`: every step
   taken this session as a log, kept in every build, and the HISTORY tab that shows it, in development or once
   `phosphor.history(true)` is run in the console ([docs/testing.md](docs/testing.md)).
+- The review matrix ([tests/matrix/README.md](tests/matrix/README.md)): foundations (what a drawing starts from: its
+  style, Choose characters, palette, a slider) and one two-layer setup drawn on each, for walking merging, blending,
+  flattening and baking. `tests/matrix/` holds its scripts (the axes and pairwise runs, the setup's layout and builder,
+  probes), `tests/fixtures/matrix/` its inputs and built setups, and `tests/browser/matrix.test.js` takes each built
+  setup through each scenario, comparing the picture after every step with `tests/fixtures/reference/matrix/`
+  (`matchImage` in `tests/support/references.js`). A new scenario or foundation goes there.
 - `server/`: a symlink to the SOCIAL server's own repo (`/server` is gitignored), so both can be
   worked on side by side. Commit and push inside `server/`; its commits go to its repo, never this
   one. A fresh checkout makes the link with `ln -s <the server's checkout> server`.
