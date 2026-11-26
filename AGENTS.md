@@ -188,6 +188,11 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   server's, documented in `server/`.
 - **Reference files are claims.** Never run `npm run test:update` to make a failing test pass
   without reading `git diff tests/fixtures/reference` and knowing why every change is right.
+- **The review matrix's pictures are locked in.** `tests/fixtures/reference/matrix/` is how layers, merging and blending
+  should look, agreed on. Never rewrite one, or rebuild a setup in `tests/fixtures/matrix/`, without the owner's
+  explicit go-ahead for that change. When a change breaks one of these tests, stop and show the owner each
+  differing cell, stored picture beside new, with what changed and why. They decide whether it's better or worse;
+  worse means the change is wrong, not the picture.
 - **QA scripts are claims too:** a change to a feature changes the persona scripts in `docs/qa/personas/`
   that walk it, in the same work ([docs/qa/README.md](docs/qa/README.md)).
 - **A failing test blocks the deploy.** Don't skip or loosen a test to get past it; fix the cause,
