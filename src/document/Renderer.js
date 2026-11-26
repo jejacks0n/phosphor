@@ -53,8 +53,6 @@ export default class Renderer {
   hideBase = false;         // the base's eye is shut: the picture, its own pixels and its pins left out (the store's, set before a render)
   upper = [];               // the layers above the lower group, bottom to top (the store's, set before a render and a compose): { kind: 'cells', cells, paint, params } or { kind: 'vector', layer: ShapeLayer, params }
   everyLayer = [];          // what the Number palette counts over the picture (countCanvas), bottom to top, hidden layers too (the store's, set before a composite): { layer } drawn as the base is (the base with shapes over it, a vector layer alone) or { paint } (a cells layer's); none while the output is all there is
-  #scratch = null;
-  #countScratch = null; // #scratch's stand-in while countCanvas draws, so the lower group's paint stays there for the dither (#ditherUnder)
   #count = null;        // countCanvas's canvas
   #pictureCanvas = null; // the pipeline's own picture, even while the base is hidden: what the Number palette counts under every layer
   #pipelineData = null; // pipelineCanvas pixels
@@ -77,7 +75,7 @@ export default class Renderer {
   #effective = new Map(); // stored color -> displayed Color, until the next render
   #source = null;       // { key, data }: the image through the pipeline with color adjustments neutral (stored colors)
   #processed = null;    // { image, key, scale, canvas }: the processed picture in the grid at the base layer's scale (processed)
-  #baseDrawn = null;    // { layer, version, key, data, canvas }: the base layer as drawn at grid resolution (#baseGrid)
+  #baseDrawn = null;    // { layer, version, key, data }: the base layer as drawn at grid resolution (#baseGrid)
   #baseStored = null;   // the same for its stored colors (#baseGrid, stored)
   #baseParams = null;   // the last render's baseParams
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
@@ -585,30 +583,19 @@ export default class Renderer {
     if (!this.everyLayer.length || !this.outputCanvas) return this.outputCanvas;
     const { width: w, height: h } = this.outputCanvas, area = { x: 0, y: 0, w, h };
     if (this.#count?.width !== w || this.#count.height !== h) this.#count = Object.assign(document.createElement('canvas'), { width: w, height: h });
-    const ctx = ctx2d(this.#count), kept = this.#scratch;
+    const ctx = ctx2d(this.#count);
     ctx.fillStyle = 'black';
     ctx.fillRect(0, 0, w, h);
     ctx.drawImage(this.#pictureCanvas, 0, 0, w, h, 0, 0, w, h);
-    this.#scratch = this.#countScratch;
-    try {
-      for (const { layer, paint } of this.everyLayer) {
-        if (paint?.hasPaint) this.#drawLayerArea(ctx, paint, params, area);
-        if (!layer?.hasPaint) continue;
-        if (layer === this.#base) {
-          this.#drawBase(ctx, layer, params, area);
-          continue;
-        }
-        layer.sync?.();
-        const grid = this.#upperGrid(layer, params);
-        if (!grid.canvas) { // kept in step by #gridOf from here on
-          grid.canvas = Object.assign(document.createElement('canvas'), { width: w, height: h });
-          ctx2d(grid.canvas).putImageData(grid.data, 0, 0);
-        }
-        ctx.drawImage(grid.canvas, 0, 0);
+    for (const { layer, paint } of this.everyLayer) {
+      if (paint?.hasPaint) this.#drawLayerArea(ctx, paint, params, area);
+      if (!layer?.hasPaint) continue;
+      if (layer === this.#base) {
+        this.#drawBase(ctx, layer, params, area);
+        continue;
       }
-    } finally {
-      this.#countScratch = this.#scratch;
-      this.#scratch = kept;
+      layer.sync?.();
+      layOver(ctx, this.#upperGrid(layer, params).data, area);
     }
     return this.#count;
   }
@@ -640,7 +627,7 @@ export default class Renderer {
     return result;
   }
 
-  // #baseGrid's work for any layer, from what was kept of it last time (cached): { layer, key, data, canvas, version }.
+  // #baseGrid's work for any layer, from what was kept of it last time (cached): { layer, key, data, version }.
   #gridOf(layer, params, cached, stored) {
     const w = this.outputCanvas.width, h = this.outputCanvas.height, k = layer.scale;
     const palette = (params.quantize === 'cga' || params.quantize === 'vga') && !snapsLate(params) && this.palette?.length ? this.palette : null;
@@ -657,12 +644,8 @@ export default class Renderer {
     // part of it doesn't reproduce exactly: that's worked out whole.
     const changed = same && params.smoothing !== 'low' && layer.changedSince(cached.version);
     const area = changed ? gridRectOf(changed, k, w, h) : { x: 0, y: 0, w, h };
-    const result = changed ? cached : { layer, key, data: new ImageData(w, h), canvas: null };
-    if (area.w && area.h) {
-      const part = baseGridPart(layer, params, palette, area, stored);
-      putRows(result.data.data, w, part.data, area);
-      if (result.canvas) ctx2d(result.canvas).putImageData(result.data, 0, 0, area.x, area.y, area.w, area.h);
-    }
+    const result = changed ? cached : { layer, key, data: new ImageData(w, h) };
+    if (area.w && area.h) putRows(result.data.data, w, baseGridPart(layer, params, palette, area, stored).data, area);
     result.version = layer.version;
     result.asked = { params, w, h, palette };
     return result;
@@ -691,7 +674,7 @@ export default class Renderer {
       putRows(d.data.data, w, ditherPixels(rows, area.w, area.h, this.palette, { style: params.ditherStyle, strength: params.dither / 100 }), area);
       d.held = true;
       ctx.putImageData(d.data, 0, 0, area.x, area.y, area.w, area.h);
-      if (painted) ctx.drawImage(this.#scratch, area.x, area.y, area.w, area.h, area.x, area.y, area.w, area.h);
+      if (painted) layOver(ctx, this.#paintData, area);
       return false;
     }
     const again = !fits || d.held || !sameRows(d.raw, raw, w, area);
@@ -700,19 +683,14 @@ export default class Renderer {
       this.#dithered = { palette: this.palette, key, raw: raw.slice(), data: new ImageData(data, w, h) };
     }
     const moved = again && !!d && params.ditherStyle !== 'bayer';
-    const { x, y, w: aw, h: ah } = moved ? { x: 0, y: 0, w, h } : area;
-    ctx.putImageData(this.#dithered.data, 0, 0, x, y, aw, ah);
-    if (painted) ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
+    const shown = moved ? { x: 0, y: 0, w, h } : area;
+    ctx.putImageData(this.#dithered.data, 0, 0, shown.x, shown.y, shown.w, shown.h);
+    if (painted) layOver(ctx, this.#paintData, shown);
     return moved;
   }
 
-  #drawBase(ctx, layer, params, { x, y, w, h }) {
-    const drawn = this.#baseGrid(layer, params);
-    if (!drawn.canvas) {
-      drawn.canvas = Object.assign(document.createElement('canvas'), { width: drawn.data.width, height: drawn.data.height });
-      ctx2d(drawn.canvas).putImageData(drawn.data, 0, 0);
-    }
-    ctx.drawImage(drawn.canvas, x, y, w, h, x, y, w, h);
+  #drawBase(ctx, layer, params, area) {
+    layOver(ctx, this.#baseGrid(layer, params).data, area);
   }
 
   // The base layer's own color at grid pixel (x, y) as stored (before adjustments; see #baseGrid),
@@ -750,27 +728,19 @@ export default class Renderer {
     return this.#paintData;
   }
 
-  // #drawLayer's drawing of area alone: the transformed pixels of that rect (#paintPart), drawn onto ctx.
+  // #drawLayer's drawing of area alone: the transformed pixels of that rect (#paintPart), laid over ctx.
   #drawLayerArea(ctx, layer, params, area) {
-    const pixels = this.#paintPart(layer, params, area), { x, y, w: aw, h: ah } = area;
-    ctx.drawImage(this.#scratch, x, y, aw, ah, x, y, aw, ah);
+    const pixels = this.#paintPart(layer, params, area);
+    layOver(ctx, pixels, area, area.x, area.y);
     return pixels;
   }
 
   // A layer's pixels over area at grid resolution, each grid pixel the average of its block (PaintLayer.average: what a
   // grid pixel of paint is, so paint finer than the grid shows as a vector layer's shapes do), with the color transforms
-  // applied: an ImageData of the rect, which the scratch canvas holds after, for drawing.
+  // applied: an ImageData of the rect.
   #paintPart(layer, params, area) {
-    const w = this.outputCanvas.width, h = this.outputCanvas.height;
-    const { x, y, w: aw, h: ah } = area;
-    if (!this.#scratch) this.#scratch = document.createElement('canvas');
-    if (this.#scratch.width !== w || this.#scratch.height !== h) {
-      this.#scratch.width = w;
-      this.#scratch.height = h;
-    }
-    const pixels = new ImageData(aw, ah);
-    baseSamplesOver(pixels.data, aw, layer, params, area, 1, true); // the grid's part (a layer can reach past it), transformed, averaged
-    ctx2d(this.#scratch).putImageData(pixels, x, y);
+    const pixels = new ImageData(area.w, area.h);
+    baseSamplesOver(pixels.data, area.w, layer, params, area, 1, true); // the grid's part (a layer can reach past it), transformed, averaged
     return pixels;
   }
 
@@ -1481,11 +1451,7 @@ export default class Renderer {
       if (!u.layer?.drawsShapes) continue;
       u.layer.sync();
       const grid = this.#upperGrid(u.layer, u.params);
-      if (!grid.canvas) { // kept in step by #gridOf from here on, as #drawBase keeps the base's
-        grid.canvas = Object.assign(document.createElement('canvas'), { width, height });
-        ctx2d(grid.canvas).putImageData(grid.data, 0, 0);
-      }
-      ctx.drawImage(grid.canvas, x, y, w, h, x, y, w, h);
+      layOver(ctx, grid.data, area);
       if (covered) for (let i = 0; i < covered.length; i++) covered[i] ||= grid.data.data[4 * ((y + Math.floor(i / w)) * width + x + (i % w)) + 3];
     }
     if (covered?.some(Boolean)) {
@@ -1821,6 +1787,25 @@ function snapBytes(data, palette) {
     data[o + 3] ||= 255; // as Canvas.writePixels writes a see-through pixel
   }
   return indexes;
+}
+
+// image (an ImageData, its own alpha, not premultiplied, its (0, 0) at the canvas's (ox, oy)) laid over ctx's opaque pixels
+// in area, each as mix() lays paint over a cell's halves (#paintOver, #pictureAt). Not drawImage: a canvas holds a
+// see-through pixel premultiplied and blends it in its own rounding, which differs by CPU, so a color halfway between two
+// palette colors snapped one way on a Mac and the other on Linux (docs/model.md R7).
+function layOver(ctx, image, { x, y, w, h }, ox = 0, oy = 0) {
+  const under = ctx.getImageData(x, y, w, h), d = under.data, s = image.data;
+  for (let row = 0, o = 0; row < h; row++) {
+    for (let i = ((y - oy + row) * image.width + x - ox) * 4, end = i + w * 4; i < end; i += 4, o += 4) {
+      const a = s[i + 3];
+      if (!a) continue;
+      const t = a / 255;
+      d[o] = Math.round(d[o] + (s[i] - d[o]) * t);
+      d[o + 1] = Math.round(d[o + 1] + (s[i + 1] - d[o + 1]) * t);
+      d[o + 2] = Math.round(d[o + 2] + (s[i + 2] - d[o + 2]) * t);
+    }
+  }
+  ctx.putImageData(under, x, y);
 }
 
 // A rect ({ x, y, w, h }) of rows (RGBA bytes, rect.w wide) put into a width-wide image's bytes.
