@@ -69,6 +69,8 @@ cells, and one circle over the end of stroke 7, the one place the two layers ove
   `picture(project, foundation, step)` after each step, and a plain assertion wherever a step should change nothing.
   Its references are written and looked at the same way.
 - **Rebuilding a setup that's already there** changes every picture of that foundation: only when the setup itself
-  should change, with the new pictures looked at.
+  should change.
+- **A stored picture is locked in.** None is rewritten without the owner's go-ahead. A change that breaks one is
+  shown to them first, stored picture beside new, to judge better or worse (AGENTS.md, Rules).
 
 The pictures are drawn in CP437 8×16, a bitmap font, so they're the same on macOS and on Linux (CI).
