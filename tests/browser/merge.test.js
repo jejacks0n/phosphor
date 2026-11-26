@@ -720,6 +720,53 @@ describe('down between layers', () => {
     expect(ids(project)).toEqual(['base', 'edit', lower, upper]);
   });
 
+  // Into a layer whose character settings aren't the merged layer's, its paint takes the ones under it: a cell it covers
+  // whole keeps its look, frozen, but a soft edge, and whatever's painted there later, converts as the lower layer does.
+  // So Merge down says so and asks first; with the same settings, or nothing of its own but typed cells, it merges at once.
+  test('Merge down into a layer with other character settings says the characters can change, and asks first', async () => {
+    const { project, workspace, pinia } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+    await settle(project);
+    const paint = (id) => {
+      workspace.pickLayer(id);
+      project.paintStroke([{ x: 3, y: 6, alpha: 1 }, { x: 6, y: 6, alpha: 1 }], '#ff3300');
+      project.commitEdit();
+    };
+    const same = project.addLayer('cells', 'edit');
+    paint(same);
+    const own = project.addLayer('cells', same);
+    project.setLayerChars(own, { chars: 'xyz' });
+    project.commitLayerChars();
+    paint(own);
+    await settle(project);
+    const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(pinia).use(i18n);
+    document.body.append(host);
+    toolbar.mount(host);
+    const press = async () => { [...host.querySelectorAll('button')].find((b) => b.title.startsWith('Merge Layer')).click(); await settle(project); };
+    const button = (text) => [...document.querySelectorAll('button')].find((b) => b.textContent.includes(text));
+    try {
+      await press(); // Layer 3, its own characters, onto Layer 2
+      expect(document.body.textContent).toContain('Layer 2 uses different character settings, so some characters in Layer 3 may change.');
+      button('Cancel').click();
+      await settle(project);
+      expect(ids(project)).toEqual(['base', 'edit', same, own]);
+      await press();
+      button('Merge into Layer 2').click();
+      await vi.waitFor(() => expect(ids(project)).toEqual(['base', 'edit', same]));
+      project.undo();
+      await settle(project);
+      project.setLayerChars(own, { chars: project.baseChars.chars });
+      project.commitLayerChars();
+      await settle(project);
+      await press(); // the same settings: at once
+      await vi.waitFor(() => expect(ids(project)).toEqual(['base', 'edit', same]));
+      expect(document.body.textContent).not.toContain('may change');
+    } finally {
+      toolbar.unmount();
+      host.remove();
+    }
+  });
+
   test('Merge down is off onto a vector layer', async () => {
     const { project } = await createTestApp();
     await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });

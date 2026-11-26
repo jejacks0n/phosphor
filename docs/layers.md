@@ -652,6 +652,14 @@ the canvas changes. Undo brings it back, selected if it was.
   stack, as it does alone. With others in the room, the dialog warns that merging down cannot be undone in shared
   rooms. **Make art layer** needs a vector layer directly above the selected layer; without one it's off and says "Add a
   vector layer above {name} first."
+- **Into a Layer With Other Character Settings**: When the layer has paint or shapes, and the layer under it isn't
+  the base and converts with other character settings (one of them has its own:
+  [Each Layer's Own Character Settings](characters.md#each-layers-own-character-settings)), Merge down asks first:
+  "{below} uses different character settings, so some characters in {name} may change." The cells its paint covers
+  whole keep their look, as below, but its soft edges, and anything painted there later, take the lower layer's
+  settings. **Merge into {below}** merges; Cancel leaves both as they were. A layer with only typed cells merges without
+  asking, since typed characters stay as they are. Into the base, the question that already comes up says it under
+  **You give up**.
 - **A Drawing Layer Into a Drawing Layer**: Each of its cells is written on the layer under it as it shows, over that
   layer's paint, and its paint is drawn over that layer's paint. It stays paint, so Blur, Dodge, Burn and the Eraser
   work on it as on any. A cell where the paint would show differently after the merge (a palette or the character

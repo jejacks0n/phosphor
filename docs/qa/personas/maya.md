@@ -379,7 +379,7 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
 ### 26. Merge my two paint layers
 - Does: picks Layer 2, which sits directly above Layer 1, and presses Merge down (top toolbar), into Layer 1. Then,
   with Layer 1 picked, strokes Blur along the edge of the paint that came down.
-- Expects: no question: its cells and paint are written onto the layer under it, it leaves the stack, and nothing on
+- Expects: no question (the two layers' character settings are the same): its cells and paint are written onto the layer under it, it leaves the stack, and nothing on
   the canvas changes, but a soft edge's cells, which stay paint, can come out a character or a color step different;
   one undo brings it back, picked; redo merges it again. The paint stays paint, so Blur fades its
   edge into the clear beside it, as on any paint.
@@ -400,6 +400,9 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
   `scope`: in Color ASCII, brush white over a shape and again on a layer above it, then go to the PIXEL view with
   the Overlay at 100%: each stroke blends with what's under it, as with the Overlay at 0%; a typed letter still shows
   as its cell.
+  `scope`: give Layer 2 a character set of its own (its Characters section), paint on it, and Merge down: a
+  question says Layer 1 uses different character settings, so some characters in Layer 2 may change; Cancel merges nothing,
+  Merge into Layer 1 merges; with the same settings again, it merges without asking.
 - Rated: yes, wants Cmd+E
 
 ### 27. Merge my paint into the picture, crisp

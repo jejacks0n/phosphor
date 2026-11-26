@@ -10,7 +10,9 @@ import { t } from '@/i18n';
 // Merge down of a layer into the one under it (project.mergeDown), from the toolbar's buttons, LAYERS' ⋯ menu and the
 // command list: why it's off, and doing it, under the busy note (seconds on a large drawing). A cells layer going into
 // the bottom asks how first (exactly, or into the image), and so does a whole vector layer with shapes that can merge
-// (not in a room, where it's pressed): asking holds { id, rect } while EditToolbar's dialog is open.
+// (not in a room, where it's pressed): asking holds { id, rect } while EditToolbar's dialog is open. Into a layer whose
+// character settings aren't its own, a layer with paint or shapes asks too (asking's chars: true), since its paint takes
+// the lower layer's: a soft edge, and what's painted there later, converts in them.
 // Plain store reads, so a command runs it too.
 export const asking = ref(null);
 
@@ -37,8 +39,19 @@ export function useMergeDown() {
   const hasAny = (id) => (project.layerById(id)?.kind === 'vector'
     ? [...project.shapes.values()].some((shape) => (shape.layer ?? 'vector') === id && !shape.guide)
     : project.cellsOf(id).size > 0 || !!project.paintOf(id)?.hasPaint);
+  // Whether the layer's paint or shapes would convert otherwise in the layer under it.
+  const otherChars = (id) => {
+    const layer = project.layerById(id), under = below(id);
+    return !!layer && !!under && (layer.kind === 'vector' ? hasAny(id) : !!project.paintOf(id)?.hasPaint)
+      && !sameChars(project.charsOf(id), project.charsOf(under.id));
+  };
   function mergeDown(id, rect = null) {
     const kind = project.layerById(id)?.kind, shapes = kind === 'vector' && !rect && !project._sharing && hasAny(id) && offWhy(id) === null;
+    if (below(id)?.id !== 'base' && offWhy(id) === null && otherChars(id)) {
+      if (refusedHidden(project, [id, below(id).id])) return false;
+      asking.value = { id, rect, chars: true };
+      return false;
+    }
     if (below(id)?.id !== 'base' || (kind !== 'cells' && !shapes)) return mergeBusy(t, () => project.mergeDown(id, rect));
     if (refusedHidden(project, [id, 'base'])) return false; // what both merges refuse: at the press, not after the question
     asking.value = { id, rect };
