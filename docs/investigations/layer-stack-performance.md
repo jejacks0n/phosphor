@@ -5,7 +5,7 @@ above a lower group) get slow or heavy, and what would it take to fix each place
 
 Written 2026-11-09 against `jejacks0n/ux-revisions` at `b63d7c30` (phase 2's tasks 1 to 5, from `08a1a84b`).
 Investigation only: no app code or test changed. The numbers come from two scratch benchmarks kept outside the repo
-(see [How this was measured](#how-this-was-measured)); the one in `bench/` was not changed.
+(see [How this was measured](#how-this-was-measured)); the one in `tests/performance/` was not changed.
 
 **Measured** means a number from the scratch benchmark on this machine. **Estimate** means judgment from the code,
 usually by multiplying a measured per-cell cost. Sizes are *cols x lines*; `rows` in the code counts pixel rows, two
@@ -130,7 +130,7 @@ linear. A layer with one dot of paint costs the same as one painted all over.
 - Task 10's `countCanvas` should draw from the same per-layer grids, not re-read canvases.
 
 **Done when** a whole-grid compose at the limit with 16 upper layers is under 500 ms (today 23.8 s), and under 60 ms at
-45k (today 2.1 s; `composeAll` alone is about 20 ms there). Add a `bench/` row: `composeUpperFullMs` at 1, 4 and 16
+45k (today 2.1 s; `composeAll` alone is about 20 ms there). Add a `tests/performance/` row: `composeUpperFullMs` at 1, 4 and 16
 upper layers, each with a small patch of paint.
 
 **Done.** `composeUpper` with `indexes === null` now visits only the cells some upper layer touches (`#touched`: a cells
@@ -184,7 +184,7 @@ Hiding the only upper layer is cheap (no upper left to compose) and shows the pi
 
 **Done when** hide, show and move of an upper layer at the limit with 16 layers take under 100 ms, and a slider step
 is within 50 ms of its single-layer cost. Add `hideTopMs`, `moveLayerMs` and `sliderMs` at 1, 4 and 16 upper layers to
-`bench/`.
+`tests/performance/`.
 
 **Done.** `setLayerHidden`, `moveLayer` and `addLayer` (with its undo and redo) go through `redrawn` in `layers.js`:
 when the lower group's membership and the base's eye are as they were, and the palette isn't the Number palette (it
@@ -248,7 +248,7 @@ per builder (and a builder is made again on every `buildKey` change).
   map keyed by `keyLayer`, never a frame swap per frame.
 
 **Done when** building a 24-frame movie at 40k cells with four upper layers (small patches) is under 1 s and a frame
-swap under 60 ms; a rename keeps built frames. Extend the `animations` case in `bench/` with 1 and 4 upper layers.
+swap under 60 ms; a rename keeps built frames. Extend the `animations` case in `tests/performance/` with 1 and 4 upper layers.
 
 **Done in part.** `buildKey` keys the layers on id, kind, eye and own character settings, so a rename keeps every built
 frame (measured: it did invalidate, now it doesn't). Area 1's fix took the dominant term out of `build` and `arrive`:
@@ -315,7 +315,7 @@ it (one set of layers), but each `FrameBuilder` adds a full set for the upper la
 
 **Done when** picking a layer allocates nothing, a document with 16 unpainted layers holds one paint canvas, and a
 budget test asserts total paint canvas bytes stay under a stated cap at the limit with `MOST_LAYERS` layers. Add a
-`canvasMB` column to the `bench/` rows.
+`canvasMB` column to the `tests/performance/` rows.
 
 **Not done.** Only picked layers and painted frames make canvases, as before. Note for whoever takes it: Chromium (and
 WebKit) don't commit a canvas's backing store until it's first drawn to or read, so an unpainted layer's `PaintLayer`
@@ -475,7 +475,7 @@ redraws are per vector layer per grid change.
   reaches: read it from the alone `ShapeLayer`'s `#chars`/`#upperGrid` rather than redrawing shapes.
 
 **Done when** a shape drag step on a vector layer above 16 cells layers is within 2x its cost above one, at both
-sizes. Add a `shapeDragMs` row at 1 and 16 under-layers to `bench/`.
+sizes. Add a `shapeDragMs` row at 1 and 16 under-layers to `tests/performance/`.
 
 **Not done.** A shape drag step above 1 / 4 / 16 cells layers is 1.4 / 2.5 / 4.3 ms at the limit (was 1.3 / 2 / 3.4):
 the rect's cells each walk every layer in the indexed compose. Under the 2x target it isn't; it's also under 5 ms. The
@@ -563,7 +563,7 @@ below x 2 x 1.8 µs ≈ 72 ms per layer below).
 - Batch the watcher rounds: `withLayer`'s two swaps could set `editCells` once when they net to the same map.
 
 **Done when** a selection move over 16 visible layers at the limit costs under 20 ms per pointer move, measured by
-a `bench/` row once Task 8 lands.
+a `tests/performance/` row once Task 8 lands.
 
 **Not done.** Nothing measured here changed.
 
@@ -656,10 +656,10 @@ Two scratch Vitest browser benchmarks, kept outside the repo and not part of `np
   `shownCanvas` alone, Best match and By shape through `#upperChar`, `editScaleFor`'s canvases by grid, and an upper
   vector layer at the limit. Output: `.../perf/run2.log` (23 s).
 - `/private/tmp/claude-501/-Users-jejacks0n-orca-workspaces-phosphor-ux-revisions/d7208473-7465-4848-add9-3c74a50bd979/scratchpad/perf/vitest.config.mjs`:
-  `bench/vitest.config.js` with the include pointed at the scratchpad (and a `node_modules` symlink into the repo's).
+  `tests/performance/vitest.config.js` with the include pointed at the scratchpad (and a `node_modules` symlink into the repo's).
   Run from the repo: `npx vitest run --config <that file> --silent=false`.
 
-Both drive the real stores through `tests/support/app.js`'s `createTestApp` with no UI mounted, the way `bench/`
+Both drive the real stores through `tests/support/app.js`'s `createTestApp` with no UI mounted, the way `tests/performance/`
 does; the documents are a blank black picture (`replaceImage` of a 400 x 400 canvas), so `editScaleFor` gave scale
 2 at 300 x 150 and 1 at the limit. Times are `performance.now()` around the call, averaged over 10 moves or 2 to 5
 repeats; the rows with `settled` include two or more animation frames of waiting. Read them as magnitudes: runs vary

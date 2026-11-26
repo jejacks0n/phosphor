@@ -453,7 +453,7 @@ reading one.
   that asks no cell), and `tests/browser/look-read.test.js › R11: …` (spaces of two colors filled whole in both views,
   as in 022.xb; a `░`, a letter and a `█` filled whole with no leak; a `▀` by its top halves; the base's own look with
   All layers off; a fill on the base stopped by characters typed on a layer above with the Overlay at 0, and running
-  under them with All layers off; the Wand selecting what the fill fills). Timed by `bench/pixel-view.bench.js`.
+  under them with All layers off; the Wand selecting what the fill fills). Timed by `tests/performance/pixel-view.bench.js`.
   A pin erased black: `tests/browser/eraser.test.js › R11: a pin left partly colored keeps its character …` and
   `› R11: the Soft Eraser on the base …`, with `› R11: on the base a laid line's pin …` (the PIXEL Eraser, and the
   Soft Eraser in the ANSI view).

@@ -4,7 +4,7 @@ Question: what would it take to support documents of 80 x 10,000+ lines (maybe 1
 to let several people work in one file, each caring only about the area they're in?
 
 Written 2026-10-25 against `main` at `e6852bd`. Investigation only: no app code changed. The one
-thing added is a benchmark, `bench/` (see [Measuring](#how-this-was-measured)).
+thing added is a benchmark, `tests/performance/` (see [Measuring](#how-this-was-measured)).
 
 **Since then (PR #19, `13a1b8c`):** the grid's limit became 300 columns, 1,000 lines and 120,000
 cells (`src/lib/Cells.js:23`). The canvas view now lowers its resolution to keep each side within
@@ -20,7 +20,7 @@ more than the GPU draws (a long picture used to come out black). A blank canvas'
 within that too. Undo keeps steps up to 256 MB of pixels.
 
 **Then (issue #231):** whole-drawing edits at the limit (100 x 5,000, 500,000 cells), measured with
-`bench/fills.bench.js`. A fill of a whole layer went from about 1.3 s to 0.45 to 0.6 s in PIXEL and
+`tests/performance/fills.bench.js`. A fill of a whole layer went from about 1.3 s to 0.45 to 0.6 s in PIXEL and
 from 2.9 to 0.9 s with Cells; Merge down from 11 to 16 s to about 3 s; Into the image from 5.6 to 1.7 s.
 Edits over half a second say so ("Filling…", "Merging…"). What's left in them is the cells
 themselves: half a million entries in Maps of string keys (the edit cells, the base's pins) and an
@@ -71,13 +71,13 @@ Sizes are given as *cols x lines*; `rows` in the code counts pixel rows, two per
 
 ## How this was measured
 
-`bench/large-documents.bench.js` drives the real stores in Chromium, the way the browser test
-layer does (no UI mounted). `bench/vitest.config.js` keeps it out of `npm test`; it asserts
+`tests/performance/large-documents.bench.js` drives the real stores in Chromium, the way the browser test
+layer does (no UI mounted). `tests/performance/vitest.config.js` keeps it out of `npm test`; it asserts
 nothing and prints one JSON line per size.
 
 ```bash
-npx vitest run --config bench/vitest.config.js --silent=false   # software WebGL, as the tests use
-BENCH_GPU=1 npx vitest run --config bench/vitest.config.js --silent=false   # Metal on the GPU
+npm run test:performance   # software WebGL, as the tests use
+BENCH_GPU=1 npm run test:performance   # Metal on the GPU
 BENCH_HUGE=1 ...                                                 # adds 1000 x 10,000 (crashes the tab)
 ```
 
@@ -359,6 +359,6 @@ those are the only reasons for stage 3. If collaboration is wanted, plan stages 
 
 ## Kept from this investigation
 
-- `bench/large-documents.bench.js` and `bench/vitest.config.js`: the benchmark above, outside
+- `tests/performance/large-documents.bench.js` and `tests/performance/vitest.config.js`: the benchmark above, outside
   `npm test` (lint covers it). Rerun it after each stage to see the numbers move.
 - No app code, tests or reference files were changed.

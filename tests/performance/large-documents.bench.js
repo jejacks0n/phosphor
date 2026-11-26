@@ -2,9 +2,9 @@
 // How the editor scales with the document: timings and memory for whole-document work (render,
 // recomposite, paint, typing, fill, undo, merge, save, load, export) and the canvas and DOM views,
 // from today's largest grid to 80 x 10,000 lines and 1000 x 1000. Asserts nothing: it prints a table.
-// Run: npx vitest run --config bench/vitest.config.js --silent=false (docs/investigations/viewport-rendering.md).
+// Run: npm run test:performance (docs/investigations/viewport-rendering.md).
 import { test } from 'vitest';
-import { createTestApp } from '../tests/support/app.js';
+import { createTestApp } from '../support/app.js';
 import { loadImage, writeProject, readProject } from '@/document/projectIO';
 import { baseParams } from '@/store/settings';
 import { ctx2d } from '@/lib/Canvas';

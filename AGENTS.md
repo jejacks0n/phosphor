@@ -16,6 +16,7 @@ npm run build
 npm run desktop                   # the desktop app (Electron), built first
 npm run build:desktop             # the desktop build alone, in dist-desktop/ (packages: npx electron-builder)
 npm run test:e2e:desktop          # the desktop app's end-to-end tests, not part of npm test
+npm run test:performance          # the benchmarks in tests/performance: minutes, print tables, assert nothing, not part of npm test
 ```
 
 Addresses are path addresses (`/social`) on the web, so the host serves `index.html` for every path (Cloudflare

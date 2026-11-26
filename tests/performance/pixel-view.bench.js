@@ -2,11 +2,11 @@
 // as they look (docs/model.md R11). Its first draw (the switch to the tab), a redraw while scrolling and the redraw after
 // one cell is written, with the looks and without them (as it was before them), with All cells on (as a file used to
 // open, to hide the stripes) and off (as it opens now). Asserts nothing: it prints a table.
-// Run: npx vitest run --config bench/vitest.config.js --silent=false pixel-view
+// Run: npm run test:performance -- pixel-view
 import { test } from 'vitest';
 import { createApp, h } from 'vue';
 import { getActivePinia } from 'pinia';
-import { createTestApp } from '../tests/support/app.js';
+import { createTestApp } from '../support/app.js';
 import InputEditor from '@/components/InputEditor.vue';
 
 const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));

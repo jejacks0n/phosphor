@@ -1,12 +1,12 @@
 // Where a Paint Bucket fill's time goes at the largest grid (500k cells, a million grid pixels), part by part, the
 // fastest of several runs, on a picture and on an opened ANSI file of that size (issue #231). Asserts nothing: it prints
-// a table. Run: npx vitest run --config bench/vitest.config.js bench/fills.bench.js --silent=false
+// a table. Run: npm run test:performance -- fills
 // VITE_BENCH_ONLY=<part of a scenario's name>|... runs only those.
 // VITE_BENCH_PROFILE=<part of a scenario's name> adds a CPU profile of that scenario's first fill: its functions by
 // their own time and by their total.
 import { test } from 'vitest';
 import { cdp } from 'vitest/browser';
-import { createTestApp } from '../tests/support/app.js';
+import { createTestApp } from '../support/app.js';
 import { loadImage } from '@/document/projectIO';
 import { ctx2d } from '@/lib/Canvas';
 import { AnsiFile } from '@/lib/AnsiFile';
