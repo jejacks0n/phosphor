@@ -183,6 +183,36 @@ test('only one channel called room is taken, and only by the watcher; any other 
   expect(opens.filter((c) => c === offered)).toEqual([]);
 });
 
+// Chromium can call a channel the other side opened open before it is, then put it back to connecting for good with no
+// event (its observer, attached a task later, posts a state it read before the real open landed). Only such a channel is
+// open when it's taken. One that stays connecting asks the host for a new connection, once; one that comes back open
+// (its open event) asks nothing.
+test('a channel that came open and then stays connecting asks the host for a new connection, once', async () => {
+  const signals = [];
+  const take = () => {
+    const { made } = recordingConnection();
+    const opens = [];
+    open.push(openPeer({ initiator: false, config, sendSignal: (data) => signals.push(data), onOpen: (c) => opens.push(c), onClose() {} }));
+    const channel = fakeChannel('room', 'open');
+    made.at(-1).ondatachannel({ channel });
+    expect(opens).toEqual([channel]);
+    return channel;
+  };
+  const stuck = take();
+  stuck.readyState = 'connecting';   // the stale state, and no event after it
+  await wait(2500);
+  expect(signals).toEqual([{ again: true }]);
+
+  signals.length = 0;
+  const back = take();
+  back.readyState = 'connecting';
+  await wait(300);
+  back.readyState = 'open';   // the real open came after: its event
+  back.onopen?.();
+  await wait(2500);
+  expect(signals).toEqual([]);
+});
+
 test('a sendSignal that rejects is no unhandled rejection', async () => {
   recordingConnection();
   const seen = [];

@@ -26,6 +26,7 @@ export const RETURN_WITHIN_MS = 60_000;      // after a reload, those who were h
 const HAND_OVER_WITHIN_MS = 15_000;          // for the artist chosen to have the ledger and say so
 const SERVER_ANSWERS_WITHIN_MS = 5000;       // for new-host after hand-over: the server says nothing if it won't
 const GATHER_WITHIN_MS = 60_000;             // however it's going, long enough for a real catch-up's transfer
+const AGAIN_EVERY_MS = 10_000;               // a watcher's asks for a new connection, at most
 const CATCH_UP_QUIET_MS = 10_000;            // an artist asked to catch-up, going this long without a word, isn't going to
 const MOST_CATCH_UP_CHUNKS = MOST_PROJECT_BYTES / CHUNK_BYTES;
 
@@ -78,6 +79,7 @@ export class Host {
     this.here = new Map();   // sub -> their open connections: one person in two tabs comes and goes once
     this.silences = new Map();   // sub -> until (epoch ms), from 'silenced' since a pass was made (kept through a reconnect)
     this.removed = new Set();   // peers the host removed: not met again, and told to the server until it stops listing them
+    this.metAgain = new Map();  // peer -> when it last asked for a new connection (signalFrom)
     this.muted = new Set();   // subs whose messages go to no one but them (and the host); they aren't told
     this.only = new Map();   // id -> sub: a message sent while they were muted, shown to them alone
     this.log = new ChatLog();
@@ -212,8 +214,14 @@ export class Host {
     if (this.drop(peer)) this.changed();
   }
 
+  // A watcher's signal, or { again: true }: its channel came open and then went back to connecting for good (peer.js),
+  // so it's met with a new connection, the server not told it left, at most once AGAIN_EVERY_MS.
   signalFrom(from, data) {
-    this.watchers.get(from)?.conn?.signal(data);
+    const w = this.watchers.get(from);
+    if (!data?.again) return void w?.conn?.signal(data);
+    if (!w?.claims || Date.now() - (this.metAgain.get(from) ?? -Infinity) < AGAIN_EVERY_MS) return;
+    this.metAgain.set(from, Date.now());
+    this.peer(from, w.pass);
   }
 
   setRoom({ name, welcome }) {
