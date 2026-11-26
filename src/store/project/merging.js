@@ -11,10 +11,10 @@ import { EMPTY_BASE, withPins, withoutPins } from '@/document/baseRecords.js';
 import { cellState } from '@/document/frames.js';
 import { makeArt, isArt } from '@/document/artLayers.js';
 import { finerStops, isGradient, isShape, shapeBounds, shapeFromStranger, stacked, withShape } from '@/document/shapes.js';
-import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, ownEntry, shownEntry } from '@/document/editCells.js';
+import { cellKey, parseKey, bakeEditCells, bakeEntry, mergeEntry, mergeKind, isPaintBlock, isFrozen, isLaid, ownEntry, shownEntry } from '@/document/editCells.js';
 import { loadImage } from '@/document/projectIO.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
-import { cellIndex, charRowsOf, halfColors, isWideChar, mix } from '@/lib/Cells.js';
+import { cellIndex, charRowsOf, halfColors, isWideChar, mix, opensToPaint } from '@/lib/Cells.js';
 import { drawGlyphCell } from '@/lib/glyphPicture.js';
 import { coverageOf, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { rgb2hex, hex2rgb, sharedIndex } from '@/lib/ColorUtils.js';
@@ -607,12 +607,12 @@ export const mergingActions = {
   // or all of it, directly on the bottom, becomes part of the image,
   // so every effect applies to it, live, like the photo. The image becomes the picture at its
   // working size (m processed pixels per grid pixel) with nothing applied, the layer's paint laid
-  // over it at its own detail: the converter's own characters keep the picture's pixels under the
-  // paint (where the base's own pixels or an entry's colors show, those, as m x m blocks) and come
-  // back from the picture; in ANSI solid characters go in as they show, pinned to ▄; any other
-  // character is drawn in as its glyph (in the drawing's font), unpinned, and picked again; a frozen
-  // cell, a wide character and anything outside the picture's area (the letterbox) merge exactly
-  // (mergeKind, docs/model.md R3). The sliders aren't touched. One undo step, and the layer leaves
+  // over it at its own detail: the converter's own characters (a frozen cell's among them: its paint) keep the
+  // picture's pixels under the paint (where the base's own pixels or an entry's colors show, those, as m x m blocks) and
+  // come back from the picture; a character of someone's own (typed, opened, pasted, a line, a pin), a wide character and
+  // anything outside the picture's area (the letterbox) merge exactly, pinned, so a letter stays a letter; a laid block
+  // or a paint block goes in unpinned and is picked again: in ANSI a solid one as its two halves, any other drawn in as
+  // its glyph (in the drawing's font) (mergeKind, docs/model.md R3). The sliders aren't touched. One undo step, and the layer leaves
   // the stack as Merge down's does.
   async mergeIntoPicture(rect = null, id = this.editId) {
     const below = this.layers[this.layers.findIndex((layer) => layer.id === id) - 1];
@@ -710,18 +710,24 @@ export const mergingActions = {
       const ctx = ctx2d(canvas), level = levelCells(this, id);
       const exactPixels = [], pictureCells = [], pins = [], unpins = [];
       const reads = readsOf(this); // the cells read, none written, till the picture's made
+      const opensUnder = ({ char, fg, bg }) => opensToPaint({ char, fg: { hex: fg.toLowerCase() }, bg: { hex: bg.toLowerCase() } }, reads.renderStyle);
       for (const [key, { col, row }] of covered) {
-        const entry = reads.editCellAt(col, row);
+        // A frozen cell is paint (R1): its pin goes and its paint goes into the picture, where Blur reaches it, as the
+        // converter's own does. A paint block outside ANSI is its paint too: the converter's, into the picture.
+        const held = reads.editCellAt(col, row), entry = isFrozen(held) ? undefined : held;
         const pin = reads.baseRecords.pins.get(key);
-        // A frozen cell's pin is its look; its paint under it stays out (as onBase keeps it out). docs/model.md R3. A paint
-        // block outside ANSI is its paint (R1): the converter's, into the picture.
-        const char = shownEntry(entry, reads.renderStyle)?.char ?? pin;
-        const kind = isFrozen(entry) ? 'exact' : mergeKind({ char, renderStyle: reads.renderStyle, inPicture: inPicture(col, row), wide: char !== undefined && isWideChar(char) });
+        const showing = shownEntry(entry, reads.renderStyle), char = showing?.char ?? pin;
+        // Someone's own character (a pin's too) merges exactly, unless paint lies over it and it has no ink to tint, so it
+        // shows the paint (R2: a pinned space under a stroke, a typed █): that's paint, into the picture. A block element
+        // (hand-drawn blocks, a pin's too), a laid block or a paint block goes in to be picked again (mergeKind).
+        const mine = showing ? !!ownEntry(entry, reads.renderStyle) && !isLaid(entry) : pin !== undefined;
+        const own = mine && !((paintAt(col, 2 * row).a || paintAt(col, 2 * row + 1).a) && opensUnder(entry ? mergeEntry(reads.baseCellAt(col, row), entry) : reads.baseCellAt(col, row)));
+        const kind = mergeKind({ char, renderStyle: reads.renderStyle, inPicture: inPicture(col, row), wide: char !== undefined && isWideChar(char), own });
         let top, bottom, folded = false, kept = [];
-        const paintOver = (half, y) => (isFrozen(entry) || folded ? half : over(half, paintAt(col, y)));
+        const paintOver = (half, y) => (folded ? half : over(half, paintAt(col, y)));
         if (kind === 'exact') {
           const merged = reads.mergeCellOf(col, row, entry, level[cellIndex(col, row, reads.cols)]?.char);
-          ({ top, bottom, folded = false, kept } = merged);
+          ({ top, bottom, folded = false, kept = [] } = merged); // none on black in Color ASCII: its ink goes in twice
           // its indexes as onBase keeps them, where no paint is over that half
           const fgIndex = paintAt(col, 2 * row + 1).a ? undefined : merged.fgIndex, bgIndex = paintAt(col, 2 * row).a ? undefined : merged.bgIndex;
           if (entry || pin) pins.push({ col, row, char: entry ? merged.char : level[cellIndex(col, row, reads.cols)]?.char ?? pin, fgIndex, bgIndex });
@@ -729,8 +735,7 @@ export const mergingActions = {
           const cell = entry ? mergeEntry(reads.baseCellAt(col, row), entry) : reads.baseCellAt(col, row);
           [top, bottom] = kind === 'picture' ? [hex2rgb(cell.bg), hex2rgb(cell.fg)]
             : halfColors({ char: cell.char, fg: hex2rgb(cell.fg), bg: hex2rgb(cell.bg) });
-          if (kind === 'picture-pinned') pins.push({ col, row, char: '▄' });
-          else unpins.push({ col, row });
+          unpins.push({ col, row });
           pictureCells.push({ col, row });
           if (kind === 'glyph') { // its glyph in its two colors, then the paint over it
             drawGlyphCell(ctx, { char, fg: cell.fg, bg: cell.bg }, (col - fit.dx) * m, (2 * row - fit.dy) * m, m, { font: reads.drawingFont });

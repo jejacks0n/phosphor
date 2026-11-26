@@ -758,8 +758,7 @@
       "intoImageTitle": "Blend into source image",
       "intoImageText": "Draws directly into the base image, characters included, so sliders and image filters will apply to it.",
       "ownCharsNote": "{name}'s custom characters: its paint is redrawn in {below}'s.",
-      "repickedNote": "{name}'s characters as they are: each is drawn into the image and picked again, so some can change.",
-      "basePickedNote": "The base's characters under the paint are drawn into the image and picked again, so some can change.",
+      "repickedNote": "{name}'s blocks (typed, from shapes or from Half-block) are drawn into the image and picked again, so some can change. Letters and lines stay as they are.",
       "originalNote": "The source image's original resolution: it's resized to its working resolution, like Bake, and filters like Edges may shift slightly."
     },
     "bakeDialog": {
