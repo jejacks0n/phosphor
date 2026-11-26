@@ -358,12 +358,13 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   word over a white Brush patch and Blur across it (the letters keep their characters, their colors even out, the
   patch's edge fades), then Colors only across the word (the letters are tinted, the spaces beside them become ▄),
   then Keep crisp cells: the word is pinned as it shows, nothing else changes (docs/model.md R2 to R4); then undo and
-  choose Blend into source image instead: the question lists that his characters are picked again, the word goes into
-  the picture as it looked, unpinned (some letters can come back as others), and Blur on Base now reaches it
-  (docs/model.md R3); undo brings back his layer and the base's pins as they were; `scope`: with only a Brush stroke
-  on Layer 1 across the scene's letters (nothing typed), Blend into source image lists that the base's characters
-  under the paint are picked again, and in ANSI a stroke over the black alone (its pinned spaces are solid) lists
-  nothing of the kind.
+  choose Blend into source image instead: the question lists nothing about his characters, the word stays pinned as it
+  showed (every letter still a letter), the patch goes into the picture, and Blur on Base recolors the word and fades
+  the patch (docs/model.md R3); undo brings back his layer and the base's pins as they were; `scope`: with only a Brush
+  stroke on Layer 1 across the scene's letters (nothing typed), Blend into source image keeps the scene's letters as
+  they are; then a Half-column detail ellipse on Layer 1, and the question lists that its shape blocks are picked
+  again; so does a Pencil Half-block stroke, and after the merge Blur on Base softens its blocks like the paint, none
+  left pinned.
 - Rated: yes, wants Cmd+E, then Enter
 
 ### 27. Flatten it to plain cells

@@ -418,9 +418,11 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
 - Does: picks Base, presses Add layer (it lands directly on the base), paints a few strokes and types a word on it,
   presses Merge down and chooses Blend into source image; then moves Edges and Sharpen.
 - Expects: her paint becomes part of the picture (Into the image), so Edges outlines it and the sliders keep changing
-  it (the Image filters section stays, with Base picked, as it does after Bake); her word goes into the picture as it
-  looked, unpinned, and its letters are picked again (the question said some can change, under "You give up:"), so
-  Edges and Blur reach them too; undo brings back the layer, its letters and the picture as they were.
+  it (the Image filters section stays, with Base picked, as it does after Bake); her word stays pinned on the base,
+  every letter still a letter, and Blur on Base recolors it; a Write block glyphs ellipse she draws first goes into the
+  picture and comes back as the base's characters (the question said some can change, under "You give up:"), its
+  solid blocks too, so Blur softens the whole ellipse; undo
+  brings back the layer, its letters and the picture as they were.
 - Probes: `undo-redo`: undo the slider moves and then the merge, one step at a time, and redo them; `again`: merge a
   second time into the already blended picture, then a third from a layer given its own Characters (Blend into source
   image lists her layer's custom characters under "You give up:", and choosing it still merges); `scope`: in Color ASCII, with a Colors only stroke and dark text typed
@@ -516,9 +518,8 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
   background), Blur across it, and merges Layer 1 onto the base with Keep crisp cells; undoes; then on a fresh layer
   paints a Colors only stroke, types over the paint again, and merges with Blend into source image; then, with Base
   picked, Set FG on a few cells.
-- Expects: the text keeps its light background after Keep crisp cells; after Blend into source image it goes into the
-  picture, its background with it, and comes back picked again as ink on black; no cell anywhere gets a background it
-  didn't show; the Colors only stroke goes into the picture as paint; Set FG on the base writes ink on black.
+- Expects: the text keeps its light background after Keep crisp cells, and after Blend into source image too (it stays
+  pinned as it showed); no cell anywhere gets a background it didn't show; the Colors only stroke goes into the picture as paint; Set FG on the base writes ink on black.
 - Probes: `undo-redo`: each merge; `again`: the same in ANSI (backgrounds are ANSI's as ever).
 - Rated: yes, wants Cmd+E
 

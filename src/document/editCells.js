@@ -243,17 +243,23 @@ export function bakeEditCells(map, params) {
   return new Map([...map].map(([key, entry]) => [key, bakeEntry(entry, params)]));
 }
 
-// How a covered cell merges into the picture. char: its user character (an edit cell's, else a
-// pin's), or undefined for the converter's own, which goes in as it is and comes back from the
-// picture. In ANSI a solid character (each half all ink or none) goes in as it shows, pinned to ▄
-// so it shows those two halves; any other character, in every style (in the ASCII styles a solid
-// one too, as they show no halves), is drawn in as its glyph ('glyph'), unpinned, and picked again.
-// A wide character (wide: two columns, which a glyph block of one cell can't hold) and a cell not
-// wholly inside the picture's area (the letterbox) merge exactly. docs/model.md R3.
-export function mergeKind({ char, renderStyle, inPicture, wide = false }) {
+// How a covered cell merges into the picture. char: its character (an edit cell's, else a pin's), or undefined for the
+// converter's own (paint, a frozen cell's among it), which goes in as it is and comes back from the picture. own: char is
+// a character of someone's own a tool didn't lay (typed, opened, pasted, a line, a pin): a letter, a line or a space
+// merges exactly, pinned, so the converter never picks it again (a letter would come back as the base's blocks). A block
+// element of someone's own (▀ ▐ ▚ ░ █, U+2580 to U+259F, hand-drawn blocks), a laid block (Half-column detail, Write
+// block glyphs) or a paint block (Half-block's ▄) is drawing in blocks, as the converter's are: unpinned and picked
+// again like the paint around it, so Blur reaches it: in ANSI a solid one (each half all ink or none) goes in as its two halves ('halves'); any other, in every style (in
+// the ASCII styles a solid one too, as they show no halves), is drawn in as its glyph ('glyph'). Pinned, a shape's solid
+// blocks stayed flat cells in its outline that Blur only recolored. A wide character (wide: two columns, which a glyph
+// block of one cell can't hold) and a cell not wholly inside the picture's area (the letterbox) merge exactly.
+// docs/model.md R3.
+const isBlockElement = (char) => char >= '\u2580' && char <= '\u259f';
+export function mergeKind({ char, renderStyle, inPicture, wide = false, own = false }) {
   if (!inPicture || wide) return 'exact';
   if (char === undefined) return 'picture';
-  return renderStyle === 'ansi' && isSolidGlyph(char) ? 'picture-pinned' : 'glyph';
+  if (own && !isBlockElement(char)) return 'exact';
+  return renderStyle === 'ansi' && isSolidGlyph(char) ? 'halves' : 'glyph';
 }
 
 // Rect = { c0, r0, c1, r1 }: inclusive, normalized. Block = { w, h, entries: (Entry | null)[] }, row-major.

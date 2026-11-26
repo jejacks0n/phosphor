@@ -179,6 +179,30 @@ test('R1: the Soft Eraser in the ANSI view and the Eraser in the PIXEL view take
   }
 });
 
+// Write block glyphs (Full block with Block characters on) lays its shades as the shape's blocks, as Half-column detail
+// lays its own: the Soft Eraser takes them, and the same shade typed by hand stays.
+test('R1: Write block glyphs lays its shades: the Soft Eraser takes one, a typed one stays', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  await settle(project);
+  workspace.pickLayer('edit');
+  Object.assign(workspace, { shapeKind: 'ellipse', shapeDrawWith: 'full', shapeBlockChars: true, shapeAntialias: true, editFgColor: '#ff0000', editBgNone: true });
+  const ctx = { project, workspace, view: 'output' }, from = { x: 2.5, y: 2.5 }, to = { x: 14.5, y: 18.5 };
+  shapes.begin(ctx, from);
+  shapes.move(ctx, from, to);
+  shapes.end(ctx);
+  const drawn = [...project.editCells].filter(([, entry]) => entry.char?.trim());
+  expect(drawn.length).toBeGreaterThan(8);
+  expect(drawn.every(([, entry]) => isLaid(entry))).toBe(true);
+  const [key, { char }] = drawn[0], { col, row } = parseKey(key);
+  project.typeAt(18, 18, char, { fg: '#ff0000' });
+  project.commitEdit();
+  Object.assign(workspace, { editEraserSoft: true, editEraserSize: 1, editEraserFlow: 10 });
+  for (const [c, r] of [[col, row], [18, 18]]) { eraser.begin(ctx, { x: c + 0.5, y: 2 * r + 0.5 }); eraser.end(ctx); }
+  expect(project.editCellAt(col, row)).toBeFalsy();
+  expect(project.editCellAt(18, 18)?.char).toBe(char);
+});
+
 test('R1: a laid line moved with the Select tool is still laid', async () => {
   const { project, drawn } = await lined('edit');
   const { col, row } = drawn[3];

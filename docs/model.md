@@ -19,7 +19,7 @@ Each cell of it is one of these:
 | **Paint block** `{ char: '▄' }` | Paint with a hint: in ANSI, show my two halves as a ▄ (the drawing font's lower half, drawn from whatever slot the font keeps it in; ▀ the same for its upper half). Not a cell of anyone's; outside ANSI it's nothing (`shownEntry`) | As paint (ANSI shows the ▄) | As paint |
 | **A character of someone's own** | A character someone chose: typed, opened from a file, pasted, pinned on the base, an art layer's | Never | Tints its ink; the character stays (R2), except on the base in Monochrome ASCII, where paint takes the pin (R13) |
 | **Frozen cell** `{ …, frozen: true }` | Paint, still there under it, with Merge down's pinned conversion of it over it: the character and colors it showed, kept because it would convert otherwise in its new place. Paint to everything but the converter, which shows the pin instead of converting the paint | Never again, until paint is written or erased in it: then the pin goes and it's paint | As paint: mixes into its halves, converts (R3) |
-| **Laid block** `{ …, laid: true }` | A block a drawing tool laid: the Shapes tool's Half-column detail (`halfCells`: its ▌ ▐ █ and quadrants, and the BG spaces inside a filled ellipse). A character of someone's own to everything but the Soft Eraser and the PIXEL view's Eraser, which take it whole, as they take a paint block | Never | Tints its ink; the character stays (R2) |
+| **Laid block** `{ …, laid: true }` | A block a drawing tool laid: the Shapes tool's Half-column detail (`halfCells`: its ▌ ▐ █ and quadrants, and the BG spaces inside a filled ellipse) and Write block glyphs (Full block's shades, and its BG spaces). A character of someone's own to everything but the Soft Eraser and the PIXEL view's Eraser, which take it whole, as they take a paint block | Never | Tints its ink; the character stays (R2) |
 
 The base is the picture plus pinned characters (`baseRecords.pins`); a pin is a character of someone's own. A frozen
 cell merged onto the base becomes an ordinary pin, and so does a laid one.
@@ -141,13 +141,23 @@ pixel the paint it covers weighted by area (`paintFine`), over the picture's own
 them under the paint, but a half where the base has its own pixels or an entry its colors, which go in as that half's
 block. So By shape samples the strokes it sampled while they were the layer's, not a flat color a half, and a grid
 pixel's block holds the paint's average exactly. The base reads the same pixels a little otherwise than a layer does,
-so a cell can come back as a look-alike (euphio.pho: 49 of 1,920 seen cells, where flat halves changed 209). It's also
-the one merge that lets characters change, so the image filters reach them: a character of someone's own (an entry's, or a pin's under the layer's paint) is drawn into the picture as its
-glyph (`drawGlyphCell`, in the drawing's font), its background mixed toward its foreground by the glyph's ink, each
-half's paint laid over that half's pixels; its pin goes, and the converter picks the cell again, so it can come back as
-another character. In ANSI a solid character (space, `█`, `▀`, `▄`) still goes in as its two halves, pinned `▄`; in the
-ASCII styles, which show no halves, it's a glyph too. A frozen cell, a wide character (its glyph is two cells wide) and
-anything in the letterbox merge exactly, pinned, as Keep crisp cells writes them (`mergeKind`).
+so a cell can come back as a look-alike (euphio.pho: 49 of 1,920 seen cells, where flat halves changed 209). A character of someone's own (an
+entry's that isn't laid, or a pin's under the layer's paint) merges exactly, pinned, as Keep crisp cells writes it
+(`mergeKind`'s `own`): drawn in and picked again, a letter came back as the base's blocks and shades wherever its
+characters had no letters, so a poem merged under Best match was lost; pinned, it stays a letter, and Blur on the base
+still recolors it (R4). But a block element of someone's own (`▀`, `▐`, `▚`, `░`, `█`: U+2580 to U+259F, blocks drawn by
+hand) is drawing in blocks, as the converter's and a shape's are: it goes in as a laid block does, below, so Blur
+reaches it, and a space stays exact. One with no ink for the paint over it to tint (`opensToPaint`: a space, or a solid glyph in ANSI)
+shows the paint (R2), so it goes in as paint does: an opened file's pinned spaces under strokes reach the picture, where
+Blur reaches them. A frozen cell is paint (R1): its pin goes and its paint goes into the picture, as the converter's
+own does, so the blocks a merge froze from a vector layer of its own characters blur with the rest. A laid block
+(Half-column detail, Write block glyphs) and a paint block are the shape's: drawn into the picture as their glyph
+(`drawGlyphCell`, in the drawing's font), the background mixed toward the foreground by the glyph's ink, each half's
+paint laid over that half's pixels, unpinned, and picked again, so they can come back as other characters; in ANSI a
+solid one (space, `█`, `▀`, `▄`) goes in as its two halves, unpinned too, so a shape's solid blocks blur with the paint
+around them; in the ASCII styles, which show no halves, it's a glyph too. Picked again, a `▌` or `▐` comes back only
+under By shape with them in the base's set: Best match sees each as half ink in each half (`GlyphCoverage`), as it
+sees a shade, so it gives the cell one color. A wide character (its glyph is two cells wide) and anything in the letterbox merge exactly.
 
 A vector layer directly on the base blends the same way (`mergeShapesIntoPicture`): it's the two merges above in one
 undo step, with no rule of its own. Its shapes go as paint onto a cells layer put in its place (`shapesOnCells`, so a
@@ -166,13 +176,16 @@ goes into the picture (`mergeIntoPicture`).
   `› … keeps every cell with a palette and Levels on, the soft edges paint`;
   `› R3: Merge down of text with no background onto the base with a palette and a slider moved: …` (#201: VGA and CGA
   under Levels, Posterize, Contrast, Saturation, Brightness, Hue, Invert, and none; Keep crisp cells keeps the canvas,
-  and Blend into source image draws the letters into the picture as glyphs, a letter's block changed, none pinned);
+  and Blend into source image the same, the letters pinned);
   `› R3: the report: Blend into source image lays a finely painted layer into the picture at its own detail`
   (euphio.pho: the picture is the paint over black pixel for pixel), `› Blend into source image reads a merged shape's
-  soft edge as each grid pixel's average`, `› R3: Blend into source image draws a typed letter in as its glyph …` (unpinned, its ink and background in the
-  picture, Blur reaching it, undo bringing back the layer, the pins and the picture), `› R3: the report: Blend into
-  source image in ASCII puts the strokes over pinned spaces where Blur reaches them` (vector-strokes-ascii.phosphor) and
-  `› at neutral: the same look but the letter …`; `tests/unit/edit-cells.test.js › R3: mergeKind: …`;
+  soft edge as each grid pixel's average`, `› R3: Blend into source image keeps a typed letter pinned …` (a wide one too, a space under soft paint in as
+  paint, undo bringing back the layer, the pins and the picture), `› R3: the report: Blend into source image keeps
+  letters and lets the shapes' blocks blur` (a letter pinned and recolored by Blur, a frozen cell and a laid block into
+  the picture, a typed block too), `› R3: the report: Blend into source image puts a shape's solid blocks and
+  Half-block's in unpinned`, `› R3: Into the image takes a frozen cell's paint …`, `› R3: the report: Blend into source image in
+  ASCII puts the strokes over pinned spaces where Blur reaches them` (vector-strokes-ascii.phosphor) and `› at neutral:
+  the same look …` (typed blocks unpinned); `tests/browser/eraser.test.js › R1: Write block glyphs lays its shades …`; `tests/unit/edit-cells.test.js › R3: mergeKind: …`;
   `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and

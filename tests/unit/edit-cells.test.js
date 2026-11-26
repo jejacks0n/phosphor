@@ -101,24 +101,33 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.equal(bakeEditCells(none, P), none);
 });
 
-// docs/model.md R3: how a covered cell merges into the picture: the converter's own character goes in as it is (it comes
-// back from the picture); a solid character in ANSI goes in as it shows, pinned to ▄; any other character, in every
-// style, is drawn in as its glyph and picked again. A wide character and anything in the letterbox merge exactly. The
-// cases before the glyph rule had letters, shades and lines (and every user character in the ASCII styles) merge exactly.
-test('R3: mergeKind: the converter\'s own goes in as picture, a solid one in ANSI pinned to ▄, any other character as its glyph, a wide one and the letterbox exactly', () => {
-  const at = (char, renderStyle = 'ansi', inPicture = true, wide = false) => mergeKind({ char, renderStyle, inPicture, wide });
+// docs/model.md R3: how a covered cell merges into the picture: the converter's own (paint, a frozen cell's) goes in as it
+// is (it comes back from the picture); a character of someone's own (own: typed, opened, pasted, a line, a pin) merges
+// exactly, so a letter stays a letter, but a block element of someone's own (hand-drawn blocks) goes in as a shape's
+// does; a shape's laid block or a paint block, solid in ANSI, goes in as its two halves, and any other, in every style,
+// is drawn in as its glyph: both unpinned and picked again. A wide character and anything in the
+// letterbox merge exactly.
+test('R3: mergeKind: the converter\'s own goes in as picture, someone\'s own exactly but its blocks, a shape\'s solid block in ANSI as halves, its others as glyphs, a wide one and the letterbox exactly', () => {
+  const at = (char, renderStyle = 'ansi', inPicture = true, wide = false, own = false) => mergeKind({ char, renderStyle, inPicture, wide, own });
   assert.equal(at(undefined), 'picture');
-  for (const solid of [' ', '█', '▀', '▄']) assert.equal(at(solid), 'picture-pinned', solid);
-  for (const glyph of ['A', '░', '╬', '▌']) assert.equal(at(glyph), 'glyph', glyph); // ▌ is half-inked, not solid
+  for (const solid of [' ', '█', '▀', '▄']) assert.equal(at(solid), 'halves', solid);
+  for (const glyph of ['░', '▌', '▚']) assert.equal(at(glyph), 'glyph', glyph); // ▌ is half-inked, not solid
+  for (const style of ['ansi', 'colorAscii', 'ascii']) {
+    for (const char of ['A', '╬', ' ']) assert.equal(at(char, style, true, false, true), 'exact', `${style} own ${char}`);
+    for (const char of ['░', '▐', '▚', '█', '▀']) { // hand-drawn blocks: as a shape's
+      assert.equal(at(char, style, true, false, true), style === 'ansi' && ['█', '▀'].includes(char) ? 'halves' : 'glyph', `${style} own ${char}`);
+    }
+    assert.equal(at(undefined, style, true, false, true), 'picture'); // nothing of anyone's there: paint
+  }
   assert.equal(at('漢', 'ansi', true, true), 'exact');        // a wide character stays exact
   for (const style of ['colorAscii', 'ascii']) {
-    for (const char of ['█', ' ', 'A']) assert.equal(at(char, style), 'glyph', `${style} ${char}`); // no halves shown: a solid one too
+    for (const char of ['█', ' ', '▚']) assert.equal(at(char, style), 'glyph', `${style} ${char}`); // no halves shown: a solid one too
     assert.equal(at('漢', style, true, true), 'exact');
   }
   assert.equal(at(undefined, 'ascii'), 'picture');
   assert.equal(at(undefined, 'ansi', false), 'exact');        // not wholly in the picture's area
   assert.equal(at('█', 'ansi', false), 'exact');
-  assert.equal(at('A', 'ascii', false), 'exact');
+  assert.equal(at('▚', 'ascii', false), 'exact');
 });
 
 // docs/model.md R1 and R3: a frozen cell is paint Merge down wrote as a character so the look stays, marked so. The mark

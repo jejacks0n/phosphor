@@ -691,15 +691,23 @@ the canvas changes. Undo brings it back, selected if it was.
     otherwise as pixels is pinned as it showed.
   - **Blend into source image**: Your drawing becomes part of the image itself, so every slider and image filter applies
     to it, live, like the photo. Paint goes in as it shows, at its own detail over the picture's own pixels, so the
-    characters picked from it come back as they were, but for a look-alike here and there (Q for $, L for f). Letters and other characters are drawn into the picture as
-    they look, each in its two colors with your paint over it, and the converter picks them again from the picture, so
-    some can come back as other characters (the question lists that under **You give up**). The same goes for the
-    base's own characters under your paint, such as an opened file's, where the layer has none of its own: the question
-    lists those too. In ANSI, solid cells
-    (space, █, ▀, ▄) go in as they show, pinned as ▄ so they keep showing their two halves. A wide character (漢),
-    anything drawn in the bars around a picture that doesn't fill the grid, and a cell a merge froze as it showed merge
-    exactly. In Color ASCII and Monochrome ASCII, **Colors only**'s paint goes into the picture as paint, and a typed
-    cell's background goes into the picture with it, so in Color ASCII it comes back as ink on black. Like Bake, the first time makes the picture the
+    characters picked from it come back as they were, but for a look-alike here and there (Q for $, L for f). The
+    cells you drew go in by kind:
+    - **Letters, lines and other characters** you typed, opened or pasted, and the base's own under your paint, stay as
+      they are, pinned on the base: the converter never picks them again, and Blur still recolors them, a cell at a
+      time.
+    - **Block characters** (▀ ▄ █ ▌ ▐, the quadrants, the shades ░ ▒ ▓) go into the picture as they look, and the
+      converter picks them again, unpinned, so Blur reaches them as it reaches paint. That's the ones you typed, the
+      ones a shape laid (**Half-column detail**, **Write block glyphs**), **Half-block**'s, and the base's own under your
+      paint. Some can come back as other characters, and the question lists that under **You give up**. Under **Best
+      match**, ▌ and ▐ come back as one color, since it sees each cell as a top half and a bottom half; with **By shape**
+      and ▌ ▐ in the base's **Characters**, they come back as they were (a ▐ as a ▌ with its colors swapped, which looks
+      the same).
+    - **A space under your paint** shows the paint, so it goes in as paint, and so does a cell a merge froze as it
+      showed: Blur and the sliders reach them.
+    - **A wide character** (漢) and anything drawn in the bars around a picture that doesn't fill the grid merge exactly.
+
+    In Color ASCII and Monochrome ASCII, **Colors only**'s paint goes into the picture as paint. Like Bake, the first time makes the picture the
     working-size copy the preview is made from, so growing the grid later works from that, effects like Edges can
     shift slightly that first time, and the **Image filters** work on it as on a picture you opened (on a blank canvas
     they appear once the picture is more than one color). With a Limited count palette,
@@ -734,7 +742,7 @@ The **Eraser** (**E**) erases the selected layer:
 - **In the PIXEL View**: The Eraser removes paint (on a drawing layer) and turns base pixels black (on the base),
   leaving the characters as they are, except a ▄ that Half-block made to show paint (one with no colors of its own):
   when its cell's last paint is erased, the cell gets its own character back. A block a line or ellipse drew with
-  **Half-column detail** goes whole, a cell at a time, as soon as the Eraser touches either half of its cell, until it's
+  **Half-column detail**, or a shade one drew with **Write block glyphs**, goes whole, a cell at a time, as soon as the Eraser touches either half of its cell, until it's
   typed over, recolored or painted over. Characters typed by hand stay. On the base, a character
   whose two colors are both erased to black becomes a black space, as the Hard Eraser leaves it in the ANSI view.
 - **Hard or Soft**: **Hard**, as it starts, is a square that clears everything under it at once: pixels in the PIXEL
@@ -745,7 +753,7 @@ The **Eraser** (**E**) erases the selected layer:
 - **Soft in the ANSI View**: Soft is the same eraser in both views, as the Brush is the same brush: it works in pixels,
   at the PIXEL view's **Size · px** (which the ANSI view's row shows in place of **Size · cells** while Soft is on).
   It takes paint, not characters: a character you typed or drew stays where it is, as it does under the Eraser in the
-  PIXEL view, except the blocks of a line or ellipse drawn with **Half-column detail**, which go whole, a cell at a time, until
+  PIXEL view, except the blocks of a line or ellipse drawn with **Half-column detail** or **Write block glyphs**, which go whole, a cell at a time, until
   they're typed over, recolored or painted over. To take other
   characters, use Hard.
 - **Its Outline**: The pointer shows what the Eraser covers: the square of cells or pixels it would clear, or Soft's

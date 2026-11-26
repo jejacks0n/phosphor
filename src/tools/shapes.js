@@ -236,12 +236,13 @@ function apply({ project, workspace, view }, end) {
     cells = [...outline, ...inside].map(({ col, row }) => ({ col, row, attrs: ink }));
   } else if (!lines) {
     // Full block: the outline in shades of FG (on BG when there is one); the rest of the shape's
-    // cells, BG spaces.
+    // cells, BG spaces. Every cell is marked laid, as Half-column detail's are: the shape's blocks, not typed characters,
+    // so the Soft and PIXEL erasers take them and Blend into source image draws them in (docs/model.md R1, R3).
     const charOf = (cover) => SHADES.find(([min]) => cover >= min)?.[1];
-    cells = outline.map(c => ({ ...c, char: charOf(c.cover) })).filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs } }));
+    cells = outline.map(c => ({ ...c, char: charOf(c.cover) })).filter(c => c.char).map(({ col, row, char }) => ({ col, row, attrs: { char, ...attrs, laid: true } }));
     if (fill) {
       const shaded = new Set(cells.map(cellKey));
-      cells.push(...shapeOf(true).filter(c => charOf(c.cover) && !shaded.has(cellKey(c))).map(({ col, row }) => ({ col, row, attrs: { char: ' ', bg, bgIndex: workspace.editBgIndex } })));
+      cells.push(...shapeOf(true).filter(c => charOf(c.cover) && !shaded.has(cellKey(c))).map(({ col, row }) => ({ col, row, attrs: { char: ' ', bg, bgIndex: workspace.editBgIndex, laid: true } })));
     }
   } else {
     // Connect joins the frame to the line characters it crosses or meets that show (showsChar: not
