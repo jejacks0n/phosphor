@@ -20,8 +20,8 @@ export const cellOfPixel = (x, y) => ({ col: x, row: Math.floor(y / 2) });
 // a narrow piece can run long. The budget keeps whole-grid work (a render, a slider step) to tens of
 // milliseconds, and a document well within a browser tab's memory (docs/investigations/viewport-rendering.md).
 export const MAX_COLS = 300, MAX_LINES = 5000, MAX_CELLS = 500_000;
-// An animation is smaller: each frame is built whole, and kept, for playing. Set from what that costs (bench/).
-// An animation's limits, from bench/large-documents.bench.js, every cell changed on every frame, on software WebGL:
+// An animation is smaller: each frame is built whole, and kept, for playing. Set from what that costs (tests/performance/).
+// An animation's limits, from tests/performance/large-documents.bench.js, every cell changed on every frame, on software WebGL:
 // at 40,000 cells a 24-frame rebuild takes 0.9s (80,000: 2.1s) and playing with the PIXEL overlay up holds 57 fps. A
 // frame like that takes about 20MB, its changes, what it shows and what's built, so MAX_FRAME_CELLS keeps the
 // worst of them to about 2GB: 100 frames at 40,000 cells, the whole 1,000 up to 4,000.

@@ -24,6 +24,7 @@
     "test:browser": "vitest run --project browser --project browser-desktop",
     "test:e2e": "playwright test",
     "test:e2e:desktop": "playwright test -c playwright.desktop.config.js",
+    "test:performance": "vitest run --config tests/performance/vitest.config.js --silent=false",
     "test:update": "UPDATE_REFERENCES=1 vitest run",
     "fixtures": "node tests/fixtures/make-fixtures.mjs",
     "qa": "playwright test -c tests/qa/playwright.config.js tests/qa/session.qa.js",

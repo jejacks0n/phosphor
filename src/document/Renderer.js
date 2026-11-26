@@ -1498,7 +1498,7 @@ export default class Renderer {
     // each pin and each art layer's cell, those in the rect (a whole grid's): asking a cell makes its key, and a grid
     // with a few characters typed on it has 500k cells to ask.
     // ponytail: a file that's all pins reads 500k keys for a whole grid, 60 ms of a render's first draw
-    // (bench/pixel-view.bench.js); keep the pins' places per pins map if that shows.
+    // (tests/performance/pixel-view.bench.js); keep the pins' places per pins map if that shows.
     const cells = w * (r1 - r0), inside = (col, row) => col >= x && col < x + w && row >= r0 && row < r1;
     if (cells <= MOST_ASKED || cells * ASK_COST < pins.size) {
       for (let row = r0; row < r1; row++) for (let col = x; col < x + w; col++) put(col, row, this.pinAt(col, row));
