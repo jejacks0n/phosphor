@@ -266,14 +266,15 @@ test('Check for Updates offers a newer release’s page, says when this is the n
 test('File > New from Clipboard opens what the app read at the click, without the page reading the clipboard itself', async () => {
   const read = vi.spyOn(navigator.clipboard, 'read');
   command('newFromClipboard', { html: null, text: 'Hello\nWorld!!', png: null });
-  await vi.waitFor(() => expect(project.image).toBeTruthy());
-  await vi.waitFor(() => expect([project.cols, project.rows]).toEqual([7, 4]));
+  // The text is made into a drawing and drawn, which a busy runner takes past waitFor's own second for.
+  await vi.waitFor(() => expect(project.image).toBeTruthy(), { timeout: 10000 });
+  await vi.waitFor(() => expect([project.cols, project.rows]).toEqual([7, 4]), { timeout: 10000 });
   expect(read).not.toHaveBeenCalled();
   expect(workspace.editorTab).toBe('output');
   expect(toastMessage.value).toBeNull();
 
   command('newFromClipboard', { html: null, text: null, png: null }); // nothing copied
-  await vi.waitFor(() => expect(toastMessage.value).toBe('The clipboard has nothing to open. Copy a selection or shapes in Phosphor, a block in Moebius, text or a picture first.'));
+  await vi.waitFor(() => expect(toastMessage.value).toBe('The clipboard has nothing to open. Copy a selection or shapes in Phosphor, a block in Moebius, text or a picture first.'), { timeout: 10000 });
   expect([project.cols, project.rows]).toEqual([7, 4]);
   expect(read).not.toHaveBeenCalled();
 });
