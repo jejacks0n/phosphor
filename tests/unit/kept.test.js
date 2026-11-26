@@ -18,6 +18,7 @@ test('good values come back as they were kept', () => {
   expect(read('vectorStyle', { fill: null, stroke: '#ff0000', width: 3, cap: 'butt', join: 'bevel', miter: 2, align: 'inside' }))
     .toEqual({ fill: null, stroke: '#ff0000', width: 3, cap: 'butt', join: 'bevel', miter: 2, align: 'inside' });
   expect(read('slotFaces', { fill: 'gradient', retouch: 'burn' })).toEqual({ fill: 'gradient', retouch: 'burn' });
+  expect(read('saveForTerminal', false)).toBe(false);
 });
 
 test('a plugin brush or shape is kept, though its plugin loads after', () => {
@@ -31,6 +32,7 @@ test('nothing kept is the default', () => {
   expect(keptValue(entry('inputActiveTool'), null)).toBe('brush');
   expect(keptValue(entry('editFgIndex'), null)).toBeUndefined();
   expect(keptValue(entry('wandMatch'), null)).toEqual({ fg: true, bg: false, char: true });
+  expect(keptValue(entry('saveForTerminal'), null)).toBe(true); // Save lays the .pho out for a terminal
 });
 
 test('a value that is not good now is the default', () => {

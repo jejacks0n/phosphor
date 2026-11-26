@@ -1328,6 +1328,8 @@
   },
   "save": {
     "fileName": "File name",
+    "forTerminal": "Show the drawing when printed in a terminal",
+    "forTerminalHint": "This makes the save file bigger, but the ansi will be visible in terminal without having to open the file in Phosphor when using {cat}.",
     "formats": {
       "phosphor": {
         "title": "Save project",

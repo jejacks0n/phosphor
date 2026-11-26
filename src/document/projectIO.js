@@ -3,7 +3,7 @@
  *
  * Save writes a .pho: a PNG of the drawing with the project in a private chunk near its start, laid out so a terminal
  * shows the art when the file is printed (phoFile; phoTerminal.js), or plain, phPr right after IHDR, when that can't be
- * made clean (withProject). projectChunkOf reads either back, and a .png holding one opens as the project. An older .phosphor is
+ * made clean or the person chose it (withProject). projectChunkOf reads either back, and a .png holding one opens as the project. An older .phosphor is
  * the project alone, and still opens. The project itself, in either file, is the layout below.
  *
  * Project layout: 'PHOSPHOR' (8 bytes), three little-endian uint32 lengths, then the settings
@@ -66,7 +66,7 @@ export function withProject(png, project) {
 
 // The drawing's .pho: the form a terminal shows when it can be made clean, else the plain one. art: its UTF-8 ANSI, or a
 // function giving it, asked for only when it's needed.
-export const phoFile = async (png, project, art) => (await terminalPho(png, project, art)) ?? withProject(png, project);
+export const phoFile = async (png, project, art) => (art && await terminalPho(png, project, art)) || withProject(png, project); // no art: plain
 
 // The head of a file (its first 41 bytes) says it's a .pho.
 export const startsAsProject = (head) => head.length >= 41 && isPng(head) && [PROJECT_CHUNK, START_CHUNK].includes(typeAt(head, 37));

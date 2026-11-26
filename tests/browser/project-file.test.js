@@ -1,7 +1,9 @@
 // The drawing as its .pho file's bytes without saving it (ProjectStore.projectFile), for an issue report to carry: what
 // Save writes, and nothing Save does besides.
 import { test, expect, vi, afterEach } from 'vitest';
-import { watch } from 'vue';
+import { watch, createApp, nextTick } from 'vue';
+import { i18n } from '@/i18n';
+import SaveDialog from '@/components/SaveDialog.vue';
 import { createTestApp, cellsKey, settle } from '../support/app.js';
 import { busyMessage } from '@/composables/useBusy';
 import { startsAsProject } from '@/document/projectIO';
@@ -47,6 +49,25 @@ test('printed in a terminal, it shows the drawing: its .utf8ans with no SAUCE, i
   const art = String.fromCharCode(...file.subarray(at + 4, at + 4 + new DataView(file.buffer).getUint32(at - 4)));
   expect(art).toContain(String.fromCharCode(...exported));
   expect(new TextDecoder().decode(exported)).toMatch(/A.*B/); // the two letters, each in its color
+});
+
+test('the Save dialog can write the plain form instead, and the choice is kept for the next Save', async () => {
+  const { project, workspace, pinia } = await drawn();
+  const host = document.createElement('div'), app = createApp(SaveDialog, { ext: 'phosphor' }).use(pinia).use(i18n);
+  app.mount(host);
+  await nextTick();
+  const box = document.querySelector('#save-filename').form.querySelector('input[type=checkbox]'); // the dialog is moved to the body
+  expect(box.checked).toBe(true);
+  expect(box.form.querySelector('p.hint code').textContent).toBe('cat'); // the command in a code font
+  box.click();
+  await nextTick();
+  expect(workspace.saveForTerminal).toBe(false);
+  expect(localStorage.getItem('phosphor.saveForTerminal')).toBe('false');
+  app.unmount();
+  const file = await bytesOf(await project.projectFile());
+  expect(String.fromCharCode(...file.subarray(37, 41))).toBe('phPr');
+  expect(startsAsProject(file)).toBe(true);
+  workspace.saveForTerminal = true;
 });
 
 test('its picture is hard-edged with Smooth text on: the drawing\'s own colors and no others', async () => {
