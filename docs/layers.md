@@ -607,7 +607,8 @@ and the PIXEL view give you:
 
 - **Paint is paint on any layer.** A stroke converts over what's under it (the picture, and the paint and shapes of
   the layers below) the same way whichever layer it's on, in ANSI and in the ASCII styles. A layer moved up or down,
-  with nothing between it and where it was, looks the same.
+  with nothing between it and where it was, looks the same. (The base's own strokes are its pixels: under Best match
+  they're matched with the picture before the palette, so soft paint there can give a shade a layer's wouldn't.)
 - **Your characters stay yours.** A cell you typed, pasted or opened from a file keeps its character: paint over it
   tints it, Blur, Dodge and Burn recolor it, Colors only tints it. A character with nothing to tint (a space, or one
   drawn in its own background color) lets the paint show, converted with the characters of the layer the paint is on

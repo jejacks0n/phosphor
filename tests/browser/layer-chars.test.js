@@ -17,6 +17,8 @@ import { readProject, writeProject } from '@/document/projectIO.js';
 import { CHAR_KEYS } from '@/store/settings.js';
 import ControlPanel from '@/components/ControlPanel.vue';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
+import { halfColors } from '@/lib/Cells.js';
+import { PALETTES } from '@/lib/ColorUtils.js';
 
 let app = null, host = null;
 afterEach(() => {
@@ -466,29 +468,39 @@ test('By shape on an upper vector layer over a picture of Random picks the chara
   expect(reached.map((i) => upper[i])).toEqual(reached.map((i) => lower[i]));
 });
 
-// White paint at half opacity over black, on Base (converted with Base's settings) or on an upper cells layer (its
-// own, differing only in a seed they don't use), every layer set to settings: the cell it's in.
+// White paint at half opacity over black, on Base, on a cells layer in Base's group (converted with Base's settings) or on
+// an upper cells layer (its own, differing only in a seed they don't use), every layer set to settings: the cell it's in.
 async function paintedOn(where, settings) {
   const { project, workspace } = await createTestApp();
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8, quantize: 'cga' });
   await settle(project);
   for (const id of ['base', 'edit']) project.setLayerChars(id, settings);
-  const layer = where === 'base' ? 'base' : project.addLayer('cells', 'edit');
-  if (layer !== 'base') project.setLayerChars(layer, { ...settings, seed: 'its own' });
+  const layer = where === 'base' ? 'base' : where === 'group' ? 'edit' : project.addLayer('cells', 'edit');
+  if (where === 'upper') project.setLayerChars(layer, { ...settings, seed: 'its own' });
   workspace.pickLayer(layer);
   workspace.editBrushOpacity = 50;
   project.paintStroke([{ x: 3, y: 4, alpha: 1 }, { x: 3, y: 5, alpha: 1 }], '#ffffff');
   project.commitEdit();
   await settle(project);
-  expect(project.lowerGroup.upper.length).toBe(where === 'base' ? 0 : 1);
-  return cellsKey(project)[2 * 8 + 3];
+  expect(project.lowerGroup.upper.length).toBe(where === 'upper' ? 1 : 0);
+  return project.cells[2 * 8 + 3];
 }
 
-test('under Best match paint on an upper cells layer makes the cell the same paint makes on Base', async () => {
+test('R7: under Best match paint on an upper cells layer makes the cell the same paint makes in Base\'s group', async () => {
   const settings = { charChoice: 'best', chars: '▄░▒▓█', solids: 0 };
-  const base = await paintedOn('base', settings);
-  expect(halfBlocks.has(base[0])).toBe(false); // a shade: its colors aren't the palette's
-  expect(await paintedOn('edit', settings)).toBe(base);
+  const group = await paintedOn('group', settings), upper = await paintedOn('upper', settings);
+  // Paint isn't dithered: the half-white snaps to one CGA gray, solid, not a shade of two
+  const [top, bottom] = halfColors(group);
+  expect(top).toEqual(bottom);
+  expect(PALETTES.cga.some((c) => c.r === top.r && c.g === top.g && c.b === top.b)).toBe(true);
+  expect([upper.char, upper.fg.hex, upper.bg.hex]).toEqual([group.char, group.fg.hex, group.bg.hex]);
+});
+
+// docs/model.md, Known departures: Base's own strokes are its pixels, matched with the picture before the palette, so the
+// same half-white on Base is a shade of two grays, where a layer's paint is one.
+test('known departure: under Best match half paint on Base is a shade, where a layer\'s is one palette gray', async () => {
+  const base = await paintedOn('base', { charChoice: 'best', chars: '▄░▒▓█', solids: 0 });
+  expect([base.char, base.fg.hex, base.bg.hex]).toEqual(['▒', '#555555', '#aaaaaa']);
 });
 
 // The report: a picture added to a drawing as a layer, then By shape picked for that layer, showed half blocks alone.

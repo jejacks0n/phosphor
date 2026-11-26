@@ -1124,6 +1124,77 @@ test('R7: the report: hiding the cells layer under a vector layer leaves the vec
   expect(chars()).toBe(shown);
 });
 
+// docs/model.md R7: a cells layer's paint converts the same in the lower group and above it. The report (the review
+// matrix's setup, VGA, Best match, Blocks & shades): moving Vector 1, which has characters of its own, under Layer 1 made
+// Layer 1 an upper layer, and 396 cells changed, none under a shape. In the lower group Best match picked each character
+// from the picture and the paint only tinted it; above, the paint was mixed into the base's characters as they look (a ▒
+// one flat color in both halves) and converted unsnapped, so flat paint came out in ▒ of two colors.
+async function paintedUnderVector() {
+  const { project, workspace } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/photo.jpg', { cols: 40, rows: 40 });
+  project.quantize = 'vga';
+  for (const id of ['base', 'edit']) {
+    project.setLayerChars(id, { charChoice: 'best', chars: '▄░▒▓█', solids: 10, dither: 0 });
+    project.commitLayerChars();
+  }
+  await settle(project);
+  const vector = project.addLayer('vector', 'edit');
+  project.setLayerChars(vector, { charChoice: 'shape' });
+  project.commitLayerChars();
+  workspace.pickLayer('edit');
+  Object.assign(workspace, { editBrushOpacity: 100, editBrushStack: true });
+  const square = [], row = [];
+  for (let y = 4; y < 12; y++) for (let x = 4; x < 12; x++) square.push({ x, y, alpha: 1 });
+  for (let x = 4; x < 36; x++) row.push({ x, y: 21, alpha: 1 }); // the bottom halves of line 10 only
+  project.paintStroke(square, '#00e676');
+  project.paintStroke(row, '#ff5252');
+  project.commitEdit();
+  await settle(project);
+  return { project, vector };
+}
+// A cell as it looks: one color where its two are the same, whatever the glyph (a █ and a ▒ of one color look alike).
+const shownKey = (project) => project.cells.map(({ char, fg, bg }) => {
+  const f = fg.hex.toLowerCase(), b = bg.hex.toLowerCase();
+  return f === b ? f : `${char}${f}${b}`;
+});
+
+test('R7: the report: moving a vector layer with characters of its own under a cells layer leaves the cells layer\'s paint as it was', async () => {
+  const { project, vector } = await paintedUnderVector();
+  expect(project.lowerGroup.upper).toEqual([vector]);
+  const shown = shownKey(project), pixels = project.pixelsAsSeen().data; // the PIXEL view, which the Paint Bucket and Magic Wand read too
+  project.moveLayer(vector, 1);
+  await settle(project);
+  expect(project.lowerGroup.upper).toEqual([vector, 'edit']);
+  expect(shownKey(project).filter((key, i) => key !== shown[i])).toEqual([]);
+  expect(project.pixelsAsSeen().data.filter((v, i) => v !== pixels[i]).length).toBe(0);
+});
+
+test('R7: flat paint shows as its nearest palette color, solid, in the lower group and above it', async () => {
+  const { project, vector } = await paintedUnderVector();
+  const solid = () => {
+    const seen = new Set();
+    for (let row = 2; row < 6; row++) for (let col = 4; col < 12; col++) {
+      const { char, fg, bg } = project.cells[row * project.cols + col];
+      seen.add(fg.hex.toLowerCase() === bg.hex.toLowerCase() || char === '█' ? fg.hex.toLowerCase() : char === ' ' ? bg.hex.toLowerCase() : `${char}${fg.hex}${bg.hex}`.toLowerCase());
+    }
+    return [...seen];
+  };
+  expect(solid()).toEqual(['#00d787']); // #00e676's nearest in VGA
+  project.moveLayer(vector, 1);
+  await settle(project);
+  expect(solid()).toEqual(['#00d787']);
+});
+
+test('R7: paint on a cell\'s bottom half alone is a ▄ over the picture\'s top half, in the lower group and above it', async () => {
+  const { project, vector } = await paintedUnderVector();
+  const line = () => project.cells.slice(10 * project.cols + 4, 10 * project.cols + 36).map(({ char, fg }) => (char === '▄' && fg.hex.toLowerCase() === '#ff5555' ? 'ok' : `${char}${fg.hex}`));
+  const all = Array(32).fill('ok');
+  expect(line()).toEqual(all); // #ff5252's nearest in VGA in the bottom half
+  project.moveLayer(vector, 1);
+  await settle(project);
+  expect(line()).toEqual(all);
+});
+
 // docs/model.md R7: under a shape on the bottom a pin's look is drawn into the shapes' pixels, so a pin changed with its
 // pixels left as they were (an undo of typing over it in its own colors) draws that cell again.
 test('R7: a pin changed alone under a shape on the base shows its new look, and undo its old one', async () => {

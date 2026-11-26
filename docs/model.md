@@ -87,7 +87,7 @@ over a cell (R7).
 
 - Lives in: `Renderer.#paintOver` (`src/document/Renderer.js`), which every paint-over-cell path goes through: the lower
   group's `#composeOne` (the layer's own cells), a base pin under paint (`#paintedPin`) and the upper walk
-  (`#upperCell`). In ANSI the last two hand an open character with no entry of the layer's own to the convert path over
+  (`#upperCell`), and a Best match cell under the lower group's paint (`#shown`). In ANSI the last two hand an open character with no entry of the layer's own to the convert path over
   its halves (`halfColors`), and `#lookAt` follows them (R11). The predicate is `opensToPaint` in `src/lib/Cells.js`;
   `coverCell` there is the tint. `storedLookAt` (`src/store/project/reading.js`)
   mirrors it in stored colors, and Colors only (`paintStroke` in `src/store/project/editLayer.js`) uses the predicate to
@@ -261,8 +261,11 @@ layer every cell is someone's own, and a blank one still takes a ▄ (`showsNoCh
 ### R7. The characters are a rendering of the pixels: an upper layer converts over the pixels under it.
 
 Paint and shapes on an upper layer, where they don't tint a character of someone's own (R2), convert over the two
-grid pixels the PIXEL view shows under that layer: the lower group's output (the picture with its paint, before the
-palette) with each upper layer below laid over by its alpha. In the ASCII styles never over the shown character's
+grid pixels under that layer: the lower group's picture with its paint, before the palette, with each upper layer below
+laid over by its alpha. Where the PIXEL view shows Best match's or By shape's cells as they look (a shade one color in
+both halves, R11), what's under is still the picture, not that look: over the look, a layer's paint moved above a vector
+layer of its own characters mixed into other colors than it had in the lower group, and its cells changed with the
+order. In the ASCII styles never over the shown character's
 halves (those are ink on black, far darker than the pixels, so a faint stroke one layer up came out dark). In ANSI,
 under a character of someone's own (a pin, the lower cells layer's), the PIXEL view shows the character's look (R11), so
 that's what's under: its halves, not the two pixels the base stores under it (its background over its foreground). A
@@ -280,7 +283,11 @@ pixels right on the base or above a cells layer, and moving or hiding a cells la
 characters. A file saved with scales of its own keeps them: there a vector layer right on the base draws at the base's
 scale and one above at the paint's, so a cells layer moved under one (or hidden there, had the group followed the eyes)
 redraws its strokes at another scale, as other characters. The lower
-group's own paint converts over the picture the same way. Under By shape (and plugin solvers, R12), which matches finer samples of the picture
+group's own paint converts over the picture the same way, under Best match too: the character Best match picked from
+the picture alone isn't someone's own, so paint over it is converted, not a tint (R2), and a layer's paint gives the
+same cells in the lower group and above it. Under Best match each half of paint mixed into the picture snaps to its
+nearest palette color before the character is picked (paint isn't dithered), so flat paint is that color, solid, and
+not two colors in a shade. Under By shape (and plugin solvers, R12), which matches finer samples of the picture
 (4 × 8 a cell), the layer above matches the same samples with the layers between and its own pixels laid over them
 (`#fineUnder`), so a photo's detail under soft paint counts there as it does on the lower group; where the picture has no
 samples (the lower group isn't By shape or a plugin solver) the two pixels stand in. Its own pixels are sampled as finely as they're drawn
@@ -295,7 +302,8 @@ another step, dither error, By shape's finer samples, a plugin solver's neighbor
 - Lives in: the working scale, `prepare` (`src/lib/ImageProcessor.js`) and `ensureLayer` (`src/store/project/rendering.js`:
   a new drawing's paint at the base's scale, a rescale taking both); `lowerGroup` (`src/document/layerInfo.js`), with its `shows` from `ProjectStore.lowerGroup` and
   `FrameBuilder.prepare`; `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
-  for `#paintOver`'s convert path, with `pictureUnder` for the lower group; the look under a character of someone's own
+  for `#paintOver`'s convert path (its snap under Best match), with `pictureUnder` for the lower group (`#shown`, a
+  resolved cell under paint); the picture under a converted cell is `#lowerPx`'s, from `#underData`; the look under a character of someone's own
   comes from `composeUpper`'s reader (`#lowerPx`), and `#fineUnder` steps aside there; on the bottom, `ShapeLayer`'s
   `#looks` (in `#draw` and `pressed`, turned on by `lookUnder` in ANSI), which draws a cell again when its pin changes
   alone (`#pinsChanged`), and `writeBaseCells` composites again after its pins; `storedLookAt` (`src/store/project/reading.js`)
@@ -310,7 +318,11 @@ another step, dither error, By shape's finer samples, a plugin solver's neighbor
   hides and shows …`; `tests/browser/merge.test.js › R7: under By shape …` (soft paint over a photo
   merges down with nothing frozen) and `› R3: the report (as saved) …` (a shape merged into an upper By shape layer,
   nothing frozen); `tests/browser/layer-chars.test.js › R7: By shape on a picture added as a layer …` (the same
-  characters on its own layer as in the lower group).
+  characters on its own layer as in the lower group) and `› R7: under Best match paint on an upper cells layer …` (half
+  paint snapped, the same in the lower group and above); `tests/browser/layer-stack.test.js › R7: the report: moving a vector layer with characters of its own under a cells layer …`,
+  `› R7: flat paint shows as its nearest palette color …` and `› R7: paint on a cell's bottom half alone …`
+  (Layer 1 moved above a vector layer of its own By shape, the cells and the PIXEL view unchanged);
+  `tests/browser/char-choice.test.js › R7: paint under Best match shows as its palette color …`.
 
 ### R8. Color ASCII is ANSI in spirit: a character of someone's own keeps its background, on the base too.
 
@@ -546,6 +558,15 @@ entries and paint with their kinds, frozen cells included; a layer moved up or d
 `tests/browser/layer-stack.test.js`).
 
 ## Known departures
+
+- Under Best match, the base's own strokes are its pixels (R2), matched with the picture before the palette, so a
+  half-opacity stroke on the base can come out a shade of two colors where the same stroke on a cells layer, in the
+  lower group or above it, is one palette color (R7). The base keeps no mark of which of its pixels were painted.
+  Checked by `tests/browser/layer-chars.test.js › known departure: under Best match half paint on Base …`.
+- Under Best match, the PIXEL view shows the lower group's paint over the base's cell as Best match picked it from the
+  picture (`#showResolved`), while the ANSI view converts the paint with the picture (`#shown`), so a painted cell's
+  half can show a little otherwise in the two (fewer, and nearer, than when the paint only tinted the cell). Drawing the
+  converted cell there made the PIXEL view change with the layers' order.
 
 - An art layer's `▄` (what `artCellOf` makes of paint, paint blocks and solid glyphs) is kept as a character in every
   style (`Renderer.pinAt` applies the "▄ is pixels outside ANSI" rule to base pins only; `#upperCell`'s vector branch,

@@ -83,6 +83,7 @@ export default class Renderer {
   #chosen = null;       // a Number palette someone else picked (usePalette): composite doesn't pick its own
   #lowerEdits = null;   // the lower group's cells layer's map, from the last composeAll or updateCells: where its cells are exact
   #lowerStyle = null;   // the render style it was composed in (shownEntry)
+  #lowerParams = null;  // the settings it was composed in: whether its output shows resolved cells (#pixelsUnder)
   #pinStyle = 'ansi';   // the render style of the last composite: a ▄ pin is ANSI's alone (pinAt)
   #upperGrids = new WeakMap(); // an upper vector layer -> its shapes at grid resolution (#upperGrid), as #baseDrawn is the base's
   #upperStored = new WeakMap(); // an upper vector layer -> its shapes at grid resolution as stored (upperStoredAt)
@@ -227,13 +228,15 @@ export default class Renderer {
   }
 
   // A resolved cell with any paint in it over it: under By shape the cell the paint makes
-  // (#resolvePainted), else paint colors the character, never changes it (coverCell). While a stroke
-  // is held, paint shows in its own colors, as #held has it.
+  // (#resolvePainted), under Best match the cell #paintOver makes of the paint mixed into the picture's two pixels, as
+  // the same paint on a layer above converts (docs/model.md R7): the character Best match picked from the picture alone
+  // isn't someone's own, so the paint doesn't keep it. While a stroke is held, paint shows in its own colors, as #held
+  // has it.
   #shown(cell, col, row, params) {
     if (params.charMode === 'shape') return (this.#painted?.of === this.#resolved && this.#painted.cells[row * params.cols + col]) || cell;
     const top = this.paintAt(col, 2 * row), bottom = this.paintAt(col, 2 * row + 1);
     if (!top && !bottom) return cell;
-    return coverCell(cell, top, bottom, { renderStyle: params.renderStyle, palette: this.#heldData ? null : this.palette });
+    return this.#paintOver(cell, () => this.pictureUnder(cell, col, row, params), top, bottom, false, col, row, params, this.#heldData ? null : this.palette);
   }
 
   // #resolved when it's for these settings and this grid (not between a resize and its render), else null.
@@ -779,6 +782,7 @@ export default class Renderer {
   #updateCells(cells, pixels, params, editCells, baseCells) {
     this.#lowerEdits = editCells;
     this.#lowerStyle = params.renderStyle;
+    this.#lowerParams = params;
     if (!this.outputCanvas || !pixels.length) return cells;
     const next = cells.slice();
     const { cols, chars: charset, charMode, renderStyle } = params;
@@ -880,6 +884,7 @@ export default class Renderer {
   #composeAll(baseCells, editCells, params) {
     this.#lowerEdits = editCells;
     this.#lowerStyle = params.renderStyle;
+    this.#lowerParams = params;
     this.#looksDirty(null);
     const cells = baseCells.slice();
     const rows = charRowsOf(params.rows), pins = this.hideBase ? EMPTY_BASE.pins : this.baseRecords.pins;
@@ -937,10 +942,19 @@ export default class Renderer {
     // PIXEL view shows it, its look (R11), not the two stored under it: a pinned █ is its color in both halves, not its
     // background over its foreground, which a soft shape's edge mixed into by turns, a stripe a row (docs/model.md R7).
     // Not in the ASCII styles, whose looks are ink on black.
+    // Where the output shows Best match's or By shape's cells (#showResolved) it holds each as it looks, a shade one color
+    // in both halves; what's under a converted character is the picture, with the lower group's paint over it, as the
+    // lower group's own paint converts over (#shown), so a layer's paint converts the same in the group and above it.
     const read = n ? this.#outputReader(px0, 2 * pr0, px1, 2 * pr1 + 1) : null, ansi = this.#lowerStyle === 'ansi';
+    const picture = ansi && this.#lowerParams && this.#showsResolved(this.#lowerParams) && this.#underData(this.#lowerParams);
+    const unconverted = !picture ? read : (x, y) => {
+      if (y >= picture.height) return read(x, y);
+      const o = (y * picture.width + x) * 4, p = { r: picture.data[o], g: picture.data[o + 1], b: picture.data[o + 2] }, paint = this.#noPaint ? null : this.paintAt(x, y);
+      return paint ? mix(p, paint, paint.a) : p;
+    };
     this.#lowerPx = read && !ansi ? read : read && ((x, y) => {
       const row = y >> 1, cell = lower[row * cols + x];
-      return cell && this.#exactUnder(x, row) ? halfColors(cell)[y & 1] : read(x, y);
+      return cell && this.#exactUnder(x, row) ? halfColors(cell)[y & 1] : unconverted(x, y);
     });
     if (settles.includes(true)) this.#composeSettling(out, lower, visited, palette, reads, settles, cols);
     else {
@@ -1244,9 +1258,9 @@ export default class Renderer {
     return { data: out, paint: over };
   }
 
-  // The cell's two grid pixels under the upper layer at `upTo` (top, bottom: { r, g, b }), as the PIXEL view shows them
-  // (shownCanvas): the lower group's output (the picture with its paint, before the palette) with each upper layer below
-  // laid over by its alpha. Paint and shapes there convert over these (docs/model.md R7), as the lower group's own convert
+  // The cell's two grid pixels under the upper layer at `upTo` (top, bottom: { r, g, b }): the lower group's picture with
+  // its paint, before the palette (#lowerPx: where the output shows Best match's or By shape's cells as they look, still
+  // the picture under them), with each upper layer below laid over by its alpha. Paint and shapes there convert over these (docs/model.md R7), as the lower group's own convert
   // over the picture, so the characters are a rendering of the pixels; the shown cell's halves stand in where the output
   // can't be read (an odd last pixel row, or between a resize and its render).
   #pixelsUnder(cell, col, row, reads, upTo) {
@@ -1278,8 +1292,12 @@ export default class Renderer {
     const { renderStyle } = params;
     if (exact && (renderStyle === 'ansi' || !opensToPaint(cell, renderStyle))) return coverCell(cell, top, bottom, { renderStyle, palette });
     const snap = (c) => (palette?.length ? nearestColor(c, palette) : c);
-    const halves = under(), [ht, hb] = halves;
-    return this.#upperChar(halves, top ? mix(ht, top, top.a) : ht, bottom ? mix(hb, bottom, bottom.a) : hb, col, row, params, layer, snap, 0, fine);
+    const halves = under(), [ht, hb] = halves, painted = (h, p) => (p ? mix(h, p, p.a) : h);
+    // Paint isn't dithered: under Best match each half snaps to its nearest palette color before the character is
+    // picked, so flat paint shows as that color, solid, and not as two colors in a shade (docs/model.md R7).
+    const snaps = params.charMode === 'best' && palette?.length;
+    const t = painted(ht, top), b = painted(hb, bottom);
+    return this.#upperChar(halves, snaps ? snap(t) : t, snaps ? snap(b) : b, col, row, params, layer, snap, 0, fine);
   }
 
   // The cell's two pixels of the picture (the lower group's, before its paint and the palette), as underCell builds a
