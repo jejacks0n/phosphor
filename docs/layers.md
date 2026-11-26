@@ -1053,9 +1053,11 @@ the cursor, as one undo step, without leaving Edit Mode.
   In a bitmap font, which has no quarter blocks, Half-block draws ▌ ▐ and █ a whole cell tall instead. A line and its
   mirror image are drawn alike.
 - **Paint Bucket** (**G**): Fills what you see, in the foreground color.
-  - **Walls**: Text and lines you've drawn (any drawing-layer cell whose character isn't a space, █, ▀ or ▄) are walls:
-    a fill stops at them and never covers them, so it stays inside a box and leaves your text readable. A line hidden
-    under paint isn't a wall, since you can't see it.
+  - **Walls**: Text and lines you've drawn on the selected layer (any of its cells whose character isn't a space, █, ▀
+    or ▄) are walls: a fill stops at them and never covers them, so it stays inside a box and leaves your text readable.
+    A line hidden under paint isn't a wall, since you can't see it. Text on other layers isn't a wall: a fill on a
+    layer above it covers it there, on the layer you're filling, and hiding that layer or erasing the fill shows the
+    text again.
   - **What It Goes By**: A Normal fill goes by what the view shows, as the Magic Wand does: in the PIXEL view an opened
     file's characters as they look, and with **All layers** on the characters typed on the layers above.
   - **Options**: **Tolerance**, **Contiguous** (off fills every match across the canvas) and **Feather**, which softens

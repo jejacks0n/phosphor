@@ -77,6 +77,27 @@ test('a fill on the background leaves typed text readable', async () => {
   expect(cell.fg.hex).not.toBe(cell.bg.hex);
 });
 
+test('text on a layer under the picked one is no wall: the fill covers it there, and hiding the layer shows it again', async () => {
+  const { project, workspace } = await blank();
+  project.typeAt(2, 2, 'A', { fg: '#ffffff', bg: '#000000' });
+  project.commitEdit();
+  const top = project.addLayer('cells', 'edit');
+  workspace.pickLayer(top);
+  project.render();
+  await settle(project);
+  Object.assign(workspace, { editFgColor: '#ff0000', editFgNone: false, editFillAllLayers: false, editFillTolerance: 10, editFillContiguous: true });
+  bucket.begin({ project, workspace, view: 'output' }, { x: 20.5, y: 20.5 }, ev);
+  await settle(project);
+  expect(project.cellHasPaint(2, 2)).toBe(true); // on the picked layer, over the A
+  const covered = project.cells[cellIndex(2, 2, project.cols)];
+  expect([covered.fg.hex, covered.bg.hex]).toEqual(['#ff0000', '#ff0000']);
+  project.setLayerHidden(top, true);
+  project.render();
+  await settle(project);
+  const shown = project.cells[cellIndex(2, 2, project.cols)];
+  expect([shown.char, shown.fg.hex]).toEqual(['A', '#ffffff']);
+});
+
 test('a box hidden under paint of one color isn\'t a wall: the fill covers what you see', async () => {
   const { project, workspace } = await blank();
   const ctx = { project, workspace, view: 'output' };
