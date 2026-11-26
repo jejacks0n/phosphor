@@ -313,9 +313,14 @@ brush's paint, a grid pixel at a time, samples the same as its two pixels. An up
 scale, and Merge down draws them into the paint as they are, so By shape (and plugin solvers, R12) samples the merged paint as it sampled the
 shapes, and the PIXEL view, which shows a grid pixel of paint as its block's average, shows them as it did. So the ASCII view says what the PIXEL view shows, and paint
 merged down converts to what it converted to above, except for the converter's own differences (a palette snapped at
-another step, dither error, By shape's finer samples, a plugin solver's neighbors, R12), which R3 freezes.
+another step, dither error, By shape's finer samples, a plugin solver's neighbors, R12), which R3 freezes. The lower
+group's paint, the base's own pixels and the layers the PIXEL view and the Number palette lay over the picture are
+laid over it in the page, as `mix` lays an upper layer's paint, never by the canvas's own blend: a canvas holds a
+see-through pixel premultiplied and rounds the blend its own way on each kind of CPU, so a soft edge that came out
+halfway between two palette colors snapped to one on a Mac and to the other on Linux.
 
-- Lives in: the working scale, `prepare` (`src/lib/ImageProcessor.js`) and `ensureLayer` (`src/store/project/rendering.js`:
+- Lives in: `layOver` (`src/document/Renderer.js`), for the lower group's paint (`#drawLayerArea`, and again over the
+  dither, `#ditherUnder`), the base's own pixels (`#drawBase`) and the upper layers in `shownCanvas` and `countCanvas`; the working scale, `prepare` (`src/lib/ImageProcessor.js`) and `ensureLayer` (`src/store/project/rendering.js`:
   a new drawing's paint at the base's scale, a rescale taking both); `lowerGroup` (`src/document/layerInfo.js`), with its `shows` from `ProjectStore.lowerGroup` and
   `FrameBuilder.prepare`; `Renderer.#pixelsUnder` and `#fineUnder` (`src/document/Renderer.js`), used by `#upperCell` for shapes and
   for `#paintOver`'s convert path (its snap under Best match), with `pictureUnder` for the lower group (`#shown`, a
@@ -338,7 +343,10 @@ another step, dither error, By shape's finer samples, a plugin solver's neighbor
   paint snapped, the same in the lower group and above); `tests/browser/layer-stack.test.js › R7: the report: moving a vector layer with characters of its own under a cells layer …`,
   `› R7: flat paint shows as its nearest palette color …` and `› R7: paint on a cell's bottom half alone …`
   (Layer 1 moved above a vector layer of its own By shape, the cells and the PIXEL view unchanged);
-  `tests/browser/char-choice.test.js › R7: paint under Best match shows as its palette color …`.
+  `tests/browser/char-choice.test.js › R7: paint under Best match shows as its palette color …`;
+  `tests/browser/layer-stack.test.js › R7: the lower group's soft paint lies over the picture as mix() lays it …` (every
+  step of alpha over a gradient, against `mix`); `tests/browser/matrix.test.js` (its pictures, made on a Mac, match on
+  Linux).
 
 ### R8. Color ASCII is ANSI in spirit: a character of someone's own keeps its background, on the base too.
 

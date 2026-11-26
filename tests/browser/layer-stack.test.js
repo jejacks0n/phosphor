@@ -7,7 +7,7 @@ import { makeShape, rectShape, transformed, translation } from '@/document/shape
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { MOST_LAYERS } from '@/document/layerInfo.js';
 import { toastMessage } from '@/composables/useToast.js';
-import { cellIndex, coverCell } from '@/lib/Cells.js';
+import { cellIndex, coverCell, mix } from '@/lib/Cells.js';
 import { typeText } from '@/composables/useTextTool.js';
 import { createApp } from 'vue';
 import ColorsPage from '@/components/ColorsPage.vue';
@@ -295,6 +295,28 @@ for (const [renderStyle, charChoiceAscii] of [['colorAscii', 'intensity'], ['col
     expect(after.filter((cell, i) => cell !== before[i])).toEqual([]);
   });
 }
+
+// docs/model.md R7: the lower group's paint lies over the picture as mix() lays an upper layer's (#paintOver), worked out
+// in the page, not by the canvas: a canvas holds a see-through pixel premultiplied and blends it in its own rounding, which
+// differs by CPU, so a color halfway between two palette colors snapped one way on a Mac and the other on Linux (CI).
+test('R7: the lower group\'s soft paint lies over the picture as mix() lays it, a step at a time', async () => {
+  const { project } = await createTestApp();
+  await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 }); // 40 x 40 grid pixels, 20 rows of cells
+  project.quantize = 'none';
+  await settle(project);
+  const r = project.renderer;
+  expect(r.palette?.length ?? 0).toBe(0); // nothing snapped: the output is the blend itself
+  project.paintEditPixels(Array.from({ length: 40 * 40 }, (_, k) => ({ x: k % 40, y: Math.floor(k / 40), r: 255, g: 0, b: 128, alpha: ((k % 251) + 1) / 255 })));
+  project.commitEdit();
+  await settle(project);
+  const params = project.layerParams.get('edit'), out = r.outputCanvas.getContext('2d').getImageData(0, 0, 40, 40).data, wrong = [];
+  for (let y = 0; y < 40; y++) for (let x = 0; x < 40; x++) {
+    const paint = r.paintAt(x, y), under = r.pictureUnder(project.cells[(y >> 1) * 40 + x], x, y >> 1, params)[y & 1];
+    const want = paint ? mix(under, paint, paint.a) : under, o = (y * 40 + x) * 4;
+    if (out[o] !== want.r || out[o + 1] !== want.g || out[o + 2] !== want.b) wrong.push(`${x},${y}`);
+  }
+  expect(wrong).toEqual([]);
+});
 
 // The report (projects/blur-merged-upper.phosphor): a shape merged into Layer 3 and blurred, its soft edge over Layer 1's
 // white stroke, came out as dark '#' and '=' cells in Color ASCII while the PIXEL view showed near-white.
