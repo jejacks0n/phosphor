@@ -2,7 +2,7 @@
 // and one undo bringing them back as shapes. A pin a pressed shape covers goes, so the cell still shows the shape.
 // In an animation Bake keeps them shapes, with the sliders burnt into their colors.
 import { test, expect } from 'vitest';
-import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
+import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { ellipseShape, rectShape, withShape } from '@/document/shapes.js';
 import { makeArt } from '@/document/artLayers.js';
 import { cellIndex } from '@/lib/Cells.js';
@@ -380,21 +380,80 @@ test('Blend into source image puts a vector layer\'s shapes in the picture, the 
   expect(unlike(cellsKey(project), cells)).toEqual([]);
 });
 
-test('Blend into source image is refused as Merge down is: a vector layer above the bottom, and one with its own characters', async () => {
+test('Blend into source image is refused as Merge down is: a vector layer above the bottom', async () => {
   const { project, workspace } = await drawing();
-  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' }));
   const state = () => [project.shapes, project.layers, project.image, project.history.version];
   workspace.pickLayer('edit');
   const upper = project.addLayer('vector', 'edit'); // above a cells layer
   const before = state();
   expect(await project.mergeShapesIntoPicture(upper)).toBe(false);
-  project.setLayerChars(id, { chars: '@#' });
+  expect(state()).toEqual(before);
+});
+
+// A vector layer with character settings of its own goes into the base as the two merges it's made of, in one undo
+// step: its shapes as paint onto a cells layer put in its place (a cell that shows otherwise there frozen as it showed),
+// and that layer into the base. Keep crisp cells keeps what froze as it showed (along a soft edge the shapes are paint,
+// in the base's characters, as on a drawing layer: R3), the same as the two merges by hand; Blend into source image
+// redraws it in the base's (the question says so). Only the whole layer: its shapes alone can't be pressed as they show.
+test('a vector layer with its own characters merges into the base in one step: Keep crisp cells as the two merges by hand, Blend into source image in the base\'s characters', async () => {
+  const { project, workspace } = await drawing();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  const round = project.addShape(ellipseShape(8, 6, 26, 24, { fill: '#0044aa', stroke: '#ffee00', width: 1.5 })); // soft edges
+  project.setLayerChars(id, { chars: '▚▞', solids: 0 });
   project.commitLayerChars();
-  const own = state();
-  expect(await project.mergeShapesIntoPicture(id)).toBe(false);
-  expect(toastMessage.value).toMatch(/custom character settings/);
-  expect(state()).toEqual(own);
-  expect(before[0]).toBe(project.shapes);
+  workspace.pickLayer(id);
+  project.render();
+  await settle(project);
+  const own = () => project.cells.some(({ char }) => char === '▚' || char === '▞');
+  const cells = cellsKey(project), look = halves(project), stack = project.layers.map((layer) => layer.id), image = project.image, version = project.history.version;
+  const merged = ['base', ...stack.slice(2)], state = () => [keys(project), project.layers.map((layer) => layer.id), cellsKey(project)];
+  expect(own()).toBe(true);
+  expect(useMergeDown().offWhy(id)).toBeNull();
+
+  toastMessage.value = null;
+  expect(project.mergeShapes([key])).toBe(false); // its shapes alone: refused, saying why
+  expect(toastMessage.value).toBe('Vector 1 uses custom character settings, so its shapes merge into Base only as an entire layer. Deselect shapes to merge all of Vector 1.');
+  expect(project.history.version).toBe(version);
+
+  expect(project.mergeDown(id)).toBe(true); // Keep crisp cells
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect(project.layers.map((layer) => layer.id)).toEqual(merged);
+  expect(project.history.version).toBe(version + 1);
+  const oneStep = { look: halves(project), pins: [...project.baseRecords.pins] };
+  const inside = (list) => list.filter((_, i) => i % 30 >= 3 && i % 30 <= 6 && Math.floor(i / 30) >= 2 && Math.floor(i / 30) <= 3);
+  expect(inside(oneStep.look)).toEqual(inside(look)); // where the rectangle covers cells whole, as it showed (a cell one color all over can come back as another character of it)
+  project.undo();
+  await settle(project);
+  expect(state()).toEqual([[key, round].sort(), stack, cells]);
+  expect([workspace.pickedLayer, project.editId]).toEqual([id, 'edit']);
+  project.redo();
+  await settle(project);
+  expect([project.shapes.size, project.layers.map((layer) => layer.id), halves(project)]).toEqual([0, merged, oneStep.look]);
+  project.undo();
+  await settle(project);
+  // The same as the two merges by hand: into a drawing layer put under it, then that into the base.
+  const by = project.addLayer('cells', 'base');
+  await settle(project);
+  expect(project.mergeDown(id)).toBe(true);
+  await settle(project);
+  expect(project.mergeDown(by)).toBe(true);
+  await settle(project);
+  expect({ look: halves(project), pins: [...project.baseRecords.pins] }).toEqual(oneStep);
+  for (let i = 0; i < 3; i++) project.undo();
+  await settle(project);
+  expect(state()).toEqual([[key, round].sort(), stack, cells]);
+
+  expect(await project.mergeShapesIntoPicture(id)).toBe(true); // Blend into source image
+  await settle(project);
+  expect(project.shapes.size).toBe(0);
+  expect(project.layers.map((layer) => layer.id)).toEqual(merged);
+  expect(project.image).not.toBe(image);
+  expect(own()).toBe(false); // redrawn in the base's characters
+  project.undo();
+  await settle(project);
+  expect(state()).toEqual([[key, round].sort(), stack, cells]);
 });
 
 test('shapes that reach no cell are pressed when Blend into source image is asked, so their layer leaves as it would', async () => {

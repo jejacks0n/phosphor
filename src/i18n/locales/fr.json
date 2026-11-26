@@ -733,6 +733,7 @@
     "mergeOntoVector": "Les cellules de caractères ne peuvent pas être fusionnées dans un calque vectoriel. Utilisez plutôt Créer un calque d'art.",
     "mergeOwnChars": "{name} utilise des réglages de caractères personnalisés et ne peut pas être fusionné dans le calque en dessous.",
     "mergeShapesWhole": "Les formes ne peuvent fusionner dans un calque de dessin qu'avec l'ensemble de leur calque. Désélectionnez les formes pour fusionner tout {name}.",
+    "mergeShapesOwnChars": "{name} utilise des réglages de caractères personnalisés : ses formes ne fusionnent dans {below} qu'avec l'ensemble du calque. Désélectionnez les formes pour fusionner tout {name}.",
     "mergeBase": "Le calque de base est déjà tout en bas et ne peut pas être fusionné vers le bas.",
     "mergeOneFrame": "La fusion dans le calque de base partagé n'est disponible que pour les créations à image unique.",
     "mergeShapesTitle": "Fusionner vers le bas : peindre les formes sélectionnées dans les pixels du calque de base. Les formes fusionnées ne peuvent plus être modifiées en tant que vecteurs.",

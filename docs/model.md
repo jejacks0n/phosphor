@@ -162,10 +162,12 @@ sees a shade, so it gives the cell one color. A wide character (its glyph is two
 A vector layer directly on the base blends the same way (`mergeShapesIntoPicture`): it's the two merges above in one
 undo step, with no rule of its own. Its shapes go as paint onto a cells layer put in its place (`shapesOnCells`, so a
 cell the paint would show otherwise is frozen as it showed and an art layer's characters are entries), and that layer
-goes into the picture (`mergeIntoPicture`).
+goes into the picture (`mergeIntoPicture`). With character settings of its own its shapes can't be pressed into the
+base as they show, so Keep crisp cells is the same two merges, into the base exactly (`throughCells`: `shapesOnCells`
+then `onBase`, one undo step), and Blend redraws them in the base's characters, as a cells layer's own are.
 
 - Lives in: `onCells`, `onBase`, `mergeCellOf`, `shapesOnCells`, `shapesOnVector`, `unlike`, `frozenCells`, `freezeUnlike`,
-  `mergeIntoPicture`, `mergeShapesIntoPicture` in `src/store/project/merging.js`; `mergeKind` in `src/document/editCells.js`; `drawGlyphCell` in
+  `mergeIntoPicture`, `mergeShapesIntoPicture`, `throughCells` in `src/store/project/merging.js`; `mergeKind` in `src/document/editCells.js`; `drawGlyphCell` in
   `src/lib/glyphPicture.js`; `unfreeze` in `src/store/project/editLayer.js`; the Renderer's `#exactUnder`,
   `#upperCell` and `#composeOne` (`src/document/Renderer.js`); `layerOver` and `storedLookAt`
   (`src/store/project/reading.js`) mirror the walk; a paste keeps a frozen cell's paint (`src/store/project/selection.js`).
@@ -185,7 +187,8 @@ goes into the picture (`mergeIntoPicture`).
   the picture, a typed block too), `› R3: the report: Blend into source image puts a shape's solid blocks and
   Half-block's in unpinned`, `› R3: Into the image takes a frozen cell's paint …`, `› R3: the report: Blend into source image in
   ASCII puts the strokes over pinned spaces where Blur reaches them` (vector-strokes-ascii.phosphor) and `› at neutral:
-  the same look …` (typed blocks unpinned); `tests/browser/eraser.test.js › R1: Write block glyphs lays its shades …`; `tests/unit/edit-cells.test.js › R3: mergeKind: …`;
+  the same look …` (typed blocks unpinned); `tests/browser/vector-merge.test.js › a vector layer with its own characters
+  merges into the base in one step …` (the same as the two merges by hand); `tests/browser/eraser.test.js › R1: Write block glyphs lays its shades …`; `tests/unit/edit-cells.test.js › R3: mergeKind: …`;
   `tests/browser/merge.test.js › R3: the report: …` (two reports: the layer-blending file's two merges keep
   the canvas, the paint on the layer above included; the merge-dark-edge file's merge keeps the PIXEL view, freezing
   nothing as saved (R7) and, with the shape's own characters, its frozen cells over their paint), `› Merge down of Colors only paint …`, `› a gradient shape merged down under By shape …` and

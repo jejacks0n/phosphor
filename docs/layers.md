@@ -680,8 +680,11 @@ the canvas changes. Undo brings it back, selected if it was.
     showed, and an art layer's characters go in as typed ones do.
 
   On VECTOR, with shapes selected, Merge down presses only those, without asking. A vector layer with its own
-  character settings can't be merged into the base either way: it says so. In a room, a vector layer is pressed,
-  without asking.
+  character settings merges into the base either way, as if it had merged into a drawing layer first and that into the
+  base, in one step: **Keep crisp cells** keeps its characters as they show where its shapes cover cells whole (along
+  their soft edges they go in as paint, as onto a drawing layer), and **Blend into source image** redraws it in the
+  base's characters (the question lists that under **You give up**). It goes only whole: with shapes selected
+  on VECTOR, it says to deselect them. In a room, a vector layer is pressed, without asking.
 - **A Drawing Layer Into the Base**: Asks how, each time:
   - **Keep crisp cells**: Paint and cells become base pixels exactly as they show, and your typed and drawn cells keep
     their characters, pinned on the base layer (in Color ASCII and Monochrome ASCII, **Colors only**'s paint is paint:

@@ -30,7 +30,6 @@ export function useMergeDown() {
     if (project.hasFrames) return layer.kind === 'vector' ? 'toolbar.mergeShapesOneFrame' : 'toolbar.mergeOneFrame';
     if (under.kind === 'vector' && layer.kind !== 'vector') return 'toolbar.mergeOntoVector';
     if (under.kind === 'vector' && !sameChars(project.charsOf(id), project.charsOf(under.id))) return ['toolbar.mergeOwnChars', nameOf(id)];
-    if (layer.kind === 'vector' && under.id === 'base' && !sameChars(layer.chars, project.baseChars)) return ['toolbar.mergeOwnChars', nameOf(id)];
     return null;
   };
   const offFor = (id) => reasonWords(offWhy(id));
