@@ -174,6 +174,40 @@ function pressLayer(project, id, rect, keys) {
   return mergeStep(project, before, after, bytesHeld(before.base, after.base));
 }
 
+// Merge down of the vector layer with the id, with character settings of its own, onto the bottom: its shapes can't be
+// pressed in as they show (the base would convert them in its characters), so it's the two merges a person could make,
+// in one undo step: the shapes as paint onto a cells layer put in its place (shapesOnCells: a cell that paint would show
+// otherwise is frozen as it showed, an art layer's characters are written as cells), and that layer into the base exactly
+// (onBase, which pins what it froze). The vector layer leaves the stack, or stays with its guides. Whether it merged.
+function throughCells(project, id) {
+  const start = { stack: stackState(project), shapes: project.shapes };
+  const back = () => {
+    putState(project, start);
+    project.render();
+  };
+  const made = putLayer(project, 'cells', 'base', project.baseChars);
+  shapesOnCells(project, id, made.id, { step: false });
+  // What shows now, as the second merge reads it (levelCells: the lower group's cells), made at once as unlike makes it:
+  // a render would come a frame later, and the merge would read the vector layer's look over cells no layer holds now.
+  project.composite();
+  project.rebuildCells();
+  const shapes = project.shapes; // without the layer's, as redo leaves them
+  if (!onBase(project, made.id, null)) {
+    back();
+    return false;
+  }
+  const entry = project.history.last, { undo, redo } = entry; // the cells layer's merge: this step, with the shapes either side of it
+  entry.undo = () => {
+    undo();
+    back();
+  };
+  entry.redo = () => {
+    project.shapes = shapes;
+    redo();
+  };
+  return true;
+}
+
 // The paint layer under a merged layer, a new one: its own paint (if any) with the cells merged in erased (they show what
 // the layer above showed now) and the paint from above (from, if any) drawn over it, inside rect or all of it.
 function mergedPaint(project, into, erased, from, rect, backs = []) {
@@ -817,8 +851,9 @@ export const mergingActions = {
   // the shapes go as paint, at their own detail, onto a cells layer put in the vector layer's place (shapesOnCells: a cell
   // that paint would show otherwise is frozen as it showed, an art layer's characters are written as cells), and that
   // layer goes into the picture (mergeIntoPicture, with its rules: docs/model.md R3). The vector layer leaves the stack,
-  // or stays with its guides. Whether it merged; false, nothing changed, where Merge down is refused (above the bottom,
-  // frames, a hidden layer either side, character settings of its own: with its toast), in a room, which keeps its
+  // or stays with its guides. With character settings of its own, its shapes are paint in the base's characters there, as a
+  // cells layer's with its own is (the question says so). Whether it merged; false, nothing changed, where Merge down is
+  // refused (above the bottom, frames, a hidden layer either side: with its toast), in a room, which keeps its
   // layers (Merge down presses there), and with nothing on it that draws. Shapes that reach no cell (all off the canvas)
   // are pressed instead, so the layer leaves as it would. While the picture is made the drawing is held (_paused: no
   // stroke, paste, shape, layer change, undo or redo), since the shapes are paint on a layer of this step's meanwhile; a
@@ -827,10 +862,6 @@ export const mergingActions = {
     const at = this.layers.findIndex((layer) => layer.id === id), layer = this.layers[at];
     if (layer?.kind !== 'vector' || this.layers[at - 1]?.id !== 'base' || !this.image || this._merging || this.hasFrames || this._sharing) return false;
     if (refusedHidden(this, [id, 'base'])) return false;
-    if (!sameChars(layer.chars, this.baseChars)) {
-      toast(t('toolbar.mergeOwnChars', { name: layerName(layer) }));
-      return false;
-    }
     if (![...this.shapes.values()].some((shape) => (shape.layer ?? 'vector') === id && !shape.guide)) return false;
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
@@ -876,11 +907,12 @@ export const mergingActions = {
   // merged. rect: only what's inside a cell rect (a selection's); keys: only those shapes of a vector layer (VECTOR's Merge
   // down of a selection); either way the layer stays with the rest. Off (false) for the bottom, with nothing under it, and
   // in an animation (the base is under every frame). Refused, with a toast saying why: a cells layer onto a vector layer
-  // (Make art layer does that), a vector layer onto a vector layer whose character settings differ, a hidden layer either side, onto a layer above the bottom in a room (which keeps its layers), a vector
-  // layer with its own character settings onto the bottom (its shapes can't be pressed in as they show), and part of a
-  // vector layer onto a cells layer above the bottom. Into the bottom: a cells layer exactly as it shows (onBase; the
-  // toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels (pressLayer;
-  // the toolbar asks first for a whole one, mergeShapesIntoPicture the other way).
+  // (Make art layer does that), a vector layer onto a vector layer whose character settings differ, a hidden layer either side, onto a layer above the bottom in a room (which keeps its layers),
+  // part of a vector layer with its own character settings onto the bottom (its shapes can't be pressed in as they show),
+  // and part of a vector layer onto a cells layer above the bottom. Into the bottom: a cells layer exactly as it shows
+  // (onBase; the toolbar asks first, Into the image the other way), a vector layer's shapes pressed into the base's pixels
+  // (pressLayer; the toolbar asks first for a whole one, mergeShapesIntoPicture the other way), or with its own character
+  // settings, by way of a cells layer (throughCells).
   // Into another cells layer: each entry completed against what shows under it and written there, its paint staying paint
   // (onCells), and a vector layer's shapes going in as paint (shapesOnCells); a cell that paint would show otherwise is
   // frozen there exactly as it showed. Into another vector layer: its shapes (or only keys) move there, still shapes
@@ -896,13 +928,15 @@ export const mergingActions = {
     if (refusedHidden(this, [id, below.id])) return false;
     const ontoVector = layer.kind === 'vector' && below.kind === 'vector';
     if (below.kind === 'vector' && !ontoVector) return refuse(t('toolbar.mergeOntoVector'));
-    if (layer.kind === 'vector' && below.id === 'base' && !sameChars(layer.chars, this.baseChars)) return refuse(t('toolbar.mergeOwnChars', { name: layerName(layer) }));
+    const ownOntoBase = layer.kind === 'vector' && below.id === 'base' && !sameChars(layer.chars, this.baseChars);
+    if (ownOntoBase && (rect || keys)) return refuse(t('toolbar.mergeShapesOwnChars', { name: layerName(layer), below: layerName(below) }));
     if (ontoVector && !sameChars(this.charsOf(id), this.charsOf(below.id))) return refuse(t('toolbar.mergeOwnChars', { name: layerName(layer) })); // its shapes would convert otherwise there
     if (layer.kind === 'vector' && below.kind === 'cells' && below.id !== 'base' && (rect || keys)) return refuse(t('toolbar.mergeShapesWhole', { name: layerName(layer) }));
     if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
     this.ensureLayer();
     this.commitPending();
     if (ontoVector) return shapesOnVector(this, id, below.id, keys);
+    if (ownOntoBase) return throughCells(this, id);
     if (layer.kind === 'vector') return below.id === 'base' ? pressLayer(this, id, rect, keys) : shapesOnCells(this, id, below.id);
     return below.id === 'base' ? onBase(this, id, rect) : onCells(this, id, below.id, rect);
   },

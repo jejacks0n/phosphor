@@ -733,6 +733,7 @@
     "mergeOntoVector": "Character cells cannot merge into a vector layer. Use Make art layer instead.",
     "mergeOwnChars": "{name} uses custom character settings and cannot merge into the layer below.",
     "mergeShapesWhole": "Shapes can only merge into a drawing layer as an entire layer. Deselect shapes to merge all of {name}.",
+    "mergeShapesOwnChars": "{name} uses custom character settings, so its shapes merge into {below} only as an entire layer. Deselect shapes to merge all of {name}.",
     "mergeBase": "The base layer is already at the bottom and cannot merge down.",
     "mergeOneFrame": "Merging into the shared base layer is only available for single-frame artwork.",
     "mergeShapesTitle": "Merge down: paint the selected shapes into the base layer's pixels. Merged shapes can no longer be edited as vectors.",

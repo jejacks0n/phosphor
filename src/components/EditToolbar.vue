@@ -322,9 +322,10 @@ const mergeChoices = computed(() => {
     { id: 'exact', title: t('toolbar.mergeDialog.exactTitle'), text: t('toolbar.mergeDialog.exactText') },
     { id: 'picture', title: t('toolbar.mergeDialog.intoImageTitle'), text: t('toolbar.mergeDialog.intoImageText') },
   ];
-  // Into the picture, paint is pixels the base converts with its own characters: a layer with others of its own loses them.
+  // Into the picture, paint is pixels the base converts with its own characters: a layer with others of its own loses them
+  // (a vector layer's shapes go in as paint).
   const { id } = merging.value ?? {}, layer = project.layerById(id);
-  const ownChars = layer && project.paintOf(id)?.hasPaint && !sameChars(layer.chars, project.baseChars, 'cells')
+  const ownChars = layer && (layer.kind === 'vector' || project.paintOf(id)?.hasPaint) && !sameChars(layer.chars, project.baseChars, layer.kind)
     && t('toolbar.mergeDialog.ownCharsNote', { name: layerName(id), below: layerName(below(id)?.id) });
   // Its blocks, typed, laid or paint blocks (in the selection), go in for the converter to pick again (mergeKind's 'glyph'
   // and 'halves'): some can change.

@@ -264,7 +264,7 @@ test('Bake presses only the vector layers on the bottom: a vector layer above La
   expect(cellsKey(project)).toEqual(cells);
 });
 
-test('a vector layer on the bottom with its own character settings stays shapes through Bake, and Merge down says why it can\'t', async () => {
+test('a vector layer on the bottom with its own character settings stays shapes through Bake, and Merge down of its shapes alone says why it can\'t', async () => {
   const { project } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 30, rows: 30 });
   const key = project.addShape(rectShape(2, 2, 10, 10, { fill: '#ff0000' }));
@@ -278,13 +278,11 @@ test('a vector layer on the bottom with its own character settings stays shapes 
   expect(project.shapes.has(key)).toBe(true);
   expect(cellsKey(project)).toEqual(cells);
   const version = project.history.version;
-  for (const merge of [() => project.mergeDown('vector'), () => project.mergeShapes([key])]) {
-    toastMessage.value = null;
-    merge();
-    expect(toastMessage.value).toBe('Vector 1 uses custom character settings and cannot merge into the layer below.');
-    expect(project.shapes.has(key)).toBe(true);
-    expect(project.history.version).toBe(version);
-  }
+  toastMessage.value = null;
+  expect(project.mergeShapes([key])).toBe(false); // the whole layer merges (vector-merge.test.js), its shapes alone don't
+  expect(toastMessage.value).toBe('Vector 1 uses custom character settings, so its shapes merge into Base only as an entire layer. Deselect shapes to merge all of Vector 1.');
+  expect(project.shapes.has(key)).toBe(true);
+  expect(project.history.version).toBe(version);
 });
 
 test('a hidden vector layer on the bottom is never lost to Bake: it\'s refused until it shows', async () => {

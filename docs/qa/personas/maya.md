@@ -433,11 +433,14 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
 - Rated: yes, wants Cmd+E, then the arrows to the second choice
 
 ### 29. Press the shapes into the picture
-- Does: picks Vector 1, moves it directly onto the base if it isn't (⋯, Move down), and presses Merge down on VECTOR.
-  Then, in "Characters · Vector 1", sets Dither style and Dither back to the base's, and presses Merge down again.
-- Expects: the first press is refused, since step 25 gave Vector 1 a Dither of its own: a message says "Vector 1 uses
-  custom character settings and cannot merge into the layer below.", and nothing changes. With its
-  settings the base's again, the second press asks how, as Layer 1's merge into the base does; she chooses Keep crisp
+- Does: picks Vector 1, moves it directly onto the base if it isn't (⋯, Move down), and presses Merge down on VECTOR,
+  choosing Keep crisp cells, then undoes it. Then, in "Characters · Vector 1", sets Dither style and Dither back to the
+  base's, and presses Merge down again.
+- Expects: step 25 gave Vector 1 a Dither of its own, and the first press still asks how: Keep crisp cells merges it
+  in one step, its cells showing as they did but along the shapes' soft edges, and Blend into source image's choice lists "Vector 1's custom
+  characters: its paint is redrawn in Base's." under "You give up:". With a shape selected on VECTOR, the press says
+  to deselect it and nothing changes. With its settings the base's again, the second press asks how, as Layer 1's
+  merge into the base does; she chooses Keep crisp
   cells, which presses its shapes into the base's pixels, where they stop being shapes (its art layer's characters
   pinned); nothing on the canvas changes, and one undo brings them back as shapes.
 - Probes: `out-of-order`: try it with the vector layer hidden; `undo-redo`: undo and redo the press; `again`: undo,
