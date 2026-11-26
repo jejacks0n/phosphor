@@ -306,6 +306,23 @@ test('hosting meets again a listed watcher whose connection is still being made'
   expect(r.toHost).toEqual([]);   // the first try at p2 closed quietly
 });
 
+// A watcher whose channel came open and then went back to connecting (peer.js) asks again: the host meets it with a new
+// connection, without telling the server it left, and a second ask soon after does nothing. Someone not here can't ask.
+test('a watcher that asks again is met with a new connection, at most once a while', async () => {
+  const r = await room(['p1']);
+  await expect.poll(() => r.log.p1.arts.length, PATIENT).toBe(1);
+  r.host.signalFrom('p1', { again: true });
+  // lost between, or not: the old connection's close and the new offer race (lost waits for the next offer, RoomStore)
+  await expect.poll(() => r.log.p1.states.filter((state) => state !== 'lost'), PATIENT).toEqual(['connecting', 'live', 'connecting', 'live']);
+  expect(r.offers).toEqual({ p1: 2 });
+  r.host.signalFrom('p1', { again: true });
+  r.host.signalFrom('p9', { again: true });
+  await wait(300);
+  expect(r.offers).toEqual({ p1: 2 });
+  expect(r.toHost).toEqual([]);
+  expect(lastList(r).map((w) => w.connected)).toEqual([true]);
+});
+
 // The host's socket was reconnecting when it removed a watcher: the server never heard, and lists it again.
 test('a removed watcher is not met again when the server lists it, and remove goes again', async () => {
   const r = await room(['p1']);
