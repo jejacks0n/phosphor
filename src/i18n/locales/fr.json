@@ -759,7 +759,11 @@
       "intoImageTitle": "Fondre dans l'image source",
       "intoImageText": "Dessine directement dans l'image de base, caractères compris, afin que les curseurs et les filtres d'image s'y appliquent.",
       "ownCharsNote": "Les caractères personnalisés de {name} : sa peinture est redessinée avec ceux de {below}.",
+      "ownCharsEdgesNote": "Les bords adoucis de {name} peuvent changer pour s'accorder aux caractères de {below}.",
       "repickedNote": "Les blocs de {name} (tapés, des formes ou du Demi-bloc) sont dessinés dans l'image puis choisis à nouveau, donc certains peuvent changer. Les lettres et les lignes restent telles quelles.",
+      "subChars": "{below} utilise d'autres réglages de caractères, donc certains caractères de {name} peuvent changer.",
+      "charsMerge": "Fusionner dans {below}",
+      "charsText": "La plupart des cellules restent identiques, mais les bords adoucis peuvent changer pour s'accorder à {below}.",
       "originalNote": "La résolution d'origine de l'image source : elle est ramenée à sa résolution de travail, comme Figer, et les filtres comme Contours peuvent varier légèrement."
     },
     "bakeDialog": {

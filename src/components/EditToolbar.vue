@@ -310,14 +310,16 @@ function stepOut() {
 }
 
 // Merge down into the base asks how (a ChoiceDialog): exactly, or into the picture. merging (useMergeDown's asking):
-// { id, rect } while it's open, rect a selection's or null for the whole layer. A vector layer's shapes are pressed
-// (exactly), or go into the picture as paint does.
+// { id, rect, chars? } while it's open, rect a selection's or null for the whole layer. A vector layer's shapes are pressed
+// (exactly), or go into the picture as paint does. chars: into a layer with other character settings, which asks only
+// whether to merge (some characters can change).
 function merge(kind) {
   const { id, rect } = merging.value;
   merging.value = null;
-  mergeBusy(t, () => (kind === 'exact' ? project.mergeDown(id, rect) : project.layerById(id)?.kind === 'vector' ? project.mergeShapesIntoPicture(id) : project.mergeIntoPicture(rect, id)));
+  mergeBusy(t, () => (kind === 'exact' || kind === 'merge' ? project.mergeDown(id, rect) : project.layerById(id)?.kind === 'vector' ? project.mergeShapesIntoPicture(id) : project.mergeIntoPicture(rect, id)));
 }
 const mergeChoices = computed(() => {
+  if (merging.value?.chars) return [{ id: 'merge', title: t('toolbar.mergeDialog.charsMerge', { below: layerName(below(merging.value.id)?.id) }), text: t('toolbar.mergeDialog.charsText', { name: layerName(merging.value.id), below: layerName(below(merging.value.id)?.id) }) }];
   const choices = [
     { id: 'exact', title: t('toolbar.mergeDialog.exactTitle'), text: t('toolbar.mergeDialog.exactText') },
     { id: 'picture', title: t('toolbar.mergeDialog.intoImageTitle'), text: t('toolbar.mergeDialog.intoImageText') },
@@ -341,7 +343,10 @@ const mergeChoices = computed(() => {
   // A blank canvas's picture is one color, the same at any size: resizing it gives up nothing.
   const resized = project.pictureIsOriginal && !isUniform(project.image) && t('toolbar.mergeDialog.originalNote');
   const costs = [ownChars, repicked, resized].filter(Boolean);
-  return costs.length ? [choices[0], { ...choices[1], costs }] : choices;
+  // Kept crisp, a vector layer's shapes cover cells whole as they show, but their soft edges go in as paint (R3), in the
+  // base's characters.
+  const edges = layer?.kind === 'vector' && ownChars && [t('toolbar.mergeDialog.ownCharsEdgesNote', { name: layerName(id), below: layerName(below(id)?.id) })];
+  return [edges ? { ...choices[0], costs: edges } : choices[0], costs.length ? { ...choices[1], costs } : choices[1]];
 });
 
 // Bake under CGA or VGA asks whether to lock the picture to the palette (exact, but the in-between
@@ -415,7 +420,9 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
   <ChoiceDialog
       v-if="merging"
       :title="t('toolbar.mergeDialog.title')"
-      :sub="warnedSub(merging.rect
+      :sub="warnedSub(merging.chars
+        ? t('toolbar.mergeDialog.subChars', { name: layerName(merging.id), below: layerName(below(merging.id)?.id) })
+        : merging.rect
         ? t('toolbar.mergeDialog.subSelection')
         : t('toolbar.mergeDialog.subAll', { name: layerName(merging.id), below: layerName(below(merging.id)?.id) }))"
       :choices="mergeChoices"

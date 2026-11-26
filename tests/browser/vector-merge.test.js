@@ -2,6 +2,9 @@
 // and one undo bringing them back as shapes. A pin a pressed shape covers goes, so the cell still shows the shape.
 // In an animation Bake keeps them shapes, with the sliders burnt into their colors.
 import { test, expect } from 'vitest';
+import { createApp } from 'vue';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 import { createTestApp, loadImage, settle, cellsKey, halves } from '../support/app.js';
 import { ellipseShape, rectShape, withShape } from '@/document/shapes.js';
 import { makeArt } from '@/document/artLayers.js';
@@ -454,6 +457,32 @@ test('a vector layer with its own characters merges into the base in one step: K
   project.undo();
   await settle(project);
   expect(state()).toEqual([[key, round].sort(), stack, cells]);
+});
+
+// The question says what each choice of that merge gives up: kept crisp, the shapes' soft edges are redrawn in the
+// base's characters; blended, all of it is.
+test('Merge down of a vector layer with its own characters into the base says what each choice redraws in the base\'s characters', async () => {
+  const { project, workspace, pinia } = await drawing();
+  const key = project.addShape(rectShape(2, 2, 14, 10, { fill: '#ff0000' })), id = project.shapes.get(key).layer ?? 'vector';
+  project.addShape(ellipseShape(8, 6, 26, 24, { fill: '#0044aa', stroke: '#ffee00', width: 1.5 })); // soft edges
+  project.setLayerChars(id, { chars: '▚▞', solids: 0 });
+  project.commitLayerChars();
+  workspace.pickLayer(id);
+  await settle(project);
+  const host = document.createElement('div'), toolbar = createApp(EditToolbar).use(pinia).use(i18n);
+  document.body.append(host);
+  toolbar.mount(host);
+  try {
+    asking.value = { id, rect: null };
+    await settle(project);
+    const choice = (title) => [...document.querySelectorAll('button')].find((b) => b.textContent.includes(title)).textContent;
+    expect(choice('Keep crisp cells')).toContain("Soft edges in Vector 1 may change to match Base's characters.");
+    expect(choice('Blend into source image')).toContain("Vector 1's custom characters: its paint is redrawn in Base's.");
+  } finally {
+    asking.value = null;
+    toolbar.unmount();
+    host.remove();
+  }
 });
 
 test('shapes that reach no cell are pressed when Blend into source image is asked, so their layer leaves as it would', async () => {
