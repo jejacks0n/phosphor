@@ -1,6 +1,6 @@
 // The file chooser (the start screen's button and Cmd/Ctrl+O): choosing the same file twice (Cancel at the question
 // between) is two choices.
-import { test, expect, afterEach } from 'vitest';
+import { test, expect, vi, afterEach } from 'vitest';
 import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import EditWorkspace from '@/components/EditWorkspace.vue';
@@ -47,8 +47,8 @@ test('the same file chosen twice reports twice, because the chooser is emptied a
     input.files = dt.files;
     input.dispatchEvent(new Event('change'));
     expect(input.files.length).toBe(0); // a real chooser then sees the same file as new
-    await new Promise((resolve) => setTimeout(resolve, 20));
-    expect(toastMessage.value).toContain('Phosphor cannot open theme.sue');
+    // A file with no type is tried as a picture before it's refused, which takes as long as the browser takes.
+    await vi.waitFor(() => expect(toastMessage.value).toContain('Phosphor cannot open theme.sue'), { interval: 10, timeout: 10_000 });
     closeToast();
   }
 });
