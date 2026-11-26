@@ -241,7 +241,12 @@ generating a new seed or changing the character set doesn't change them.
 - **What Unpins**: In **Monochrome ASCII**, which shows every pinned character in white on black whatever its
   colors, paint on the base (the Brush, the Paint Bucket, Gradient, a Shape's fill, Retouch) and the PIXEL view's or
   the Soft Eraser take the pin off every cell they touch, so the paint shows as your ASCII characters. A pinned `▄`
-  stays. In ANSI and Color ASCII the paint recolors a pinned character, and it stays pinned.
+  that's the picture's two halves (Half-block's, Colors only's) stays; one you typed or a shape laid goes like any
+  character. In ANSI and Color ASCII the paint recolors a pinned character, and it stays pinned.
+- **A Pinned `▄`**: Half-block's and Colors only's `▄` is the picture's two halves, so the ASCII styles convert its
+  cell like any other part of the picture. A `▄` you typed, or a shape's Half-column detail laid, is a character: Keep
+  crisp cells brings it onto the base as `▄`, and it shows as `▄` in every style. Typing another character over it
+  makes it that character; recoloring it keeps it a `▄`.
 - **Everything Else**: Any other character belongs to its cell's position. The converter picks it there, whatever
   colors are underneath.
 - **In Color ASCII**: The converter's cells are ink on black, but a pinned character whose two pixels differ shows them

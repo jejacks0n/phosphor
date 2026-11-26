@@ -3,13 +3,13 @@
 // are handed back for the store to apply.)
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { EMPTY_BASE, withPins, withoutPins, remapBaseRecords, serializeBase, deserializeBase } from '../../src/document/baseRecords.js';
+import { EMPTY_BASE, withPins, withoutPins, movePins, remapBaseRecords, serializeBase, deserializeBase, isCharPin } from '../../src/document/baseRecords.js';
 import { resizeTransform } from '../../src/document/PaintLayer.js';
 
 test("The base layer's records: pinned characters, moved with the picture on a grid resize, and saved with the project", async () => {
   const b = withPins(EMPTY_BASE, [{ col: 2, row: 1, char: 'Q' }, { col: 1, row: 1, char: ' ' }]);
   assert.equal(b.pins.get('2,1'), 'Q'); assert.equal(b.pins.get('1,1'), ' ');
-  assert.deepEqual(Object.keys(b), ['pins', 'indexes']);                              // pins, and their colors' indexes
+  assert.deepEqual(Object.keys(b), ['pins', 'indexes', 'chars']);                     // pins, their colors' indexes, the ▄ that are characters
   assert.equal(withoutPins(b, [{ col: 2, row: 1 }]).pins.size, 1);
   assert.equal(withoutPins(b, [{ col: 9, row: 9 }]), b);
   assert.equal(withPins(b, [{ col: 2, row: 1, char: 'Q' }]), b);                      // the same pin again: same object
@@ -54,4 +54,32 @@ test("The base layer's records: a pin's 256-color indexes go where it goes", () 
   const read = deserializeBase({ pins: [['0,0', 'A'], ['1,0', 'B']], indexes: [['0,0', { fgIndex: 256, bgIndex: 16 }], ['1,0', { fgIndex: 1.5 }], ['5,5', { fgIndex: 16 }], ['1,0'], 'x', 7] });
   assert.deepEqual([...read.records.indexes], [['0,0', { bgIndex: 16 }]]);
   assert.ok(Object.isFrozen(read.records.indexes.get('0,0')));
+});
+
+// docs/model.md R15: a ▄ pin is its cell's two pixels unless it's marked a character (chars), as a laid or typed ▄ is. The
+// mark is set and cleared with glyph, kept by a ▄ written over a marked ▄ with glyph left out (a recolor, a flip), dropped by
+// any other character, and goes where the pin goes: cleared, moved, remapped, saved, and read back only beside a ▄ pin.
+test("The base layer's records: R15, a ▄ pin marked a character goes where the pin goes", () => {
+  const b = withPins(EMPTY_BASE, [{ col: 0, row: 0, char: '▄', glyph: true }, { col: 1, row: 0, char: '▄' }, { col: 2, row: 0, char: 'A', glyph: true }]);
+  assert.deepEqual([...b.chars.keys()], ['0,0']);                                       // a pixels ▄ and a letter aren't marked
+  assert.ok(isCharPin(b, '0,0')); assert.ok(!isCharPin(b, '1,0'));
+  assert.equal(withPins(b, [{ col: 0, row: 0, char: '▄' }]), b);                       // a ▄ over it, glyph left out: kept, same object
+  assert.equal(withPins(b, [{ col: 0, row: 0, char: '▄', glyph: true }]), b);
+  assert.equal(withPins(b, [{ col: 0, row: 0, char: '▄', glyph: false }]).chars.size, 0); // its pixels now
+  assert.ok(isCharPin(withPins(b, [{ col: 1, row: 0, char: '▄', glyph: true }]), '1,0'));
+  const letter = withPins(b, [{ col: 0, row: 0, char: 'B' }]);                          // another character: no mark
+  assert.equal(letter.chars.size, 0);
+  assert.ok(!isCharPin(withPins(letter, [{ col: 0, row: 0, char: '▄' }]), '0,0'));
+  assert.equal(withoutPins(b, [{ col: 0, row: 0 }]).chars.size, 0);
+
+  assert.deepEqual([...movePins(b, [{ span: { c0: 0, c1: 5, r0: 0, r1: 0 }, from: { c0: 0, c1: 4, r0: 0, r1: 0 }, dx: 1, dy: 0 }]).chars.keys()], ['1,0']);
+  const t = resizeTransform({ dx: 0, dy: 0, dw: 40, dh: 50 }, { dx: 0, dy: 0, dw: 80, dh: 100 });
+  assert.deepEqual([...remapBaseRecords(b, t, 80, 100).chars.keys()], ['1,1']);
+
+  assert.deepEqual(serializeBase(b).chars, ['0,0']);
+  assert.equal(serializeBase(withPins(EMPTY_BASE, [{ col: 0, row: 0, char: '▄' }])).chars, undefined); // none: not written
+  assert.deepEqual(deserializeBase(serializeBase(b)), { records: b, erased: [] });
+  const read = deserializeBase({ pins: [['0,0', '▄'], ['1,0', 'A']], chars: ['0,0', '1,0', '5,5', 7, null] });
+  assert.deepEqual([...read.records.chars.keys()], ['0,0']);                             // only beside a ▄ pin
+  assert.equal(deserializeBase({ pins: [['0,0', '▄']] }).records.chars.size, 0);        // from before the mark: pixels
 });

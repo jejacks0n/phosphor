@@ -146,6 +146,52 @@ describe('exactly', () => {
     expect(project.baseColorAt(5, 6)).toBe('#ffffff');
   });
 
+  // docs/model.md R15: the report: in Monochrome ASCII, Keep crisp cells turned the Half-column detail circle's ▄s into
+  // @ and the like. A ▄ pin was its cell's two pixels outside ANSI, so the base converted it; a laid or typed ▄ goes onto
+  // the base marked a character, and shows as ▄ in every style. Half-block's ▄ is still paint (R1): pixels, no pin.
+  test.each(['colorAscii', 'ascii'])('R15: the report: Keep crisp cells in %s keeps a laid ▄ and a typed ▄ as ▄', async (renderStyle) => {
+    const { project, workspace } = await createTestApp();
+    await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+    project.renderStyle = renderStyle;
+    await settle(project);
+    workspace.pickLayer('edit');
+    project.writeEditCells([
+      { col: 3, row: 3, attrs: { char: '▄', fg: '#ffffff', bg: '#000000', laid: true } }, // Half-column detail's
+      { col: 4, row: 3, attrs: { char: '▄', fg: '#ffff55', bg: '#000000' } },             // typed
+      { col: 5, row: 3, attrs: { char: '▄' } },                                            // Half-block's
+    ]);
+    project.paintEditPixels([{ x: 5, y: 7, r: 255, g: 255, b: 255, alpha: 1 }]);
+    project.commitEdit();
+    await settle(project);
+    const at = (col) => project.cells[3 * project.cols + col].char, painted = at(5);
+    expect([at(3), at(4)]).toEqual(['▄', '▄']);
+    expect(project.mergeDown('edit')).toBe(true);
+    await settle(project);
+    expect([at(3), at(4), at(5)]).toEqual(['▄', '▄', painted]);
+    expect([...project.baseRecords.chars.keys()].sort()).toEqual(['3,3', '4,3']);
+    expect(project.baseRecords.pins.has('5,3')).toBe(false);
+    project.undo();
+    await settle(project);
+    expect(project.baseRecords.chars.size).toBe(0);
+    project.redo();
+    await settle(project);
+    project.renderStyle = 'ansi';
+    await settle(project);
+    project.renderStyle = renderStyle;
+    await settle(project);
+    expect([at(3), at(4)]).toEqual(['▄', '▄']);
+    // Typed on the base itself: a character too. A recolor keeps it one; another character over it takes the mark away.
+    workspace.pickLayer('base');
+    project.writeEditCells([{ col: 8, row: 3, attrs: { char: '▄', fg: '#55ff55', bg: '#000000' } }]);
+    await settle(project);
+    expect(at(8)).toBe('▄');
+    project.writeEditCells([{ col: 8, row: 3, attrs: { char: '▄', fg: '#ff5555', bg: '#000000' } }]);
+    project.writeEditCells([{ col: 3, row: 3, attrs: { char: 'A', fg: '#ffffff', bg: '#000000' } }]);
+    await settle(project);
+    expect(at(8)).toBe('▄');
+    expect([...project.baseRecords.chars.keys()].sort()).toEqual(['4,3', '8,3']);
+  });
+
   // docs/model.md R8: Color ASCII shows a typed cell's background; the base shows a pin's two pixels as background and
   // ink where they differ, so Keep crisp cells keeps the look. The report (projects/text-merge-base.phosphor): black text
   // typed over white paint, blurred, then Layer 1 merged onto the base, came back black on black.

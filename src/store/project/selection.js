@@ -7,7 +7,7 @@
 // layer's cells and paint (stored apart but one thing to the user), and the base's colors and pins (the converter's own
 // characters belong to their cells and stay). Block = { w, h, px?, parts: [{ id, cells: (Entry | null)[], paint?: canvas }],
 // base?: { pixels: canvas (at scale, basePixelsOf), scale, colors: canvas (its stored colors, a grid pixel each), pins:
-// (char | null)[], indexes?: ({ fgIndex?, bgIndex? } | undefined)[] (beside the pins: baseRecords.js) }, looks?: Entry[] (with base: each cell as the base showed it, completeAt), shown?: (Entry | null)[],
+// (char | null)[], indexes?: ({ fgIndex?, bgIndex? } | undefined)[] (beside the pins: baseRecords.js), chars?: (true | null)[] (a ▄ pin that's a character, R15) }, looks?: Entry[] (with base: each cell as the base showed it, completeAt), shown?: (Entry | null)[],
 // shownAt?: number }: a part per cells layer; shown (Copy's) is what shapes on shown vector layers show there, as exact
 // cells, laid over the parts before shownAt. A move, Delete, a flip or turn and a recolor act on each layer as itself, in
 // one selectionEdit (one undo step) and through onLayer (one swap in and out of each layer that isn't in use): each part
@@ -25,7 +25,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast';
 import { t } from '@/i18n';
 import { boundsOf, onBottom, over, refusedNoCells } from '@/store/project/shared.js';
-import { withPins, withoutPins } from '@/document/baseRecords.js';
+import { isCharPin, withPins, withoutPins } from '@/document/baseRecords.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
@@ -73,6 +73,7 @@ export const selectionActions = {
           pixels: this.basePixelsOf(rect), scale: this.baseLayer.scale, colors: this.baseColorsOf(rect),
           pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null),
           indexes: cells.map(({ col, row }) => this.baseRecords.indexes.get(cellKey(col, row))),
+          ...(this.baseRecords.chars.size && { chars: cells.map(({ col, row }) => isCharPin(this.baseRecords, cellKey(col, row)) || null) }),
         };
         block.looks = cells.map(({ col, row }) => this.completeAt(col, row, undefined, 'base'));
         continue;
@@ -270,19 +271,19 @@ export const selectionActions = {
   }),
 
   // Whether what's in rect, on the layers, has characters Rotate can't turn: anything on a cells
-  // layer but a Half-block's ▄, or a pin on the base but ▄ (both only show their cell's pixels).
+  // layer but a Half-block's ▄, or a pin on the base but a ▄ that's its pixels (both only show their cell's pixels).
   // A floating block is judged as it was lifted: its picture landed as cells, but turns as pixels.
   hasCharacters(rect, ids) {
     const run = this._float;
     if (run?.block && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)) {
       const { parts, cells, base, shown } = run.block;
       return (parts ?? [{ cells }]).some((part) => !!part.cells?.some((entry) => entry && !isPaintBlock(entry) && !isFrozen(entry)))
-        || !!base?.pins.some((pin) => pin && pin !== '▄') || !!shown?.some(Boolean);
+        || !!base?.pins.some((pin, i) => pin && (pin !== '▄' || base.chars?.[i])) || !!shown?.some(Boolean);
     }
     ids = this.layersFor(ids);
     return rectCells(rect).some(({ col, row }) => ids.some((id) => {
       const key = cellKey(col, row);
-      if (isBase(this, id)) return ((pin) => !!pin && pin !== '▄')(this.baseRecords.pins.get(key));
+      if (isBase(this, id)) return ((pin) => !!pin && (pin !== '▄' || isCharPin(this.baseRecords, key)))(this.baseRecords.pins.get(key));
       const entry = this.cellsOf(id).get(key);
       return !!entry && !isPaintBlock(entry) && !isFrozen(entry);
     }));
@@ -542,7 +543,7 @@ function landOnBottom(project, block, col, row) {
   const at = ({ col: c, row: r }) => (r - row) * block.w + (c - col);
   project.writeBaseCells(rectCells(rect).flatMap((cell) => {
     const entry = block.cells?.[at(cell)];
-    return entry ? [{ ...cell, ...project.completeAt(cell.col, cell.row, entry, 'base') }] : [];
+    return entry ? [{ ...cell, ...project.completeAt(cell.col, cell.row, entry, 'base'), glyph: entry.char === '▄' && !isPaintBlock(entry) && !isFrozen(entry) }] : []; // R15
   }));
   if (!block.paint) return;
   const grid = document.createElement('canvas');
@@ -589,9 +590,9 @@ function turnBlock(block, op, aspect = 1, font = null) {
   if (block.shown) Object.assign(out, { shown: turnCells(block.shown), shownAt: block.shownAt });
   if (block.looks) out.looks = turned(block.looks, (e) => ({ ...e, char: turnChar(e.char, op, font) }));
   if (block.base) {
-    const { pixels, scale, colors, pins, indexes } = block.base;
+    const { pixels, scale, colors, pins, indexes, chars } = block.base;
     const swapped = (kept) => (kept && op === 'v' ? { fgIndex: kept.bgIndex, bgIndex: kept.fgIndex } : kept); // the halves swap
-    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op, font)), ...(indexes && { indexes: turned(indexes, swapped) }) };
+    out.base = { pixels: turnCanvas(pixels, op), scale, colors: turnCanvas(colors, op), pins: turned(pins, (char) => char && turnChar(char, op, font)), ...(indexes && { indexes: turned(indexes, swapped) }), ...(chars && { chars: turned(chars, (mark) => mark) }) };
   }
   return out;
 }
@@ -650,8 +651,8 @@ function rotateBlock(block, aspect = 1) {
   Object.assign(out, rotateLayer(block));
   if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...rotateLayer(part) }));
   if (block.base) {
-    const { pixels, scale, colors, pins, indexes } = block.base;
-    out.base = { pixels: turnedCanvas(pixels, false), scale, colors: turnedCanvas(colors, false), pins: from(pins) };
+    const { pixels, scale, colors, pins, indexes, chars } = block.base;
+    out.base = { pixels: turnedCanvas(pixels, false), scale, colors: turnedCanvas(colors, false), pins: from(pins), ...(chars && { chars: from(chars) }) };
     if (indexes) out.base.indexes = turnedIndexes(indexes, out, W, P, sourceX, sourceY);
   }
   return out;
@@ -704,6 +705,7 @@ function withHalfRowUnder(project, block, col, row) {
   if (block.base) {
     const { pixels, colors, pins, indexes } = block.base, below = (i) => Math.floor(i / block.w) === block.h - 1;
     out.base = { ...block.base, pixels: fill(pixels, project.basePixelsOf(last)), colors: fill(colors, project.baseColorsOf(last)), pins: keep(pins, (key) => project.baseRecords.pins.get(key)) };
+    if (block.base.chars || project.baseRecords.chars.size) out.base.chars = keep(block.base.chars ?? pins.map(() => null), (key) => isCharPin(project.baseRecords, key) || null);
     if (indexes) out.base.indexes = indexes.map((kept, i) => (pins[i] == null && below(i) ? project.baseRecords.indexes.get(cellKey(col + (i % block.w), r)) : kept));
   }
   return out;
@@ -716,7 +718,7 @@ function pasteOnBase(project, { w, h, base }, col, row) {
   if (!rect) return;
   const cells = rectCells(rect), at = ({ col: c, row: r }) => (r - row) * w + (c - col), pin = (cell) => base.pins[at(cell)];
   project.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
-  project.setBaseRecords(withPins(withoutPins(project.baseRecords, cells), cells.filter((cell) => pin(cell) != null).map((cell) => ({ ...cell, char: pin(cell), ...base.indexes?.[at(cell)] }))));
+  project.setBaseRecords(withPins(withoutPins(project.baseRecords, cells), cells.filter((cell) => pin(cell) != null).map((cell) => ({ ...cell, char: pin(cell), glyph: !!base.chars?.[at(cell)], ...base.indexes?.[at(cell)] }))));
   project.refreshCells(cells.flatMap(({ col: c, row: r }) => [{ x: c, y: 2 * r }, { x: c, y: 2 * r + 1 }]));
 }
 
@@ -771,7 +773,7 @@ function covered(project, rect) {
   const area = { ...rect, c0: Math.max(0, rect.c0 - 1), c1: Math.min(project.cols - 1, rect.c1 + 1) };
   if (onBottom(project)) {
     const { pins, indexes } = project.baseRecords, cells = rectCells(area);
-    return { rect: area, base: { pixels: project.baseLayer.copyCells(area), pins: cells.map(({ col, row }) => pins.get(cellKey(col, row)) ?? null), indexes: cells.map(({ col, row }) => indexes.get(cellKey(col, row))) } };
+    return { rect: area, base: { pixels: project.baseLayer.copyCells(area), pins: cells.map(({ col, row }) => pins.get(cellKey(col, row)) ?? null), indexes: cells.map(({ col, row }) => indexes.get(cellKey(col, row))), chars: cells.map(({ col, row }) => isCharPin(project.baseRecords, cellKey(col, row)) || null) } };
   }
   return { rect: area, entries: rectCells(area).map(({ col, row }) => project.editCells.get(cellKey(col, row)) ?? null), paint: project.paintLayer.copyCells(area) };
 }

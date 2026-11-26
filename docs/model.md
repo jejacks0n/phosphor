@@ -527,8 +527,8 @@ pixels take its look (the halves the PIXEL view drew for it, R11) in place of th
 stored as, and the paint lands on that: a half the paint misses shows as it did. Left bare, a pinned space's black over
 white showed as bands along a soft stroke's edge. A cell written onto the base with no colors of its own (the Brush's
 `▄` from Colors only over a cell it reaches) takes the same: Monochrome ASCII's look of a base cell is its character
-alone, so the `▄` went in black, and a soft stroke over white painted before drew a black rim. A pinned `▄` stays: outside ANSI it's pixels already (`Renderer.pinAt`), and it keeps what ANSI
-shows (Colors only pins one). The ANSI view's Hard Eraser still leaves a pinned space, and writing cells still pins.
+alone, so the `▄` went in black, and a soft stroke over white painted before drew a black rim. A pinned `▄` that's pixels stays: outside ANSI it's pixels already (`Renderer.pinAt`), and it keeps what ANSI
+shows (Colors only pins one). One that's a character (R15) shows as `▄`, so it's taken like any pin. The ANSI view's Hard Eraser still leaves a pinned space, and writing cells still pins.
 The other styles show a pin's colors, so there the pin stays, recolored (R2, R4, R8). The pins go as part of the edit,
 so Undo brings them back.
 
@@ -561,6 +561,29 @@ Colors only) is someone's own as every pin is, and a frame that isn't showing do
 - Checked by: `tests/unit/blink.test.js › R14: …` (each case of `paintCell`); `tests/browser/ansi-blink.test.js › R14: …`
   (paint over a top half and a whole cell beside a typed character: the cells kept, what's drawn, the `.ans` written,
   and Undo); `tests/browser/art-files.test.js` (a file's blink, pins, exported byte for byte).
+
+### R15. A `▄` pin is its cell's two pixels, unless it's a character.
+
+A `▄` pinned on the base is mostly the picture's two halves as ANSI shows them: Half-block's paint blocks, Colors
+only's, a merge's frozen cell. Outside ANSI those convert like the rest of the picture (R1), so the first build treated
+every `▄` pin that way, and Keep crisp cells in Monochrome ASCII turned the Half-column detail circle's `▄`s into `@`,
+`*` and the like: a shape's laid `▄` and a typed one are characters of someone's own (R1), and stayed `▄` on the layer.
+The base's records now mark which `▄` pins are characters (`chars`): a laid or typed `▄` merged onto the base, a `▄`
+typed or written there with colors of its own, a pasted one that was marked. A marked `▄` shows as `▄` in every
+style. A paint block, a frozen cell and the base's own block (`baseBlock`) aren't marked. Writing `▄` over a marked `▄`
+with no word either way (a recolor, a flip) keeps the mark; any other character drops it. The mark goes where the pin
+goes: undo, a move of lines and columns, a resize, the project file and a room's base, copy and paste on the base. A
+file from before the mark has none, so its `▄` pins are pixels as they were. Monochrome ASCII's paint takes a marked
+`▄` as it takes any pin (R13).
+
+- Lives in: `chars` and `isCharPin` (`src/document/baseRecords.js`, with `withPins`' `glyph`); `#pinOf`
+  (`src/document/Renderer.js`); `onBase` (`src/store/project/merging.js`); `writeOnBottom` and `baseBlock`
+  (`src/store/project/editLayer.js`); `takePins` (`src/store/project/shared.js`); `shiftBaseCells`
+  (`src/store/project/baseLayer.js`); the base's copy, turn and paste (`src/store/project/selection.js`,
+  `src/lib/clipboardBlocks.js`, `src/composables/clipboard.js`); `applyBase` (`src/store/project/sharing.js`).
+- Checked by: `tests/unit/base-records.test.js › … R15 …` (the mark set, kept, dropped, moved, saved and read back only
+  beside a `▄`); `tests/browser/merge.test.js › R15: the report: …` (Keep crisp cells in Color ASCII and Monochrome
+  ASCII keeping a laid and a typed `▄`, Half-block's still pixels, Undo, a style change, and `▄` typed on the base).
 
 ## Where the rules are walked and what else they reach
 

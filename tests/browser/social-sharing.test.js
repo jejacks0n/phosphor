@@ -1141,7 +1141,7 @@ test('applyBase writes the base\'s pixels and pins, refreshing their cells, and 
   const k = project.baseLayer.scale;
   project.editCell(1, 1, { char: 'A' });
   project.sendSlice();
-  const pins = Object.freeze({ pins: new Map([['8,8', 'Q']]), indexes: new Map() });
+  const pins = Object.freeze({ pins: new Map([['8,8', 'Q']]), indexes: new Map(), chars: new Map() });
   const edits = project.editVersion;
   project.applyBase(Array.from({ length: k }, (_, i) => [8 * k, 16 * k + i, k, BLUE]), pins); // grid pixel (8, 16), every row
   expect(project.baseRecords).toBe(pins);
