@@ -114,7 +114,7 @@ test('the display font doesn\'t change the characters', async () => {
   await setDisplayFont('jetbrains');
 });
 
-test('paint keeps each cell\'s character, and only colors it', async () => {
+test('R7: paint under Best match shows as its palette color, solid, over the picture\'s other half', async () => {
   const p = await gradient({ quantize: 'cga', charChoice: 'best', chars: SHADES, solids: 0 });
   const row = (q) => q.cells.slice(10 * q.cols, 11 * q.cols);
   const before = row(p);
@@ -122,10 +122,13 @@ test('paint keeps each cell\'s character, and only colors it', async () => {
   p.commitEdit();
   await settle(p);
   const after = row(p);
-  // A shade keeps its character; a solid one (no texture to show paint through) becomes ▄, as docs/layers.md says.
-  const solid = (c) => c === '█' || c === '▄';
-  after.forEach((cell, i) => expect(cell.char).toBe(solid(before[i].char) ? '▄' : before[i].char));
-  expect(after.map((c) => c.bg.hex.toLowerCase())).toEqual(after.map(() => '#ff5555'));
+  // The character Best match picked from the picture alone isn't someone's own, so the paint doesn't keep it: the painted
+  // top half is the paint's color, solid, and the cell is ▄ over it (or █ where the bottom half is that color too).
+  expect(before.some((c) => '░▒▓'.includes(c.char))).toBe(true);
+  after.forEach((cell) => {
+    expect('▄█').toContain(cell.char);
+    expect(halfColors(cell)[0]).toEqual({ r: 255, g: 85, b: 85 });
+  });
   expect(key(p.cells)).toEqual(key(fullRebuild(p)));
 });
 
