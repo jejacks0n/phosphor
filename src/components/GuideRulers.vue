@@ -359,10 +359,17 @@ div.ruler-corner :deep(button.dropdown-trigger) {
   border-radius: 0;
   background: transparent;
 }
+div.ruler-corner :deep(button.dropdown-trigger span) {
+  display: flex;   /* the ⋯ centered, not on the text's baseline */
+}
 div.ruler-corner :deep(button.dropdown-trigger svg) {
   width: 14px;
   height: 14px;
   fill: currentColor;
+}
+div.ruler-corner button[role="menuitemcheckbox"] {
+  display: flex;
+  align-items: center;   /* the check level with its label */
 }
 div.ruler-corner span.check {
   display: inline-flex;
