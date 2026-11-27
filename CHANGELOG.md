@@ -28,6 +28,7 @@ under Unreleased.
 
 ### Fixed
 
+- On a phone, the rulers could end up off to the side of the art after the settings drawer shut.
 - The Brush's **Opacity** and **Build up** no longer carry over into the Pencil, Shapes, the Paint Bucket and the
   Gradient: with the Brush at 50%, a filled circle came out half see-through. They paint at full opacity.
 
