@@ -60,6 +60,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     rulerOpacity: useLocalStorage('phosphor.rulerOpacity', 100), // the rulers' strips, in %; the guides and labels stay solid
     guides: [],              // { axis: 'v' | 'h', pos }: the open drawing's guides, in cells (kept per drawing in this browser, never part of the document)
     rulerZero: { x: 0, y: 0 }, // where the rulers count from
+    mirror: false,           // mirror mode: the drawing tools lay what they draw on the other side of the rulers' zero too
     guidesFile: null,        // the file id the guides belong to; null: they last until the page closes
     isShiftPressed: false,
     isAltPressed: false,     // Option on a Mac: Vector select scales from the middle

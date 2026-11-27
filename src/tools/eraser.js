@@ -4,6 +4,7 @@ import { cellsOfPixels } from '@/lib/Cells';
 import { withLeads } from '@/document/wideChars';
 import { isLaid, isPaintBlock } from '@/document/editCells';
 import { selectionClip } from '@/lib/selectionClip';
+import { eachSide } from '@/lib/mirror';
 import { t } from '@/i18n/index.js';
 
 // The eraser erases the picked layer: a cells layer's paint and edit cells; the base, black with a pinned space in
@@ -18,6 +19,7 @@ import { t } from '@/i18n/index.js';
 const soft = (workspace) => workspace.editEraserSoft;
 const inPixels = (workspace, view) => view === 'input' || soft(workspace);
 const sizeIn = (workspace, view) => (inPixels(workspace, view) ? workspace.editEraserSize : workspace.editEraserCells);
+const pixelsOfCells = (cells) => cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
 const SOFT_HARDNESS = 0.5; // ponytail: the Brush's starting Hardness, fixed; a Hardness slider of its own if that's ever asked for
 
 const eraser = {
@@ -27,6 +29,7 @@ const eraser = {
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M210.5 480L333.5 480L398.8 414.7L225.3 241.2L98.6 367.9L210.6 479.9zM256 544L210.5 544C193.5 544 177.2 537.3 165.2 525.3L49 409C38.1 398.1 32 383.4 32 368C32 352.6 38.1 337.9 49 327L295 81C305.9 70.1 320.6 64 336 64C351.4 64 366.1 70.1 377 81L559 263C569.9 273.9 576 288.6 576 304C576 319.4 569.9 334.1 559 345L424 480L544 480C561.7 480 576 494.3 576 512C576 529.7 561.7 544 544 544L256 544z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
+  mirrors: true,
   preview: { shape: 'square', size: sizeIn, snap: true, soft },
   options: [
     { key: 'editEraserSize', size: true, get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, when: (workspace) => inPixels(workspace, workspace.editorTab) },
@@ -53,19 +56,22 @@ const eraser = {
     const stamps = !exact ? null : soft(workspace)
       ? brushPixels(from, to, { size, flow: stampFlow(workspace.editEraserFlow), hardness: SOFT_HARDNESS }, project.cols, project.rows, project.pixelAspect)
       : squarePixels(from, to, size, project.cols, project.rows, project.pixelAspect);
-    const square = stamps?.filter(({ x, y }) => !clip || clip.pixel(x, y));
-    const cells = exact
-      ? cellsOfPixels(square, project.cols, project.rows)
-      : withLeads(project.cells, project.cols, squareCells(from, to, size, project.cols, project.rows)).filter(({ col, row }) => !clip || clip.cell(col, row));
-    const pixels = exact ? square : cells.flatMap(({ col, row }) => [{ x: col, y: 2 * row }, { x: col, y: 2 * row + 1 }]);
+    const inClip = ({ col, row }) => !clip || clip.cell(col, row);
+    const wholeCells = (cells) => withLeads(project.cells, project.cols, cells).filter(inClip);
+    const pixels = exact ? stamps.filter(({ x, y }) => !clip || clip.pixel(x, y)) : pixelsOfCells(wholeCells(squareCells(from, to, size, project.cols, project.rows)));
     // A ▄ with no colors of its own (Half-block: it was there to show the paint) whose last
     // paint this erases goes too, so the cell's own character comes back, and a cell a drawing tool laid goes whole
-    // when the eraser reaches either half (docs/model.md R1). Whole cells are cleared anyway.
-    const blocks = exact ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
-    const laid = exact ? cells.filter(({ col, row }) => isLaid(project.editCellAt(col, row))) : [];
-    project.eraseEditPixels(pixels);
-    if (!exact) project.clearEditCells(cells);
-    else project.clearEditCells([...laid, ...blocks.filter(({ col, row }) => !project.cellHasPaint(col, row))]);
+    // when the eraser reaches either half (docs/model.md R1). Whole cells are cleared anyway. Under a mirror mark each
+    // side is judged by its own cells, so a typed character on the other side stays, and in Hard a wide character's trail
+    // there takes its lead as it does here.
+    eachSide(project, pixels, (side) => {
+      const cells = exact ? cellsOfPixels(side, project.cols, project.rows) : wholeCells(cellsOfPixels(side, project.cols, project.rows));
+      const blocks = exact ? cells.filter(({ col, row }) => isPaintBlock(project.editCellAt(col, row)) && project.cellHasPaint(col, row)) : [];
+      const laid = exact ? cells.filter(({ col, row }) => isLaid(project.editCellAt(col, row))) : [];
+      project.eraseEditPixels(exact ? side : pixelsOfCells(cells));
+      if (!exact) project.clearEditCells(cells);
+      else project.clearEditCells([...laid, ...blocks.filter(({ col, row }) => !project.cellHasPaint(col, row))]);
+    });
   },
   end({ project }) {
     project.commitEdit();

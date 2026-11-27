@@ -1,7 +1,9 @@
 // Mirror mode on the project store: the edit layer's writes lay a mirrored copy while the store carries a mark.
 import { describe, test, expect, beforeEach } from 'vitest';
 import { createTestApp, settle } from '../support/app.js';
-import { mirrorAxes, withMirror } from '@/lib/mirror.js';
+import { mirrorAxes, strokeMirror, withMirror } from '@/lib/mirror.js';
+import { getTool } from '@/tools';
+import { fillSolid } from '@/tools/bucket';
 
 let project, workspace;
 beforeEach(async () => {
@@ -82,5 +84,129 @@ describe('the edit layer under a mirror mark', () => {
     expect(before).toBeTruthy();
     mirrorWith(() => project.paintStroke([{ x: 1, y: 4, alpha: 1 }], undefined, { blockChars: true }));
     expect(project.editCells.get('78,2')).toBe(before);
+  });
+});
+
+// A tool's stroke as the viewport runs it: each call under the mark strokeMirror gives that tool.
+const drag = (tool, view, ...points) => {
+  const ctx = { project, workspace, view };
+  const run = (fn) => withMirror(project, strokeMirror(workspace, project, tool), fn);
+  run(() => tool.begin(ctx, points[0], { stopPropagation() {} }));
+  for (let i = 1; i < points.length; i++) run(() => tool.move(ctx, points[i - 1], points[i]));
+  run(() => tool.end(ctx));
+};
+const at = (col, row) => ({ x: col + 0.5, y: 2 * row + 1 });
+
+describe('the tools under mirror mode', () => {
+  beforeEach(() => {
+    workspace.mirror = true;
+    Object.assign(workspace, { editFgColor: '#ff0000', brushDrawWith: 'normal', pencilDrawWith: 'normal' });
+  });
+
+  test('the drawing tools mirror; Text doesn\'t, so typing lays one side', () => {
+    for (const id of ['brush', 'pencil', 'eraser', 'shapes', 'blur', 'dodge', 'burn', 'bucket', 'gradient', 'flip']) expect(getTool(id).mirrors, id).toBe(true);
+    expect(getTool('text').mirrors).toBeFalsy();
+    withMirror(project, strokeMirror(workspace, project, getTool('text')), () => project.typeAt(2, 0, 'L', workspace.typingAttrs()));
+    expect(project.editCellAt(2, 0).char).toBe('L');
+    expect(project.editCellAt(77, 0)).toBeFalsy();
+  });
+
+  test('the Brush in PIXEL paints the other side too', () => {
+    drag(getTool('brush'), 'input', { x: 5.5, y: 3.5 }, { x: 7.5, y: 3.5 });
+    expect(project.paintLayer.pixelAt(5, 3)).toBeTruthy();
+    expect(project.paintLayer.pixelAt(74, 3)).toBeTruthy();
+  });
+
+  // A soft Brush's dabs overlap along a move and add up: the other side builds up as much.
+  test('a soft Brush comes out as strong on the other side', () => {
+    Object.assign(workspace, { editBrushSize: 6, editBrushFlow: 30, editBrushHardness: 0 });
+    drag(getTool('brush'), 'input', { x: 5.5, y: 3.5 }, { x: 15.5, y: 3.5 });
+    for (const x of [6, 10, 14]) expect(project.paintLayer.pixelAt(79 - x, 3).a, x).toBe(project.paintLayer.pixelAt(x, 3).a);
+  });
+
+  test('the Pencil\'s Single lines come out turned on the other side', () => {
+    workspace.pencilDrawWith = 'single';
+    drag(getTool('pencil'), 'output', at(2, 1), at(8, 1), at(8, 4)); // the canvas is 5 cell rows
+    const row = (r, c0, c1) => Array.from({ length: c1 - c0 + 1 }, (_, i) => project.editCellAt(c0 + i, r)?.char).join('');
+    expect(row(1, 2, 8)).toBe('──────┐');
+    expect(row(1, 71, 77)).toBe('┌──────');
+    for (let r = 2; r <= 4; r++) expect(project.editCellAt(71, r)?.char).toBe('│');
+  });
+
+  test('the Eraser\'s exact mode judges each side by its own cells: a typed character there stays', () => {
+    const laid = (col) => ({ col, row: 0, attrs: { char: '─', fg: '#aaaaaa', laid: true } });
+    project.writeEditCells([laid(3), laid(4), laid(5), laid(74), laid(76), { col: 75, row: 0, attrs: { char: 'A' } }]);
+    project.commitEdit();
+    Object.assign(workspace, { editEraserSoft: true, editEraserSize: 2, editEraserFlow: 100 });
+    drag(getTool('eraser'), 'output', at(3, 0), at(5, 0));
+    for (const col of [3, 4, 5, 74, 76]) expect(project.editCellAt(col, 0), `col ${col}`).toBeFalsy();
+    expect(project.editCellAt(75, 0)?.char).toBe('A');
+  });
+
+  test('the Eraser\'s Hard erases a wide character on the other side from its trail, as it does here', () => {
+    mirrorWith(() => project.writeEditCells([{ col: 3, row: 0, attrs: { char: '中' } }])); // its mirror's lead at 75, over 75 and 76
+    project.commitEdit();
+    expect(project.editCellAt(75, 0)?.char).toBe('中');
+    Object.assign(workspace, { editEraserSoft: false, editEraserCells: 1 });
+    drag(getTool('eraser'), 'output', at(3, 0)); // mirrored, col 76: the trail
+    expect(project.editCellAt(3, 0)).toBeFalsy();
+    expect(project.editCellAt(75, 0)).toBeFalsy();
+  });
+
+  test('Flip flips the mirrored cell too, and dragged across the axis flips each cell once', () => {
+    const cols = [38, 39, 40, 41];
+    project.writeEditCells([1, 2].flatMap((row) => cols.map((col) => ({ col, row, attrs: { char: 'X', fg: '#aa0000', bg: '#0000aa' } }))));
+    project.commitEdit();
+    const colors = (row) => cols.map((col) => project.underlyingAt(col, row, { evenHidden: true }));
+    const before = colors(1);
+    drag(getTool('flip'), 'output', at(38, 2)); // a click: col 41 is its mirror
+    expect(colors(2).map(({ fg }) => fg)).toEqual([before[0].bg, before[1].fg, before[2].fg, before[3].bg]);
+    drag(getTool('flip'), 'output', ...cols.map((col) => at(col, 1)));
+    expect(colors(1).map(({ fg }) => fg)).toEqual(before.map(({ bg }) => bg));
+  });
+
+  test('the Paint Bucket\'s fill, written a frame later, is laid on the other side too', async () => {
+    workspace.editorTab = 'input';
+    project.paintStroke(Array.from({ length: 10 }, (_, y) => ({ x: 39, y, alpha: 1 })), '#ffffff'); // a wall down the middle
+    project.commitEdit();
+    await settle(project);
+    workspace.editFgColor = '#00ff00';
+    const ctx = { project, workspace, view: 'input' };
+    await withMirror(project, strokeMirror(workspace, project, getTool('bucket')), () => fillSolid(ctx, { x: 5.5, y: 3.5 }));
+    expect(project.paintLayer.pixelAt(5, 3)?.g).toBe(255);
+    expect(project.paintLayer.pixelAt(74, 3)?.g).toBe(255);
+  });
+
+  test('a Bucket fill begun with mirror mode off stays on its side', async () => {
+    workspace.mirror = false;
+    workspace.editorTab = 'input';
+    project.paintStroke(Array.from({ length: 10 }, (_, y) => ({ x: 39, y, alpha: 1 })), '#ffffff');
+    project.commitEdit();
+    await settle(project);
+    workspace.editFgColor = '#00ff00';
+    const ctx = { project, workspace, view: 'input' };
+    await withMirror(project, strokeMirror(workspace, project, getTool('bucket')), () => fillSolid(ctx, { x: 5.5, y: 3.5 }));
+    expect(project.paintLayer.pixelAt(5, 3)?.g).toBe(255);
+    expect(project.paintLayer.pixelAt(74, 3)).toBeFalsy();
+  });
+
+  test('the Gradient\'s fill, written a frame later, is laid on the other side too', async () => {
+    workspace.editorTab = 'input';
+    project.paintStroke(Array.from({ length: 10 }, (_, y) => ({ x: 39, y, alpha: 1 })), '#ffffff');
+    project.commitEdit();
+    await settle(project);
+    Object.assign(workspace, { editFgColor: '#ff0000', editBgColor: '#0000ff', editFgNone: false, editBgNone: false });
+    drag(getTool('gradient'), 'input', { x: 2.5, y: 3.5 }, { x: 30.5, y: 3.5 });
+    await settle(project);
+    const left = project.paintLayer.pixelAt(5, 3);
+    expect(left).toBeTruthy();
+    expect(project.paintLayer.pixelAt(74, 3)).toEqual(left); // as drawn, not blended again from the other end
+  });
+
+  test('the mirrored copy keeps to the selection', () => {
+    workspace.selection = { c0: 0, r0: 0, c1: 39, r1: 4 };
+    drag(getTool('brush'), 'input', { x: 5.5, y: 3.5 });
+    expect(project.paintLayer.pixelAt(5, 3)).toBeTruthy();
+    expect(project.paintLayer.pixelAt(74, 3)).toBeFalsy();
   });
 });

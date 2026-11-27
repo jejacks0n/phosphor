@@ -70,6 +70,7 @@ test('a brush has a slot after the built-ins in PIXEL and ANSI, not in VECTOR', 
   expect(last.tools[0].section).toBe('plugin');
   expect(toolSlots('vector', app.project).some((slot) => slot.id === ref)).toBe(false);
   expect(getTool(ref).title).toBe('Smear (Midnight)');
+  expect(getTool(ref).mirrors).toBe(true); // mirror mode lays its strokes on both sides
 });
 
 test('two plugins come in the Plugins dialog order, whatever they registered in', async () => {
