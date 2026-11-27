@@ -604,6 +604,12 @@ a color is paint: `own` reads its color, and a write makes paint of it.
 A brush that throws stops its stroke: what the stroke laid is taken back, a toast says "Smear failed: …" with its
 error's message, and the plugin's row in the Plugins dialog says so until you Reload the plugin or the page.
 
+### Mirror mode
+
+With [mirror mode](rulers.md#mirror-mode) on, what a brush lays is copied to the other side of each axis, its result as drawn, as
+Blur's is (the copy isn't worked out again from what's there). There's nothing for its author to do, and a brush
+needn't know the mode is on.
+
 ### Keys
 
 A brush may ask for one key: a letter, or Shift and a letter (`'J'` or `'shift+j'`, in either case). If a built-in tool

@@ -847,6 +847,29 @@ canvas:
     those two, and the Brush with the base picked changes the color of the half it touches, which the character may
     hide (a `█` shows only its foreground). Nothing saved or exported changes.
 
+### Mirror Mode
+
+With **mirror mode** on (**Alt+M**; [Rulers and Guides](rulers.md#mirror-mode) says where the axes are), what you draw
+is drawn again on the other side of each axis, in both views.
+
+- **Tools that mirror**: **Brush**, **Pencil** (Normal and Half-block, and its line pieces), **Eraser**, **Shapes**,
+  **Blur**, **Dodge** and **Burn**, **Paint Bucket**, **Gradient**, **Swap Cell FG/BG** and a plugin's brushes.
+- **Tools that don't**: **Text** (Edit Mode), the **Eyedropper**, **Select**, the **Magic Wand**, **Hand**, **Zoom**
+  and VECTOR's tools. Pasting, moving a selection, **Delete** and undo aren't mirrored either; undo takes a mirrored
+  stroke back as one step.
+- **Characters turn as Flip horizontally and Flip vertically turn a selection**: `┌` becomes `┐` across the left-right
+  axis, `▌` becomes `▐`, and `▀` and `▄` swap across the top-bottom one. Letters, digits and shades stay as they are.
+  A wide character keeps its lead on the left.
+- **Where a stroke meets its mirror**, across the axis or on the middle cell of an odd width, the stroke wins: nothing
+  is laid twice, so a translucent stroke doesn't build up there.
+- **The selection clips both sides**: with only one side selected, nothing is mirrored into the other.
+- **The Paint Bucket, Blur, Dodge, Burn and a plugin's brushes copy their side**: the bucket copies the shape it filled
+  across, rather than filling the other side by its own rules, and Blur, Dodge, Burn and a plugin's brushes copy their
+  result. **Connect** on the Pencil
+  joins lines as it does on the side you drew. When the two sides already match, this is the same as drawing on both.
+- **Shapes and the Gradient show their drag outline on each side** while you drag.
+- **In a room**, nothing needs setting up: a mirrored stroke reaches the room as drawn.
+
 ---
 
 ## The Select Tool

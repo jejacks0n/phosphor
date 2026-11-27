@@ -43,6 +43,28 @@ Guides and origin markers automatically snap to character cell edges and cell ce
 - **Symmetrical emblem (41 characters wide)**: With the origin placed on the center character, cells read from −20 to 20. A guide through the center of each outer character measures 20 and −20. A guide on each outer edge measures 20½ and −20½.
 - **Even-width platform (28 characters wide)**: An even width has no single center cell. The center falls on the boundary between columns 14 and 15, 14 characters in from either outer edge.
 
+## Mirror Mode
+
+**Mirror mode** draws what you draw on one side of the rulers' zeros again on the other, so a logo, a banner or a face
+comes out symmetrical while you draw half of it. Press **Alt+M** (**Option+M** on a Mac) anywhere the art shows to
+turn it on or off; a toast says "Mirror on" or "Mirror off". Alt+M is also in the command list (**Cmd+K**) and the
+**?** shortcuts list. While you type in the ANSI view, Option+M types its character instead. Mirror mode is off each
+time the app loads, and there's no button for it yet.
+
+- **Left to right**: Always on, at the top ruler's zero if you've moved it, and otherwise down the middle of the
+  drawing's width. In an 80-column drawing that's between columns 40 and 41; in a 41-column one, on column 21, the
+  middle cell.
+- **Top to bottom**: Only when you've moved the left ruler's zero, and then at that zero. Strokes are then drawn four
+  ways: the stroke, its left-right mirror, its top-bottom mirror and both. With the left ruler's zero at the top edge,
+  nothing is mirrored down.
+- **The rulers needn't be showing.** The zeros count even with **Rulers** off. While mirror mode is on, the PIXEL and
+  ANSI views draw each axis as a thin dashed line over the art. Like guides, the lines are never part of the art or
+  exported.
+
+For a symmetrical emblem, drag the top ruler's zero onto the center character (see the 41-character example above),
+turn mirror mode on and draw one side. Which tools mirror, and how characters turn, is in [Drawing on the
+Canvas](layers.md#mirror-mode).
+
 ## Saved Settings
 
 Your guides and origin positions are saved automatically in your browser for each drawing. They return when you reload the page, open the drawing again from your recent work, restore a version, or reopen its saved `.pho` project file (every save of a drawing carries the same id).
