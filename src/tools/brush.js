@@ -11,6 +11,15 @@ const painting = (ws) => !shades(ws, 'brushDrawWith');
 // paint layer's smallest step (1/255), which would round to nothing.
 export const stampFlow = (percent) => Math.max(1 / 255, (percent / 100) ** 2);
 
+// The other paint tools' Opacity (the Pencil's, Shapes', the Paint Bucket's, the Gradient's): each its own, kept, and
+// laid by that tool alone, shown only where it lays paint (paints). Not in the toolbar until there's room for it:
+// OPACITY_SHOWN shows all four, and the Pencil's and Shapes' digits then set it.
+export const OPACITY_SHOWN = false;
+export const opacityOption = (key, paints) => ({
+  key, amount: true, get label() { return t('tools.opacity'); }, get title() { return t('tools.opacityTitle'); }, min: 1, max: 100, unit: '%',
+  when: (ws) => OPACITY_SHOWN && paints(ws),
+});
+
 const brush = {
   id: 'brush',
   get title() { return t('tools.brush.title'); },
@@ -51,7 +60,7 @@ const brush = {
     const clip = selectionClip(workspace);
     const pixels = brushPixels(from, to, options, project.cols, project.rows, project.pixelAspect), clipped = clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels;
     if (shading) shade(project, clipped);
-    else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.brushDrawWith === 'half') || 'plain' });
+    else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.brushDrawWith === 'half') || 'plain', opacity: workspace.editBrushOpacity, stack: workspace.editBrushStack });
     workspace.strokeEnd = to;
   },
   end({ project }) {

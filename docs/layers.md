@@ -577,8 +577,9 @@ before: [Tool Keys](#tool-keys)):
   that paint's own layer as on the layer above. With it off, Opacity is a ceiling: paint never gets more solid than
   it, and more strokes only change its color.
 - **Flow**: Within a stroke, how quickly the paint builds up.
-- **Shared Settings**: The Pencil, Shapes' paint and the Paint Bucket's **Colors only** fill lay paint at the Brush's
-  Opacity and Build up.
+- **The Brush's Own**: Opacity and Build up are the Brush's alone. The Pencil, Shapes, the Paint Bucket and the
+  Gradient paint at full opacity, whatever the Brush is set to, and lay over see-through paint as a layer above it
+  would.
 
 ### Colors and the Palette
 
@@ -1135,7 +1136,7 @@ the cursor, as one undo step, without leaving Edit Mode.
     None fills nothing and says why. **Escape** before you let go throws the drag away: the line goes, and nothing is
     filled.
   - **Colors**: In the PIXEL view, and in the ANSI view's **Colors only**, every grid pixel gets its own blended color
-    (blended in sRGB), at the Brush opacity. With the CGA or VGA palette or a color list, the blend shows in the
+    (blended in sRGB), at full opacity. With the CGA or VGA palette or a color list, the blend shows in the
     palette's colors, banded, as any paint does, and comes back smooth in full color.
   - **Cells**: In the ANSI view's **Cells**, the gradient is built from characters in your two colors only: █, ▓, ▒, ░
     and then a space in the background color. Where two of those meet, the cells mix them in an ordered pattern so the

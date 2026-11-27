@@ -62,8 +62,8 @@ async function drag(tool, view, points, settings = {}) {
   tool.end?.(c);
   await settle();
 }
-// Shapes and the Pencil lay paint at the Brush's Opacity and Build up (docs/layers.md, Opacity, Build Up, and Flow), so
-// each sets them, or item 7's 50% carries over.
+// The Brush at full opacity, building up. Shapes and the Pencil once took the Brush's Opacity (#304), and item 7's 50%
+// carried over; they no longer do, and the setups built then are kept as they are.
 const SOLID = { editBrushOpacity: 100, editBrushStack: true };
 async function shape(view, from, to, settings, shift = false) {
   opts({ ...SOLID, ...settings });

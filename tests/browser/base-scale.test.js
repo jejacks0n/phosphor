@@ -193,10 +193,9 @@ test('merging down soft paint under CGA shows what it showed', async () => {
   project.quantize = 'cga';
   await settle(project);
   workspace.editFgColor = '#ff8800';
-  workspace.editBrushOpacity = 50;
   const pixels = [];
   for (let y = 4; y < 20; y++) for (let x = 4; x < 20; x++) pixels.push({ x, y, alpha: 1 });
-  project.paintStroke(pixels);
+  project.paintStroke(pixels, undefined, { opacity: 50 });
   project.commitEdit();
   project.render(); await settle(project);
   const area = { c0: 3, r0: 1, c1: 20, r1: 10 };

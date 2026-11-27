@@ -21,6 +21,7 @@ import { hex2rgb } from '@/lib/ColorUtils';
 import { selectionClip } from '@/lib/selectionClip';
 import { watch } from 'vue';
 import { t } from '@/i18n/index.js';
+import { opacityOption } from '@/tools/brush';
 
 let start = null; // the drag's first grid position
 let last = null;  // where the pointer is, before Shift or a box line has its say
@@ -168,8 +169,8 @@ function apply({ project, workspace, view }, end) {
   // Paint: the outline in FG and, filled, the inside in BG (one stroke, one undo step).
   const paintShape = () => {
     const outline = pixelsOf(false);
-    if (fill) project.paintEditPixels(kept(twoTone(pixelsOf(true), outline, fg, bg)), workspace.editBrushOpacity, workspace.editBrushStack);
-    else project.paintStroke(kept(outline), fg);
+    if (fill) project.paintEditPixels(kept(twoTone(pixelsOf(true), outline, fg, bg)), workspace.shapeOpacity, true);
+    else project.paintStroke(kept(outline), fg, { opacity: workspace.shapeOpacity });
   };
   if (view === 'input') {
     paintShape();
@@ -223,8 +224,8 @@ function apply({ project, workspace, view }, end) {
   // through their characters.
   if (drawWith === 'full' && !blockChars) {
     const both = (list) => list.flatMap(({ col, row, cover }) => [{ x: col, y: 2 * row, alpha: cover }, { x: col, y: 2 * row + 1, alpha: cover }]);
-    if (fill) project.paintEditPixels(kept(twoTone(both(shapeOf(true)), both(outline), fg, bg)), workspace.editBrushOpacity, workspace.editBrushStack);
-    else project.paintStroke(kept(both(outline)), fg);
+    if (fill) project.paintEditPixels(kept(twoTone(both(shapeOf(true)), both(outline), fg, bg)), workspace.shapeOpacity, true);
+    else project.paintStroke(kept(both(outline)), fg, { opacity: workspace.shapeOpacity });
     return;
   }
 
@@ -332,6 +333,8 @@ export default {
       when: (ws) => ws.shapeKind !== 'rect' && (ws.editorTab === 'input'
         || ((ws.shapeKind === 'ellipse' ? ws.shapeDrawWith !== 'char' : blockShape(ws)) && !usesHalves(ws))),
     },
+    // Paint in the PIXEL view and the ANSI view's blocks; Vertical half blocks and Full block's Block characters write cells.
+    opacityOption('shapeOpacity', (ws) => ws.editorTab !== 'output' || (drawsBlocks(ws) && !usesHalves(ws) && !(drawnWith(ws) === 'full' && ws.shapeBlockChars))),
     {
       key: 'shapeVerticalHalves', get label() { return t('tools.shapes.verticalHalves'); }, type: 'checkbox', views: ['output'], when: blockShape,
       get title() { return t('tools.shapes.verticalHalvesTitle'); },

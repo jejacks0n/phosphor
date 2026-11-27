@@ -244,12 +244,14 @@ dithered, and compare the dither at 80 and at 200 columns.
 
 ### 16. Paint over the picture
 - Does: picks the Brush, sets its Size (] grows it, [ shrinks it) and Opacity (a digit: 5 is 50%, 4 then 5 quickly is
-  45%), and paints a few strokes on Layer 2.
+  45%), and paints a few strokes on Layer 2. Then, the Brush left at 50%, draws a line with the Pencil, drags a filled
+  rectangle with Shapes and fills a flat part with the Paint Bucket.
 - Expects: paint covers half cells and shows through each cell's character (Colors only); with Choose characters on
   Random, as the base's is, a cell that shows none (one flat color) takes it in Random's characters (solid where the
   paint covers it whole), never a row of `▄`, and on Best match or By shape it's matched to the paint (on Best match a flat stroke shows as its nearest palette color, solid, not a shade); with Build up on, two strokes at 50% make it 75%, as two layers at 50% do;
   the color adjustments tint the paint too. A stroke painted in the PIXEL view comes out the same in ANSI; in Color ASCII the strokes become
-  ASCII characters, never `▄`, and their ANSI characters show again back in ANSI. Half-block draws `▄`.
+  ASCII characters, never `▄`, and their ANSI characters show again back in ANSI. Half-block draws `▄`. The Pencil's
+  line, the rectangle and the fill are solid: the Brush's Opacity is its own, and the other tools show none.
 - Probes: `interrupt`: switch to PIXEL, paint a stroke on a flat part, and back in ANSI check it shows the characters an
   ANSI stroke there does, then set Art style to Color ASCII and back (no stripes, then the same characters again); `scope`: with the
   base on Best match, set Layer 2's Choose characters to Random, roll its seed, and paint over a flat part: every cell

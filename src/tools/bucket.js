@@ -9,6 +9,7 @@ import { hex2rgb } from '@/lib/ColorUtils';
 import { onBottom } from '@/store/project/shared.js';
 import { busyMessage, busyWhile } from '@/composables/useBusy';
 import { t } from '@/i18n/index.js';
+import { opacityOption } from '@/tools/brush';
 
 // Grid pixels the fill stops at: the picked layer's edit cells showing a character with something to see through (text,
 // box lines), so a fill stays inside a drawn box and never covers typed text. A line hidden under
@@ -136,7 +137,7 @@ export async function fillSolid({ project, workspace, view }, pos) {
     write = () => project.writeEditCells(cells, { clearPaint: true });
   } else {
     const pixels = pixelArea(project, workspace, pos), color = workspace.editFgColor;
-    write = () => project.paintStroke(pixels, color);
+    write = () => project.paintStroke(pixels, color, { opacity: workspace.bucketOpacity });
   }
   return busyWhile(t('busy.filling'), () => {
     write();
@@ -188,6 +189,7 @@ export default {
   altPicks: true,
   options: [
     ...FILL_OPTIONS,
+    opacityOption('bucketOpacity', (ws) => !fillsCells(ws, ws.editorTab)),
     { key: 'bucketSet', get label() { return t('tools.bucket.set'); }, type: 'toggles', options: SET_OPTIONS, ...cellOptions },
     { key: 'activeChar', get label() { return t('tools.matchToggles.char'); }, type: 'char', views: ['output'], when: (ws) => ws.bucketFillWith === 'cells' && ws.bucketSet.char },
     FILL_WITH,
