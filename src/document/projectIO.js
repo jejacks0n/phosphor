@@ -35,6 +35,7 @@ export const EXPORT_FORMATS = [
   { id: 'utf8ans',         ext: 'utf8ans',  group: 'still' },
   { id: 'txt',             ext: 'txt',      group: 'still' },
   { id: 'xb',              ext: 'xb',       group: 'still' },
+  { id: 'bin',             ext: 'bin',      group: 'still' },
   { id: 'png',             ext: 'png',      group: 'still' },
   { id: 'gif',             ext: 'gif',      group: 'animated', animated: true },
   { id: 'mp4',             ext: 'mp4',      group: 'animated', animated: true },

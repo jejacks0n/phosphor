@@ -10,7 +10,7 @@ import { AnsiFile } from '@/lib/AnsiFile';
 import { buildCell, layoutWide } from '@/lib/Cells';
 import { PALETTES, rgb2hex } from '@/lib/ColorUtils';
 import { Sauce, readSauce } from '@/lib/Sauce';
-import { readXBin, writeXBin } from '@/lib/XBinFile';
+import { readBinaryText, readXBin, writeXBin } from '@/lib/XBinFile';
 import { readArtFile } from '@/lib/ArtFile';
 import { CP437_BLOCKS, SLOT_CHARS } from '@/lib/BitmapFont';
 import { closeToast, toastMessage } from '@/composables/useToast';
@@ -558,6 +558,23 @@ test('a BinaryText opens on CGA with its cells and SAUCE, keeps the font in use,
   expect(again.cells.slice(0, 8).map((c) => c.char).join('')).toBe('BIN TEXT');
 });
 
+test('a BinaryText exports as a .bin with the same cells and record, its record written even when asked for none; a palette but CGA is refused', async () => {
+  const { project } = await afterAnotherDocument();
+  const file = await binFixture();
+  await project.openArtFile(file);
+  await settle(project);
+  let blob;
+  await project.exportFile('bin', { deliver: (b) => { blob = b; }, sauce: false }); // its width is in the record alone
+  const bytes = new Uint8Array(await blob.arrayBuffer()), first = readBinaryText(new Uint8Array(await file.arrayBuffer()), 'a.bin');
+  const again = readBinaryText(bytes, 'again.bin');
+  expect([again.cols, again.rows, again.iceColors, again.binNoSauce]).toEqual([8, 3, true, false]);
+  // the 0x1A that's a character (→) included; a cell whose colors match (its A white on white) goes out as a space
+  expect(again.cells).toEqual(first.cells.map((cell) => (cell.fg === cell.bg ? { ...cell, char: ' ' } : cell)));
+  expect(readSauce(bytes)).toMatchObject({ dataType: 5, fileType: 4, width: 0, height: 0, title: 'Bin' });
+  project.quantize = 'vga';
+  await expect(project.exportFile('bin', { deliver: () => {} })).rejects.toMatchObject({ userMessage: 'BinaryText holds the 16 CGA colors alone: pick CGA as the Color palette.' });
+});
+
 test('a .bin with no SAUCE opens 160 wide and says so; one that isn\'t BinaryText is refused, and the drawing stays', async () => {
   const { project, workspace } = await afterAnotherDocument();
   const before = project.documentId;
@@ -634,7 +651,7 @@ test('an .ans written blinking, as tests/qa/files.js writes Walt\'s blink.ans, e
 
 test('a file that opens blinking, where the system asks for reduced motion, says the ANSI view won\'t blink it; otherwise nothing', async () => {
   const { project } = await afterAnotherDocument();
-  const STEADY = 'Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.';
+  const STEADY = 'Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans, .xb and .bin files still blink.';
   const art = '\x1b[0m\x1b[5;37;44mAB\x1b[0m';
   const reduced = (on) => vi.spyOn(window, 'matchMedia').mockImplementation((query) => (query === '(prefers-reduced-motion: reduce)' ? { matches: on, media: query } : realMatchMedia(query)));
   const realMatchMedia = window.matchMedia.bind(window);

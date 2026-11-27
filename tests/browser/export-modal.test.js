@@ -569,7 +569,7 @@ test('names the layers showing a stand-in', async () => {
 });
 
 // XBin holds 16 colors: it's offered with CGA, and not with VGA, full color or a list past 16.
-test('with iCE colors off, every format with colors but ANS, Animated ANS and XBin says its blinking cells come out steady', async () => {
+test('with iCE colors off, every format with colors but ANS, Animated ANS, XBin and BinaryText says its blinking cells come out steady', async () => {
   const { project } = await drawing();
   project.quantize = 'cga';
   project.addFrame('blank');
@@ -592,8 +592,8 @@ test('with iCE colors off, every format with colors but ANS, Animated ANS and XB
     project.sauceIceColors = false;
     await nextTick();
     const names = await saying(), all = [...modal.querySelectorAll('.format-btn .format-name')].map((n) => n.textContent);
-    expect(all.filter((name) => !names.includes(name))).toEqual(['ANS', 'ASCII', 'XBin', 'Animated ANS']); // (plain text has no backgrounds to come out steady)
-    expect(modal.querySelector('.note.steady').textContent).toBe('Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS and XBin keep the blink.');
+    expect(all.filter((name) => !names.includes(name))).toEqual(['ANS', 'ASCII', 'XBin', 'BinaryText', 'Animated ANS']); // (plain text has no backgrounds to come out steady)
+    expect(modal.querySelector('.note.steady').textContent).toBe('Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS, XBin and BinaryText keep the blink.');
   } finally {
     unmount();
   }
@@ -648,4 +648,37 @@ test('offers XBin only for 16 colors or fewer', async () => {
   const list = (n) => Array.from({ length: n }, (_, i) => '#' + (i + 1).toString(16).padStart(2, '0').repeat(3)).join(' ');
   expect(await state({ quantize: 'palette', palette: list(16) })).toEqual({ disabled: false, words: false });
   expect(await state({ quantize: 'palette', palette: list(17) })).toEqual({ disabled: true, words: true });
+});
+
+// BinaryText (#280): the 16 CGA colors alone, its width only in its record (so SAUCE can't be left out), an even width.
+test('offers BinaryText only on CGA, always with SAUCE, saying a blank column is added to an odd width', async () => {
+  const { project, pinia } = await drawing();
+  const still = vi.spyOn(project, 'exportFile').mockResolvedValue();
+  const box = () => document.querySelector('.modal-dialog label.sauce-choice input');
+  const state = async (settings, before) => {
+    Object.assign(project, settings);
+    await settle(project);
+    const { closed, unmount } = mountModal(pinia);
+    try {
+      const modal = document.querySelector('.modal-dialog');
+      await before?.(modal);
+      await pick(modal, 'BinaryText');
+      const seen = { disabled: modal.querySelector('button[type=submit]').disabled, refused: modal.textContent.includes('BinaryText holds the 16 CGA colors'), box: [box().checked, box().disabled], always: modal.textContent.includes('BinaryText keeps its width only in its SAUCE record'), column: modal.textContent.includes('a blank column is added at the right') };
+      if (!seen.disabled) {
+        modal.querySelector('button[type=submit]').click();
+        await vi.waitUntil(() => closed.mock.calls.length, PATIENT);
+      }
+      return seen;
+    } finally {
+      unmount();
+    }
+  };
+  expect(await state({ quantize: 'cga' })).toEqual({ disabled: false, refused: false, box: [true, true], always: true, column: false });
+  expect(still).toHaveBeenLastCalledWith('bin', expect.objectContaining({ sauce: true }));
+  // SAUCE unchecked on ANS first: BinaryText still writes it
+  expect(await state({ quantize: 'cga' }, async (modal) => { await pick(modal, 'ANS'); await userEvent.click(box()); })).toMatchObject({ box: [true, true] });
+  expect(still).toHaveBeenLastCalledWith('bin', expect.objectContaining({ sauce: true }));
+  for (const quantize of ['vga', 'none', 'count']) expect(await state({ quantize }), quantize).toMatchObject({ disabled: true, refused: true });
+  await project.setBlankCanvas({ cols: 7, rows: 2 });
+  expect(await state({ quantize: 'cga' })).toMatchObject({ disabled: false, column: true });
 });

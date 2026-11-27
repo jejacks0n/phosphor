@@ -15,7 +15,7 @@ import { decodeBlocks, decodeFont, fontChars, fontId } from '@/lib/BitmapFont.js
 import { sauceFont } from '@/lib/fontLibrary.js';
 import { asksWidth, fontSettingsOf } from '@/store/project/font.js';
 import { notSetUp } from '@/lib/fontSetup.js';
-import { ANSI_OF_DOS, writeXBin } from '@/lib/XBinFile.js';
+import { ANSI_OF_DOS, writeBinaryText, writeXBin } from '@/lib/XBinFile.js';
 import { vgaBitmapFont, loadReferenceFont } from '@/lib/GlyphCoverage.js';
 import { drawArtCells } from '@/lib/glyphPicture.js';
 import { ctx2d, canvasPng } from '@/lib/Canvas.js';
@@ -762,11 +762,12 @@ export const documentActions = {
   // setting is: the art's own colors index to a far smaller file), at one pixel per font pixel. deliver takes the file (its blob and name): a download unless it's given.
   // sauce: false writes an ANSI file with no SAUCE record. 'txt' is the characters alone as they show, a line per row the
   // grid's width, in UTF-8: no colors, escape codes or SAUCE record (selectionText's, as a copy puts on the clipboard),
-  // so it opens again at its size.
+  // so it opens again at its size. 'bin' is BinaryText: CGA's 16 alone, and always a record, the one place it keeps its width.
   async exportFile(ext, { filename = this.filename, smooth = false, deliver = downloadBlob, sauce = true, ...opts } = {}) {
     if (this._artInside) this.leaveArt();
     const lines = charRowsOf(this.rows);
     if (ext === 'xb' && !this.xbinPalette) throw Object.assign(new Error('XBin holds 16 colors'), { userMessage: t('export.errors.xbinPalette') });
+    if (ext === 'bin' && this.quantize !== 'cga') throw Object.assign(new Error('BinaryText holds CGA\'s 16'), { userMessage: t('export.errors.binPalette') });
     const blob = await busyWhile(saving(`${filename}.${ext}`), async () => {
       const cells = this.steadyCells(); // without iCE colors, as the ANSI view shows them
       if (ext === 'txt') return new Blob([`${selectionText(cells, this.cols, { c0: 0, r0: 0, c1: this.cols - 1, r1: lines - 1 })}\n`], { type: 'text/plain;charset=utf-8' });
@@ -775,13 +776,15 @@ export const documentActions = {
         : ext === 'xb'
         // NON_BLINK as the drawing shows it: blinking only in a 16-color drawing, so another palette's 8 to 15 stay steady
           ? new Blob([writeXBin({ cols: this.cols, rows: lines, cells, palette: this.xbinPalette, font: this.drawingFont ?? await vgaBitmapFont(), sauce: sauce && this.sauceFields(), iceColors: !this.blinkingBackgrounds })], { type: 'application/octet-stream' })
-          : new AnsiFile(this.cols, lines, cells).toBlob({
-            sauce: sauce && this.sauceFields(),
-            colorMode: this.quantize,
-            iceColors: this.sauceIceColors,
-            utf8: ext === 'utf8ans',
-            ...opts,
-          }));
+          : ext === 'bin'
+            ? new Blob([writeBinaryText({ cols: this.cols, rows: lines, cells, sauce: this.sauceFields() })], { type: 'application/octet-stream' })
+            : new AnsiFile(this.cols, lines, cells).toBlob({
+              sauce: sauce && this.sauceFields(),
+              colorMode: this.quantize,
+              iceColors: this.sauceIceColors,
+              utf8: ext === 'utf8ans',
+              ...opts,
+            }));
     });
     exported.call(this, filename, ext);
     await deliver(blob, `${filename.trim() || this.filename}.${ext}`);

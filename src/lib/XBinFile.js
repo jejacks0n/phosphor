@@ -1,7 +1,7 @@
 // XBin files (16colo.rs, ansilove, Moebius): a header, an optional palette and 8×N font, then the cells,
 // optionally run-length compressed. A cell is a character byte (a slot of the file's font) and an attribute.
 // BinaryText (.bin) is the cells alone, uncompressed, in CP437 and the 16 colors.
-import { CP437 } from './Cp437.js';
+import { CP437, cp437Byte, cp437Substitute } from './Cp437.js';
 import { fitFont, fontId, fontName, slotChars, slotOf } from './BitmapFont.js';
 import { MAX_CELLS, MAX_COLS, MAX_LINES } from './Cells.js';
 import { linkedFontOf } from './linkedFonts.js';
@@ -17,6 +17,8 @@ export const ANSI_OF_DOS = [0, 4, 2, 6, 1, 5, 3, 7, 8, 12, 10, 14, 9, 13, 11, 15
 
 const fail = (userMessage) => { throw Object.assign(new Error(userMessage), { userMessage }); };
 const hex = (r, g, b) => '#' + [r, g, b].map((v) => v.toString(16).padStart(2, '0')).join('');
+const rgbOf = (h) => ({ r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16) });
+const indexOf = (color, colors) => nearestIndex(color.r, color.g, color.b, colors);
 
 export const isXBin = (bytes) => MAGIC.every((b, i) => bytes[i] === b);
 
@@ -157,15 +159,14 @@ function compressRow(out, chars, attrs) {
 // palette is in XBin's order, DOS: index 1 is blue (PALETTES.cga is in ANSI order, where 1 is red). font is an {name, height, bytes}.
 // iceColors false leaves NON_BLINK off: a background of 8 to 15 is then the blink bit, as the drawing showed it.
 export function writeXBin({ cols, rows, cells, palette, font, sauce, iceColors = true }) {
-  const hexes = Array.from({ length: 16 }, (_, i) => palette[i] ?? '#000000');
-  const colors = hexes.map((h) => ({ r: parseInt(h.slice(1, 3), 16), g: parseInt(h.slice(3, 5), 16), b: parseInt(h.slice(5, 7), 16) }));
+  const colors = Array.from({ length: 16 }, (_, i) => rgbOf(palette[i] ?? '#000000'));
   const out = [...MAGIC, cols & 255, cols >> 8, rows & 255, rows >> 8, font.height, PALETTE | FONT | COMPRESS | (iceColors ? NON_BLINK : 0)];
   for (const { r, g, b } of colors) out.push(r >> 2, g >> 2, b >> 2); // 6 bits a channel
   out.push(...font.bytes);
   for (let y = 0; y < rows; y++) {
     const row = cells.slice(y * cols, (y + 1) * cols);
     // a cell whose colors match is invisible, so it goes out as a space (a space is in every font's slot 32)
-    const pairs = row.map((c) => [nearestIndex(c.fg.r, c.fg.g, c.fg.b, colors), nearestIndex(c.bg.r, c.bg.g, c.bg.b, colors)]);
+    const pairs = row.map((c) => [indexOf(c.fg, colors), indexOf(c.bg, colors)]);
     compressRow(
       out,
       row.map((c, x) => slotOf(pairs[x][0] === pairs[x][1] ? ' ' : fitFont(c.char, font), font)),
@@ -176,4 +177,26 @@ export function writeXBin({ cols, rows, cells, palette, font, sauce, iceColors =
   if (sauce === false) return bytes;
   // XBin's record names no font (TInfoS empty): the font is in the file.
   return new Sauce({ cols, rows }, { ...sauce, dataType: 6, fileType: 0, flags: 0, width: 0, height: 0, fontName: '', fileSize: bytes.length }).appendTo(bytes);
+}
+
+// BinaryText holds CGA's 16 in DOS order, and every byte is a glyph (no control bytes, as an .ans has), so a character
+// CP437 lacks is the only one written as its lookalike (or ?). Its width is only in the record (its file type, halved),
+// so the record is always written, and an odd width gets a blank column at the right. sauce: the record's fields, its
+// flags as the drawing has them (iCE colors: a background of 8 to 15 is bright, else it's the blink bit).
+const BIN_MOST_COLS = 510, BIN_COLORS = DOS_CGA.map(rgbOf);
+const binByte = (char) => cp437Byte(char) ?? cp437Byte(cp437Substitute(char));
+export function writeBinaryText({ cols, rows, cells, sauce }) {
+  const width = cols + (cols & 1);
+  if (width > BIN_MOST_COLS) throw new Error(`BinaryText holds at most ${BIN_MOST_COLS} columns`);
+  const out = new Uint8Array(width * rows * 2);
+  for (let y = 0; y < rows; y++) {
+    for (let x = 0; x < width; x++) {
+      const at = (y * width + x) * 2, cell = x < cols && cells[y * cols + x];
+      if (!cell) { out[at] = 32; out[at + 1] = BLANK; continue; }
+      const fg = indexOf(cell.fg, BIN_COLORS), bg = indexOf(cell.bg, BIN_COLORS);
+      out[at] = fg === bg || cell.wide === 'trail' ? 32 : binByte(cell.char); // a cell whose colors match is invisible
+      out[at + 1] = fg | (bg << 4);
+    }
+  }
+  return new Sauce({ cols: width, rows }, { ...sauce, dataType: 5, fileType: width / 2, width: 0, height: 0, fileSize: out.length }).appendTo(out);
 }

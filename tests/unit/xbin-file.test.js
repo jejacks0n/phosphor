@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { isXBin, readXBin, writeXBin } from '@/lib/XBinFile.js';
+import { isXBin, readBinaryText, readXBin, writeBinaryText, writeXBin } from '@/lib/XBinFile.js';
 import { CP437_BLOCKS, SLOT_CHARS, fontId, withBlock } from '@/lib/BitmapFont.js';
 import { cp437Font, lowerAt240 } from '../support/blockFonts.js';
 import { readSauce } from '@/lib/Sauce.js';
@@ -173,5 +173,37 @@ describe('XBin', () => {
     const bytes = writeXBin({ cols: 1, rows: 1, cells: [{ char: 'A', fg: rgb(PAL[7]), bg: rgb(PAL[0]) }], palette: PAL, font, sauce: { fileSize: 999 } });
     const record = bytes.length - 128;
     expect(bytes[record + 90] | (bytes[record + 91] << 8)).toBe(11 + 48 + 2048 + 3);
+  });
+});
+
+// BinaryText: a character byte and an attribute a cell, in DOS order, with its width only in the SAUCE record (halved).
+describe('BinaryText', () => {
+  const cell = (char, fg, bg, more) => ({ char, fg: rgb(PAL[fg]), bg: rgb(PAL[bg]), ...more });
+  const data = (bytes, cells) => [...bytes.slice(0, cells * 2)];
+  const record = (bytes) => bytes.slice(bytes.length - 128);
+
+  it('writes each cell as its CP437 byte and its attribute, the foreground low, with a record of type 5 and half the width', () => {
+    const bytes = writeBinaryText({ cols: 2, rows: 1, cells: [cell('A', 4, 1), cell('☺', 15, 0)], sauce: { title: 'T', flags: 2 } });
+    expect(data(bytes, 2)).toEqual([65, 0x14, 1, 0x0f]); // red (DOS 4) on blue (DOS 1); ☺ is byte 1
+    expect(bytes[4]).toBe(0x1a); // then the record
+    expect(readSauce(bytes)).toMatchObject({ dataType: 5, fileType: 1, width: 0, height: 0, flags: 2, title: 'T' });
+    expect(record(bytes)[90]).toBe(4); // the file size: the cells alone
+  });
+  it('gives an odd width a blank column at the right, as BinaryText holds only even ones', () => {
+    const bytes = writeBinaryText({ cols: 3, rows: 2, cells: Array.from({ length: 6 }, () => cell('x', 7, 0)), sauce: {} });
+    expect(data(bytes, 8)).toEqual([120, 7, 120, 7, 120, 7, 32, 7, 120, 7, 120, 7, 120, 7, 32, 7]);
+    expect(readSauce(bytes).fileType).toBe(2);
+  });
+  it('writes a bright background as the attribute\u2019s high bit, the record saying whether that\u2019s iCE colors or blink', () => {
+    const cells = [cell('A', 15, 12)];
+    expect(data(writeBinaryText({ cols: 1, rows: 1, cells, sauce: { flags: 1 } }), 1)).toEqual([65, 0xcf]);
+    for (const flags of [0, 1]) expect(readBinaryText(writeBinaryText({ cols: 1, rows: 1, cells, sauce: { flags } }), 'a.bin').iceColors).toBe(flags === 1);
+  });
+  it('writes the glyphs on control bytes as themselves, a character CP437 lacks as its lookalike or ?, and a hidden cell or wide trail as a space', () => {
+    const cells = [cell('\u2022', 7, 0), cell('\u2192', 7, 0), cell('\u2585', 7, 0), cell('\u6f22', 7, 0, { wide: 'lead' }), cell('', 7, 0, { wide: 'trail' }), cell('Z', 3, 3)];
+    expect(data(writeBinaryText({ cols: 6, rows: 1, cells, sauce: {} }), 6).filter((_, i) => i % 2 === 0)).toEqual([7, 26, 220, 63, 32, 32]);
+  });
+  it('refuses a width past 510, the most its record holds', () => {
+    expect(() => writeBinaryText({ cols: 511, rows: 1, cells: Array.from({ length: 511 }, () => cell(' ', 7, 0)), sauce: {} })).toThrow(/510/);
   });
 });

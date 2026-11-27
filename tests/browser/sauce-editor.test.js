@@ -321,7 +321,7 @@ test('turning iCE colors off where the system asks for reduced motion says the A
     motion = reducedMotion(true);
     box.click(); // off, with reduced motion
     await nextTick();
-    expect(toastMessage.value).toBe('Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.');
+    expect(toastMessage.value).toBe('Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans, .xb and .bin files still blink.');
     closeToast();
     box.click(); // on: nothing to say
     await nextTick();

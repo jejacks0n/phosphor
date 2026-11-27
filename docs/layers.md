@@ -429,7 +429,7 @@ All three:
   every kind of file, Phosphor opens one only when its SAUCE record says it's BinaryText, or, with no record, when it's
   a whole number of 160-column lines, the width BinaryText has without one; then a message says it had no SAUCE record
   and was read as BinaryText 160 columns wide (with iCE colors off). Any other `.bin` is refused: "*name* isn't
-  a BinaryText file." A `.bin` that's really an XBin opens as one. Phosphor opens `.bin` files but doesn't save them.
+  a BinaryText file." A `.bin` that's really an XBin opens as one. Exporting one is under [Saving .bin](characters.md#saving-bin).
 - **Animated Files**: An animated `.ans` (one that moves the cursor or clears the screen) opens as its last screen.
 
 An `.svg` file opens on VECTOR as shapes instead ([Importing SVG](vector.md#importing-svg)).

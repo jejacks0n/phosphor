@@ -298,7 +298,8 @@ look at what covers what, and check what Merge down's tooltip says.
   so; a character CP437 lacks is listed with what it becomes and how many cells use it ("Export as .utf8ans to keep all
   original characters."); the name he typed becomes the document's name; it saves within the `file` budget.
 - Probes: `back-out`: open the dialog, press Escape, and check focus lands where his keys still work; `again`: export
-  twice; `extremes`: type `€` and `漢` in a cell first and check the list.
+  twice; `extremes`: type `€` and `漢` in a cell first and check the list; `out-of-order`: pick BinaryText instead and
+  export a `.bin` (Include SAUCE stays checked and can't be unchecked, a line saying why).
 - Rated: yes, wants Cmd+K, then `exp ans` and Enter
 
 ### 22. The terminal shows what I see

@@ -248,11 +248,12 @@ export class AnsiFile {
 
   // Characters in cells that CP437 can't encode: how often each appears and what's written instead
   // (most frequent first). A cell whose colors match is written as a space, so it doesn't count; a
-  // wide character counts once (its trail is written as a space).
-  static unmappable(cells) {
+  // wide character counts once (its trail is written as a space). byteOf: the byte a format writes for a character,
+  // or null (.ans's, by default; a .bin has no control bytes, so its is cp437Byte).
+  static unmappable(cells, byteOf = ansByte) {
     const found = new Map();
     for (const cell of cells) {
-      if (!cell || cell.wide === 'trail' || cell.fg.hex === cell.bg.hex || ansByte(cell.char) !== null) continue;
+      if (!cell || cell.wide === 'trail' || cell.fg.hex === cell.bg.hex || byteOf(cell.char) !== null) continue;
       const entry = found.get(cell.char) ?? { count: 0, as: cp437Substitute(cell.char) };
       entry.count++;
       found.set(cell.char, entry);

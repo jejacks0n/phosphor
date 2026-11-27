@@ -1,4 +1,4 @@
-// What Phosphor exports as .ans or .utf8ans opens back the way it was exported: every cell's character
+// What Phosphor exports as .ans, .utf8ans or .bin opens back the way it was exported: every cell's character
 // and colors (a cell whose colors match is written as a space, so it reads back as one), in each color
 // mode, at a narrow and a wide width, and an animated export as its last frame.
 import { describe, test } from 'vitest';
@@ -6,6 +6,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { AnsiFile } from '../../src/lib/AnsiFile.js';
 import { readArtFile } from '../../src/lib/ArtFile.js';
+import { writeBinaryText } from '../../src/lib/XBinFile.js';
 import { buildCell, composeCell, layoutWide } from '../../src/lib/Cells.js';
 import { effectiveColor } from '../../src/lib/PixelTransforms.js';
 import { PALETTES, rgb2hex } from '../../src/lib/ColorUtils.js';
@@ -79,6 +80,24 @@ describe('an export reads back as it was exported', () => {
     expectCells(art, frames[1], cols, rows, true);
     assert.equal(art.palette, 'cga');
   });
+
+  // A .bin has no control bytes, so the glyphs CP437 puts on them come back as themselves; what CP437 lacks comes back
+  // as .ans writes it. An odd width comes back a column wider, the column blank.
+  for (const cols of [8, 7]) {
+    test(`.bin, ${cols} columns`, () => {
+      const rows = 5, cells = build(cols, rows, 'cga', CHARS.ans);
+      const bytes = writeBinaryText({ cols, rows, cells, sauce: { ...SAUCE, flags: 1 } });
+      const art = readArtFile(bytes, 'drawing.bin');
+      const width = cols + (cols % 2);
+      assert.deepEqual([art.cols, art.rows, art.iceColors, art.binNoSauce], [width, rows, true, false]);
+      cells.forEach((cell, i) => {
+        const back = art.cells[Math.floor(i / cols) * width + (i % cols)];
+        const char = cell.fg.hex === cell.bg.hex || cell.wide === 'trail' ? ' ' : ['•', '→'].includes(cell.char) ? cell.char : STAND_INS[cell.char] ?? cell.char;
+        assert.deepEqual({ char: back.char, fg: back.fg, bg: back.bg }, { char, fg: cell.fg.hex.toLowerCase(), bg: cell.bg.hex.toLowerCase() }, `cell ${i} (${JSON.stringify(cell.char)})`);
+      });
+      if (width > cols) for (let y = 0; y < rows; y++) assert.equal(art.cells[y * width + cols].char, ' ');
+    });
+  }
 
   // xterm's 16 and 231 are fixed black and white, 0 and 15 a terminal's own: the same colors in Phosphor, different ones
   // in a themed terminal. A file using both, edit cells as opened, comes back byte for byte (a QA report: every 16 came

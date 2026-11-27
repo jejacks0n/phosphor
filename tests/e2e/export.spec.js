@@ -39,6 +39,19 @@ test('export .ans, then .utf8ans: each download is the store\'s cells, byte for 
   }
 });
 
+test('on CGA, a BinaryText download is a .bin with its width in its record', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('combobox', { name: 'Color palette' }).selectOption('cga');
+  await settled(page);
+  const modal = await openExportModal(page, 'BinaryText');
+  const [download] = await Promise.all([page.waitForEvent('download'), modal.getByRole('button', { name: /^Export BinaryText/ }).click()]);
+  expect(download.suggestedFilename()).toMatch(/^gradient-\d{8}-\d{6}\.bin$/);
+  const bytes = new Uint8Array(await readFile(await download.path()));
+  const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: Math.ceil(p.rows / 2) }));
+  const sauce = readSauce(bytes), width = cols + (cols % 2);
+  expect([sauce.dataType, sauce.fileType, sauce.fileSize]).toEqual([5, width / 2, width * rows * 2]); // a cell is two bytes
+});
+
 test('a Monochrome ASCII drawing\'s Export opens on ASCII, and the .txt download is its characters, a line per row', async ({ page }) => {
   await openApp(page);
   await page.getByRole('combobox', { name: 'Art style' }).selectOption({ label: 'Monochrome ASCII' });
