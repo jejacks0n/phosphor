@@ -128,6 +128,12 @@ function nearZero(axis, event) {
   const r = overlay.value.getBoundingClientRect();
   return origin.value && Math.abs((axis === 'x' ? event.clientX - r.left : event.clientY - r.top) - pxOf(axis, zero.value[axis])) <= NEAR_ZERO;
 }
+// The pointer over a ruler ({ axis, clientX, clientY }), so its triangle shows a hand: open over it, closed while
+// it's dragged.
+const overRuler = ref(null);
+const grabbing = (axis) => drag.value?.kind === 'zero' && drag.value.axis === axis;
+const grab = (axis) => !drag.value && overRuler.value?.axis === axis && nearZero(axis, overRuler.value);
+const hoverRuler = (axis, { clientX, clientY }) => { overRuler.value = { axis, clientX, clientY }; };
 
 // The press is kept from the view, so the view's focus is taken here, as a press on it would: a toolbar field
 // (the Rulers checkbox) kept would swallow the tool keys.
@@ -170,6 +176,7 @@ useEventListener(window, 'pointerup', (event) => {
   const d = drag.value;
   if (d.kind !== 'corner') track(event);
   drag.value = null;
+  if (d.kind === 'zero') hoverRuler(d.axis, event);   // the triangle came along under the pointer
   if (d.kind === 'guide') {
     if (d.index !== null && !workspace.guides[d.index]) return;   // the drawing changed under the drag
     if (d.index === null) { if (d.pos !== null) workspace.addGuide(d.axis, d.pos); }
@@ -257,8 +264,8 @@ watchEffect(() => {
         @touchstart.stop
     ></div>
     <div v-for="line in zeroLines" :key="line.axis" class="ruler-zero" :class="line.axis" :style="line.style"></div>
-    <canvas ref="top" class="ruler top" @pointerdown.stop.prevent="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
-    <canvas ref="left" class="ruler left" @pointerdown.stop.prevent="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
+    <canvas ref="top" class="ruler top" :class="{ grab: grab('x'), grabbing: grabbing('x') }" @pointermove="hoverRuler('x', $event)" @pointerleave="overRuler = null" @pointerdown.stop.prevent="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
+    <canvas ref="left" class="ruler left" :class="{ grab: grab('y'), grabbing: grabbing('y') }" @pointermove="hoverRuler('y', $event)" @pointerleave="overRuler = null" @pointerdown.stop.prevent="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
     <div
         class="ruler-corner"
         :title="t('rulers.cornerTitle')"
@@ -311,6 +318,12 @@ canvas.ruler.left {
   width: 30px;
   height: calc(100% - 20px);
   cursor: e-resize;
+}
+canvas.ruler.grab {
+  cursor: grab;
+}
+canvas.ruler.grabbing {
+  cursor: grabbing;
 }
 div.ruler-corner {
   left: 0;

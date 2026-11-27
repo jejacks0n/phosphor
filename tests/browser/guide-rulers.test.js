@@ -192,6 +192,32 @@ test('a double-click on a triangle puts that zero back; on the corner, both', as
   expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });
 });
 
+// A triangle shows it can be grabbed: an open hand over it, a closed one while it's dragged; the rest of the
+// ruler keeps its arrow for pulling out a guide.
+test('a hand over a triangle, closed while dragging it', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('hand');
+  workspace.setRulerZero('x', 4.5);
+  await nextTick();
+  const top = root.querySelector('.ruler.top'), cursor = () => getComputedStyle(top).cursor;
+  pointer(top, 'pointermove', at.left + 100, 10);
+  await nextTick();
+  expect(cursor()).toBe('s-resize');
+  pointer(top, 'pointermove', at.left + 45, 10);
+  await nextTick();
+  expect(cursor()).toBe('grab');
+  pointer(top, 'pointerdown', at.left + 45, 10);
+  pointer(window, 'pointermove', at.left + 100, 10);
+  await nextTick();
+  expect(cursor()).toBe('grabbing');
+  pointer(window, 'pointerup', at.left + 100, 10);
+  await nextTick();
+  expect(cursor()).toBe('grab');   // the triangle came along under the pointer
+  pointer(top, 'pointerleave', at.left + 100, 10);
+  await nextTick();
+  expect(cursor()).toBe('s-resize');
+});
+
 // Two fingers: the one that pressed the guide drags it; another touching down and lifting doesn't end the drag.
 test('only the pointer that pressed moves and lets go', async () => {
   const { workspace, at } = await mount();
