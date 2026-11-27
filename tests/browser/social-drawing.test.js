@@ -1001,7 +1001,7 @@ test('a joining artist gets the project, then the changes made during its transf
   expect(char(ann.project, 0, 0)).toBe('B');
   expect(char(ann.project, 1, 0)).toBe('D');
   expect(ann.project._sharing.pending.n).toBe(lastN);
-  const numbers = applied.mock.calls.map(([m]) => m.n).filter((n) => n !== undefined);
+  const numbers = applied.mock.calls.filter(([m]) => m.t === 'numbered').map(([m]) => m.n); // not a check's n
   expect(new Set(numbers).size).toBe(numbers.length);
   expect(numbers.every((n) => n > projectN)).toBe(true);
   await allMatch(room, ann);
@@ -1027,7 +1027,7 @@ test('numbered changes sent inside a project\'s chunks wait for it, and any it a
   channel.send(change(7, 'v'));
   await expect.poll(() => char(person.project, 7, 0), PATIENT).toBe('v');
   expect(open).toHaveBeenCalledOnce();
-  expect(applied.mock.calls.map(([m]) => m.n)).toEqual([6, 7]);
+  expect(applied.mock.calls.filter(([m]) => m.t === 'numbered').map(([m]) => m.n)).toEqual([6, 7]); // not a check's n
   expect(char(person.project, 6, 0)).toBe('z');
   expect(char(person.project, 4, 0)).toBe(undefined);
   expect(char(person.project, 3, 0)).toBe(undefined);
@@ -1857,11 +1857,18 @@ test('an edit layer changed behind a client\'s back, at a position a number then
 test('a number that never landed comes back with the re-fetch, paint too', async () => {
   const room = await hosting();
   const ann = await artist(room, 'ann'), asked = asks(ann);
-  const hear = vi.spyOn(ann.project, 'hearDrawing').mockImplementationOnce(() => {});
+  // The first numbered change goes unheard, and the test waits on it alone: the host's check every CHECK_EVERY_MS comes
+  // through hearDrawing too, at the change's number, and on a slow run it had landed by the time the calls were counted.
+  const hearDrawing = ann.project.hearDrawing;
+  let dropped = false;
+  vi.spyOn(ann.project, 'hearDrawing').mockImplementation((message) => {
+    if (message.t === 'numbered' && !dropped) dropped = true;
+    else hearDrawing.call(ann.project, message);
+  });
   room.project.editCell(5, 5, { char: 'L' });
   dab(room.project, 8, 8);
   room.project.commitEdit();
-  await expect.poll(() => hear.mock.calls.length, PATIENT).toBe(1);
+  await expect.poll(() => dropped, PATIENT).toBe(true);
   room.project.editCell(6, 6, { char: 'M' });
   room.project.commitEdit();
   await reach(room, ann);
