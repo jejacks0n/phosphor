@@ -1311,7 +1311,7 @@
     "iceColors": "Couleurs iCE",
     "iceHelp": "Activé : fonds clairs. Désactivé : ils clignotent, comme sous DOS.",
     "iceOnly16": "Seulement pour les dessins en 16 couleurs.",
-    "iceStill": "Votre système demande moins d'animations : Phosphor affiche donc les cellules clignotantes sans clignotement, fond foncé et lettres fixes. Les fichiers .ans et .xb exportés clignotent toujours.",
+    "iceStill": "Votre système demande moins d'animations : Phosphor affiche donc les cellules clignotantes sans clignotement, fond foncé et lettres fixes. Les fichiers .ans, .xb et .bin exportés clignotent toujours.",
     "commentLines": "{count} ligne SAUCE sur {most} | {count} lignes SAUCE sur {most}",
     "commentLinesOwn": "{count} lignes SAUCE sur {most} (dont {own} de Phosphor)",
     "commentLinesOver": "{count} lignes SAUCE sur {most}. À partir de la ligne {line} (« {text} »), les commentaires ne seront pas dans le fichier.",
@@ -1375,6 +1375,10 @@
         "title": "Exporter en .xb",
         "sub": "XBin : l'art avec sa police et ses 16 couleurs à l'intérieur, comme l'affiche 16colo.rs."
       },
+      "bin": {
+        "title": "Exporter en .bin",
+        "sub": "BinaryText : les cellules seules, en CP437 et dans les 16 couleurs CGA, la largeur dans l'enregistrement SAUCE, comme le lisent les éditeurs DOS et 16colo.rs."
+      },
       "txt": {
         "title": "Exporter en .txt",
         "sub": "Texte brut : les caractères seuls, une ligne par rangée, sans couleurs. Pour l'art en ASCII monochrome, et partout où va du texte."
@@ -1386,7 +1390,7 @@
       "hardTitle": "Contours nets",
       "hardText": "Caractères en pixels nets utilisant uniquement les couleurs de la palette du dessin (taille de fichier minimale)."
     },
-    "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué lors des exportations en .ans : | {count} caractères ne sont pas dans CP437 et seront substitués lors des exportations en .ans :",
+    "cp437Note": "1 caractère n'est pas dans CP437 et sera substitué lors des exportations en {ext} : | {count} caractères ne sont pas dans CP437 et seront substitués lors des exportations en {ext} :",
     "replacementsAria": "Substitutions",
     "becomesAria": "devient",
     "cellCount": "{count} cellule | {count} cellules",
@@ -1416,8 +1420,10 @@
       "shareReady": "Votre fichier est prêt. Touchez Partager maintenant pour l'envoyer.",
       "shareFailed": "Impossible de partager le fichier.",
       "includeSauce": "Inclure le SAUCE (titre, auteur, police…)",
+      "binSauce": "BinaryText ne garde sa largeur que dans son enregistrement SAUCE : un .bin en a donc toujours un.",
+      "binOddWidth": "La largeur d'un BinaryText est paire : une colonne vide est ajoutée à droite, et les {cols} colonnes deviennent {wider}.",
       "noSauceNote": "Sans SAUCE, les autres visionneuses ne connaissent ni le titre, ni l'auteur, ni la largeur, ni la police, et certaines font clignoter les fonds clairs.",
-      "steadyBlink": "Les cellules qui clignotent dans la vue ANSI (couleurs iCE désactivées) sortent fixes ici, avec leur fond clair. ANS et XBin gardent le clignotement.",
+      "steadyBlink": "Les cellules qui clignotent dans la vue ANSI (couleurs iCE désactivées) sortent fixes ici, avec leur fond clair. ANS, XBin et BinaryText gardent le clignotement.",
       "blinkGif": "Deux images en boucle : les cellules qui clignotent, leurs lettres visibles puis masquées, comme dans la vue ANSI.",
       "textDropsColors": "Le texte brut ne garde que les caractères. Les couleurs de ce dessin ne sont pas dans le fichier : exportez en ANS pour les garder.",
       "textHoldsAll": "Ce dessin est en ASCII monochrome, des caractères blancs sur noir : ASCII (.txt) le contient en entier, en texte brut.",
@@ -1451,13 +1457,17 @@
         },
         "xb": {
           "name": "XBin"
+        },
+        "bin": {
+          "name": "BinaryText"
         }
       }
     },
     "filtersLeftOut": "Laissé de côté : le filtre de plugin {names}. | Laissés de côté : les filtres de plugin {names}.",
     "standIns": "{names} s'affiche Par forme à la place de son solveur de plugin. | {names} s'affichent Par forme à la place de leurs solveurs de plugin.",
     "errors": {
-      "xbinPalette": "XBin contient 16 couleurs : choisissez CGA, un nombre limité de 16 ou moins, ou une liste de couleurs personnalisée de 16 au maximum."
+      "xbinPalette": "XBin contient 16 couleurs : choisissez CGA, un nombre limité de 16 ou moins, ou une liste de couleurs personnalisée de 16 au maximum.",
+      "binPalette": "BinaryText ne contient que les 16 couleurs CGA : choisissez CGA comme Palette de couleurs."
     }
   },
   "versions": {

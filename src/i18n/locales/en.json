@@ -1311,7 +1311,7 @@
     "iceColors": "iCE colors",
     "iceHelp": "On: bright backgrounds. Off: they blink, as on DOS.",
     "iceOnly16": "Only for 16-color drawings.",
-    "iceStill": "Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans and .xb files still blink.",
+    "iceStill": "Your system asks for reduced motion, so Phosphor shows blinking cells without blinking: dark backgrounds, letters steady. Exported .ans, .xb and .bin files still blink.",
     "commentLines": "{count} of {most} SAUCE lines",
     "commentLinesOwn": "{count} of {most} SAUCE lines ({own} are Phosphor's own)",
     "commentLinesOver": "{count} of {most} SAUCE lines. From line {line} (\"{text}\") on, comments won't be in the file.",
@@ -1375,6 +1375,10 @@
         "title": "Export .xb",
         "sub": "XBin: the art with its font and 16 colors inside, as 16colo.rs shows it."
       },
+      "bin": {
+        "title": "Export .bin",
+        "sub": "BinaryText: the cells alone, in CP437 and the 16 CGA colors, with the width in its SAUCE record, as DOS editors and 16colo.rs read it."
+      },
       "txt": {
         "title": "Export .txt",
         "sub": "Plain text: the characters alone, a line per row, with no colors. For Monochrome ASCII art, and anywhere text goes."
@@ -1386,7 +1390,7 @@
       "hardTitle": "Hard-edged",
       "hardText": "Sharp pixel characters using only the drawing's palette colors (smallest file size)."
     },
-    "cp437Note": "1 character is not in CP437 and will be substituted in .ans exports: | {count} characters are not in CP437 and will be substituted in .ans exports:",
+    "cp437Note": "1 character is not in CP437 and will be substituted in {ext} exports: | {count} characters are not in CP437 and will be substituted in {ext} exports:",
     "replacementsAria": "Replacements",
     "becomesAria": "becomes",
     "cellCount": "{count} cell | {count} cells",
@@ -1416,8 +1420,10 @@
       "shareReady": "Your file is ready. Tap Share now to send it.",
       "shareFailed": "Could not share the file.",
       "includeSauce": "Include SAUCE (title, author, font…)",
+      "binSauce": "BinaryText keeps its width only in its SAUCE record, so a .bin always has one.",
+      "binOddWidth": "BinaryText's width is even, so a blank column is added at the right: the {cols} columns become {wider}.",
       "noSauceNote": "Without SAUCE, other viewers don't know the art's title, author, width or font, and some show bright backgrounds blinking.",
-      "steadyBlink": "Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS and XBin keep the blink.",
+      "steadyBlink": "Cells that blink in the ANSI view (iCE colors is off) come out steady here, their backgrounds bright. ANS, XBin and BinaryText keep the blink.",
       "blinkGif": "Two frames, looping: the cells that blink, their letters on and off as in the ANSI view.",
       "textDropsColors": "Plain text keeps the characters only. This drawing's colors aren't in the file: export ANS to keep them.",
       "textHoldsAll": "This drawing is Monochrome ASCII, white characters on black: ASCII (.txt) holds all of it as plain text.",
@@ -1451,13 +1457,17 @@
         },
         "xb": {
           "name": "XBin"
+        },
+        "bin": {
+          "name": "BinaryText"
         }
       }
     },
     "filtersLeftOut": "Left out: the plugin filter {names}. | Left out: the plugin filters {names}.",
     "standIns": "{names} shows By shape in place of its plugin solver. | {names} show By shape in place of their plugin solvers.",
     "errors": {
-      "xbinPalette": "XBin holds 16 colors: pick CGA, Limited count of 16 or fewer, or a Custom color list of up to 16."
+      "xbinPalette": "XBin holds 16 colors: pick CGA, Limited count of 16 or fewer, or a Custom color list of up to 16.",
+      "binPalette": "BinaryText holds the 16 CGA colors alone: pick CGA as the Color palette."
     }
   },
   "versions": {

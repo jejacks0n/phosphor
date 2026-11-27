@@ -113,6 +113,7 @@ See [The .pho file](docs/pho.md) to learn how the file is laid out.
 | `.utf8ans` | ANSI for modern terminals | 256-color codes for CGA and VGA, 24-bit codes for the rest | UTF-8 |
 | `.txt` | Plain text with no colors or escape codes | None | UTF-8 |
 | `.xb` | XBin with the drawing's bitmap font and palette inside | 16 or fewer | The font's 256 |
+| `.bin` | BinaryText, the cells alone as DOS editors saved them, its width in its SAUCE record | The 16 CGA colors | CP437 |
 | `.png` | Picture of the art drawn in its font | All | Drawn in the art's font |
 | `.gif` | Looping image of a movie | 256 (one palette for the whole movie) | Drawn in the art's font |
 | `.mp4` | Video of a movie, when your browser can encode it | All | Drawn in the art's font |
@@ -122,8 +123,8 @@ See [The .pho file](docs/pho.md) to learn how the file is laid out.
 
 The last five formats save a whole movie when Animate is on with more than one frame. All other formats save only the frame currently showing.
 
-- **CP437**: An `.ans` file replaces any character outside CP437 with its closest lookalike (or `?`). The Export dialog lists every replaced character before you save. A `.utf8ans` file keeps every character exact.
-- **SAUCE**: Still and animated `.ans`, `.utf8ans`, and `.xb` exports end with a [SAUCE](https://www.acid.org/info/sauce/sauce.htm) record. It holds the title, author, group, and comments from the SAUCE tab, plus the date, size, and font. Uncheck **Include SAUCE** in the Export dialog to leave it out.
+- **CP437**: An `.ans` or `.bin` file replaces any character outside CP437 with its closest lookalike (or `?`). The Export dialog lists every replaced character before you save. A `.utf8ans` file keeps every character exact.
+- **SAUCE**: Still and animated `.ans`, `.utf8ans`, `.xb`, and `.bin` exports end with a [SAUCE](https://www.acid.org/info/sauce/sauce.htm) record. It holds the title, author, group, and comments from the SAUCE tab, plus the date, size, and font. Uncheck **Include SAUCE** in the Export dialog to leave it out, except for `.bin`, which keeps its width only there.
 - **Line breaks**: A `.utf8ans` file ends every row with CR LF, and an `.ans` file does the same when the art is narrower than 80 columns. Animated exports move the cursor instead of scrolling.
 - **Speed**: Animated `.ans` and `.utf8ans` files have no clock, so playback speed depends on the viewer. To slow one down in a terminal, try a command like `pv -qL 20000 art.utf8ans`. A `.cast` file keeps exact timing.
 - **Bright backgrounds**: With CGA colors, an `.ans` file normally writes bright backgrounds using the DOS blink code. When **iCE colors** is on (the default for new drawings), the file tells viewers to show bright backgrounds instead. It marks this in two places: in the SAUCE record, and with `ESC[?33h` at the top for viewers like SyncTERM. When iCE colors is off, those cells blink just like on DOS.

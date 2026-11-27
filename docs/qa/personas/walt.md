@@ -338,7 +338,21 @@ long file (time the reload), and press Back from a fresh start screen.
 - Probes: `back-out`: Cancel any question it asks; `again`: drop the same file twice.
 - Rated: yes, wants Cmd+O
 
-### 25. Files over the limits are refused
+### 25. Export a BinaryText and open it again
+- Does: opens the BinaryText fixture, fixes one cell, and exports BinaryText (Export, then `.bin`), first trying to
+  uncheck Include SAUCE; decodes the export in the snippet and compares its cells and record with the file's. Then
+  makes a blank canvas 79 columns wide on CGA, types a line at its right edge, and exports it as BinaryText; then
+  switches the Color palette to VGA and looks at BinaryText again.
+- Expects: the export's cells are the file's but for the fixed one, with the `→` on byte 26 still `→`; its record is
+  BinaryText's (data type 5, file type half the width, iCE colors as the file had it); Include SAUCE is checked and
+  can't be unchecked, with a line saying a `.bin` keeps its width only in its record; the 79-column canvas's dialog
+  says a blank column is added at the right, and the export opens 80 wide with that column blank; on VGA the Export
+  button is off and the dialog says BinaryText holds the 16 CGA colors alone.
+- Probes: `again`: export twice and compare the two decodes; `extremes`: type `漢` and `•` in a cell first, and check
+  the dialog lists `漢` (becoming `?`) and not `•`.
+- Rated: yes, wants Cmd+O
+
+### 26. Files over the limits are refused
 - Does: makes a 300 by 1,700 file and a 301 by 100 file with `files.makeLongAns`, and with unsaved work drops each on
   his open drawing.
 - Expects: neither opens; a message gives the file's size and the limits (300 columns, 5,000 lines, 500,000 cells)
@@ -348,7 +362,7 @@ long file (time the reload), and press Back from a fresh start screen.
   `again`: try the same file twice.
 - Rated: yes, wants Cmd+O
 
-### 26. Grow the grid to its limit
+### 27. Grow the grid to its limit
 - Does: on the long file, sets Dimensions' lines to 1,700 (3,400 pixel rows), then 1,666; then turns Lock aspect ratio
   off and does it again.
 - Expects: with the lock on, the size stays at 1,600 lines and a message says the lock keeps the shape, 300 × 3200 the
@@ -359,7 +373,7 @@ long file (time the reload), and press Back from a fresh start screen.
   the steps before it), then redo both; `extremes`: 5,000 lines at 100 columns.
 - Rated: yes, wants Tab to Dimensions
 
-### 27. Fill, merge and delete across the long file
+### 28. Fill, merge and delete across the long file
 - Does: adds a layer, fills the whole of it with the Paint Bucket (a click on the blank layer), clicks again while it
   fills, then Merge down; Select all, Cmd+C, Delete on the base, then Cmd+V the copy back; changes the character set.
 - Expects: each lands as one undo step; one taking over half a second says so at the bottom ("Filling…", "Merging…",
@@ -369,7 +383,7 @@ long file (time the reload), and press Back from a fresh start screen.
   "Merging…" is up (it draws nothing); `undo-redo`: undo each and redo it.
 - Rated: no (a check of speed)
 
-### 28. Memory after a long session
+### 29. Memory after a long session
 - Does: takes `qa.memory` and compares it with step 1's; reopens the long file once more and takes it again.
 - Expects: no steady growth: reopening the same file doesn't add its size each time.
 - Probes: `again`: open and close the long file three times, taking `qa.memory` after each.

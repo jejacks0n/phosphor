@@ -11,10 +11,11 @@ import { arrowsBetween } from '@/lib/focus';
 import { AnsiFile } from '@/lib/AnsiFile';
 import { charRowsOf } from '@/lib/Cells';
 import { MOST_COMMENT_LINES, sauceUnmappable } from '@/lib/Sauce';
+import { cp437Byte } from '@/lib/Cp437';
 import { EXPORT_FORMATS as FORMATS, fileStem, timestamped } from '@/document/projectIO';
 import { canExportVideo } from '@/lib/VideoFile';
 
-// All export formats in one modal: ANS, UTF-8 ANS, ASCII (plain text), XBin, PNG (Still), GIF, Video (where the browser encodes video), Animated
+// All export formats in one modal: ANS, UTF-8 ANS, ASCII (plain text), XBin, BinaryText, PNG (Still), GIF, Video (where the browser encodes video), Animated
 // ANS, Animated UTF-8 ANS, Cast (Animated). Opened by Cmd/Ctrl+E or the Export button in ProjectActions, or from the command
 // list with a format chosen (the workspace's exportModal is its id then).
 
@@ -34,6 +35,10 @@ const saving = ref(false);
 const progress = ref(null); // a GIF's or video's share of frames written while it exports
 const problem = ref('');
 const noXbin = computed(() => selectedId.value === 'xb' && !project.xbinPalette);
+// BinaryText holds CGA's 16 alone, and an even width: an odd one gets a blank column at the right.
+const binPicked = computed(() => selectedId.value === 'bin');
+const noBin = computed(() => binPicked.value && project.quantize !== 'cga');
+const binPadded = computed(() => binPicked.value && project.cols % 2 === 1);
 const stem = computed(() => fileStem(name.value, selected.value.ext));
 
 // The layers that show By shape in place of the plugin solver they chose (their params' standIn), bottom first: what's
@@ -44,10 +49,10 @@ const standIns = computed(() => project.layers.filter(({ id }) => project.layerP
 // export is the picture without them.
 const filtersLeftOut = computed(() => project.filterGroups.filter(({ ref, state }) => ref in project.filterOptions && !['on', 'idle'].includes(state)).map(({ name }) => name));
 
-// Without iCE colors the ANSI view blinks bright backgrounds; only .ans and .xb have blink to write, so every other format
+// Without iCE colors the ANSI view blinks bright backgrounds; only .ans, .xb and .bin have blink to write, so every other format
 // shows those cells steady, their backgrounds bright, and says so.
 // A still drawing in which something blinks has a GIF too: two frames, the letters on and off.
-const BLINK_FORMATS = ['ans', 'ansimation', 'xb'];
+const BLINK_FORMATS = ['ans', 'ansimation', 'xb', 'bin'];
 const moving = computed(() => project.hasFrames && project.animate);
 const blinkGif = computed(() => selectedId.value === 'gif' && !moving.value && project.blinks);
 const losesBlink = computed(() => !!project.blinkingBackgrounds && !BLINK_FORMATS.includes(selectedId.value) && !blinkGif.value && selectedId.value !== 'txt'); // (plain text has no backgrounds)
@@ -55,15 +60,16 @@ const losesBlink = computed(() => !!project.blinkingBackgrounds && !BLINK_FORMAT
 // none for an ANSI file to hold. The note's key, or null.
 const styleFit = computed(() => (selectedId.value === 'txt'
   ? project.renderStyle !== 'ascii' && 'export.modal.textDropsColors'
-  : project.renderStyle === 'ascii' && ['ans', 'utf8ans', 'xb'].includes(selectedId.value) && 'export.modal.textHoldsAll') || null);
+  : project.renderStyle === 'ascii' && ['ans', 'utf8ans', 'xb', 'bin'].includes(selectedId.value) && 'export.modal.textHoldsAll') || null);
 
 const tooTall = computed(() => ['ansimation', 'utf8ansimation'].includes(selectedId.value) && (project.cols > 80 || charRowsOf(project.rows) > 25));
-// .ans is CP437: the characters it can't keep and what each becomes. An animated .ans lists what every frame holds,
-// once they're built (a format picked meanwhile keeps its own list).
-const listed = (cells) => [...AnsiFile.unmappable(cells)].map(([char, { count, as }]) => ({ char, count, as }));
+// .ans and .bin are CP437: the characters they can't keep and what each becomes (a .bin keeps the glyphs on control
+// bytes, which an .ans can't). An animated .ans lists what every frame holds, once they're built (a format picked
+// meanwhile keeps its own list).
+const listed = (cells, byteOf) => [...AnsiFile.unmappable(cells, byteOf)].map(([char, { count, as }]) => ({ char, count, as }));
 const replacements = ref([]);
 watch(selectedId, (id) => {
-  replacements.value = id === 'ans' ? listed(project.cells) : [];
+  replacements.value = id === 'ans' ? listed(project.cells) : id === 'bin' ? listed(project.cells, cp437Byte) : [];
   if (id !== 'ansimation') return;
   project.animationCells().then((frames) => {
     if (selectedId.value === id) replacements.value = listed((function* all() { for (const cells of frames) yield* cells; })());
@@ -72,12 +78,14 @@ watch(selectedId, (id) => {
 
 // Every ANSI format writes a SAUCE record unless Include SAUCE is unchecked (checked each time the dialog opens), in
 // CP437 whatever the art is in: the characters of it CP437 lacks, as the export writes it, and the fields each is in.
-const SAUCE_FORMATS = ['ans', 'utf8ans', 'xb', 'ansimation', 'utf8ansimation'];
+// BinaryText always has one (its width is there alone): checked and off, whatever was picked for the others.
+const SAUCE_FORMATS = ['ans', 'utf8ans', 'xb', 'bin', 'ansimation', 'utf8ansimation'];
 const carriesSauce = computed(() => SAUCE_FORMATS.includes(selectedId.value));
 const withSauce = ref(true);
-const sauceReplacements = computed(() => (carriesSauce.value && withSauce.value ? sauceUnmappable(project.sauceFields()) : []));
+const includesSauce = computed(() => withSauce.value || binPicked.value);
+const sauceReplacements = computed(() => (carriesSauce.value && includesSauce.value ? sauceUnmappable(project.sauceFields()) : []));
 // Comments past 255 record lines, as the SAUCE tab counts them: from which line of the field they won't be in the file.
-const commentsCut = computed(() => (carriesSauce.value && withSauce.value && project.sauceUserComments ? project.sauceCommentFit().cut : null));
+const commentsCut = computed(() => (carriesSauce.value && includesSauce.value && project.sauceUserComments ? project.sauceCommentFit().cut : null));
 const quoted = (text) => ([...text].length > 30 ? `${[...text].slice(0, 30).join('')}…` : text);
 
 function pickFormat(id) {
@@ -116,7 +124,7 @@ async function doExport(share = false) {
   const deliver = share ? (blob, filename) => { file = new File([blob], filename, { type: blob.type }); } : undefined;
   try {
     if (selected.value.animated) await project.exportAnimation(selectedId.value, { filename: stem.value, progress: (part) => { progress.value = part; }, deliver, sauce: withSauce.value });
-    else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value, deliver, sauce: withSauce.value });
+    else await project.exportFile(selectedId.value, { filename: stem.value, smooth: smooth.value, deliver, sauce: includesSauce.value });
     if (!share) return emit('close');
   } catch (error) {
     console.warn('Could not export', error);
@@ -206,9 +214,11 @@ function cancel() {
         <!-- Animated ANS: too tall/wide warning -->
         <p v-if="tooTall" class="note warn">{{ t('export.modal.tooTall', { cols: project.cols, rows: charRowsOf(project.rows) }) }}</p>
 
-        <!-- ANS: the characters it replaces -->
+        <p v-if="binPadded" class="note bin-column">{{ t('export.modal.binOddWidth', { cols: project.cols, wider: project.cols + 1 }) }}</p>
+
+        <!-- ANS and BinaryText: the characters they replace -->
         <template v-if="replacements.length">
-          <p class="note">{{ t('save.cp437Note', { count: replacements.length }, replacements.length) }}</p>
+          <p class="note">{{ t('save.cp437Note', { count: replacements.length, ext: `.${selected.ext}` }, replacements.length) }}</p>
           <ul class="replacements" :aria-label="t('save.replacementsAria')" tabindex="0">
             <li v-for="r in replacements" :key="r.char">
               <span class="char">{{ r.char }}</span>
@@ -223,8 +233,9 @@ function cancel() {
         <!-- Every ANSI format: with or without SAUCE, and what of it won't reach the file as it is on the SAUCE tab -->
         <template v-if="carriesSauce">
           <div class="option-label">{{ t('tabs.sauce') }}</div>
-          <label class="sauce-choice"><input v-model="withSauce" type="checkbox"> {{ t('export.modal.includeSauce') }}</label>
-          <p v-if="!withSauce" class="note">{{ t('export.modal.noSauceNote') }}</p>
+          <label class="sauce-choice"><input type="checkbox" :checked="includesSauce" :disabled="binPicked" @change="withSauce = $event.target.checked"> {{ t('export.modal.includeSauce') }}</label>
+          <p v-if="binPicked" class="note">{{ t('export.modal.binSauce') }}</p>
+          <p v-else-if="!withSauce" class="note">{{ t('export.modal.noSauceNote') }}</p>
         </template>
         <p v-if="commentsCut" class="note warn">{{ t('save.sauceCommentsOver', { most: MOST_COMMENT_LINES, line: commentsCut.line, text: quoted(commentsCut.text) }) }}</p>
         <template v-if="sauceReplacements.length">
@@ -241,6 +252,7 @@ function cancel() {
         </template>
 
         <p v-if="noXbin" class="note warn">{{ t('export.errors.xbinPalette') }}</p>
+        <p v-if="noBin" class="note warn">{{ t('export.errors.binPalette') }}</p>
         <p v-if="problem" class="note problem" role="alert">{{ problem }}</p>
         <p v-if="ready" class="note" role="status">{{ t('export.modal.shareReady') }}</p>
 
@@ -261,7 +273,7 @@ function cancel() {
             <progress v-if="progress !== null" :value="progress" :aria-label="t('common.exporting')"/>
             <button type="button" class="cancel" @click="cancel">{{ t('common.cancel') }}</button>
             <button v-if="shareable" type="button" :class="{ primary: ready }" :disabled="!stem || saving" @click="doExport(true)">{{ ready ? t('export.modal.shareNow') : t('export.modal.share') }}</button>
-            <button type="submit" :class="{ primary: !ready }" :disabled="!stem || saving || noXbin">
+            <button type="submit" :class="{ primary: !ready }" :disabled="!stem || saving || noXbin || noBin">
               {{ saving ? t('common.exporting') : t('export.modal.exportBtn', { name: t(`export.modal.formats.${selectedId}.name`) }) }}
             </button>
           </div>

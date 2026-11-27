@@ -14,7 +14,7 @@ import { fileStem, timestamped } from '@/document/projectIO';
 // hard-edged (the Export dialog has the choice). A project is laid out for a terminal or not, kept for the next Save,
 // a save in place's too (saveForTerminal).
 const props = defineProps({
-  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'xb' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif' | 'png'
+  ext: { type: String, required: true }, // 'phosphor' | 'ans' | 'utf8ans' | 'xb' | 'bin' | 'ansimation' | 'utf8ansimation' | 'cast' | 'gif' | 'png'
 });
 const emit = defineEmits(['close']);
 const { t } = useI18n();
@@ -96,7 +96,7 @@ function cancel() {
 
       <template v-if="replacements.length">
         <p class="note">
-          {{ t('save.cp437Note', { count: replacements.length }, replacements.length) }}
+          {{ t('save.cp437Note', { count: replacements.length, ext: '.ans' }, replacements.length) }}
         </p>
         <ul class="replacements" :aria-label="t('save.replacementsAria')" tabindex="0">
           <li v-for="r in replacements" :key="r.char">
