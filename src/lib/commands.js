@@ -396,6 +396,13 @@ export const COMMANDS = [
     where: (ctx) => art(ctx) && typingNow(ctx.workspace) && free(ctx) && shut(ctx),
     available: ({ project }) => (project.renderStyle === 'ansi' ? true : 'shortcuts.reasons.ansiOnly'),
     run: ({ project, workspace }) => flipAtCursor(project, workspace) },
+  // Alt+M: mirror mode on or off (Option+M's µ gives way, as the key is matched by its code).
+  { id: 'edit.mirror', group: 'drawing', keys: 'Alt+KeyM', label: words('mirror'), once: true,
+    where: (ctx) => art(ctx) && !typingNow(ctx.workspace) && free(ctx) && shut(ctx),
+    run: ({ workspace }) => {
+      workspace.mirror = !workspace.mirror;
+      toast(t(workspace.mirror ? 'mirror.on' : 'mirror.off'));
+    } },
   // Alt+← and Alt+→ anywhere else the art shows: nothing, so Windows and Linux don't go Back or Forward out of the editor.
   { id: 'edit.altArrowsElsewhere', group: 'editMode', keys: ['Alt+ArrowLeft', 'Alt+ArrowRight'], label: words('altArrowsElsewhere'), hidden: true,
     where: backKept, run: () => {} },

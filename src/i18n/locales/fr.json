@@ -1678,7 +1678,8 @@
       "takeUnderMac": "Prendre les couleurs de la cellule sous le pointeur, pas encore en Mode Édition sur un Mac, où la touche tape ü (PIXEL : celle du pixel, en premier plan)",
       "takeUnderWithChar": "Prendre les couleurs et le caractère de la cellule sous le pointeur, ou en Mode Édition ceux du curseur (PIXEL : la couleur du pixel, en arrière-plan)",
       "takeUnderWithCharMac": "Prendre les couleurs et le caractère de la cellule sous le pointeur, pas encore en Mode Édition sur un Mac (PIXEL : la couleur du pixel, en arrière-plan)",
-      "flipCell": "Intervertir les couleurs de la cellule du curseur (style ANSI)"
+      "flipCell": "Intervertir les couleurs de la cellule du curseur (style ANSI)",
+      "mirror": "Mode miroir : dessiner des deux côtés du zéro des règles"
     }
   },
   "social": {
@@ -2277,6 +2278,10 @@
     "remove": "Retirer",
     "cornerTitle": "Faites glisser pour définir les deux origines des règles. Double-cliquez pour réinitialiser les origines dans le coin supérieur gauche.",
     "guideTitle": "Faites glisser pour déplacer le repère, ou sur une règle pour le supprimer"
+  },
+  "mirror": {
+    "on": "Miroir activé",
+    "off": "Miroir désactivé"
   },
   "menu": {
     "file": "Fichier",

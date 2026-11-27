@@ -5,6 +5,7 @@ import { setLocale, te } from '@/i18n';
 import { createTestApp } from '../support/app.js';
 import { COMMANDS, GROUPS, commandById, commandContext, listedCommands, runCommand, takeKey, toolCommands } from '@/lib/commands';
 import { keysFor, parseKey } from '@/lib/keymap';
+import { toastMessage } from '@/composables/useToast.js';
 
 const VIEWS = ['input', 'output', 'vector'];
 const ctxOf = (project, workspace, event) => ({ project, workspace, event, view: workspace.editorTab, typing: false, uncommitted: false });
@@ -230,4 +231,27 @@ test('the list holds the rows that can run in this view, never a hidden one; a r
   expect(workspace.exportModal).toBe('png');
   workspace.exportModal = false;
   expect(commandById('file.export.gif').available(commandContext(project, workspace))).not.toBe(true); // not animated
+});
+
+test('Alt+M turns mirror mode on and off with a toast, by its code (the Mac\'s Option+M is µ), and typing keeps it', async () => {
+  const { project, workspace } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 8 });
+  workspace.editorTab = 'output';
+  workspace.setActiveTool('brush');
+  const press = () => {
+    const e = keydown({ code: 'KeyM', key: 'µ', altKey: true });
+    return takeKey(e, ctxOf(project, workspace, e), ['edit.mirror']);
+  };
+  expect(workspace.mirror).toBe(false);
+  expect(press()).toBe(true);
+  expect(workspace.mirror).toBe(true);
+  expect(toastMessage.value).toBe('Mirror on');
+  expect(press()).toBe(true);
+  expect(workspace.mirror).toBe(false);
+  expect(toastMessage.value).toBe('Mirror off');
+
+  workspace.setActiveTool('text');
+  workspace.textCursor = { col: 1, row: 1 };
+  expect(press()).toBe(false);
+  expect(workspace.mirror).toBe(false);
 });
