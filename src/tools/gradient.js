@@ -5,6 +5,7 @@ import { snappedEnd } from './shapes';
 import { cellArea, pixelArea, fillsCells, outsideSelection, FILL_OPTIONS, FILL_WITH } from './bucket';
 import { watch } from 'vue';
 import { busyWhile } from '@/composables/useBusy';
+import { withMirror } from '@/lib/mirror';
 import { t } from '@/i18n/index.js';
 import { opacityOption } from './brush';
 
@@ -22,10 +23,11 @@ async function fillGradient({ project, workspace, view }, from, to) {
     const f = hex2rgb(fg), b = hex2rgb(bg), area = pixelArea(project, workspace, from), opacity = workspace.gradientOpacity;
     write = () => project.paintEditPixels(area.map((p) => ({ ...p, ...blendColor(f, b, gradientAt(shape, from, to, p.x + 0.5, p.y + 0.5, aspect)) })), opacity, true);
   }
-  return busyWhile(t('busy.filling'), () => {
+  const mark = project._mirror; // the stroke's, gone by the frame the write runs in
+  return busyWhile(t('busy.filling'), () => withMirror(project, mark, () => {
     write();
     project.commitEdit();
-  });
+  }));
 }
 
 // The line while it's dragged: where it started, and where the pointer is before Shift has its say.
@@ -50,6 +52,7 @@ export default {
   icon: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path fill-rule="evenodd" d="M176 96H464C508.2 96 544 131.8 544 176V464C544 508.2 508.2 544 464 544H176C131.8 544 96 508.2 96 464V176C96 131.8 131.8 96 176 96ZM176 144C158.3 144 144 158.3 144 176V464C144 481.7 158.3 496 176 496H464C481.7 496 496 481.7 496 464V176C496 158.3 481.7 144 464 144Z"/><path d="M144 144H232V496H144Z"/><path fill-opacity=".65" d="M232 144H320V496H232Z"/><path fill-opacity=".4" d="M320 144H408V496H320Z"/><path fill-opacity=".18" d="M408 144H496V496H408Z"/></svg>`,
   views: ['input', 'output'],
   kind: 'paint',
+  mirrors: true,
   altPicks: true,
   options: [
     ...FILL_OPTIONS,

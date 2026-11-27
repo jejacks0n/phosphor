@@ -148,6 +148,7 @@ export function makeBrushTool({ ref, pluginId, pluginName, hash, def, key }) {
     keys: key ? [key] : [],
     views: ['input', 'output'],
     kind: 'paint',
+    mirrors: true,
     section: 'plugin',
     altPicks: true,
     shiftLines: true,

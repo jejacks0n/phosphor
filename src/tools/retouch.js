@@ -191,6 +191,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
     icon,
     views: ['input', 'output'],
     kind: 'paint',
+    mirrors: true,
     shiftLines: true, // Shift-click: a straight line from where the last stroke ended
     preview: { shape: 'circle', size: (workspace) => workspace.retouchSize },
     options: [

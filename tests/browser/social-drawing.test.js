@@ -28,6 +28,7 @@ import { Ledger, keptForWire, keptFromWire } from '@/document/ledger';
 import { forgetRoomLedger, readRoomLedger } from '@/document/autosaveStore';
 import { toastMessage } from '@/composables/useToast';
 import { getTool } from '@/tools';
+import { mirrorAxes, withMirror } from '@/lib/mirror';
 
 const config = { iceServers: [] };
 const later = () => new Promise((resolve) => setTimeout(resolve, 0));
@@ -228,6 +229,31 @@ test('host and artist end with equal edit layers after crossing strokes', async 
   ann.project.commitEdit();
   await allMatch(room, ann);
   for (let i = 0; i < 12; i++) expect(painted(ann.project, 2 * i, 20)).toEqual(painted(room.project, 2 * i, 20));
+});
+
+// Mirror mode needs no message: the mirrored copy is part of the artist's edit, and a change heard is written as data.
+test('an artist\'s mirrored stroke reaches the host on both sides, and a change heard meanwhile arrives unmirrored', async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  const mark = { axes: mirrorAxes({ x: 0, y: 0 }, ann.project.cols), clip: null };
+  withMirror(ann.project, mark, () => ann.project.writeEditCells([{ col: 2, row: 3, attrs: { char: '┌' } }]));
+  ann.project.commitEdit();
+  await allMatch(room, ann);
+  expect(char(room.project, 2, 3)).toBe('┌');
+  expect(char(room.project, 37, 3)).toBe('┐');
+  ann.project._mirror = mark; // the mark up, as if mid-stroke, while the host's change is heard
+  try {
+    room.project.editCell(5, 6, { char: 'H' });
+    dab(room.project, 4, 20);
+    room.project.commitEdit();
+    await allMatch(room, ann);
+  } finally {
+    ann.project._mirror = null;
+  }
+  expect(char(ann.project, 5, 6)).toBe('H');
+  expect(char(ann.project, 34, 6)).toBeUndefined();
+  expect(painted(ann.project, 4, 20)).toEqual(painted(room.project, 4, 20));
+  expect(painted(ann.project, 35, 20)).toBeFalsy();
 });
 
 // Lines and columns (editLayer.js: insertLine and the others) are edits like any other in a room.

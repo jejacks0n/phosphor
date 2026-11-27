@@ -20,6 +20,7 @@ import { isControl, ownsKey } from '@/lib/fields';
 import { withShape } from '@/document/shapes.js';
 import { pickedCell } from '@/store/project/reading.js';
 import { gridAt } from '@/lib/CellCanvas';
+import { strokeMirror, withMirror } from '@/lib/mirror';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -40,6 +41,8 @@ const workspaceStore = useWorkspaceStore();
 const drawingStore = useDrawingStore();
 const tool = computed(() => getTool(workspaceStore.activeTool));
 const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view: props.view, unit: props.unit });
+// Mirror mode: a mirroring tool's call runs with the store marked, so its edit-layer writes land on both sides.
+const mirrored = (fn) => withMirror(projectStore, strokeMirror(workspaceStore, projectStore, tool.value), fn);
 const rootRef = useTemplateRef('root');
 const isMouseOver = ref(false);
 
@@ -69,14 +72,14 @@ const {
     pixelCoordsAt: props.coordsAt,
     // Refused while the busy note's up (a fill, a file opening), or made while it was (pressedWhileBusy): what's begun
     // goes first, alone.
-    onPaintStart: (event, pos) => (!projectStore._paused && !pressedWhileBusy(event) && tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false),
-    onPaintMove: (from, to) => tool.value.move?.(toolCtx(), from, to),
-    onPaintEnd: () => tool.value.end?.(toolCtx()),
+    onPaintStart: (event, pos) => mirrored(() => (!projectStore._paused && !pressedWhileBusy(event) && tool.value.begin ? tool.value.begin(toolCtx(), pos, event) !== false : false)),
+    onPaintMove: (from, to) => mirrored(() => tool.value.move?.(toolCtx(), from, to)),
+    onPaintEnd: () => mirrored(() => tool.value.end?.(toolCtx())),
     // A stroke a pinch interrupted: what it drew is taken back, then the tool's cancel (or its end) runs.
-    onPaintCancel: () => {
+    onPaintCancel: () => mirrored(() => {
       projectStore.cancelEdit();
       (tool.value.cancel ?? tool.value.end)?.(toolCtx());
-    },
+    }),
     onColorPick: pickAt,
     onZoomChange: props.zoom?.set,
   },
