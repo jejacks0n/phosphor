@@ -29,6 +29,7 @@ import { asking as merging, mergeBusy, useMergeDown } from '@/composables/useMer
 import { busyWhile } from '@/composables/useBusy';
 import { artLayerEmpty, artLayerOff, bakeOff as bakeWhy, flattenOff as flattenWhy, reasonWords } from '@/lib/offReasons';
 import { showFontSetup } from '@/composables/useFontSetup';
+import { CHECK_ICON, MORE_ICON } from '@/lib/icons';
 
 const { t } = useI18n();
 const project = useProjectStore();
@@ -113,7 +114,6 @@ const optionsRow = useTemplateRef('optionsRow');
 const foldedOptions = ref([]);
 const FOLDABLE = ':scope > .tool-setting-group > button, :scope > .tool-setting-group > label.checkbox-wrapper';
 const isFolded = (el) => el.hasAttribute('data-folded');
-const CHECK_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" aria-hidden="true"><path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/></svg>';
 // A folded checkbox's item presses its box, not its label (a label passing a script's click on to its box is the
 // browser's to do), and shows a check where it's on.
 function foldedItem(el) {
@@ -184,7 +184,6 @@ function chooseFace(id, tool) {
   workspace.setActiveTool(tool.id);
 }
 const keysOf = (tool) => tool.keys?.map(keyLabel).join(' ');
-const MORE_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"><path d="M96 320a56 56 0 1 1 112 0a56 56 0 1 1-112 0zm168 0a56 56 0 1 1 112 0a56 56 0 1 1-112 0zm224-56a56 56 0 1 1 0 112a56 56 0 1 1 0-112z"/></svg>';
 // A tool's options for the current view (an option may be for one view only).
 const toolOptions = computed(() => (activeTool.value.options ?? []).filter(option =>
   (!option.views || option.views.includes(workspace.editorTab)) && (!option.when || option.when(workspace))));

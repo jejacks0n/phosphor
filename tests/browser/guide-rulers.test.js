@@ -172,7 +172,7 @@ test('a click on a triangle keeps a zero past the edge', async () => {
   expect(workspace.rulerZero.x).toBe(30);
 });
 
-test('a double-click on a triangle puts that zero back; on the corner, both', async () => {
+test('a double-click on a triangle puts that zero back', async () => {
   const { workspace, at } = await mount();
   workspace.setActiveTool('hand');
   workspace.setRulerZero('x', 4.5);
@@ -186,9 +186,29 @@ test('a double-click on a triangle puts that zero back; on the corner, both', as
   expect(workspace.rulerZero).toEqual({ x: 0, y: 3 });
   dblclick(left, 15, at.top + 60);
   expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });
+});
+
+// The corner's ⋯ menu, with any tool: Reset positions puts both zeros back (there's nothing to put back at the top
+// left), and Mirror mode switches mirror mode, checked while it's on.
+test('the corner\'s menu resets both zeros and switches mirror mode', async () => {
+  const { workspace } = await mount();
+  workspace.setActiveTool('pencil');
+  const item = (name) => [...document.querySelectorAll('.dropdown-content button')].find((b) => b.textContent.includes(name));
+  const open = async () => {
+    root.querySelector('.ruler-corner .dropdown-trigger').click();
+    await nextTick();
+  };
+  await open();
+  expect(item('Reset positions').disabled).toBe(true);
+  item('Mirror mode').click();
+  await nextTick();
+  expect(workspace.mirror).toBe(true);
   workspace.setRulerZero('x', 4.5);
   workspace.setRulerZero('y', 3);
-  dblclick(root.querySelector('.ruler-corner'), 15, 10);
+  await open();
+  expect(item('Mirror mode').getAttribute('aria-checked')).toBe('true');
+  item('Reset positions').click();
+  await nextTick();
   expect(workspace.rulerZero).toEqual({ x: 0, y: 0 });
 });
 

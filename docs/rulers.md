@@ -27,8 +27,8 @@ You can only move rulers and guides using the **Hand** tool, or by holding **Spa
 - **Create a vertical guide**: Click and drag rightward from the left ruler.
 - **Move a guide**: Click and drag the guide line to a new position. While you drag, a label beside the pointer shows the guide's distance from zero.
 - **Delete a guide**: Drag the guide line back onto either ruler, or off the view, and release. The label says **Remove** before you let go.
-- **Move the zero origin**: Drag the triangle marker on either ruler (the pointer turns to a hand over it). Drag the square in the top-left corner to move both rulers' origins together. While you drag, a label says where zero is (for example, "0 on column 21" or "0 between columns 14 and 15").
-- **Reset origin**: Double-click a ruler's triangle marker to reset that ruler's zero origin to the drawing's edge. Double-click the corner square to reset both origins to the top-left corner.
+- **Move the zero origin**: Drag the triangle marker on either ruler (the pointer turns to a hand over it). With the Hand, drag the **⋯** in the top-left corner to move both rulers' origins together. While you drag, a label says where zero is (for example, "0 on column 21" or "0 between columns 14 and 15").
+- **Reset origin**: Double-click a ruler's triangle marker to reset that ruler's zero origin to the drawing's edge. **⋯ > Reset positions** in the top-left corner resets both origins to the top-left corner.
 
 Guides and origin markers automatically snap to character cell edges and cell centers.
 
@@ -47,9 +47,9 @@ Guides and origin markers automatically snap to character cell edges and cell ce
 
 **Mirror mode** draws what you draw on one side of the rulers' zeros again on the other, so a logo, a banner or a face
 comes out symmetrical while you draw half of it. Press **Alt+M** (**Option+M** on a Mac) anywhere the art shows to
-turn it on or off; a toast says "Mirror on" or "Mirror off". Alt+M is also in the command list (**Cmd+K**) and the
-**?** shortcuts list. While you type in the ANSI view, Option+M types its character instead. Mirror mode is off each
-time the app loads, and there's no button for it yet.
+turn it on or off, or choose **Mirror mode** in the **⋯** menu where the rulers meet (checked while it's on); a toast
+says "Mirror on" or "Mirror off". Alt+M is also in the command list (**Cmd+K**) and the **?** shortcuts list. While you
+type in the ANSI view, Option+M types its character instead. Mirror mode is off each time the app loads.
 
 - **Left to right**: Always on, at the top ruler's zero if you've moved it, and otherwise down the middle of the
   drawing's width. In an 80-column drawing that's between columns 40 and 41; in a 41-column one, on column 21, the
