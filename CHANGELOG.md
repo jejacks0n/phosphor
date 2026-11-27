@@ -12,7 +12,8 @@ under Unreleased.
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters
   turned as Flip turns them: left to right down the middle (or at the top ruler's zero), and top to bottom too once the
-  left ruler's zero is moved. **Alt+M** (**Option+M** on a Mac) turns it on and off. It's off each time the app loads.
+  left ruler's zero is moved. **Alt+M** (**Option+M** on a Mac) turns it on and off, as does **Mirror mode** in the
+  **⋯** menu where the rulers meet. It's off each time the app loads.
 - **Shade**, a **Draw with** choice for the Pencil and the Brush in the ANSI view: each pass steps the cells it crosses
   one shade further in the foreground color, `░` `▒` `▓` `█`, and **Lighter** (or holding Cmd, Ctrl on Windows and
   Linux) steps them back to a space. One step a cell a stroke, written as typed characters, in every art style.
@@ -21,6 +22,8 @@ under Unreleased.
 
 ### Changed
 
+- The rulers' corner is a **⋯** menu, with any tool: **Reset positions** puts both zeros back (a double-click on the
+  corner did) and **Mirror mode** turns mirror mode on and off. With the Hand, a drag from the corner still moves both.
 - A ruler's zero triangle shows a hand under the pointer with the Hand tool, so it reads as something to drag.
 - The arrow keys move a selection past the canvas's edge, as dragging it does, so **Select all** and an arrow key move a
   whole layer a cell. A cell of the block always stays on the canvas, and what's past the edge comes back while it floats.

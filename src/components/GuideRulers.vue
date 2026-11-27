@@ -6,12 +6,16 @@ import { useProjectStore } from '@/store/ProjectStore';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { charRowsOf } from '@/lib/Cells';
 import { cellCount, guideLabel, rulerMarks, shownZero, snapHalf } from '@/lib/rulers';
+import { CHECK_ICON, MORE_ICON } from '@/lib/icons';
+import { commandById, commandContext, runCommand } from '@/lib/commands';
+import { keyLabel } from '@/lib/keymap';
+import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The character rulers along the view's top and left, and the guides across it, over the view (box) whatever
 // it's scrolled to. They count characters on every view; zero and the guides are in characters from the top
 // left (whole: an edge, half: a middle). Only the Hand grabs them: out of a ruler comes a guide, a guide let go
 // on a ruler or off the view goes, the pink triangle moves that ruler's zero and the corner both. Nothing here
-// changes the store until a drag is let go.
+// changes the store until a drag is let go. The corner is a ⋯ menu too, with any tool: Reset positions and Mirror mode.
 const props = defineProps({
   box: { type: Object, required: true },        // the view's client box, fixed (EditorViewport's overArt)
   root: { type: Object, default: null },        // the scrolling element
@@ -134,6 +138,10 @@ const overRuler = ref(null);
 const grabbing = (axis) => drag.value?.kind === 'zero' && drag.value.axis === axis;
 const grab = (axis) => !drag.value && overRuler.value?.axis === axis && nearZero(axis, overRuler.value);
 const hoverRuler = (axis, { clientX, clientY }) => { overRuler.value = { axis, clientX, clientY }; };
+
+// Mirror mode from the corner's menu, as Alt+M has it (its toast too).
+const toggleMirror = () => runCommand('edit.mirror', commandContext(project, workspace));
+const mirrorKey = keyLabel(commandById('edit.mirror').keys);
 
 // The press is kept from the view, so the view's focus is taken here, as a press on it would: a toolbar field
 // (the Rulers checkbox) kept would swallow the tool keys.
@@ -266,14 +274,16 @@ watchEffect(() => {
     <div v-for="line in zeroLines" :key="line.axis" class="ruler-zero" :class="line.axis" :style="line.style"></div>
     <canvas ref="top" class="ruler top" :class="{ grab: grab('x'), grabbing: grabbing('x') }" @pointermove="hoverRuler('x', $event)" @pointerleave="overRuler = null" @pointerdown.stop.prevent="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
     <canvas ref="left" class="ruler left" :class="{ grab: grab('y'), grabbing: grabbing('y') }" @pointermove="hoverRuler('y', $event)" @pointerleave="overRuler = null" @pointerdown.stop.prevent="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
-    <div
-        class="ruler-corner"
-        :title="t('rulers.cornerTitle')"
-        @pointerdown.stop.prevent="start($event, { kind: 'corner', zero: null })"
-        @mousedown.stop
-        @touchstart.stop
-        @dblclick="workspace.resetRulerZero()"
-    ></div>
+    <!-- A drag from it ends off it, so only a click opens the menu. -->
+    <div class="ruler-corner" @pointerdown.stop.prevent="isHand && start($event, { kind: 'corner', zero: null })" @mousedown.stop @touchstart.stop>
+      <DropdownMenu align="left" :label="t('rulers.cornerTitle')">
+        <template #trigger><span v-html="MORE_ICON"></span></template>
+        <button :disabled="!workspace.rulerZero.x && !workspace.rulerZero.y" @click="workspace.resetRulerZero()">{{ t('rulers.resetZero') }}</button>
+        <button role="menuitemcheckbox" :aria-checked="workspace.mirror" @click="toggleMirror">
+          <span class="check" v-html="workspace.mirror ? CHECK_ICON : ''"></span><span class="name">{{ t('rulers.mirror') }}</span><kbd>{{ mirrorKey }}</kbd>
+        </button>
+      </DropdownMenu>
+    </div>
     <template v-if="pills">
       <div class="ruler-pill top" :style="pills.top.style">{{ pills.top.text }}</div>
       <div class="ruler-pill left" :style="pills.left.style">{{ pills.left.text }}</div>
@@ -334,15 +344,38 @@ div.ruler-corner {
   background: var(--surface-1);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  cursor: crosshair;
+  pointer-events: auto;   /* its menu, with any tool */
 }
-div.ruler-corner::after {   /* both zeros' lines, meeting */
-  content: "";
-  position: absolute;
-  inset: 5px 7px 5px 9px;
-  border-left: 1px dashed var(--accent-hot);
-  border-top: 1px dashed var(--accent-hot);
-  opacity: 0.7;
+div.ruler-corner :deep(article.dropdown) {
+  display: block;
+  height: 100%;
+}
+div.ruler-corner :deep(button.dropdown-trigger) {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  justify-content: center;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+div.ruler-corner :deep(button.dropdown-trigger svg) {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+div.ruler-corner span.check {
+  display: inline-flex;
+  min-width: 14px;
+  fill: currentColor;
+}
+div.ruler-corner span.name {
+  flex: 1;
+}
+div.ruler-corner kbd {
+  margin-left: 16px;
+  color: var(--text-muted);
+  font-family: inherit;
 }
 
 /* A guide: a 1 px line in the middle of an 11 px grab area. */

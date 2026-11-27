@@ -2277,7 +2277,9 @@
     "zeroBeforeRow": "0 avant la ligne {n}",
     "zeroAfterRow": "0 après la ligne {n}",
     "remove": "Retirer",
-    "cornerTitle": "Faites glisser pour définir les deux origines des règles. Double-cliquez pour réinitialiser les origines dans le coin supérieur gauche.",
+    "cornerTitle": "Options des règles. Avec la Main, faites glisser pour définir les deux origines des règles.",
+    "resetZero": "Réinitialiser les positions",
+    "mirror": "Mode miroir",
     "guideTitle": "Faites glisser pour déplacer le repère, ou sur une règle pour le supprimer"
   },
   "mirror": {

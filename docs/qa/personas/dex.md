@@ -428,7 +428,8 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 ### 32. Draw a symmetrical logo
 - Does: with the Hand, turns on Rulers and drags the top ruler's zero to the middle of an 81-column area, then picks the
   Brush, presses Alt+M and draws the left half of a small logo with a few strokes; turns Alt+M off and draws a stroke;
-  then drags the left ruler's zero down to the logo's middle and Alt+M back on, and draws one more
+  then drags the left ruler's zero down to the logo's middle, turns it back on with **Mirror mode** in the **⋯** menu where
+  the rulers meet (checked now), and draws one more
   ([Rulers and guides](../../rulers.md#mirror-mode)).
 - Expects: with the zero moved, each stroke is mirrored across it, centered on the zero and not on the drawing's
   middle; a stroke on the axis itself is drawn once; with mirror mode off a stroke has no mirror; with the left zero
