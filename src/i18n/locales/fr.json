@@ -1245,7 +1245,7 @@
   },
   "actions": {
     "replacesUnsaved": "Remplace les modifications non enregistrées de ce dessin. Il reste dans ce navigateur, sous Reprenez là où vous vous étiez arrêté.",
-    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .pho et .phosphor, les fichiers SVG et les fichiers d'art (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
+    "cantOpen": "Phosphor ne peut pas ouvrir {name}. Les formats pris en charge comprennent les images, les projets .pho, les fichiers SVG et les fichiers d'art (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
     "saveProject": "Enregistrer le projet (.pho)",
     "exportAns": "Exporter en .ans",
     "exportUtf8ans": "Exporter en .utf8ans",
@@ -1488,7 +1488,7 @@
     "opening": "Ouverture de {name}…",
     "saving": "Enregistrement de {name}…",
     "framesLost": "Impossible de lire les images d'animation de ce fichier, il a donc été ouvert comme image fixe. L'enregistrer le remplacera en tant qu'image fixe.",
-    "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .pho ou .phosphor.",
+    "openImageFailed": "Impossible d'ouvrir « {name} ». Assurez-vous qu'il s'agit d'une image prise en charge ou d'un fichier .pho.",
     "decodeImageFailed": "Impossible de décoder l'image.",
     "blankFailed": "Impossible de créer un canevas vierge.",
     "invalidProject": "Fichier de projet Phosphor non valide.",

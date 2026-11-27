@@ -83,7 +83,7 @@ Read the [guides](docs/README.md) to learn about everything Phosphor offers.
 | Kind | Types |
 |---|---|
 | Pictures | PNG, JPEG, GIF, WebP, BMP, and AVIF |
-| Projects | `.pho`, and the older `.phosphor` |
+| Projects | `.pho` |
 | ANSI and text art | `.ans`, `.utf8ans`, `.xb` (XBin), `.bin` (BinaryText), `.asc`, `.txt`, `.nfo`, and `.diz` |
 | Vector art | `.svg` |
 | Fonts | `.F01` to `.F32`, a PNG sheet of 256 characters, `.ttf`, `.otf`, `.woff`, and `.woff2` |
@@ -95,7 +95,7 @@ A drawing can be up to 300 columns, 5,000 lines, and 500,000 cells.
 
 ### The project file
 
-**Save project** writes a `.pho` file that keeps your whole project: the picture, every layer, frames, shapes, settings, SAUCE record, and the drawing's bitmap font. Older `.phosphor` files still open too.
+**Save project** writes a `.pho` file that keeps your whole project: the picture, every layer, frames, shapes, settings, SAUCE record, and the drawing's bitmap font.
 
 A `.pho` file is also a real PNG image with your project stored inside it:
 
