@@ -514,6 +514,8 @@
     "pickBase": "Choisir la base"
   },
   "tools": {
+    "opacity": "Opacité",
+    "opacityTitle": "Opacité de la peinture",
     "pluginTitle": "{name} ({plugin})",
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} ou {b}",

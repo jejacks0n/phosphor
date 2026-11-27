@@ -20,6 +20,11 @@ under Unreleased.
   whole layer a cell. A cell of the block always stays on the canvas, and what's past the edge comes back while it floats.
 - The browser tab's icon is an SVG, so it's sharp at any size.
 
+### Fixed
+
+- The Brush's **Opacity** and **Build up** no longer carry over into the Pencil, Shapes, the Paint Bucket and the
+  Gradient: with the Brush at 50%, a filled circle came out half see-through. They paint at full opacity.
+
 ## 0.9.0-alpha (2026-11-26)
 
 The first public release.

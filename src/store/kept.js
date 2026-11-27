@@ -82,7 +82,11 @@ export const KEPT = [
   { key: 'editEraserCells', default: 1, good: between(1, 20) }, // the ANSI view's, in cells
   { key: 'editEraserSoft', default: false, good: bool }, // a round, feathered eraser that takes paint away by its Flow, in grid pixels in both views, or (off) a hard square
   { key: 'editEraserFlow', default: 50, good: between(1, 100) }, // a soft eraser's Flow, as the Brush's (brush.js: stampFlow)
-  { key: 'editBrushOpacity', default: 100, good: between(1, 100) },
+  { key: 'editBrushOpacity', default: 100, good: between(1, 100) }, // the Brush's alone (#304)
+  { key: 'pencilOpacity', default: 100, good: between(1, 100) }, // the other paint tools' own, not in the toolbar yet (brush.js: OPACITY_SHOWN)
+  { key: 'shapeOpacity', default: 100, good: between(1, 100) },
+  { key: 'bucketOpacity', default: 100, good: between(1, 100) },
+  { key: 'gradientOpacity', default: 100, good: between(1, 100) },
   { key: 'brushDrawWith', default: 'normal', good: oneOf('normal', 'half', 'shade') }, // Brush, ANSI view: 'normal' (paint) | 'half' (each cell painted becomes a ▄ the paint colors) | 'shade' (░ ▒ ▓ █ a step a pass)
   { key: 'shadeLighter', default: false, good: bool }, // Shade's way, the Pencil's and Brush's: Darker (false, ░ to █) or Lighter (true, back to a space)
   { key: 'editBrushStack', default: true, good: bool }, // Stack opacity: each stroke lays up to the opacity on top of what's there (PaintLayer.paint)

@@ -40,18 +40,19 @@ export const editLayerActions = {
     this.refreshEdit(pixels);
   },
 
-  // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the brush opacity,
-  // stacking or not (Stack opacity). blockChars (the Pencil's and Brush's Half-block, ANSI view)
+  // Paint grid pixels ({ x, y, alpha }) in color (default: the foreground color) at the caller's opacity, building up
+  // or not (stack): the tool's own, never the Brush's for another tool (#304); naming none is 100%, building up, as a
+  // layer above lays over see-through paint. blockChars (the Pencil's and Brush's Half-block, ANSI view)
   // makes each cell painted a ▄ first, which the paint colors half by half, instead of showing through
   // the cell's own character; 'plain' (their Colors only, in either view) only the cells colorsOnlyCells says.
-  paintStroke(pixels, color, { blockChars = false } = {}) {
+  paintStroke(pixels, color, { blockChars = false, opacity = 100, stack = true } = {}) {
     const workspace = useWorkspaceStore();
     const { r, g, b } = hex2rgb(color ?? workspace.editFgColor);
     const { cols, rows } = this; // read once: a store getter per pixel adds up over a fill
     const inGrid = pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows);
     if (blockChars === 'plain') this.colorsOnlyCells(inGrid);
     else if (blockChars) this.writeBlocks(cellsOfPixels(inGrid, cols, rows).filter(({ col, row }) => !isPaintBlock(this.editCellAt(col, row)))); // a block already; a frozen ▄ is a frozen cell (R5)
-    this.paintEditPixels(inGrid.map(({ x, y, alpha }) => ({ x, y, alpha, r, g, b })), workspace.editBrushOpacity, workspace.editBrushStack);
+    this.paintEditPixels(inGrid.map(({ x, y, alpha }) => ({ x, y, alpha, r, g, b })), opacity, stack);
   },
 
   // Colors only's cells (docs/model.md R5, R2), before paint is laid at grid pixels ({ x, y }, on the grid): the Brush's

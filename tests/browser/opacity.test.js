@@ -1,9 +1,12 @@
 // With Stack opacity on (the default), Opacity is how much one stroke (an edit, beginEdit to
 // commitEdit) lays at most, and strokes stack as layers do, so two at 50% make the paint 75%. Off, Opacity is a
 // ceiling on the paint, as it was.
-import { test, expect } from 'vitest';
+import { test, expect, afterEach } from 'vitest';
+import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
 import PaintLayer from '@/document/PaintLayer.js';
+import EditToolbar from '@/components/EditToolbar.vue';
+import { i18n } from '@/i18n';
 
 async function canvas() {
   const { project, workspace } = await createTestApp();
@@ -11,7 +14,7 @@ async function canvas() {
   project.rows = 20;
   await project.setBlankCanvas({ withLayer: true });
   await settle(project);
-  workspace.editBrushOpacity = 50;
+  workspace.editBrushOpacity = 50; // the Brush's, which no other paint reaches (#304): each stroke here names its own
   return { project, workspace };
 }
 
@@ -20,24 +23,23 @@ const at = (project) => { const p = project.paintLayer.pixelAt(5, 5); return [p.
 
 test('two strokes at 50% opacity make the paint 75%, as two layers at 50% do', async () => {
   const { project } = await canvas();
-  project.paintStroke(square, '#ff0000');
+  project.paintStroke(square, '#ff0000', { opacity: 50 });
   project.commitEdit();
   expect(at(project)).toEqual([255, 0, 0, 128]);
-  project.paintStroke(square, '#ff0000');
+  project.paintStroke(square, '#ff0000', { opacity: 50 });
   project.commitEdit();
   expect(at(project)).toEqual([255, 0, 0, 192]);
 });
 
 // maya-13: a stroke over paint partly see-through lays over it as a layer above it would (the alphas as two layers',
-// not their sum), so what's under shows through as much. Every paint tool comes through here: the Brush, the Pencil,
-// Shapes' paint, the Gradient and the Paint Bucket's Colors only fill.
+// not their sum), so what's under shows through as much. Every paint tool comes through here, each at its own opacity:
+// the Brush, the Pencil, Shapes' paint, the Gradient and the Paint Bucket's Colors only fill.
 test('a stroke over 50% paint on its own layer comes out as it does on a layer above that paint', async () => {
-  const { project, workspace } = await canvas();
-  project.paintStroke(square, '#ffffff');
+  const { project } = await canvas();
+  project.paintStroke(square, '#ffffff', { opacity: 50 });
   project.commitEdit();
   const white = at(project);
-  workspace.editBrushOpacity = 40;
-  project.paintStroke(square, '#ff5555');
+  project.paintStroke(square, '#ff5555', { opacity: 40 });
   project.commitEdit();
   const [r, g, b, a] = at(project);
   // The red alone, as on a clear layer above: 40% of #ff5555, over the white.
@@ -49,16 +51,16 @@ test('a stroke over 50% paint on its own layer comes out as it does on a layer a
 
 test('one stroke lays no more than its opacity, however often it goes over a pixel', async () => {
   const { project } = await canvas();
-  for (let i = 0; i < 4; i++) project.paintStroke(square, '#ff0000');
+  for (let i = 0; i < 4; i++) project.paintStroke(square, '#ff0000', { opacity: 50 });
   project.commitEdit();
   expect(at(project)).toEqual([255, 0, 0, 128]);
 });
 
 test('a second color at 50% stacks on top of the first', async () => {
   const { project } = await canvas();
-  project.paintStroke(square, '#ff0000');
+  project.paintStroke(square, '#ff0000', { opacity: 50 });
   project.commitEdit();
-  project.paintStroke(square, '#00ff00');
+  project.paintStroke(square, '#00ff00', { opacity: 50 });
   project.commitEdit();
   const [r, g, b, a] = at(project);
   expect(a).toBe(192);
@@ -68,8 +70,7 @@ test('a second color at 50% stacks on top of the first', async () => {
 });
 
 test('over opaque paint a stroke still recolors as it always did: its dabs keep blending in', async () => {
-  const { project, workspace } = await canvas();
-  workspace.editBrushOpacity = 100;
+  const { project } = await canvas();
   project.paintStroke(square, '#0000ff');
   project.commitEdit();
   const dab = square.map((p) => ({ ...p, alpha: 0.25 }));
@@ -82,11 +83,10 @@ test('over opaque paint a stroke still recolors as it always did: its dabs keep 
 });
 
 test('with Stack opacity off, Opacity is a ceiling: two strokes at 50% stay at 50%', async () => {
-  const { project, workspace } = await canvas();
-  workspace.editBrushStack = false;
-  project.paintStroke(square, '#ff0000');
+  const { project } = await canvas();
+  project.paintStroke(square, '#ff0000', { opacity: 50, stack: false });
   project.commitEdit();
-  project.paintStroke(square, '#00ff00');
+  project.paintStroke(square, '#00ff00', { opacity: 50, stack: false });
   project.commitEdit();
   expect(at(project)).toEqual([0, 255, 0, 128]); // the second stroke recolors, under the same ceiling
 });
@@ -106,4 +106,86 @@ test('paint written mid-stroke by someone else stays under the stroke, over see-
   layer.endStroke();
   const { data } = layer.canvas.getContext('2d').getImageData(0, 0, 1, 1);
   expect(Array.from(data)).toEqual([102, 34, 187, 255]); // 40% of #ff5555 over the blue
+});
+
+// #304: Opacity and Build up are the Brush's. The Pencil, Shapes, the Paint Bucket and the Gradient each paint at an
+// opacity of their own (a kept key with no slider shown yet), 100 unless it's set, and always build up.
+const pixelCtx = (project, workspace) => ({ project, workspace, view: 'input' });
+const OWN = {
+  pencil: ['pencilOpacity', async (ctx) => { const { default: pencil } = await import('@/tools/pencil'); pencil.begin(ctx, { x: 5.5, y: 5.5 }, {}); pencil.end(ctx); }],
+  shapes: ['shapeOpacity', async (ctx) => {
+    const { default: shapes } = await import('@/tools/shapes');
+    Object.assign(ctx.workspace, { shapeKind: 'rect', editBgNone: false, editBgColor: '#ff0000' });
+    shapes.begin(ctx, { x: 2.5, y: 2.5 });
+    shapes.move(ctx, { x: 2.5, y: 2.5 }, { x: 9.5, y: 9.5 });
+    shapes.end(ctx);
+  }],
+  'shapes outline': ['shapeOpacity', async (ctx) => { // a line has no inside: paintStroke alone
+    const { default: shapes } = await import('@/tools/shapes');
+    ctx.workspace.shapeKind = 'line';
+    shapes.begin(ctx, { x: 1.5, y: 5.5 });
+    shapes.move(ctx, { x: 1.5, y: 5.5 }, { x: 12.5, y: 5.5 });
+    shapes.end(ctx);
+  }],
+  'shapes full block': ['shapeOpacity', async (ctx) => { // the ANSI view's Full block, filled: whole cells of paint
+    const { default: shapes } = await import('@/tools/shapes');
+    Object.assign(ctx.workspace, { editorTab: 'output', shapeKind: 'rect', shapeDrawWith: 'full', shapeBlockChars: false, editBgNone: false, editBgColor: '#ff0000' });
+    const ansi = { ...ctx, view: 'output' };
+    shapes.begin(ansi, { x: 1.5, y: 1.5 });
+    shapes.move(ansi, { x: 1.5, y: 1.5 }, { x: 10.5, y: 10.5 });
+    shapes.end(ansi);
+  }],
+  bucket: ['bucketOpacity', async (ctx) => {
+    const { default: bucket } = await import('@/tools/bucket');
+    Object.assign(ctx.workspace, { editFillFeather: 0, bucketFillWith: 'normal' });
+    bucket.begin(ctx, { x: 5.5, y: 5.5 }, { stopPropagation() {} });
+  }],
+  gradient: ['gradientOpacity', async (ctx) => {
+    const { default: gradient } = await import('@/tools/gradient');
+    Object.assign(ctx.workspace, { editFillFeather: 0, bucketFillWith: 'normal', editBgColor: '#ff0000', editFgNone: false, editBgNone: false });
+    gradient.begin(ctx, { x: 0, y: 5 }, { stopPropagation() {} });
+    gradient.move(ctx, { x: 0, y: 5 }, { x: 20, y: 5 });
+    gradient.end(ctx);
+  }],
+};
+const alphaAt = (project) => Math.round(project.paintLayer.pixelAt(5, 5).a * 255);
+
+test.each(Object.keys(OWN))('#304: the %s paints solid with the Brush at half opacity and Build up off', async (tool) => {
+  const { project, workspace } = await canvas();
+  Object.assign(workspace, { editFgColor: '#ff0000', editBrushStack: false });
+  await OWN[tool][1](pixelCtx(project, workspace));
+  await settle(project);
+  expect(alphaAt(project)).toBe(255);
+});
+
+test.each(Object.keys(OWN))('#304: the %s paints at its own opacity', async (tool) => {
+  const { project, workspace } = await canvas();
+  Object.assign(workspace, { editFgColor: '#ff0000', editBrushOpacity: 100, [OWN[tool][0]]: 50 });
+  await OWN[tool][1](pixelCtx(project, workspace));
+  await settle(project);
+  expect(alphaAt(project)).toBe(128);
+});
+
+test('#304: a stroke that names no Build up lays over see-through paint as a layer above it would, whatever the Brush\'s', async () => {
+  const { project, workspace } = await canvas();
+  workspace.editBrushStack = false;
+  project.paintStroke(square, '#ff0000', { opacity: 50 });
+  project.commitEdit();
+  project.paintStroke(square.map((p) => ({ ...p, alpha: 0.5 })), '#ff0000');
+  project.commitEdit();
+  expect(at(project)[3]).toBe(192); // 50% over 50%, not the two added up
+});
+
+// No room in the toolbar for them yet: only the Brush shows an Opacity.
+let mounted = null;
+afterEach(() => { mounted?.unmount(); mounted = null; });
+test.each(['brush', ...Object.keys(OWN)])('#304: the %s shows an Opacity only if it is the Brush', async (tool) => {
+  const { workspace } = await canvas();
+  workspace.editorTab = 'input';
+  workspace.setActiveTool(tool);
+  const host = document.createElement('div');
+  mounted = createApp(EditToolbar).use(i18n);
+  mounted.mount(host);
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  expect(host.textContent.includes('Opacity')).toBe(tool === 'brush');
 });

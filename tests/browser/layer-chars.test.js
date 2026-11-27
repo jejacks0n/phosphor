@@ -478,8 +478,7 @@ async function paintedOn(where, settings) {
   const layer = where === 'base' ? 'base' : where === 'group' ? 'edit' : project.addLayer('cells', 'edit');
   if (where === 'upper') project.setLayerChars(layer, { ...settings, seed: 'its own' });
   workspace.pickLayer(layer);
-  workspace.editBrushOpacity = 50;
-  project.paintStroke([{ x: 3, y: 4, alpha: 1 }, { x: 3, y: 5, alpha: 1 }], '#ffffff');
+  project.paintStroke([{ x: 3, y: 4, alpha: 1 }, { x: 3, y: 5, alpha: 1 }], '#ffffff', { opacity: 50 });
   project.commitEdit();
   await settle(project);
   expect(project.lowerGroup.upper.length).toBe(where === 'upper' ? 1 : 0);

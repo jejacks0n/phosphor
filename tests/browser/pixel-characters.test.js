@@ -148,8 +148,7 @@ test('R11: an opened ANSI file shows every cell as it looks with All cells left 
   const stroke = (hex, opacity, from, slope) => {
     const pixels = [];
     for (let x = 4; x < project.cols - 4; x++) for (let d = -5; d <= 5; d++) pixels.push({ x, y: Math.round(from + slope * x) + d, alpha: 1 - Math.abs(d) / 6 });
-    workspace.editBrushOpacity = opacity;
-    project.paintStroke(pixels, hex, { blockChars: 'plain' });
+    project.paintStroke(pixels, hex, { blockChars: 'plain', opacity });
     project.commitEdit();
   };
   stroke('#ffffff', 70, 6, 0.3);

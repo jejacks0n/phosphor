@@ -514,6 +514,8 @@
     "pickBase": "Pick the base"
   },
   "tools": {
+    "opacity": "Opacity",
+    "opacityTitle": "Paint opacity",
     "pluginTitle": "{name} ({plugin})",
     "titleWithKeys": "{title} · {keys}",
     "keysOr": "{a} or {b}",

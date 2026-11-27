@@ -122,8 +122,8 @@ function makeActions(project, workspace, r, opts) {
     },
     paint: () => {
       const x = int(project.cols), y = int(project.rows), color = pick(COLORS);
-      workspace.editBrushOpacity = pick([100, 100, 50]);
-      project.paintStroke(Array.from({ length: 1 + int(10) }, (_, k) => ({ x: x + k, y: y + (k % 3), alpha: pick([1, 1, 0.5]) })), color);
+      const opacity = pick([100, 100, 50]);
+      project.paintStroke(Array.from({ length: 1 + int(10) }, (_, k) => ({ x: x + k, y: y + (k % 3), alpha: pick([1, 1, 0.5]) })), color, { opacity });
       project.commitEdit();
     },
     erasePaint: () => {
