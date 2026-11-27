@@ -1,6 +1,6 @@
 import { onMounted, onBeforeUnmount, watch, toRaw } from 'vue';
 import { getTool } from '@/tools';
-import { clampOffset, normalizeRect } from '@/document/editCells';
+import { keepOnGrid, normalizeRect } from '@/document/editCells';
 import { stacked } from '@/document/shapes.js';
 import { charRowsOf } from '@/lib/Cells';
 import { copySelection, decodeBlock } from '@/composables/clipboard';
@@ -122,8 +122,8 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       else if (selecting && (e.key === 'Delete' || e.key === 'Backspace' || key === 'e')) deleting(sel, layers);
       else if (selecting && (key === 'c' || key === 's') && !e.repeat) workspaceStore.selection = projectStore.stampSelection(sel, layers) ?? sel;
       else if (selecting && ARROWS[e.key]) {
-        // A nudge stops at the grid's edge rather than pushing contents off it.
-        const { dc, dr } = clampOffset(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
+        // A nudge goes past the grid's edge as a drag does, a cell of the block kept on it.
+        const { dc, dr } = keepOnGrid(sel, ...ARROWS[e.key], projectStore.cols, charRowsOf(projectStore.rows));
         if (dc || dr) workspaceStore.selection = projectStore.floatSelection(sel, layers, dc, dr) ?? sel;
       }
       else return false;

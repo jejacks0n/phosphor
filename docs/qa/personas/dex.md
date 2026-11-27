@@ -255,8 +255,9 @@ on a block with characters (it's off, and says why), and look for Moebius's bloc
 
 ### 17. Move it into place by keys
 - Does: moves the floating logo with the arrow keys, sets it down with Enter.
-- Expects: a cell per press; it stops at the grid's edge rather than pushing off; Enter sets it down.
-- Probes: `speed`: hold → for two seconds; `undo-redo`: undo the move (back where it landed, floating), redo.
+- Expects: a cell per press; held past the grid's edge it goes on until one cell of it is left on, and brought back
+  before Enter it comes back whole; Enter sets it down.
+- Probes: `speed`: hold → for two seconds, then ← until it's back; `undo-redo`: undo the move (back where it landed, floating), redo.
 - Rated: yes, wants the arrows
 
 ### 18. Merge the logo down

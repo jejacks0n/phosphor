@@ -3,7 +3,7 @@
 // the picked layer (or all visible layers when All layers is on: workspace.selectionIds, as every action on a selection), the block following the pointer cell by cell (a float:
 // the whole drag is one undo step); dragging its border moves just the outline; dragging elsewhere
 // draws a new one, and a click outside clears it. With nothing selected, a click selects the cell under it. The actions are on the options row.
-import { normalizeRect, selectionHit, clampOffset } from '@/document/editCells';
+import { normalizeRect, selectionHit, clampOffset, keepOnGrid } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
 
@@ -52,12 +52,8 @@ export default {
     const cell = cellOf(project, to);
     const dc = cell.col - drag.start.col, dr = cell.row - drag.start.row;
     if (drag.mode === 'move') {
-      // The block keeps a cell on the grid (a float pushed off it entirely would be lost).
       const { rect, moved } = drag;
-      const offset = {
-        dc: Math.max(-rect.c1, Math.min(project.cols - 1 - rect.c0, dc)),
-        dr: Math.max(-rect.r1, Math.min(charRowsOf(project.rows) - 1 - rect.r0, dr)),
-      };
+      const offset = keepOnGrid(rect, dc, dr, project.cols, charRowsOf(project.rows));
       if (offset.dc === moved.dc && offset.dr === moved.dr) return;
       const landed = project.floatSelection(workspace.selection, workspace.selectionIds, offset.dc - moved.dc, offset.dr - moved.dr);
       if (landed) {

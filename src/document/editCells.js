@@ -323,3 +323,9 @@ export function selectionHit({ c0, r0, c1, r1 }, { col, row }) {
 export function clampOffset({ c0, r0, c1, r1 }, dc, dr, cols, rows) {
   return { dc: Math.max(0 - c0, Math.min(cols - 1 - c1, dc)), dr: Math.max(0 - r0, Math.min(rows - 1 - r1, dr)) };
 }
+
+// An offset for a moved block, cut short only so a cell of it stays on the grid: past the edge, a floating block keeps
+// what's off it, and one pushed off entirely would be lost.
+export function keepOnGrid({ c0, r0, c1, r1 }, dc, dr, cols, rows) {
+  return { dc: Math.max(-c1, Math.min(cols - 1 - c0, dc)), dr: Math.max(-r1, Math.min(rows - 1 - r0, dr)) };
+}
