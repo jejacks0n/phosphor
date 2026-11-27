@@ -1,7 +1,7 @@
 // The Select tool: floating moves and pastes, around typing, undo and wide characters.
 import { test, expect } from 'vitest';
 import { createTestApp, loadImage, settle, cellsKey } from '../support/app.js';
-import { cellIndex } from '@/lib/Cells';
+import { cellIndex, charRowsOf } from '@/lib/Cells';
 import { rectShape } from '@/document/shapes.js';
 
 const COLS = 30, ATTRS = { fg: '#ffffff', bg: '#000000' };
@@ -125,6 +125,41 @@ test('undo after a nudge: the selection goes back with the cells', async () => {
   await settle(project);
   expect(cell(project, 5, 5).char).toBe('A'); // the cells went back
   expect(workspace.selection).toEqual({ c0: 5, r0: 5, c1: 5, r1: 5 });
+});
+
+// A nudge goes past the grid's edge as a drag does, keeping a cell on it: what's past the edge comes back while the block
+// floats, and is gone once it's set down.
+test('arrow keys move a block past the edge, a cell of it kept on the grid, and back whole while it floats', async () => {
+  const { project, workspace } = await editor();
+  for (const [c, ch] of [[27, 'A'], [28, 'B'], [29, 'C']]) project.typeAt(c, 5, ch, ATTRS);
+  project.commitEdit();
+  workspace.selectAll({ c0: 27, r0: 5, c1: 29, r1: 5 });
+  key('ArrowRight');
+  expect(workspace.selection).toEqual({ c0: 28, r0: 5, c1: 29, r1: 5 }); // C is past the edge
+  key('ArrowRight'); key('ArrowRight'); // the second would leave nothing on the grid
+  expect(workspace.selection).toEqual({ c0: 29, r0: 5, c1: 29, r1: 5 });
+  project.render(); await settle(project);
+  expect(cell(project, 29, 5).char).toBe('A');
+  for (let i = 0; i < 4; i++) key('ArrowLeft');
+  project.render(); await settle(project);
+  expect([25, 26, 27].map((c) => cell(project, c, 5).char).join('')).toBe('ABC');
+});
+
+test('Select all and an arrow key move the whole layer a cell: what went past the edge is gone once set down, and one undo brings it back', async () => {
+  const { project, workspace } = await editor();
+  const last = charRowsOf(project.rows) - 1;
+  for (const [r, ch] of [[0, 'T'], [last, 'Z']]) project.typeAt(3, r, ch, ATTRS);
+  project.commitEdit();
+  const before = cellsKey(project);
+  workspace.selectAll({ c0: 0, r0: 0, c1: COLS - 1, r1: last });
+  key('ArrowDown');
+  key('Escape'); // set down
+  project.render(); await settle(project);
+  const chars = project.cells.map((c) => c.char); // (the layer's emptied top line shows the picture under it)
+  expect([cell(project, 3, 1).char, chars.filter((c) => c === 'T').length, chars.includes('Z')]).toEqual(['T', 1, false]); // Z went past the bottom
+  key('z', { metaKey: true });
+  project.render(); await settle(project);
+  expect(cellsKey(project)).toEqual(before);
 });
 
 test('a nudge after text typed onto a moved block: one undo brings the block back with the text', async () => {

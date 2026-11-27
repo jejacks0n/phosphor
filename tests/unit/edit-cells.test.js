@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import {
   withCellEdit, mergeEntry, withoutCells, parseKey, serializeEditCells, deserializeEditCells, migrateCharEdits,
   normalizeRect, rectCells, pasteBlock, updateRect,
-  selectionHit, clampOffset, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock, isLaid, moveCells,
+  selectionHit, clampOffset, keepOnGrid, bakeEditCells, mergeKind, cleanEntry, isFrozen, ownEntry, sameEntry, followPicture, isPaintBlock, isLaid, moveCells,
 } from '../../src/document/editCells.js';
 
 test('Edit cell map: merge/remove semantics, grid-position keys, (de)serialization and the migration of older index-keyed char edits', async () => {
@@ -86,11 +86,16 @@ test('Edit cell map: merge/remove semantics, grid-position keys, (de)serializati
   assert.equal(selectionHit(sel, { col: 4, row: 2.1 }), 'border');     // within the ⅛-row inner band at the top
   assert.equal(selectionHit(sel, { col: 4, row: 2.2 }), 'inside');
   assert.equal(selectionHit({ c0: 0, r0: 0, c1: 0, r1: 0 }, { col: 0.5, row: 0.5 }), 'inside'); // a 1-cell selection still has an inside
-  // A nudge or outline drag stops at the grid's edge instead of pushing the selection off it.
+  // An outline drag stops at the grid's edge instead of pushing the selection off it.
   assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 39, r1: 9 }, 1, 0, 40, 25), { dc: 0, dr: 0 });  // already at the right edge
   assert.deepEqual(clampOffset({ c0: 30, r0: 5, c1: 38, r1: 9 }, 5, 0, 40, 25), { dc: 1, dr: 0 });
   assert.deepEqual(clampOffset({ c0: 0, r0: 0, c1: 3, r1: 3 }, -2, -1, 40, 25), { dc: 0, dr: 0 });
   assert.deepEqual(clampOffset({ c0: 2, r0: 2, c1: 3, r1: 3 }, 0, 30, 40, 25), { dc: 0, dr: 21 });
+  // A moved block (a drag or a nudge) goes past the edge, but keeps a cell on the grid.
+  assert.deepEqual(keepOnGrid({ c0: 30, r0: 5, c1: 39, r1: 9 }, 1, 0, 40, 25), { dc: 1, dr: 0 });   // at the right edge, on past it
+  assert.deepEqual(keepOnGrid({ c0: 39, r0: 5, c1: 48, r1: 9 }, 1, 0, 40, 25), { dc: 0, dr: 0 });   // its last cell on the grid
+  assert.deepEqual(keepOnGrid({ c0: 0, r0: 0, c1: 3, r1: 3 }, -10, -10, 40, 25), { dc: -3, dr: -3 });
+  assert.deepEqual(keepOnGrid({ c0: 0, r0: 0, c1: 39, r1: 24 }, 0, 1, 40, 25), { dc: 0, dr: 1 });   // all of it: a line down
   // A bake burns the color transforms into edit cells' colors (characters stay).
   const P = { brightness: 50, contrast: 100, saturation: 100, hue: 0, invert: 0, colorize: '#ff00ff', colorizeStrength: 0 };
   const baked = bakeEditCells(new Map([['0,0', Object.freeze({ char: 'A', fg: '#ffffff', bg: '#808080' })], ['1,0', Object.freeze({ char: 'B' })]]), P);

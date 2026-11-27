@@ -13,6 +13,8 @@ under Unreleased.
 
 ### Changed
 
+- The arrow keys move a selection past the canvas's edge, as dragging it does, so **Select all** and an arrow key move a
+  whole layer a cell. A cell of the block always stays on the canvas, and what's past the edge comes back while it floats.
 - The browser tab's icon is an SVG, so it's sharp at any size.
 
 ## 0.9.0-alpha (2026-11-26)

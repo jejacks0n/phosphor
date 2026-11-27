@@ -871,6 +871,10 @@ Everything below works the same in both.
   something else, or make any other change. With a button focused, Enter presses the button instead.
 - **Undo**: The whole move is one undo step. Undo puts the block back where it started and redo where you left it,
   floating either way, so you can drag it on.
+- **Past the Edge**: A drag or the arrow keys can move the block past the canvas's edge, as long as a cell of it stays
+  on. What's past the edge comes back if you move it on again while it floats, and is gone once it's set down (undo
+  brings it back). So **Select all** and an arrow key move the whole layer a cell (every layer that shows, with **All
+  layers** on), the line or column they leave empty and the one pushed past the far edge gone.
 - **Edge Scrolling**: The block follows the pointer as you drag, and dragging it (or a new selection) to the edge of
   the view scrolls the view, faster the further you go.
 
