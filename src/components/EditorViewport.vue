@@ -20,7 +20,7 @@ import { isControl, ownsKey } from '@/lib/fields';
 import { withShape } from '@/document/shapes.js';
 import { pickedCell } from '@/store/project/reading.js';
 import { gridAt } from '@/lib/CellCanvas';
-import { strokeMirror, withMirror } from '@/lib/mirror';
+import { strokeMirror, withMirror, mirrorAxes, mirrorOps, mirrorPoint, axisLines } from '@/lib/mirror';
 
 // The scrollable, pannable, zoomable shell both editors sit in. The editor supplies the display
 // element (slot) and how pointer events map to grid pixels (coordsAt); the active tool (src/tools)
@@ -181,8 +181,8 @@ const previewStyle = computed(() => {
 // (the Paint Bucket's gradient line too: line, between grid pixels).
 // In the ANSI view a line/character rectangle snaps to whole cells, so its outline does too; it sits
 // inside the display's border, like the cursor and cell highlights.
-const shapeDragStyle = computed(() => {
-  const drag = workspaceStore.shapeDrag, unit = props.unit;
+const shapeDragStyle = (drag) => {
+  const unit = props.unit;
   if (!drag || !unit) return null;
   const ansi = props.view === 'output';
   const cellShape = ansi && !drag.line && drawsCells(workspaceStore);
@@ -210,6 +210,26 @@ const shapeDragStyle = computed(() => {
     left: `${x0 * unit.x + dx}px`, top: `${y0 * unit.y + dy}px`, width: `${(x1 - x0) * unit.x}px`, height: `${(y1 - y0) * unit.y}px`,
     borderRadius: workspaceStore.shapeKind === 'ellipse' ? '50%' : '0',
   };
+};
+// The drag and, with mirror mode on, its copies on the other sides.
+const mirroring = computed(() => workspaceStore.mirror && props.view !== 'vector' && props.unit
+  ? mirrorAxes(workspaceStore.rulerZero, projectStore.cols) : null);
+const shapeDragStyles = computed(() => {
+  const drag = workspaceStore.shapeDrag, axes = mirroring.value;
+  if (!drag) return [];
+  const copies = (axes ? mirrorOps(axes) : []).map((ops) => ({ ...drag, from: mirrorPoint(drag.from, ops, axes), to: mirrorPoint(drag.to, ops, axes) }))
+    .filter(({ from, to }) => Math.max(from.x, to.x) >= 0 && Math.min(from.x, to.x) < projectStore.cols); // some column of it is on the art
+  return [drag, ...copies].map(shapeDragStyle).filter(Boolean);
+});
+
+// The axes lie over the art, offset like the drag outline to sit inside the display's border.
+const axisStyles = computed(() => {
+  if (!mirroring.value) return [];
+  const shown = unref(props.display);
+  const dx = shown?.clientLeft ?? 0, dy = shown?.clientTop ?? 0;
+  return axisLines(mirroring.value, props.unit).map(({ axis, at }) => (axis === 'x'
+    ? { left: `${at + dx}px`, top: `${dy}px`, height: `${projectStore.rows * props.unit.y}px`, borderLeft: '1px dashed var(--guide)' }
+    : { top: `${at + dy}px`, left: `${dx}px`, width: `${projectStore.cols * props.unit.x}px`, borderTop: '1px dashed var(--guide)' }));
 });
 
 // VECTOR: where the pointer is, in grid pixels, while the Pen draws (the overlay's dashed next segment) or Follow a
@@ -421,7 +441,8 @@ defineExpose({ centerContent });
       <div class="canvas-container">
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
-        <div v-if="shapeDragStyle" class="shape-drag" :style="shapeDragStyle"></div>
+        <div v-for="(style, i) in shapeDragStyles" :key="i" class="shape-drag" :style="style"></div>
+        <div v-for="(style, i) in axisStyles" :key="`axis${i}`" class="mirror-axis" :style="style"></div>
         <div v-for="(box, i) in drawingStore.waiting" :key="i" class="waiting" :style="waitingStyle(box)"></div>
         <slot name="overlay"/>
       </div>
@@ -475,6 +496,13 @@ div.canvas-viewport.padded.ruled {
 
 div.canvas-viewport.padded div.canvas-container {
   margin: 0;
+}
+
+div.mirror-axis {
+  position: absolute;
+  pointer-events: none;
+  z-index: 99;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
 }
 
 div.shape-drag {

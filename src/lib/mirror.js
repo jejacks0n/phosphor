@@ -61,6 +61,12 @@ export const mirrorPoint = (p, ops, axes) => ({
   y: ops.includes('v') ? down(axes, ops, Math.floor(p.y)) + 0.5 : p.y,
 });
 
+// Where the axes draw, in CSS px from the art's left and top (a cell row is two grid pixels).
+export const axisLines = (axes, unit) => [
+  { axis: 'x', at: axes.x * unit.x },
+  ...(axes.y === null ? [] : [{ axis: 'y', at: 2 * axes.y * unit.y }]),
+];
+
 export const strokeMirror = (workspace, project, tool) =>
   workspace.mirror && tool.mirrors
     ? { axes: mirrorAxes(workspace.rulerZero, project.cols), clip: selectionClip(workspace) }
