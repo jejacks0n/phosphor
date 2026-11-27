@@ -105,6 +105,20 @@ test('a stroke sends slices with one stroke id, and only what changed', async ()
   expect(out.map(({ cells }) => cells.map(([key]) => key))).toEqual([['1,1'], ['2,1'], ['3,1']]);
 });
 
+test('R16: an artist\'s Shade stroke goes out as its cells, characters of their own', async () => {
+  const { project, workspace, sent } = await drawing('artist');
+  await settle(project);
+  Object.assign(workspace, { editorTab: 'output', pencilDrawWith: 'shade', shadeLighter: false, editFgColor: '#ff0000', editFgNone: false });
+  const ctx = { project, workspace, view: 'output' }, at = (col) => ({ x: col + 0.5, y: 2 * 3 + 0.5 });
+  pencil.begin(ctx, at(1), {});
+  pencil.move(ctx, at(1), at(3));
+  pencil.end(ctx);
+  const out = changes(sent);
+  expect(out).toHaveLength(1);
+  expect(out[0].cells.map(([key, entry]) => [key, entry.char, entry.fg])).toEqual([['1,3', '░', '#ff0000'], ['2,3', '░', '#ff0000'], ['3,3', '░', '#ff0000']]);
+  expect(out[0].runs).toEqual([]); // no paint
+});
+
 test('slices go out every 100 ms while an edit is open', async () => {
   const { project, sent } = await drawing('artist');
   project.editCell(1, 1, { char: 'A' });

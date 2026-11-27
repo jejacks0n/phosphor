@@ -139,15 +139,24 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
   on a Mac, the shortcut list says he may need to hold Fn, and where in System Settings to change that.
 - Rated: yes, wants F1–F12 and Ctrl+.
 
-### 6. Draw half blocks
-- Does: presses P, then Shift+D, which steps Draw with back from Colors only round to Half-block, and draws a small
-  shape in two colors.
+### 6. Draw half blocks and shades
+- Does: presses P, then Shift+D, which steps Draw with back from Colors only round to Shade, and Shift+D again to
+  Half-block, and draws a small shape in two colors. Then Shift+D back round to Shade and, as he would in Moebius,
+  shades a gradient beside it: a row of cells passed over once, the next twice, then three and four times, each pass
+  a stroke of its own; then one pass back over the row with Cmd (Ctrl on Windows and Linux) held.
 - Expects: Draw with shows each step as he presses, D forward and Shift+D back, wrapping; each cell he paints becomes `▄`, and the half he doesn't paint keeps its color; a straight line with Shift
-  from his last stroke.
-- Probes: `undo-redo`: undo the shape stroke by stroke; `again`: draw over the same cells twice in another color, and
+  from his last stroke. With Shade each pass steps a cell one shade further in his foreground color, `░` `▒` `▓` `█`,
+  over the background it showed, and a `█` stays; going back over a cell within one stroke adds nothing; the pass
+  with Cmd held steps each cell back one, and a `░` back to a space; Darker and Lighter show in the options row, and
+  his shades are characters (the Eyedropper on one, then typing over it, behaves as on a typed one).
+- Probes: `undo-redo`: undo the shape stroke by stroke, and the gradient's passes one at a time; `again`: draw over the same cells twice in another color, and
   across a box of double lines he typed, with the Pencil and with the Shape tool's Half-block, Write block glyphs on
   and off, the box's edge on the line's top half and on its bottom half: each crossed cell is a `▄` with the line gone,
-  not a whole cell; with the checkbox off the rest of the box is the canvas's own characters.
+  not a whole cell; with the checkbox off the rest of the box is the canvas's own characters; shade over his `▓`s in
+  another color: they start again at `░` in it, and over a `█` the `░` lies on the `█`'s color; `extremes`: with iCE
+  colors off, shade over a bright background (a toast says the shade blinks), and with a bitmap font that has no
+  shades (Shade says which blocks it lacks, and offers to set them up); `scope`: in Color ASCII and Monochrome
+  ASCII, Shade is still on Draw with and ramps the same, on black over the picture.
 - Rated: yes, wants P, then Shift+D
 
 ### 7. Set my colors from the keys
@@ -182,7 +191,7 @@ see what his art looks like there, and zoom to 200% and back by the status bar.
 - Rated: yes, wants M, Shift+arrows, then a key for Set FG
 
 **Free time:** he'd press D through every Draw with mode and round, try the Pencil's Single line and Double line
-with Connect, type a box with the F-keys' line characters, and check the shortcut list names every key he used.
+with Connect, shade with the Brush at a few sizes and Lighter picked in the options row, type a box with the F-keys' line characters, and check the shortcut list names every key he used.
 
 ## Blocks: select, copy, move
 

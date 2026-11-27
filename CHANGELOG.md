@@ -8,6 +8,9 @@ under Unreleased.
 
 ### Added
 
+- **Shade**, a **Draw with** choice for the Pencil and the Brush in the ANSI view: each pass steps the cells it crosses
+  one shade further in the foreground color, `░` `▒` `▓` `█`, and **Lighter** (or holding Cmd, Ctrl on Windows and
+  Linux) steps them back to a space. One step a cell a stroke, written as typed characters, in every art style.
 - Export as BinaryText (`.bin`), beside `.ans` and `.xb`: the 16 CGA colors and CP437, its width in a SAUCE record that's
   always written, with a blank column added to an odd width.
 

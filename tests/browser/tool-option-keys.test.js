@@ -80,7 +80,7 @@ test('the command list\'s Shapes row with Shapes chosen keeps its kind: the step
   expect([workspace.activeTool, workspace.shapeKind]).toEqual(['shapes', 'rect']);
 });
 
-test('D with the Pencil in ANSI steps Draw with to Single, Shift+D back; Shapes\' Ellipse skips the line styles', async () => {
+test('D with the Pencil in ANSI steps Draw with to Single, Shift+D back, wrapping to Shade; Shapes\' Ellipse skips the line styles', async () => {
   const { workspace } = await setup();
   workspace.setActiveTool('pencil');
   expect(pressCommand('tool.drawWithNext').defaultPrevented).toBe(true);
@@ -88,6 +88,8 @@ test('D with the Pencil in ANSI steps Draw with to Single, Shift+D back; Shapes\
   pressCommand('tool.drawWithPrev');
   expect(workspace.pencilDrawWith).toBe('normal');
   pressCommand('tool.drawWithPrev'); // wraps to the last
+  expect(workspace.pencilDrawWith).toBe('shade');
+  pressCommand('tool.drawWithPrev');
   expect(workspace.pencilDrawWith).toBe('half');
   // Shapes' Draw with hides the line styles for an Ellipse: from Character on, past them to Half-block.
   workspace.setActiveTool('shapes');

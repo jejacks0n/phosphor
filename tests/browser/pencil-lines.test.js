@@ -139,11 +139,11 @@ test('a style no longer offered falls back to the first offered; none offered pa
   expect(none.row(2, 3, 5)).not.toMatch(/[─═]/);
 });
 
-test("Draw with lists the font's styles after Double", async () => {
+test("Draw with lists the font's styles after Double, and Shade after Half-block", async () => {
   const { project, workspace } = await scene();
   await project.setDrawingFont(fontWith(HEAVY));
   expect(pencil.options[0].choices.filter((c) => !c.when || c.when(workspace)).map((c) => c.value))
-    .toEqual(['normal', 'single', 'double', 'line:l1', 'half']);
+    .toEqual(['normal', 'single', 'double', 'line:l1', 'half', 'shade']);
   expect(pencil.options[0].choices).toBe(pencil.options[0].choices);
 });
 

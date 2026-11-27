@@ -543,6 +543,23 @@ before: [Tool Keys](#tool-keys)):
   half-blocks. The half you don't paint keeps the cell's background: a character there goes, and its color with it, so a
   stroke across a line you typed is a half block too, not a whole cell, whether the line is on the same layer or one
   under it.
+- **Shade**: Each pass steps the cells it crosses one shade further in the foreground color, the way shading is drawn
+  by hand: a cell with no shade yet becomes `░` over the background it shows, then `▒`, `▓` and `█`, and a `█` stays.
+  Going back over a cell within one stroke adds nothing, so lift and stroke again to go further. **Lighter** in the
+  options row (or **Darker** with **Cmd** held, **Ctrl** on Windows and Linux, as you press) steps the other way:
+  `█` to `▓` to `▒` to `░`, and `░` to a space in its background color, whatever color the shade is in. A shade in
+  another color starts again at `░` in yours: over a `█` the `░` lies on the `█`'s color, so ramps join one into the
+  next; over a `▒` on blue, on blue. Any cell counts that shows a shade, typed, opened, the converter's or another
+  layer's under this one: Shade reads the cell as it shows. Over a letter, a half block or paint, it starts at `░` over
+  the cell's background (the top half's color, for a half block or paint). The Brush's **Size** says which cells a
+  stroke reaches, hard-edged; **Opacity**, **Flow**, **Hardness** and **Build up** aren't shown while it shades, since a
+  cell takes a whole step or none. The shades are characters of your own, as typing writes them (on the base they're
+  pinned, so the sliders leave those cells alone) and in a room they go out as any stroke does. They're the font's
+  Light, Medium, Dark and Full blocks: with a bitmap font missing one, Shade is off and says which
+  ([The Font's Blocks](characters.md#the-fonts-blocks)). Without iCE colors a shade on a bright background blinks, as
+  anything typed there does, and the first stroke in a drawing that lays one says so. Color ASCII and Monochrome ASCII
+  shade the same way, on black where the cell shows black; in Monochrome every character is the one color, so any shade
+  steps on.
 - **Single line** and **Double line** (Pencil only): Draw box-drawing lines as you drag from cell to cell. Each cell
   gets the piece its path needs (─ │ ┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼), so the line turns corners and joins itself where it crosses
   back, in the foreground color (and the background color, unless it's None). A diagonal drag becomes a staircase.
@@ -1274,6 +1291,8 @@ These work in both the ANSI and the PIXEL view, for as long as you hold the key:
 - **Shift**, while dragging a shape: a Rectangle becomes a square and an Ellipse a circle, and a Line snaps to steps of
   45°. A Single or Double line runs only straight across or down, Shift or not.
 - **Shift**, while dragging a Gradient: the line snaps to steps of 45°.
+- **Cmd** (Ctrl on Windows and Linux), held as you press with the Pencil or Brush on **Shade** in the ANSI view: the
+  stroke steps the other way, **Lighter** for **Darker** and back ([Draw With](#draw-with)).
 - **Space**, with any tool: the Hand, to drag the view around (the middle mouse button does too).
 
 Let go in the middle of a drag and the tool comes back when the drag ends, so a pick or a pan never turns into a

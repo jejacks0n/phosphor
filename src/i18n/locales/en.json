@@ -695,7 +695,13 @@
       "halfBlock": "Half-block",
       "fullBlock": "Full-block",
       "character": "Character",
-      "cells": "Cells"
+      "cells": "Cells",
+      "shade": "Shade",
+      "shadeWay": "Shade",
+      "darker": "Darker",
+      "lighter": "Lighter",
+      "shadeOff": "Shade is off: this drawing’s font, {name}, has no {names} block, and Shade draws with it. Give the font one on the Fonts page. | Shade is off: this drawing’s font, {name}, has no {names} blocks, and Shade draws with them. Set them up on the Fonts page.",
+      "shadeBlinks": "iCE colors is off, so a shade on a bright background blinks. Turn iCE colors on to keep it steady."
     }
   },
   "toolbar": {
