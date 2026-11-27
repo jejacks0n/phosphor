@@ -259,10 +259,17 @@ const hoverCell = computed(() => {
 // comes here (handleWheel) and a press too. A press held when the drawing pauses ends: its stroke, if there is
 // one, goes in with the rest of what's waiting, before anything is refused.
 const { left: rootLeft, top: rootTop, width: rootWidth, height: rootHeight } = useElementBounding(rootRef);
+// It's fixed, but inside the workspace, which slides aside for a phone's settings drawer (a transform): there fixed
+// is measured from the workspace, so the box is too, and a measure taken mid-slide holds once it's back.
+const frameOf = (el) => {
+  for (let a = el?.parentElement; a; a = a.parentElement) if (getComputedStyle(a).transform !== 'none') return a.getBoundingClientRect();
+  return { left: 0, top: 0 };
+};
 const overArt = computed(() => {
   const el = rootRef.value;
   void rootWidth.value, rootHeight.value;   // the client box, short of the scrollbars, isn't reactive: these say when it changes
-  return { left: `${rootLeft.value}px`, top: `${rootTop.value}px`, width: `${el?.clientWidth ?? 0}px`, height: `${el?.clientHeight ?? 0}px` };
+  const frame = frameOf(el);
+  return { left: `${rootLeft.value - frame.left}px`, top: `${rootTop.value - frame.top}px`, width: `${el?.clientWidth ?? 0}px`, height: `${el?.clientHeight ?? 0}px` };
 });
 watch(() => drawingStore.paused, (paused) => { if (paused) commitPaint(); }, { flush: 'sync' });
 watch(hoverCell, (cell) => { if (projectStore._sharing) drawingStore.pointAt(cell); });

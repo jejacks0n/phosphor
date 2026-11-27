@@ -174,3 +174,23 @@ test('Rulers off hides the guides; Clear guides empties them', async ({ page }) 
   expect(await guides(page)).toEqual([]);
   await expect(clearGuides(page)).toBeDisabled();
 });
+
+// On a phone the workspace slides aside for the settings drawer (a transform), and the rulers, fixed over the view,
+// slide with it. Measured mid-slide (iOS's keyboard coming up for the command list's field resizes the window
+// then), they still lie over the view once it's back.
+test.describe('on a phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+
+  test('the rulers stay over the view when it was measured mid-slide', async ({ page }) => {
+    await openApp(page);
+    await ws(page, (w) => { w.rulers = true; });
+    await expect(page.locator('.guide-rulers')).toBeVisible();
+    await page.getByRole('button', { name: 'Toggle settings' }).tap();
+    await page.getByRole('button', { name: 'Commands' }).tap();
+    await page.evaluate(() => window.dispatchEvent(new Event('resize')));   // mid-slide
+    await expect(page.getByRole('dialog')).toBeVisible();
+    await page.keyboard.press('Escape');
+    const gap = () => page.evaluate(() => document.querySelector('.guide-rulers').getBoundingClientRect().left - document.querySelector('.canvas-viewport').getBoundingClientRect().left);
+    await expect.poll(gap).toBe(0);
+  });
+});
