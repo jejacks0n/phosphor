@@ -425,6 +425,20 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   `undo-redo`: undo the line.
 - Rated: yes, wants every command by name
 
+### 32. Draw a symmetrical logo
+- Does: with the Hand, turns on Rulers and drags the top ruler's zero to the middle of an 81-column area, then picks the
+  Brush, presses Alt+M and draws the left half of a small logo with a few strokes; turns Alt+M off and draws a stroke;
+  then drags the left ruler's zero down to the logo's middle and Alt+M back on, and draws one more
+  ([Rulers and guides](../../rulers.md#mirror-mode)).
+- Expects: with the zero moved, each stroke is mirrored across it, centered on the zero and not on the drawing's
+  middle; a stroke on the axis itself is drawn once; with mirror mode off a stroke has no mirror; with the left zero
+  moved, strokes come four ways; the dashed lines sit on the zeros; the export has no lines and keeps the cells
+  as the screen shows them; each stroke is one undo step.
+- Probes: `undo-redo`: undo a four-way stroke (all four go together), redo it; `extremes`: a stroke near the right edge
+  (the mirror that falls off the drawing is left out); `out-of-order`: draw with a selection on one side (nothing is
+  mirrored into the other).
+- Rated: yes, wants Alt+M
+
 **Free time:** he'd try Flatten's Draw on top, open `past-the-edge.ans` with Draw on top and fix its second row,
 try the `.xb`, `.bin` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut
 list.

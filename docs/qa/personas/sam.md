@@ -297,6 +297,22 @@ Animate off and check the .cast export goes away, and save the project and reope
   nothing.
 - Rated: yes, wants Cmd+S, then Enter
 
+## A symmetrical banner
+
+### 26. Box it in with mirror mode
+- Does: on a 40 by 10 canvas with the rulers at their edges, presses Alt+M (a toast says "Mirror on", and a dashed line
+  shows down the middle), presses U for Shapes' Rectangle with Single line and drags a box in the left half; then
+  picks the Pencil with Single line and Draw with Connect on, and draws a short line from the box's left edge toward
+  the middle; then presses Alt+M again.
+- Expects: the box is drawn on both sides of the middle line with its corners turned (`┌` on the left and `┐` on the
+  right, `└` and `┘` below), the Pencil's line has its mirror and its pieces join as on the side drawn, the dashed
+  line goes with the second Alt+M ("Mirror off"), and the export shows no dashed line and matches the screen in the
+  terminal check. Each stroke is one undo step.
+- Probes: `undo-redo`: undo the box (both sides go together); `extremes`: draw a box that crosses the middle line (the
+  stroke wins where it meets its mirror); `out-of-order`: press Alt+M while typing in Edit Mode (Option+M types its
+  character on a Mac, and nothing toggles); `back-out`: Escape out of a Shapes drag with mirror mode on.
+- Rated: yes, wants Alt+M
+
 **Free time:** Sam would try 300 columns to see the widest it goes, check the animated .ans dialog's warning at 132 by
 50, paste a 200-line log into the canvas and see what's dropped, and look for Copy as ANSI escape codes.
 
