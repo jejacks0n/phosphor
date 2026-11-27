@@ -49,3 +49,31 @@ test('the selection and the Shapes outline sit on their cells; a Line drag shows
   await expect(page.locator('.ansi-editor .shape-drag')).toHaveCount(0);
   expect(await chars(page, 10, 5, 20)).toBe('═'.repeat(16));
 });
+
+test('mirror mode draws its axis over the art and a Shapes drag outline on each side, and the shape lands on both', async ({ page }) => {
+  await openApp(page);
+  await store(page, 'workspace', (w) => w.setActiveTool('hand')); // a click on the art that draws nothing
+  const focus = await cellPoint(page, 4, 4);
+  await page.mouse.click(focus.x, focus.y);
+  await page.keyboard.press('Alt+KeyM');
+  await expect(page.locator('.app-toast')).toHaveText('Mirror on');
+  await expect(page.locator('.ansi-editor .mirror-axis')).toHaveCount(1);
+
+  await page.getByRole('button', { name: 'Shapes' }).click();
+  const start = await cellPoint(page, 10, 4), far = await cellPoint(page, 16, 8);
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(far.x, far.y, { steps: 4 });
+  const outlines = page.locator('.ansi-editor .shape-drag');
+  await expect(outlines).toHaveCount(2);
+  const [a, b, axis] = [await outlines.nth(0).boundingBox(), await outlines.nth(1).boundingBox(), await page.locator('.ansi-editor .mirror-axis').boundingBox()];
+  expect(Math.abs(b.x - (2 * axis.x - (a.x + a.width)))).toBeLessThan(2);
+  await page.mouse.up();
+  const { cols } = await store(page, 'project', (p) => ({ cols: p.cols }));
+  const at = (col, row) => store(page, 'project', `(p) => p.editCellAt(${col}, ${row})`);
+  expect(await at(10, 4)).toBeTruthy();
+  expect(await at(cols - 11, 4)).toBeTruthy();
+
+  await page.keyboard.press('Alt+KeyM');
+  await expect(page.locator('.ansi-editor .mirror-axis')).toHaveCount(0);
+});

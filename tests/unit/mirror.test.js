@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { mirrorAxes, mirrorOps, mirrorPixels, mirrorCells, mirrorPoint, strokeMirror, withMirror, eachSide } from '@/lib/mirror';
+import { mirrorAxes, mirrorOps, mirrorPixels, mirrorCells, mirrorPoint, axisLines, strokeMirror, withMirror, eachSide } from '@/lib/mirror';
 
 const mark = (axes, clip = null) => ({ axes, clip });
 
@@ -145,5 +145,12 @@ describe('eachSide', () => {
   it('mirrors cells', () => {
     const calls = run({ cols: 80, rows: 10, _mirror: mark({ x: 40, y: null }) }, 'cells', [{ col: 0, row: 0, attrs: { char: '(' } }]);
     expect(calls[1].i[0]).toMatchObject({ col: 79, attrs: { char: ')' } });
+  });
+});
+
+describe('axisLines', () => {
+  it('puts the across axis at its column and the down axis at its row, in CSS px from the art\'s edge', () => {
+    expect(axisLines({ x: 40, y: null }, { x: 8, y: 8 })).toEqual([{ axis: 'x', at: 320 }]);
+    expect(axisLines({ x: 40, y: 5 }, { x: 8, y: 8 })).toEqual([{ axis: 'x', at: 320 }, { axis: 'y', at: 80 }]);
   });
 });
