@@ -196,6 +196,11 @@ hash addresses instead, and the desktop app always has them. The end-to-end test
   worse means the change is wrong, not the picture.
 - **QA scripts are claims too:** a change to a feature changes the persona scripts in `docs/qa/personas/`
   that walk it, in the same work ([docs/qa/README.md](docs/qa/README.md)).
+- **Every new feature and significant change goes in [CHANGELOG.md](CHANGELOG.md)**, in the same commit as the
+  change, under Unreleased (Added, Changed or Fixed). That covers anything someone using Phosphor would notice: a feature, a
+  change to how something works, a fix to a bug they could have hit. Refactors, tests and tooling stay out. An entry says
+  what changed for the person, in the docs' words, and the rules above on the server and moderation hold there too. A
+  release moves Unreleased under its version and date.
 - **A failing test blocks the deploy.** Don't skip or loosen a test to get past it; fix the cause,
   or say plainly that the test was wrong and why.
 - Bug reports with a file: the file goes in `tests/fixtures/`, a case goes in its test (the routine is
