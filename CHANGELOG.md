@@ -12,8 +12,8 @@ under Unreleased.
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters
   turned as Flip turns them: left to right down the middle (or at the top ruler's zero), and top to bottom too once the
-  left ruler's zero is moved. **Alt+M** (**Option+M** on a Mac) turns it on and off, as does **Mirror mode** in the
-  **⋯** menu where the rulers meet. It's off each time the app loads.
+  left ruler's zero is moved. **Alt+M** (**Option+M** on a Mac) turns it on and off, as do **Mirror mode** in the
+  **⋯** menu where the rulers meet and **Mirror drawing** on the Hand's row. It's off each time the app loads.
 - **Shade**, a **Draw with** choice for the Pencil and the Brush in the ANSI view: each pass steps the cells it crosses
   one shade further in the foreground color, `░` `▒` `▓` `█`, and **Lighter** (or holding Cmd, Ctrl on Windows and
   Linux) steps them back to a space. One step a cell a stroke, written as typed characters, in every art style.
