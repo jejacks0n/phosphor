@@ -1678,7 +1678,8 @@
       "takeUnderMac": "Take the colors of the cell under the pointer, not yet in Edit Mode on a Mac, where it types ü (PIXEL: the pixel's, as the foreground)",
       "takeUnderWithChar": "Take the colors and the character of the cell under the pointer, or in Edit Mode the cursor's (PIXEL: the pixel's color, as the background)",
       "takeUnderWithCharMac": "Take the colors and the character of the cell under the pointer, not yet in Edit Mode on a Mac (PIXEL: the pixel's color, as the background)",
-      "flipCell": "Swap the cursor cell's colors (ANSI art style)"
+      "flipCell": "Swap the cursor cell's colors (ANSI art style)",
+      "mirror": "Mirror mode on or off: draw on both sides of the rulers' zeros"
     }
   },
   "social": {
@@ -2277,6 +2278,10 @@
     "remove": "Remove",
     "cornerTitle": "Drag to set both ruler origins. Double-click to reset origins to the top-left corner.",
     "guideTitle": "Drag to move guide, or drag onto a ruler to delete it"
+  },
+  "mirror": {
+    "on": "Mirror on",
+    "off": "Mirror off"
   },
   "menu": {
     "file": "File",

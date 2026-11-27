@@ -13,6 +13,20 @@ import { copyShapes, cutShapes, pasteShapes } from '@/composables/vectorClipboar
 import { busyWhile } from '@/composables/useBusy';
 import { t } from '@/i18n';
 
+// The commands' ids the global handler offers to takeKey, in the order it does (tests/browser/command-keys-listened.test.js
+// holds that every command with a key is in one). 'tool.*' is every tool's row.
+export const KEYS = {
+  play: ['animation.play'],
+  frames: ['animation.prevFrame', 'animation.nextFrame', 'animation.newFrame'],
+  app: ['general.undo', 'general.redo', 'file.save', 'file.saveAs', 'file.export', 'file.open',
+    'view.zoomIn', 'view.zoomOut', 'view.zoomBack', 'general.help', 'ui.commandList',
+    'layer.above', 'layer.below', 'layer.newCells', 'layer.newVector',
+    'tab.picture', 'tab.ansi', 'tab.sauce', 'tab.room', 'tab.keptFromBrowser', 'panels.social'],
+  editing: ['colors.openFg', 'colors.openBg', 'colors.swap', 'colors.fgPrev', 'colors.fgNext', 'colors.bgPrev', 'colors.bgNext',
+    'colors.takeUnder', 'colors.takeUnderWithChar', 'characters.setPrev', 'characters.setNext', 'edit.flipCell', 'edit.mirror', 'edit.altArrowsElsewhere'],
+  tools: ['tool.*', 'drawing.sizeUp', 'drawing.sizeDown'],
+};
+
 export function useKeyboardShortcuts(projectStore, workspaceStore) {
   // Delete and paste go under the busy note: most of a second over a whole large drawing.
   const deleting = (sel, layers) => busyWhile(t('busy.deleting'), () => projectStore.deleteSelection(sel, layers));
@@ -268,26 +282,22 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     if (e.key === 'Alt') workspaceStore.isAltPressed = true;
 
     // The commands' keys (src/lib/commands.js) and the handlers that aren't commands, in the order they claim a key.
-    if (takeKey(e, _ctx(e), ['animation.play'])) return;
+    if (takeKey(e, _ctx(e), KEYS.play)) return;
     // A key while playing pauses first, on the frame showing, so what it does lands there. The bar's
     // own controls have their keys, and they pause for themselves.
     if (workspaceStore.playing && !ownsKey(e.target, e) && !e.target?.closest?.('[role="toolbar"]') && !['Control', 'Shift', 'Alt', 'Meta'].includes(e.key)) playback.pause();
 
     const ctx = _ctx(e);
-    if (takeKey(e, ctx, ['animation.prevFrame', 'animation.nextFrame', 'animation.newFrame'])) return;
-    if (takeKey(e, ctx, ['general.undo', 'general.redo', 'file.save', 'file.saveAs', 'file.export', 'file.open',
-      'view.zoomIn', 'view.zoomOut', 'view.zoomBack', 'general.help', 'ui.commandList',
-      'layer.above', 'layer.below', 'layer.newCells', 'layer.newVector',
-      'tab.picture', 'tab.ansi', 'tab.sauce', 'tab.room', 'tab.keptFromBrowser', 'panels.social'])) return;
+    if (takeKey(e, ctx, KEYS.frames)) return;
+    if (takeKey(e, ctx, KEYS.app)) return;
     if (_handleVectorKeys(e)) return;
     if (_handleActiveToolKeys(e)) return;
-    if (takeKey(e, ctx, ['colors.openFg', 'colors.openBg', 'colors.swap', 'colors.fgPrev', 'colors.fgNext', 'colors.bgPrev', 'colors.bgNext',
-      'colors.takeUnder', 'colors.takeUnderWithChar', 'characters.setPrev', 'characters.setNext', 'edit.flipCell', 'edit.altArrowsElsewhere'])) return;
+    if (takeKey(e, ctx, KEYS.editing)) return;
     if (_handleToolSwap(e)) return;
     if (_handleWandKeys(e)) return;
     if (_handleSelectionKeys(e)) return;
     if (_handleArtKeys(e)) return;
-    takeKey(e, ctx, ['tool.*', 'drawing.sizeUp', 'drawing.sizeDown']);
+    takeKey(e, ctx, KEYS.tools);
   };
 
   const _handleGlobalKeyUp = (e) => {

@@ -51,7 +51,7 @@ const typingAt = (workspace, col, row) => {
 const pointAt = (workspace, col, row, half = 0) => { workspace.pointerCell = { col, row, y: 2 * row + half }; };
 
 // What the key types on a US layout: on a Mac, Option's characters (Option+U is a dead key).
-const TYPED = isMac ? { KeyU: 'Dead', KeyX: '≈' } : { KeyU: 'u', KeyX: 'x' };
+const TYPED = isMac ? { KeyU: 'Dead', KeyX: '≈', KeyM: 'µ' } : { KeyU: 'u', KeyX: 'x', KeyM: 'm' };
 const press = (id, init = {}) => {
   const k = parseKey(keysFor(commandById(id).keys)[0]);
   const key = k.shift && k.code === 'KeyU' ? (isMac ? '¨' : 'U') : TYPED[k.code];
@@ -189,4 +189,12 @@ test('a new drawing leaves no pointer cell behind', async () => {
   pointAt(workspace, 5, 5);
   await project.setBlankCanvas({ withLayer: true, cols: 8, rows: 16 });
   expect(workspace.pointerCell).toBe(null);
+});
+
+test('Alt+M, sent to the window as the app listens for it, turns mirror mode on and off', async () => {
+  const { workspace } = await mount();
+  press('edit.mirror');
+  expect(workspace.mirror).toBe(true);
+  press('edit.mirror');
+  expect(workspace.mirror).toBe(false);
 });
