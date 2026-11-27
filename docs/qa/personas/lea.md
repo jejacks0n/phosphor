@@ -107,7 +107,7 @@ script. Every section ends with Free time.
   end opens LAYERS over the art; the toolbar shows the color pair, the Pencil, Brush, Eraser, Paint Bucket, Shapes, a ⋯ for the rest,
   and Actions; the status bar says "Base"; LAYERS has only Base. Opening takes under the `file` budget.
 - Probes: `out-of-order`: first pick `fonts/wide.ttf` by mistake (it says "Couldn't open … Make sure it's a supported
-  image, .pho, or .phosphor file."); `again`: press New project and open `p3.png`, then `photo.webp`, then `rgba.png`, then
+  image or .pho file."); `again`: press New project and open `p3.png`, then `photo.webp`, then `rgba.png`, then
   `tiny.gif`, and come back to `photo.jpg`; `extremes`: look at where `rgba.png`'s transparency lands.
 - Rated: no (touch only: no keyboard shows here)
 

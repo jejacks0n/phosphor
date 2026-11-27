@@ -1245,7 +1245,7 @@
   },
   "actions": {
     "replacesUnsaved": "Replaces this drawing's unsaved changes. It stays in this browser, under Pick up where you left off.",
-    "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .pho and .phosphor projects, SVGs, and art files (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
+    "cantOpen": "Phosphor cannot open {name}. Supported formats include images, .pho projects, SVGs, and art files (.ans, .utf8ans, .asc, .txt, .nfo, .diz, .xb, .bin).",
     "saveProject": "Save project (.pho)",
     "exportAns": "Export .ans",
     "exportUtf8ans": "Export .utf8ans",
@@ -1488,7 +1488,7 @@
     "opening": "Opening {name}…",
     "saving": "Saving {name}…",
     "framesLost": "Could not read animation frames from this file, so it opened as a still image. Saving will replace it as a still image.",
-    "openImageFailed": "Could not open “{name}”. Make sure it is a supported image, .pho, or .phosphor file.",
+    "openImageFailed": "Could not open “{name}”. Make sure it is a supported image or .pho file.",
     "decodeImageFailed": "Could not decode image.",
     "blankFailed": "Could not create a blank canvas.",
     "invalidProject": "Invalid Phosphor project file.",

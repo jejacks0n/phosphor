@@ -100,10 +100,10 @@ through its reloads.
 Open… is your system's own file chooser, and Save writes a project straight back to its file: the first Save of a
 drawing asks where (as Save As… always does), and after that Save writes over that `.pho` file without asking. A
 `.pho` opened with Open…, Open Recent, a double-click or dropped on a drawing (it opens in a new window) saves back
-to where it came from; an older `.phosphor` file (or a project renamed to `.png`) asks where, beside it, and saves a `.pho`; one dropped on the start screen asks where the first time. A save is written whole: if it
+to where it came from; a project renamed to `.png` asks where, beside it, and saves a `.pho`; one dropped on the start screen asks where the first time. A save is written whole: if it
 fails, the file it would have replaced is left as it was. Exports still ask where each time.
 
-Double-clicking a `.pho` (or `.phosphor`) file opens it in Phosphor. With Phosphor already open, the file opens there: in the
+Double-clicking a `.pho` file opens it in Phosphor. With Phosphor already open, the file opens there: in the
 window you're in when it's on the start screen, and in a new window when it shows a drawing. The rest
 of what Phosphor opens is offered under **Open With**, and you can make Phosphor the default for any of them:
 
@@ -124,8 +124,6 @@ the way it previews any PNG:
 - **Linux**: the `.deb` tells the system a `.pho` is a kind of PNG, and installs a thumbnailer that previews it with the
   system's PNG thumbnailer, so file managers show the picture. The AppImage installs nothing, so with it a `.pho` shows
   a plain icon.
-
-An older `.phosphor` file isn't a picture, so it shows an icon instead.
 
 The font library comes with the app. Its links to VileR's `FONTS.TXT` (from a font's **License** line and from
 About) open the copy on GitHub in your browser, since the app's own files don't open outside it.
