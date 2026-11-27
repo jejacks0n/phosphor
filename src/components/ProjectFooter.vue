@@ -2,12 +2,19 @@
 import { computed } from 'vue';
 import { storeToRefs } from 'pinia';
 import { useI18n } from 'vue-i18n';
+import { useMediaQuery } from '@vueuse/core';
+import { desktopQuery } from '@/social/config';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { usePluginStore } from '@/store/PluginStore';
 import { SUPPORTED_LOCALES, locale, setLocale } from '@/i18n';
 
 const { t } = useI18n();
-const { theme, pluginsOpen } = storeToRefs(useWorkspaceStore());
+const workspace = useWorkspaceStore();
+const { theme, pluginsOpen } = storeToRefs(workspace);
+// Where the settings are a drawer (a phone) there's no Cmd+K: the command list opens from here, and the drawer shuts so
+// what the command does shows.
+const wide = useMediaQuery(desktopQuery);
+const openCommands = () => Object.assign(workspace, { settingsOpen: false, commandListOpen: true });
 const plugins = usePluginStore();
 // The select shows a plugin's theme while it's the one in use, and Themes (from plugins)… otherwise.
 const pluginTheme = computed(() => (plugins.themes.some(({ ref }) => ref === theme.value) ? theme.value : ''));
@@ -61,7 +68,8 @@ const themes = computed(() => [
       <option value="" disabled hidden>{{ t('tabs.themes.more') }}</option>
       <option v-for="item in plugins.themes" :key="item.ref" :value="item.ref">{{ item.name }}</option>
     </select>
-    <button type="button" class="plugins-button" @click="pluginsOpen = true">{{ t('plugins.open') }}</button>
+    <button type="button" class="footer-button" @click="pluginsOpen = true">{{ t('plugins.open') }}</button>
+    <button v-if="!wide" type="button" class="footer-button" @click="openCommands">{{ t('footer.commands') }}</button>
     <div class="copyright">{{ t('footer.copyright', { year }) }}</div>
   </footer>
 </template>
@@ -85,7 +93,7 @@ footer.project-footer {
 .plugin-themes {
   margin-bottom: 10px;
 }
-.plugins-button {
+.footer-button {
   width: 100%;
   padding: 6px 12px;
   margin-bottom: 10px;
