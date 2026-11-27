@@ -131,11 +131,16 @@ describe('eachSide', () => {
     expect(run({ cols: 80, rows: 10, _mirror: mark({ x: 40, y: null }), _mirroring: true }, 'pixels', [{ x: 0, y: 0 }])).toHaveLength(1);
   });
   it('steps for each copy with _mirroring set, then clears it', () => {
-    const project = { cols: 80, rows: 10, _mirror: mark({ x: 40, y: 5 }) };
+    const project = { cols: 80, rows: 20, _mirror: mark({ x: 40, y: 5 }) }; // rows: grid-pixel rows, 10 cell rows
     const calls = run(project, 'pixels', [{ x: 0, y: 0 }]);
-    expect(calls.map((c) => c.mirroring)).toEqual([undefined, true, true, true]);
+    expect(calls.map((c) => c.mirroring)).toEqual([true, true, true, true]);
     expect(calls[1].i).toEqual([{ x: 79, y: 0 }]);
     expect(project._mirroring).toBe(false);
+  });
+  it('drops copies past the bottom: the grid\'s rows are grid pixels, two to a cell row', () => {
+    const project = { cols: 80, rows: 10, _mirror: mark({ x: 40, y: 5 }) }; // 5 cell rows: the zero is the bottom edge
+    expect(run(project, 'pixels', [{ x: 0, y: 0 }])).toHaveLength(2);
+    expect(run(project, 'cells', [{ col: 0, row: 0, attrs: { char: 'a' } }])).toHaveLength(2);
   });
   it('mirrors cells', () => {
     const calls = run({ cols: 80, rows: 10, _mirror: mark({ x: 40, y: null }) }, 'cells', [{ col: 0, row: 0, attrs: { char: '(' } }]);
