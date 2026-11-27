@@ -117,6 +117,16 @@ describe('the tools under mirror mode', () => {
     expect(project.paintLayer.pixelAt(74, 3)).toBeTruthy();
   });
 
+  // Shade steps each side from its own cells, as Half-block judges each side's: a ░ there already goes on to ▒.
+  test('Shade steps the other side from its own shade', () => {
+    workspace.pencilDrawWith = 'shade';
+    project.writeEditCells([{ col: 77, row: 1, attrs: { char: '░', fg: '#ff0000' } }]);
+    project.commitEdit();
+    drag(getTool('pencil'), 'output', at(2, 1));
+    expect(project.editCellAt(2, 1).char).toBe('░');
+    expect(project.editCellAt(77, 1).char).toBe('▒');
+  });
+
   // A soft Brush's dabs overlap along a move and add up: the other side builds up as much.
   test('a soft Brush comes out as strong on the other side', () => {
     Object.assign(workspace, { editBrushSize: 6, editBrushFlow: 30, editBrushHardness: 0 });

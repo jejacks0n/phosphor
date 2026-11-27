@@ -27,7 +27,7 @@ const typed = (char, attrs) => (char.trim() ? { char, ...attrs } : { char, ...at
 // flipCell isn't one: it's a toggle, and mirrors itself.
 export const MIRRORED = {
   paintStroke: 'pixels', paintEditPixels: 'pixels', putEditPixels: 'pixels', eraseEditPixels: 'pixels', colorsOnlyCells: 'pixels',
-  writeEditCells: 'cells', writeBlocks: 'cells', clearEditCells: 'cells',
+  shadeCells: 'pixels', writeEditCells: 'cells', writeBlocks: 'cells', clearEditCells: 'cells',
 };
 
 export const editLayerActions = {
