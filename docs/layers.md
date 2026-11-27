@@ -849,7 +849,7 @@ canvas:
 
 ### Mirror Mode
 
-With **mirror mode** on (**Alt+M**, or **Mirror mode** in the rulers' **⋯** menu; [Rulers and Guides](rulers.md#mirror-mode) says where the axes are), what you draw
+With **mirror mode** on (**Alt+M**, **Mirror mode** in the rulers' **⋯** menu, or **Mirror drawing** on the Hand's row; [Rulers and Guides](rulers.md#mirror-mode) says where the axes are), what you draw
 is drawn again on the other side of each axis, in both views.
 
 - **Tools that mirror**: **Brush**, **Pencil** (Normal and Half-block, and its line pieces), **Eraser**, **Shapes**,

@@ -101,3 +101,21 @@ test('with room for everything, nothing folds and there is no ⋯', async () => 
   expect(shown()).toContain('Deselect');
   expect(shown()).toContain('All layers');
 });
+
+// The Hand's row has Mirror drawing, mirror mode's switch beside the rulers' own settings, checked while it's on; not in
+// VECTOR, whose tools don't mirror.
+test('the Hand\'s row switches mirror mode with Mirror drawing, not in VECTOR', async () => {
+  const { workspace } = await selecting(1200);
+  workspace.setActiveTool('hand');
+  await frames();
+  const box = () => [...row().querySelectorAll('label.checkbox-wrapper')].find((l) => name(l) === 'Mirror drawing')?.querySelector('input');
+  box().click();
+  expect(workspace.mirror).toBe(true);
+  await frames();
+  workspace.mirror = false; // Alt+M, say
+  await frames();
+  expect(box().checked).toBe(false);
+  workspace.editorTab = 'vector';
+  await frames();
+  expect(box()).toBeUndefined();
+});

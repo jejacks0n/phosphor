@@ -632,7 +632,9 @@
       "opacity": "Opacité",
       "opacityTitle": "Définit l'opacité des règles. Les repères et les mesures au curseur restent toujours parfaitement visibles",
       "clearGuides": "Effacer les repères",
-      "clearGuidesTitle": "Supprimer tous les repères de ce dessin"
+      "clearGuidesTitle": "Supprimer tous les repères de ce dessin",
+      "mirror": "Dessin en miroir",
+      "mirrorTitle": "Dessiner des deux côtés du zéro des règles"
     },
     "zoom": {
       "title": "Zoom",

@@ -632,7 +632,9 @@
       "opacity": "Opacity",
       "opacityTitle": "Sets ruler opacity. Guides and pointer measurements always stay fully visible",
       "clearGuides": "Clear guides",
-      "clearGuidesTitle": "Remove all guides from this drawing"
+      "clearGuidesTitle": "Remove all guides from this drawing",
+      "mirror": "Mirror drawing",
+      "mirrorTitle": "Draw on both sides of the rulers' zeros"
     },
     "zoom": {
       "title": "Zoom",

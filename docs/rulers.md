@@ -8,6 +8,7 @@ Rulers measure characters along the top and left edges of the PIXEL, ANSI, and V
 2. In the tool options bar at the top, check the **Rulers** checkbox (off at first). Your choice is saved in your browser.
 3. When rulers are enabled, adjust the **Opacity** slider (10% to 100%, also saved in your browser) to make the rulers semi-transparent so you can see artwork underneath. Guide lines and pointer measurements always stay fully visible.
 4. Click **Clear guides** to remove all guides from the drawing, including any hidden past its edge. The zero origins stay where they are. If there are no guides, this button is disabled.
+5. Check **Mirror drawing** to turn on [mirror mode](#mirror-mode). It isn't on the VECTOR tab, whose tools don't mirror.
 
 Turning off Rulers hides the rulers and guides without deleting them.
 
@@ -47,9 +48,10 @@ Guides and origin markers automatically snap to character cell edges and cell ce
 
 **Mirror mode** draws what you draw on one side of the rulers' zeros again on the other, so a logo, a banner or a face
 comes out symmetrical while you draw half of it. Press **Alt+M** (**Option+M** on a Mac) anywhere the art shows to
-turn it on or off, or choose **Mirror mode** in the **⋯** menu where the rulers meet (checked while it's on); a toast
-says "Mirror on" or "Mirror off". Alt+M is also in the command list (**Cmd+K**) and the **?** shortcuts list. While you
-type in the ANSI view, Option+M types its character instead. Mirror mode is off each time the app loads.
+turn it on or off, choose **Mirror mode** in the **⋯** menu where the rulers meet (checked while it's on), or check
+**Mirror drawing** on the Hand's row; a toast says "Mirror on" or "Mirror off" for the first two. Alt+M is also in the
+command list (**Cmd+K**) and the **?** shortcuts list. While you type in the ANSI view, Option+M types its character
+instead. Mirror mode is off each time the app loads.
 
 - **Left to right**: Always on, at the top ruler's zero if you've moved it, and otherwise down the middle of the
   drawing's width. In an 80-column drawing that's between columns 40 and 41; in a 41-column one, on column 21, the

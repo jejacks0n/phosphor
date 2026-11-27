@@ -719,6 +719,11 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <div v-if="activeTool.id === 'hand'" class="tool-setting-group">
         <div class="divider"/>
         <button class="text" :title="t('tools.hand.clearGuidesTitle')" :disabled="!workspace.guides.length" @click="workspace.clearGuides()">{{ t('tools.hand.clearGuides') }}</button>
+        <!-- Mirror mode's switch, as Alt+M and the rulers' corner have it; VECTOR's tools don't mirror. -->
+        <label v-if="workspace.editorTab !== 'vector'" class="checkbox-wrapper" :title="t('tools.hand.mirrorTitle')">
+          <span>{{ t('tools.hand.mirror') }}</span>
+          <input type="checkbox" v-model="workspace.mirror"/>
+        </label>
       </div>
       <div v-if="recolored && activeTool.id === 'wand'" class="tool-setting-group">
         <div class="divider"/>
