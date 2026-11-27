@@ -27,7 +27,7 @@ You can only move rulers and guides using the **Hand** tool, or by holding **Spa
 - **Create a vertical guide**: Click and drag rightward from the left ruler.
 - **Move a guide**: Click and drag the guide line to a new position. While you drag, a label beside the pointer shows the guide's distance from zero.
 - **Delete a guide**: Drag the guide line back onto either ruler, or off the view, and release. The label says **Remove** before you let go.
-- **Move the zero origin**: Drag the triangle marker on either ruler. Drag the square in the top-left corner to move both rulers' origins together. While you drag, a label says where zero is (for example, "0 on column 21" or "0 between columns 14 and 15").
+- **Move the zero origin**: Drag the triangle marker on either ruler (the pointer turns to a hand over it). Drag the square in the top-left corner to move both rulers' origins together. While you drag, a label says where zero is (for example, "0 on column 21" or "0 between columns 14 and 15").
 - **Reset origin**: Double-click a ruler's triangle marker to reset that ruler's zero origin to the drawing's edge. Double-click the corner square to reset both origins to the top-left corner.
 
 Guides and origin markers automatically snap to character cell edges and cell centers.
