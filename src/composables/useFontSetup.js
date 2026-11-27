@@ -36,6 +36,13 @@ export function showFontSetup() {
   shown = toast(said(t('palette.fonts.setupNoLower', { name: font.name }), font), { stay: true, ...button(font) });
 }
 
+// A Shade stroke refused: the drawing's font has no slot for a shade or the full block (project.shadeOff) says which,
+// with Set up its blocks.
+export function sayShadeOff() {
+  const project = useProjectStore(), font = project.drawingFont;
+  if (project.shadeOff) toast(said(project.shadeOff, font), button(font));
+}
+
 // A font just loaded or opened with an XBin: the blocks it's missing, when it has its lower half (else the toast
 // that stays says so).
 export function sayMissingBlocks(font) {

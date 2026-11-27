@@ -695,7 +695,13 @@
       "halfBlock": "Demi-bloc",
       "fullBlock": "Bloc plein",
       "character": "Caractère",
-      "cells": "Cellules"
+      "cells": "Cellules",
+      "shade": "Ombre",
+      "shadeWay": "Ombre",
+      "darker": "Plus sombre",
+      "lighter": "Plus clair",
+      "shadeOff": "L’ombre est désactivée : la police de ce dessin, {name}, n’a pas de bloc {names}, et l’ombre est dessinée avec. Ajoutez-le à la police sur la page Polices. | L’ombre est désactivée : la police de ce dessin, {name}, n’a pas de blocs {names}, et l’ombre est dessinée avec. Ajoutez-les à la police sur la page Polices.",
+      "shadeBlinks": "Les couleurs iCE sont désactivées : une ombre sur un fond vif clignote. Activez les couleurs iCE pour qu’elle reste fixe."
     }
   },
   "toolbar": {

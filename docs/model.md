@@ -593,11 +593,48 @@ file from before the mark has none, so its `▄` pins are pixels as they were. M
   beside a `▄`); `tests/browser/merge.test.js › R15: the report: …` (Keep crisp cells in Color ASCII and Monochrome
   ASCII keeping a laid and a typed `▄`, Half-block's still pixels, Undo, a style change, and `▄` typed on the base).
 
+### R16. Shade writes characters of someone's own, one step a cell a stroke, from what the cell shows.
+
+The Pencil's and Brush's Draw with: Shade (ANSI art style, the ANSI view) builds shading as it's drawn by hand. Each
+cell a stroke reaches (the Brush's Size, hard, at full flow: no soft edge reaches further) takes one step of the ramp
+` ░ ▒ ▓ █` and no more until the stroke ends (`shadeSeen` on the stroke, as Colors only's `plainSeen`), so a stroke is
+lifted and laid again to go further. The step is read from the cell as the views show it (`cells`, the whole stack:
+another layer's shade, a pin's or the converter's counts, as the Pencil's lines read what shows), in the colors shown:
+a shade in the foreground color (as the palette and sliders show it, `effective`) steps on, a cell all in it (a `█`, a
+space on it) stays, and anything else starts at `░` in the foreground over the background it shows, which is
+`blockOver`'s top half of the cell in stored colors (`storedLookAt`): a solid glyph's own color there, a textured
+one's background. So a shade in another color starts again, and over a `█` the `░` lies on the `█`'s color, which
+joins one ramp to the next. Back (Lighter, or Darker with Cmd or Ctrl at the press) steps any shade back, whatever its
+color, to a space at the end, and leaves everything else.
+
+What it writes is a character of someone's own (R1), as typing writes it (`writeEditCells` with `clearPaint`): on the
+base a pin, so the sliders leave the cell alone; on a layer the layer's own entry, the paint in the cell erased. A step
+writes its character alone, so the cell keeps its colors and their 256-color indexes (where the layer's own paint tints
+it, R2, the write erases that paint, so the colors it showed go in with the character); a fresh `░` writes the foreground
+(with its index) and the background read. Nothing is paint, so no rule of paint's applies, and no cell is laid or
+frozen: the Soft Eraser leaves a shade as it leaves a typed one, and Merge down and Blend take it as a typed block (R3).
+In a room the cells go out as any stroke's (`shadeCells` is a drawing action). Without iCE colors a shade on a bright
+background blinks (R14: it's someone's own); turning it over (`░` in F on B is `▓` in B on F) would keep it steady but
+change the character the next pass reads, so the first such stroke in a drawing says it blinks instead. The shades are the font's Light,
+Medium, Dark and Full blocks: a bitmap font missing one has Shade off (`shadeOff`), the stroke refused with a toast
+naming them. The ASCII styles shade the same ramp. In Color ASCII a fresh `░` over a cell the converter drew has no
+background of its own, as the cell showed it on black, and over a `█` or a character with a background (R8) it lies on
+that color. In Monochrome ASCII every character shows in the one ink, so any shade steps on and only a space starts again.
+
+- Lives in: `shadeCells` in `src/store/project/editLayer.js`; `shadeStep` in `src/lib/Cells.js` (the ramp); `src/tools/shade.js`
+  (the choice, which strokes shade, the way and its key, the font's check at the press), used by `src/tools/pencil.js` and
+  `src/tools/brush.js`; `shadeOff` (`src/store/ProjectStore.js`) and `sayShadeOff` (`src/composables/useFontSetup.js`).
+- Checked by: `tests/unit/cells.test.js › R16: shadeStep …`; `tests/browser/shade.test.js › R16: …` (the ramp a stroke at a
+  time and once within one, back with Lighter and with Cmd or Ctrl, undo a stroke at a time, another color starting
+  again over a `█`, a `▒` and a letter, pins on the base read again under VGA, a slider and a color off the palette, a
+  pin read from the layer above, a shade the layer's paint tints, the Brush's hard reach and no paint, its options, both ASCII styles, a font with no
+  shades, the blink toast); `tests/browser/social-sharing.test.js › R16: an artist's Shade stroke goes out …`.
+
 ## Where the rules are walked and what else they reach
 
 Maya's QA script walks R2–R11 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
-Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI, and his step 25 the base's characters in the
-PIXEL view (R11). [layers.md](layers.md#how-layers-blend) says the
+Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI, his step 25 the base's characters in the
+PIXEL view (R11), and his step 6 Shade (R16), as Sam's step 23 does with the Brush. [layers.md](layers.md#how-layers-blend) says the
 same in plain words. The rules reach past the stack view: animation frames are built by the same walk with the same
 scales (FrameBuilder: a built frame equals the still, `tests/browser/animation-build.test.js`); a room's artists and
 watchers compose with the same code; exports, Flatten and the thumbnail read the composed cells; copy and paste carry

@@ -1,6 +1,10 @@
 import { brushPixels } from '@/lib/Brushes';
 import { selectionClip } from '@/lib/selectionClip';
 import { t } from '@/i18n/index.js';
+import { beginShade, shade, shadeChoice, shades, shadeWayOption } from '@/tools/shade';
+
+// Opacity, Flow, Hardness and Build up: a Shade stroke's cells take a whole step or none, so they go while it's shown.
+const painting = (ws) => !shades(ws, 'brushDrawWith');
 
 // A stamp's flow from the Flow slider (1-100): squared, so the low end builds up gently (a stroke's
 // stamps overlap and add up: 10% used to lay 70% in one pass at size 5), and never under the
@@ -20,27 +24,34 @@ const brush = {
   nothingToLay: ({ workspace }) => (workspace.editFgNone ? 'tools.fgNone' : null), // it paints the foreground
   options: [
     { key: 'editBrushSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
-    { key: 'editBrushOpacity', amount: true, get label() { return t('tools.brush.opacity'); }, get title() { return t('tools.brush.opacityTitle'); }, min: 1, max: 100, unit: '%' },
-    { key: 'editBrushFlow', get label() { return t('tools.brush.flow'); }, get title() { return t('tools.brush.flowTitle'); }, min: 1, max: 100, unit: '%' },
-    { key: 'editBrushHardness', hardness: true, get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%' },
-    { key: 'editBrushStack', get label() { return t('tools.brush.stack'); }, get title() { return t('tools.brush.stackTitle'); }, type: 'checkbox' },
+    { key: 'editBrushOpacity', amount: true, get label() { return t('tools.brush.opacity'); }, get title() { return t('tools.brush.opacityTitle'); }, min: 1, max: 100, unit: '%', when: painting },
+    { key: 'editBrushFlow', get label() { return t('tools.brush.flow'); }, get title() { return t('tools.brush.flowTitle'); }, min: 1, max: 100, unit: '%', when: painting },
+    { key: 'editBrushHardness', hardness: true, get label() { return t('tools.brush.hardness'); }, get title() { return t('tools.brush.hardnessTitle'); }, min: 0, max: 100, unit: '%', when: painting },
+    { key: 'editBrushStack', get label() { return t('tools.brush.stack'); }, get title() { return t('tools.brush.stackTitle'); }, type: 'checkbox', when: painting },
     {
       key: 'brushDrawWith', drawWith: true, get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       choices: [
         { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // paint over each cell's own character, which shows through
         { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },  // each cell painted becomes a ▄ the paint colors
+        shadeChoice,
       ],
     },
+    shadeWayOption('brushDrawWith'),
   ],
+  writesChars: ({ workspace, view }) => shades(workspace, 'brushDrawWith', view),
   begin(ctx, pos, event) {
+    if (shades(ctx.workspace, 'brushDrawWith', ctx.view) && !beginShade(ctx, event)) return false;
     brush.move(ctx, (event?.shiftKey && ctx.workspace.strokeEnd) || pos, pos);
     return true;
   },
   move({ project, workspace, view }, from, to) {
-    const options = { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
+    // A Shade stroke reaches the cells its Size covers, hard: no soft edge to reach further.
+    const shading = shades(workspace, 'brushDrawWith', view);
+    const options = shading ? { size: workspace.editBrushSize, flow: 1, hardness: 1 } : { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
     const clip = selectionClip(workspace);
-    const pixels = brushPixels(from, to, options, project.cols, project.rows, project.pixelAspect);
-    project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: (view === 'output' && workspace.brushDrawWith === 'half') || 'plain' });
+    const pixels = brushPixels(from, to, options, project.cols, project.rows, project.pixelAspect), clipped = clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels;
+    if (shading) shade(project, clipped);
+    else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.brushDrawWith === 'half') || 'plain' });
     workspace.strokeEnd = to;
   },
   end({ project }) {

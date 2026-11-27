@@ -278,6 +278,20 @@ export function blockOver(cell) {
   return { ...cell, char: '▄', fg: pick(bottom, ''), bg: pick(top, ''), fgIndex: pick(bottom, 'Index'), bgIndex: pick(top, 'Index') };
 }
 
+// Draw with: Shade's ramp (docs/model.md R16), the character a cell takes from one pass: on, ░ ▒ ▓ █ in the foreground;
+// back, █ ▓ ▒ ░ and a space. char: what the cell shows; ink: it shows in the foreground color (a shade in it, or the cell
+// all that color); solid: it shows one color in both halves (█, a space on a color, a ▄ of one color). On, a shade in
+// the foreground steps on and a cell all in it stays (null); anything else, a shade in another color among them, starts
+// at ░ (fresh: over the background it shows, which the caller writes). Back, any shade steps back in its own colors,
+// whatever they are, and anything else stays.
+const RAMP = ' ░▒▓█';
+export function shadeStep(char, { ink, solid, back }) {
+  const at = '░▒▓█'.includes(char) ? RAMP.indexOf(char) : 0;
+  if (back) return at ? { char: RAMP[at - 1], fresh: false } : null;
+  if (ink && solid) return null;
+  return ink && at ? { char: RAMP[at + 1], fresh: false } : { char: '░', fresh: true };
+}
+
 // Whether a cell's character shows at all: one drawn in its own background color (a line under
 // paint of one color) shows nothing, so Connect doesn't join to it and the Paint Bucket doesn't stop
 // at it.

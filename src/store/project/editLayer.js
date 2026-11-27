@@ -9,7 +9,7 @@ import { EMPTY_STATE, cutKey } from '@/document/frames.js';
 import { isShapeKey } from '@/document/shapes.js';
 import { keyLayer } from '@/document/layerInfo.js';
 import { ctx2d } from '@/lib/Canvas.js';
-import { bakedEntry, blockOver, cellIndex, cellsOfPixels, opensToPaint, showsChar } from '@/lib/Cells.js';
+import { bakedEntry, blockOver, cellIndex, cellsOfPixels, isSolidGlyph, opensToPaint, shadeStep, showsChar } from '@/lib/Cells.js';
 import { cellWidth } from '@/lib/CharWidth.js';
 import { fitFont } from '@/lib/BitmapFont.js';
 import { hex2rgb, rgb2hex } from '@/lib/ColorUtils.js';
@@ -89,6 +89,47 @@ export const editLayerActions = {
     this.unlockCells(cells.filter(({ col, row }) => ownColored(this, col, row)));
     const bottom = onBottom(this);
     this.writeEditCells(cells.map((c) => ({ ...c, attrs: bottom ? baseBlock(this, c.col, c.row) : { char: '▄' } })));
+  },
+
+  // Draw with: Shade (docs/model.md R16), the Pencil's and Brush's in the ANSI view: each cell the grid pixels ({ x, y })
+  // reach steps once a stroke (its shadeSeen, as Colors only's plainSeen), as shadeStep has it from what the cell shows
+  // (cells, the colors as shown): on, ░ ▒ ▓ █ in the foreground color; back, the other way to a space. Written as
+  // typing writes, characters of someone's own (pins on the base) over the paint: a step keeps the cell's colors (its
+  // char alone, or the colors it showed where the layer's paint tinted it), a fresh ░ takes the foreground over the background the cell shows (blockOver: a solid glyph's top half,
+  // a textured one's background; stored, as storedLookAt reads it). Part of the current edit; the caller commits. Without
+  // iCE colors a shade on a bright background blinks (R14), which the first such stroke in a drawing says.
+  shadeCells(pixels, { back = false } = {}) {
+    const { cols, rows } = this;
+    const reached = cellsOfPixels(pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows), cols, rows);
+    if (!reached.length || refusedNoCells(this, { toast: false })) return;
+    this.ensureLayer();
+    this.beginEdit();
+    const seen = this._stroke && (this._stroke.shadeSeen ??= new Set());
+    if (!seen) return;
+    const { fg, fgIndex } = useWorkspaceStore().typingAttrs(), params = this.processParams;
+    // Monochrome ASCII shows every character in the one ink, on black: any shade is in it, and a space isn't.
+    const mono = this.renderStyle === 'ascii', ink = this.renderer.effective(fg, params, fgIndex).hex.toLowerCase(), bright = this.blinkingBackgrounds;
+    const list = [];
+    let blinks = false;
+    for (const { col, row } of reached) {
+      const key = cellKey(col, row), cell = this.cells[cellIndex(col, row, cols)];
+      if (seen.has(key) || !cell || cell.wide === 'trail') continue;
+      seen.add(key);
+      const block = blockOver(cell), solid = isSolidGlyph(cell.char) && block.fg.hex === block.bg.hex; // all one color
+      const step = shadeStep(cell.char, { ink: mono ? !!cell.char.trim() : (solid ? block.fg : cell.fg).hex.toLowerCase() === ink, solid, back });
+      if (!step) continue;
+      // A step keeps the cell's colors, but where the layer's own paint tints it (R2) the paint goes with the write, so the
+      // colors it showed go in with the character.
+      const tinted = !step.fresh && !onBottom(this) && this.cellHasPaint(col, row) && this.storedLookAt(col, row);
+      const attrs = step.fresh ? { char: step.char, fg, fgIndex, bg: blockOver(this.storedLookAt(col, row)).bg } : tinted ? { char: step.char, fg: tinted.fg, bg: tinted.bg } : { char: step.char };
+      list.push({ col, row, attrs });
+      blinks ||= step.char.trim() && bright?.has((step.fresh ? block.bg : cell.bg).hex.toLowerCase());
+    }
+    this.writeEditCells(list, { clearPaint: true });
+    if (blinks && this._shadeBlinkSaid !== this.documentId) { // once a drawing: a ramp is many strokes
+      this._shadeBlinkSaid = this.documentId;
+      toast(t('tools.drawWith.shadeBlinks'));
+    }
   },
 
   // Cells of the layer in use ([{ col, row }]) turned into paint: a cell with colors of its own has the two halves it

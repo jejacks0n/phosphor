@@ -4,6 +4,7 @@ import { selectionClip } from '@/lib/selectionClip';
 import { t } from '@/i18n/index.js';
 import { useProjectStore } from '@/store/ProjectStore';
 import { drawnStyle, drawnValue, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
+import { beginShade, shade, shadeChoice, shades, shadeWayOption } from '@/tools/shade';
 
 // Single, Double and a font's own styles draw box-drawing lines from cell to cell (lines.js); they're the ANSI view's.
 const drawsLines = ({ view, workspace, project }) => view === 'output' && !!drawnStyle(workspace.pencilDrawWith, project.drawingFont);
@@ -14,6 +15,7 @@ const drawWithChoices = perFont((font) => [
   stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═' }),
   ...lineChoices(font),
   { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
+  shadeChoice,
 ]);
 
 const pencil = {
@@ -30,6 +32,7 @@ const pencil = {
       get choices() { return drawWithChoices(useProjectStore().drawingFont); },
       drawn: (ws) => drawnValue(ws.pencilDrawWith, useProjectStore().drawingFont, 'normal'), // Normal when the font offers no line style
     },
+    shadeWayOption('pencilDrawWith'),
     {
       key: 'pencilConnect', get label() { return t('tools.pencil.connect'); }, type: 'checkbox', views: ['output'],
       when: (ws) => !!drawnStyle(ws.pencilDrawWith, useProjectStore().drawingFont),
@@ -39,10 +42,11 @@ const pencil = {
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   // Its paint is the foreground; its lines are characters.
   nothingToLay: (ctx) => (!drawsLines(ctx) && ctx.workspace.editFgNone ? 'tools.fgNone' : null),
-  writesChars: drawsLines,
+  writesChars: (ctx) => drawsLines(ctx) || shades(ctx.workspace, 'pencilDrawWith', ctx.view),
   // no preview: the crosshair cursor is enough for 1px
   begin(ctx, pos, event) {
     const from = (event?.shiftKey && ctx.workspace.strokeEnd) || pos;
+    if (shades(ctx.workspace, 'pencilDrawWith', ctx.view) && !beginShade(ctx, event)) return false;
     if (drawsLines(ctx)) lines.begin(ctx, from);
     pencil.move(ctx, from, pos);
     return true;
@@ -52,8 +56,9 @@ const pencil = {
     if (drawsLines(ctx)) lines.move(ctx, from, to);
     else {
       const clip = selectionClip(workspace);
-      const pixels = pencilPixels(from, to, project.cols, project.rows);
-      project.paintStroke(clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels, undefined, { blockChars: (view === 'output' && workspace.pencilDrawWith === 'half') || 'plain' });
+      const pixels = pencilPixels(from, to, project.cols, project.rows), clipped = clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels;
+      if (shades(workspace, 'pencilDrawWith', view)) shade(project, clipped);
+      else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.pencilDrawWith === 'half') || 'plain' });
     }
     workspace.strokeEnd = to;
   },

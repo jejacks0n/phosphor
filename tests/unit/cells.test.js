@@ -3,7 +3,7 @@
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
 import { CellWriter } from '../../src/lib/AnsiFile.js';
-import { buildCells, buildCell, weightedChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide, layoutWideRows, selectionText } from '../../src/lib/Cells.js';
+import { buildCells, buildCell, weightedChar, charRowsOf, cellIndex, cellOfPixel, cellAt, layoutWide, layoutWideRows, selectionText, shadeStep } from '../../src/lib/Cells.js';
 
 test('Cell model: one { char, fg, bg } per character cell, built exactly as the pipeline always has (export bytes depend on it)', async () => {
   const px = (r, g, b, c) => (c === undefined ? { r, g, b } : { r, g, b, c });
@@ -115,4 +115,18 @@ test('Color ASCII weighs a cell by intensity, its strongest channel, so pure col
   assert.equal(weightedChar(white, white, ' .#', 'brightness'), '#');
   const cells = buildCells([red, blue, red, blue], 2, 2, { charset: ' .#', charMode: 'intensity', renderStyle: 'colorAscii', seed: 's' });
   assert.deepEqual(cells.map((c) => c.char), ['#', '#']);
+});
+
+test('R16: shadeStep steps a shade on in the foreground, starts anything else at ░, and steps any shade back', () => {
+  const on = (char, ink, solid = false) => shadeStep(char, { ink, solid, back: false });
+  const back = (char) => shadeStep(char, { ink: false, solid: false, back: true });
+  assert.deepEqual(on('░', true), { char: '▒', fresh: false });
+  assert.deepEqual(on('▒', true), { char: '▓', fresh: false });
+  assert.deepEqual(on('▓', true), { char: '█', fresh: false });
+  assert.equal(on('█', true, true), null); // a █ stays
+  assert.equal(on(' ', true, true), null); // so does a space on the foreground color: it's all that color already
+  for (const char of [' ', 'A', '▄', '▀', '/']) assert.deepEqual(on(char, false), { char: '░', fresh: true }); // no shade yet
+  for (const char of ['░', '▒', '▓', '█']) assert.deepEqual(on(char, false, char === '█'), { char: '░', fresh: true }); // a shade in another color starts again
+  assert.deepEqual([back('█'), back('▓'), back('▒'), back('░')].map((s) => s.char), ['▓', '▒', '░', ' ']);
+  for (const char of [' ', 'A', '▄']) assert.equal(back(char), null);
 });
