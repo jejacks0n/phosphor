@@ -23,11 +23,11 @@ import { t } from '@/i18n/index.js';
 import { blockNames, notSetUp } from '@/lib/fontSetup.js';
 import { CHAR_KEYS, settingsState, slidersAtDefaults } from '@/store/settings.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
-import { combineActions, guarded, plainActions } from '@/store/project/combineActions.js';
+import { combineActions, guarded, mirrored, plainActions } from '@/store/project/combineActions.js';
 import { documentActions } from '@/store/project/document.js';
 import { mergingActions } from '@/store/project/merging.js';
 import { selectionActions } from '@/store/project/selection.js';
-import { editLayerActions } from '@/store/project/editLayer.js';
+import { editLayerActions, MIRRORED } from '@/store/project/editLayer.js';
 import { renderingActions } from '@/store/project/rendering.js';
 import { readingActions } from '@/store/project/reading.js';
 import { baseLayerActions } from '@/store/project/baseLayer.js';
@@ -187,6 +187,8 @@ export const useProjectStore = defineStore('project', {
     _hosting: false, // a room you host shows this document, with or without anyone drawing in it (RoomStore)
     _colorPick: false, // the Custom color list's system picker is open: a room hears the list once, when it shuts (drawing/host.js)
     _paused: false,
+    _mirror: null, // the mark of a mirroring stroke: its edit-layer writes are laid on the other side too (lib/mirror.js)
+    _mirroring: false, // a copy is being laid: its writes are plain
     _takingProject: false, // a host's project is being written: the guard below doesn't apply (document.js)
     _sameDocument: false, // and it's this document brought up to date, so undo and the selection stay
     _documentN: null, // the ledger's number the open document was autosaved at, as it came back (useAutosave)
@@ -472,7 +474,7 @@ export const useProjectStore = defineStore('project', {
   },
 
   // One file per area in store/project/ (AGENTS.md, "Where things live"). plainActions keeps them as written, for readsOf.
-  actions: Object.assign(plainActions, guarded(guarded(guarded(combineActions(
+  actions: Object.assign(plainActions, guarded(guarded(guarded(mirrored(combineActions(
     documentActions,
     renderingActions,
     readingActions,
@@ -490,5 +492,5 @@ export const useProjectStore = defineStore('project', {
     animationActions,
     vectorActions,
     layerActions,
-  ), WHOLE_LAYER_ACTIONS, lockedOut), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject)),
+  ), MIRRORED), WHOLE_LAYER_ACTIONS, lockedOut), DRAWING_ACTIONS, (store) => store._paused), HOST_ONLY_ACTIONS, (store) => !!store._sharing && (store._sharing.role === 'artist' || store._paused) && !store._takingProject)),
 });

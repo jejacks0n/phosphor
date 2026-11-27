@@ -4,6 +4,7 @@ import { cellWidth } from '@/lib/CharWidth';
 import { turnChar } from '@/lib/TurnChars';
 import { isPaintBlock } from '@/document/editCells';
 import { selectionClip } from '@/lib/selectionClip';
+import { charRowsOf } from '@/lib/Cells';
 
 // Rulers at 0 fold the middle of the drawing across; down is only on when the zero is moved down.
 export const mirrorAxes = (zero, cols) => ({ x: zero.x === 0 ? cols / 2 : zero.x, y: zero.y === 0 ? null : zero.y });
@@ -79,12 +80,13 @@ export function withMirror(project, mark, fn) {
 export function eachSide(project, items, step, kind = 'pixels') {
   const mark = project._mirror;
   if (!mark || project._mirroring) return step(items);
+  const rows = charRowsOf(project.rows); // the store's rows are grid pixels
   const copies = kind === 'cells'
-    ? mirrorCells(items, mark, project.cols, project.rows, project.drawingFont)
-    : mirrorPixels(items, mark, project.cols, project.rows);
-  step(items);
-  project._mirroring = true;
+    ? mirrorCells(items, mark, project.cols, rows, project.drawingFont)
+    : mirrorPixels(items, mark, project.cols, rows);
+  project._mirroring = true; // the original's own nested writes stay plain too
   try {
+    step(items);
     for (const copy of copies) if (copy.length) step(copy);
   } finally {
     project._mirroring = false;

@@ -23,6 +23,13 @@ import { t } from '@/i18n';
 // till Merge down brings it out).
 const typed = (char, attrs) => (char.trim() ? { char, ...attrs } : { char, ...attrs, fg: undefined, fgIndex: undefined });
 
+// The writes a mirror mark repeats on the other side, and what their first argument holds (combineActions.js mirrored).
+// flipCell isn't one: it's a toggle, and mirrors itself.
+export const MIRRORED = {
+  paintStroke: 'pixels', paintEditPixels: 'pixels', putEditPixels: 'pixels', eraseEditPixels: 'pixels', colorsOnlyCells: 'pixels',
+  writeEditCells: 'cells', writeBlocks: 'cells', clearEditCells: 'cells',
+};
+
 export const editLayerActions = {
   paintEditPixels(pixels, opacity = 100, stack = false) {
     if (!pixels.length || !this.renderer.outputCanvas || refusedNoCells(this, { toast: false })) return; // no cells layer has the fields
