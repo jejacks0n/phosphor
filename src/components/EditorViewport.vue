@@ -218,7 +218,8 @@ const shapeDragStyles = computed(() => {
   const drag = workspaceStore.shapeDrag, axes = mirroring.value;
   if (!drag) return [];
   const copies = (axes ? mirrorOps(axes) : []).map((ops) => ({ ...drag, from: mirrorPoint(drag.from, ops, axes), to: mirrorPoint(drag.to, ops, axes) }))
-    .filter(({ from, to }) => Math.max(from.x, to.x) >= 0 && Math.min(from.x, to.x) < projectStore.cols); // some column of it is on the art
+    .filter(({ from, to }) => Math.max(from.x, to.x) >= 0 && Math.min(from.x, to.x) < projectStore.cols
+      && Math.max(from.y, to.y) >= 0 && Math.min(from.y, to.y) < projectStore.rows); // some part of it is on the art
   return [drag, ...copies].map(shapeDragStyle).filter(Boolean);
 });
 

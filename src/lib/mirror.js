@@ -5,6 +5,7 @@ import { turnChar } from '@/lib/TurnChars';
 import { isPaintBlock } from '@/document/editCells';
 import { selectionClip } from '@/lib/selectionClip';
 import { charRowsOf } from '@/lib/Cells';
+import { markRaw } from 'vue';
 
 // Rulers at 0 fold the middle of the drawing across; down is only on when the zero is moved down.
 export const mirrorAxes = (zero, cols) => ({ x: zero.x === 0 ? cols / 2 : zero.x, y: zero.y === 0 ? null : zero.y });
@@ -17,13 +18,13 @@ const down = (axes, op, v) => (op.includes('v') ? 4 * axes.y - 1 - v : v);
 
 export function mirrorPixels(pixels, { axes, clip }, cols, rows) {
   // A spot the original or an earlier copy lays is taken; one this copy lays again isn't (a Brush move's dabs add up).
-  const taken = new Set(pixels.map((p) => `${p.x},${p.y}`));
+  const taken = new Set(pixels.map((p) => p.y * cols + p.x));
   return mirrorOps(axes).map((op) => {
     const out = [], laid = [];
     for (const p of pixels) {
       const x = across(axes, op, p.x);
       const y = down(axes, op, p.y);
-      const key = `${x},${y}`;
+      const key = y * cols + x;
       if (x < 0 || x >= cols || y < 0 || y >= rows * 2 || taken.has(key) || clip?.pixel(x, y) === false) continue;
       laid.push(key);
       out.push({ ...p, x, y });
@@ -35,7 +36,7 @@ export function mirrorPixels(pixels, { axes, clip }, cols, rows) {
 
 export function mirrorCells(cells, { axes, clip }, cols, rows, font = null) {
   const span = (c) => (cellWidth(c.attrs?.char ?? '') === 2 ? 2 : 1);
-  const taken = new Set(cells.flatMap((c) => (span(c) === 2 ? [`${c.col},${c.row}`, `${c.col + 1},${c.row}`] : [`${c.col},${c.row}`])));
+  const taken = new Set(cells.flatMap((c) => (span(c) === 2 ? [c.row * cols + c.col, c.row * cols + c.col + 1] : [c.row * cols + c.col])));
   return mirrorOps(axes).map((op) => {
     const out = [];
     for (const c of cells) {
@@ -45,7 +46,7 @@ export function mirrorCells(cells, { axes, clip }, cols, rows, font = null) {
       const row = op.includes('v') ? 2 * axes.y - 1 - c.row : c.row;
       const last = col + (span(c) === 2 ? 1 : 0);
       if (col < 0 || last >= cols || row < 0 || row >= rows) continue;
-      const keys = last > col ? [`${col},${row}`, `${last},${row}`] : [`${col},${row}`];
+      const keys = last > col ? [row * cols + col, row * cols + last] : [row * cols + col];
       if (keys.some((k) => taken.has(k)) || clip?.cell(col, row) === false) continue;
       keys.forEach((k) => taken.add(k));
       const turned = char && !isPaintBlock(c.attrs) ? op.reduce((ch, o) => turnChar(ch, o, font), char) : char;
@@ -69,7 +70,7 @@ export const axisLines = (axes, unit) => [
 
 export const strokeMirror = (workspace, project, tool) =>
   workspace.mirror && tool.mirrors
-    ? { axes: mirrorAxes(workspace.rulerZero, project.cols), clip: selectionClip(workspace) }
+    ? markRaw({ axes: mirrorAxes(workspace.rulerZero, project.cols), clip: selectionClip(workspace) })
     : null;
 
 export function withMirror(project, mark, fn) {

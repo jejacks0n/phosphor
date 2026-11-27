@@ -209,4 +209,33 @@ describe('the tools under mirror mode', () => {
     expect(project.paintLayer.pixelAt(5, 3)).toBeTruthy();
     expect(project.paintLayer.pixelAt(74, 3)).toBeFalsy();
   });
+
+  test('Delete, paste and a floating move stay unmirrored', () => {
+    const rect = { c0: 2, r0: 0, c1: 4, r1: 1 };
+    const ids = [project.editId];
+    const lay = (col, char) => project.writeEditCells([{ col, row: 0, attrs: { char, fg: '#ff0000' } }]);
+    lay(2, 'A'); lay(77, 'Z');
+    project.commitEdit();
+    const block = project.copySelection(rect, ids, { shapes: false });
+    project.deleteSelection(rect, ids);
+    expect(project.editCellAt(2, 0)).toBeFalsy();
+    expect(project.editCellAt(77, 0)?.char).toBe('Z'); // the mirrored side of the deleted cell is left
+    project.pasteSelection(block, 10, 2);
+    expect(project.editCellAt(10, 2)?.char).toBe('A'); // the copy from before the delete
+    expect(project.editCellAt(69, 2)).toBeFalsy();
+    lay(3, 'M');
+    project.commitEdit();
+    project.floatSelection(rect, ids, 2, 0);
+    expect(project.editCellAt(5, 0)?.char).toBe('M');
+    expect(project.editCellAt(74, 0)).toBeFalsy();
+    expect(project.editCellAt(76, 0)).toBeFalsy();
+  });
+
+  test('a rectangle with Single laid on the left half is turned on the right', () => {
+    Object.assign(workspace, { shapeKind: 'rect', shapeDrawWith: 'single', editBgNone: true, editFgColor: '#ffffff' });
+    drag(getTool('shapes'), 'output', at(2, 0), at(8, 3));
+    const ch = (c, r) => project.editCellAt(c, r)?.char;
+    expect([ch(2, 0), ch(8, 0), ch(2, 3), ch(8, 3)]).toEqual(['┌', '┐', '└', '┘']);
+    expect([ch(77, 0), ch(71, 0), ch(77, 3), ch(71, 3)]).toEqual(['┐', '┌', '┘', '└']);
+  });
 });
