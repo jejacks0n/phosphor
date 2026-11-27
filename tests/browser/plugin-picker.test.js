@@ -1,6 +1,7 @@
 // The settings column's footer: a select of the themes plugins add, beside the Dark, Light and System icons and there
-// only when a plugin offers one, and the Plugins button that opens the dialog.
-import { afterEach, beforeEach, expect, test, vi } from 'vitest';
+// only when a plugin offers one, the Plugins button that opens the dialog, and on a narrow screen, where the settings
+// are a drawer, a Commands button under it that opens the command list.
+import { afterEach, beforeEach, expect, onTestFinished, test, vi } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp, nextTick } from 'vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -70,4 +71,19 @@ test('a theme whose plugin is switched off leaves the select', async () => {
   await plugins.setEnabled('phosphor.midnight', false);
   await nextTick();
   expect(select().query()).toBe(null);
+});
+
+// A phone has no Cmd+K: where the settings are a drawer, Commands opens the command list and shuts the drawer, so what
+// the command does shows. A wide screen has the key, and no button.
+test('on a narrow screen Commands opens the command list and shuts the drawer; a wide screen has none', async () => {
+  const { workspace } = mount();
+  workspace.settingsOpen = true;
+  await page.getByRole('button', { name: 'Commands' }).click();
+  expect(workspace.commandListOpen).toBe(true);
+  expect(workspace.settingsOpen).toBe(false);
+
+  await page.viewport(1400, 800);
+  onTestFinished(() => page.viewport(414, 896));
+  await expect.poll(() => page.getByRole('button', { name: 'Commands' }).query()).toBe(null);
+  expect(page.getByRole('button', { name: 'Plugins' }).query()).not.toBe(null);
 });

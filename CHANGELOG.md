@@ -8,6 +8,8 @@ under Unreleased.
 
 ### Added
 
+- On a phone, **Commands** under **Plugins** at the bottom of the settings opens the command list, so a command with
+  only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters
   turned as Flip turns them: left to right down the middle (or at the top ruler's zero), and top to bottom too once the
   left ruler's zero is moved. **Alt+M** (**Option+M** on a Mac) turns it on and off. It's off each time the app loads.

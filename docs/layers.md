@@ -1449,7 +1449,9 @@ About's Licenses tab credits the palettes to Lospec's Palette List and their aut
 ### The Command List
 
 **Cmd+K** (Ctrl+K on Windows and Linux) opens a box for running a command by name, so the ones you use now and then
-don't need a key or a trip to their button. In the desktop app it's also **Help > Command List…**. The start screen's
+don't need a key or a trip to their button. In the desktop app it's also **Help > Command List…**, and on a phone, where
+the settings are a drawer, **Commands** under **Plugins** at the bottom of the settings opens it (and shuts the drawer,
+so what the command does shows). The start screen's
 **Keyboard** box, in its bottom right corner (under the list on a phone), shows this key and **?** for the shortcuts
 list, and opens either when clicked; it shows only with a mouse or trackpad, where there's likely a keyboard.
 
