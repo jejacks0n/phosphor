@@ -86,6 +86,36 @@ test('a middle press on a ruler goes on to the view; a left press doesn\'t', asy
   expect(workspace.guides).toEqual([]);
 });
 
+// Guides are placed and moved with the Hand alone (or Space held): with another tool a ruler's press, but on its
+// triangle, places nothing, and it's still kept from the view, which would draw; the ruler shows an arrow there.
+test('without the Hand a ruler places no guide and keeps the press, while its triangle moves zero', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('brush');
+  await nextTick();
+  const top = root.querySelector('.ruler.top'), cursor = () => getComputedStyle(top).cursor;
+  const reached = [];
+  root.addEventListener('pointerdown', () => reached.push('view'));
+  pointer(top, 'pointermove', at.left + 100, 10);
+  await nextTick();
+  expect(cursor()).toBe('default');
+  pointer(top, 'pointerdown', at.left + 100, 10);
+  pointer(window, 'pointermove', at.left + 100, at.top + 50);
+  pointer(window, 'pointerup', at.left + 100, at.top + 50);
+  expect(workspace.guides).toEqual([]);
+  expect(reached).toEqual([]);
+  pointer(top, 'pointermove', at.left + 1, 10);
+  await nextTick();
+  expect(cursor()).toBe('grab');
+  pointer(top, 'pointerdown', at.left + 1, 10);
+  pointer(window, 'pointermove', at.left + 52, 10);
+  pointer(window, 'pointerup', at.left + 52, 10);
+  expect(workspace.rulerZero.x).toBe(5);
+  workspace.setActiveTool('hand');
+  pointer(top, 'pointermove', at.left + 100, 10);
+  await nextTick();
+  expect(cursor()).toBe('s-resize');
+});
+
 test('with the Pencil, a drag from the corner moves both zeros', async () => {
   const { workspace, at } = await mount();
   workspace.setActiveTool('pencil');
@@ -345,7 +375,8 @@ test('in a real view a tool\'s outline hides over the rulers and while one is dr
   expect(await shown()).toBe(false);
   pointer(view, 'pointermove', x, y);
   expect(await shown()).toBe(true);
-  pointer(top, 'pointerdown', x, r.top + 10);   // a horizontal guide, dragged down over the art
+  const corner = root.querySelector('.ruler-corner').getBoundingClientRect();
+  pointer(root.querySelector('.ruler-corner'), 'pointerdown', corner.left + 5, corner.top + 5);   // both zeros, dragged over the art
   pointer(view, 'pointermove', x, y);
   expect(await shown()).toBe(false);
   expect(view.classList.contains('ruler-drag')).toBe(true);   // a closed hand meanwhile (global.css)
@@ -353,7 +384,8 @@ test('in a real view a tool\'s outline hides over the rulers and while one is dr
   pointer(view, 'pointermove', x + 1, y);
   expect(await shown()).toBe(true);
   expect(view.classList.contains('ruler-drag')).toBe(false);
-  expect(workspace.guides).toHaveLength(1);
+  expect(workspace.rulerZero.x).toBeGreaterThan(0);
+  expect(workspace.guides).toEqual([]);
   expect(project.canUndo).toBe(false);   // nothing was drawn
 });
 

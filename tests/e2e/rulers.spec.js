@@ -1,5 +1,5 @@
-// The character rulers and guides: a guide comes out of a ruler with any tool, and only the Hand (or Space held) moves
-// one lying over the art or puts it back onto a ruler; a guide stays on its character however the view scrolls or zooms; a drawing's guides and zero come
+// The character rulers and guides: only the Hand (or Space held) drags a guide out of a ruler, moves it, or puts it
+// back onto one, though the rulers keep the press from any tool and their triangles move zero with it; a guide stays on its character however the view scrolls or zooms; a drawing's guides and zero come
 // back after a reload and with its saved file.
 import { readFile } from 'node:fs/promises';
 import { test, expect } from './support.js';
@@ -91,7 +91,7 @@ test('with the Hand, a guide drags out of the left ruler, moves, and goes back o
   await expect(page.locator('.guide')).toHaveCount(0);
 });
 
-test('with the Pencil, a guide comes out of the ruler; holding Space moves one over the art', async ({ page }) => {
+test('with the Pencil, the ruler places no guide and draws nothing; holding Space moves a guide', async ({ page }) => {
   await openApp(page);
   await handWithRulers(page);
   await guideAt(page, 10);
@@ -99,8 +99,8 @@ test('with the Pencil, a guide comes out of the ruler; holding Space moves one o
   expect(await ws(page, (w) => w.activeTool)).toBe('pencil');
   await expect(page.locator('.guide-rulers.hand')).toHaveCount(0);
   await guideAt(page, 20);
-  expect(await guides(page)).toEqual([{ axis: 'v', pos: 10 }, { axis: 'v', pos: 20 }]);
-  await store(page, 'workspace', (w) => w.removeGuide(1));
+  expect(await guides(page)).toEqual([{ axis: 'v', pos: 10 }]);
+  expect(await store(page, 'project', (p) => p.canUndo)).toBe(false);
 
   const from = await guideLine(page);
   await page.mouse.move(from.x, from.y);   // over the view, so Space pans rather than pressing a button
@@ -112,9 +112,9 @@ test('with the Pencil, a guide comes out of the ruler; holding Space moves one o
   expect(await ws(page, (w) => w.activeTool)).toBe('pencil');
 });
 
-// #315: a large Eraser over a ruler is the ruler's pointer, its own cursor and no outline, and a guide drags out of it
-// with nothing erased, the art under the ruler's edge included.
-test('with a large Eraser, the rulers keep their pointer and a guide drags out with nothing erased', async ({ page }) => {
+// #315: a large Eraser over a ruler is the ruler's pointer, an arrow and no outline; a drag from it places no guide and
+// erases nothing, the art under the ruler's edge included, and its triangle moves zero with a closed hand.
+test('with a large Eraser, the rulers keep their pointer, place nothing, erase nothing, and move zero', async ({ page }) => {
   await openApp(page);
   await handWithRulers(page);
   await pickLayer(page, 'Base');
@@ -127,15 +127,20 @@ test('with a large Eraser, the rulers keep their pointer and a guide drags out w
   expect(await page.evaluate(({ x, y }) => {
     const el = document.elementFromPoint(x, y);
     return [el.matches('canvas.ruler.top'), getComputedStyle(el).cursor];
-  }, from)).toEqual([true, 's-resize']);
+  }, from)).toEqual([true, 'default']);
   await expect(page.locator('.ansi-editor .tool-preview')).toBeHidden();
   const to = await cellPoint(page, 30, 5);
+  await drag(page, from, to);
+  expect(await guides(page)).toEqual([]);
+  expect(await store(page, 'project', (p) => p.canUndo)).toBe(false);
+
+  await page.mouse.move(await edgeX(page, 0), from.y, { steps: 4 });   // zero's triangle
   await page.mouse.down();
   await page.mouse.move(to.x, to.y, { steps: 6 });
   expect(await page.evaluate(({ x, y }) => getComputedStyle(document.elementFromPoint(x, y)).cursor, to)).toBe('grabbing');
   await expect(page.locator('.ansi-editor .tool-preview')).toBeHidden();
   await page.mouse.up();
-  expect(await guides(page)).toEqual([{ axis: 'h', pos: 5.5 }]);   // row 6's middle
+  expect(await ws(page, (w) => w.rulerZero.x)).toBe(30.5);   // column 31's middle
   expect(await store(page, 'project', (p) => p.canUndo)).toBe(false);
 });
 

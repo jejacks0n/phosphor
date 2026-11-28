@@ -47,9 +47,8 @@ under Unreleased.
 - The rulers' corner is a **⋯** menu, with any tool: **Reset positions** puts both zeros back (a double-click on the
   corner did) and **Mirror mode** turns mirror mode on and off. A drag from the corner still moves both.
 - A ruler's zero triangle shows a hand under the pointer, so it reads as something to drag.
-- The rulers work with any tool: a guide drags out of a ruler, and zero moves by its triangle or the corner, without
-  picking the Hand or holding Space. A guide already on the art still moves only with the Hand (or Space held), so it
-  doesn't catch a stroke.
+- A ruler's zero moves by its triangle or the corner with any tool, without picking the Hand or holding Space. Guides
+  are still placed and moved only with the Hand (or Space held).
 - The arrow keys move a selection past the canvas's edge, as dragging it does, so **Select all** and an arrow key move a
   whole layer a cell. A cell of the block always stays on the canvas, and what's past the edge comes back while it floats.
 - The browser tab's icon is an SVG, so it's sharp at any size.
