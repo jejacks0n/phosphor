@@ -1606,7 +1606,7 @@
       "rooms": "Rooms"
     },
     "rows": {
-      "vselect": "Vector select: select, move, scale, and rotate shapes (double-click to use Node tool)",
+      "vselect": "Vector select: select, move, scale, and rotate shapes (click again for the one under it, double-click to use Node tool)",
       "vnode": "Node: click a shape to edit its points and gradient. Drag points, handles, or color stops; click outline to add points",
       "pen": "Pen: click to place a corner point, drag for a curve; click the first point to close shape",
       "penEnd": "Finish shape as an open curve",

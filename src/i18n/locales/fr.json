@@ -1606,7 +1606,7 @@
       "rooms": "Salles"
     },
     "rows": {
-      "vselect": "Sélection vectorielle : sélectionner, déplacer, redimensionner et faire pivoter les formes (double-cliquez pour utiliser l'outil Nœud)",
+      "vselect": "Sélection vectorielle : sélectionner, déplacer, redimensionner et faire pivoter les formes (cliquez de nouveau pour celle du dessous, double-cliquez pour utiliser l'outil Nœud)",
       "vnode": "Nœud : cliquez sur une forme pour modifier ses points et son dégradé. Faites glisser les points, poignées ou arrêts de couleur ; cliquez sur le contour pour ajouter des points",
       "pen": "Plume : cliquez pour placer un point d'angle, faites glisser pour une courbe ; cliquez sur le premier point pour fermer la forme",
       "penEnd": "Terminer la forme en courbe ouverte",

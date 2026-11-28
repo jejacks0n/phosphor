@@ -89,12 +89,13 @@ The tools' outlines, boxes, and handles are drawn in color over a dark rim, so t
 ### Vector Select (`V`)
 
 Use Vector select to select, move, scale, and rotate shapes:
-- **Select**: Click a shape to select it. **Shift**-click adds a shape to the selection, or removes it. Drag a box over empty canvas to select every shape it touches (with **Shift**, they're added). Click empty canvas or press **Esc** to deselect.
+- **Select**: Click a shape to select it; where shapes overlap, the top one there, inside the selection's box too. **Shift**-click adds a shape to the selection, or removes it. Drag a box over empty canvas to select every shape it touches (with **Shift**, they're added). Click empty canvas or press **Esc** to deselect.
 - **Select all**: **Cmd+A** (**Ctrl+A**) selects every shape on the frame, from any VECTOR tool (it switches to Vector select and finishes a Pen shape first).
 - **Move**: Drag inside the selection box. Hold **Shift** once you're moving to keep it straight across, straight up and down, or at 45°. The arrow keys nudge the selection one pixel (with **Shift**, 10).
 - **Scale**: Drag any of the 8 box handles to scale from the opposite side. Hold **Shift** to keep proportions locked, or **Alt** (**Option** on a Mac) to scale from the middle.
 - **Rotate**: Drag the knob above the selection box. Hold **Shift** to snap one shape to angles in 15° steps (so a rotated one can be squared up again); several shapes turn in 15° steps from where they were. One shape's box turns with it; several shapes share one box, square to the grid.
 - **Edit points**: Double-click (or double-tap) a shape to edit its points with the Node tool, or press **A**. Double-clicking an art layer steps into it.
+- **Overlapping shapes**: Click again in the same place for the shape under the one selected there, and again for the next one down; after the bottom one it goes back to the top. A drag then moves the one picked. Leave a moment between the clicks, since two quick clicks edit the points of the shape the first one picked (or step into an art layer). A double-click there later clicks down first, so to edit the points of the shape you reached, press **A**. A click anywhere else starts over from the top shape there, and **Shift**-click still adds or takes away the top one. Each shape picked this way is an undo step, as any click that changes the selection is.
 - **Delete**: Press **Delete** or **Backspace**, or click the trash can in the options row.
 - **Clipboard**: **Cmd+C** / **Ctrl+C** copies the selected shapes, **Cmd+X** / **Ctrl+X** cuts them, and **Cmd+V** / **Ctrl+V** pastes them on top, selected, ready to drag into place. The options row has the same Copy, Cut, and Paste buttons.
 

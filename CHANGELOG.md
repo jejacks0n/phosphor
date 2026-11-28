@@ -20,6 +20,9 @@ under Unreleased.
 - A selection of paint and picture pixels resizes by handles on its corners and sides, **Shift** keeping its shape. The
   pixels land as ▄ half-blocks, the block floats like a moved one, and the resizes and moves together are one undo step.
   The handles don't show while the selection has characters, as Rotate is off then.
+- With Vector select, a click again in the same place a moment later selects the shape under the one selected, and the
+  next one down after that, back to the top after the bottom one, so a shape covered by another can be selected and
+  dragged.
 - On a phone, **Commands** under **Plugins** at the bottom of the settings opens the command list, so a command with
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters
@@ -44,6 +47,8 @@ under Unreleased.
 
 - The Magic Wand's selection works with the Select tool: copy, cut, **Delete**, moves, **Stamp**, flips and Rotate act
   on its cells alone, leaving the rest of the rectangle around them as it is. Drag one of its cells to move it.
+- With Vector select, a click on a shape inside the selection's box selects that shape, the top one there; it used to
+  keep the selection. A drag there still moves the selection, and a click on a shape already selected keeps it.
 - The rulers' corner is a **⋯** menu, with any tool: **Reset positions** puts both zeros back (a double-click on the
   corner did) and **Mirror mode** turns mirror mode on and off. A drag from the corner still moves both.
 - A ruler's zero triangle shows a hand under the pointer, so it reads as something to drag.

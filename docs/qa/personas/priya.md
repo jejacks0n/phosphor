@@ -146,7 +146,8 @@ script. Every section ends with Free time.
   animation bar and its keys are off while she's in ("Changing the picture or the frame would leave the dimmed drawing
   out of date"); an edit inside changes the layer on every frame it's on; Done or Escape goes back to VECTOR with the
   layer selected ([Editing an art layer](../../vector.md#editing-an-art-layer)).
-- Probes: `out-of-order`: inside, press N, L and `.` and check each does nothing and says why (the bar's title);
+- Probes: `again`: where two art layers overlap, click once, then again a moment later (the one under the top one is
+  selected), and right away once more (she steps into that one, not the top one); `out-of-order`: inside, press N, L and `.` and check each does nothing and says why (the bar's title);
   `undo-redo`: undo inside back to where she stepped in, and once more (it goes no further); `interrupt`: switch to
   SAUCE while inside, which steps out, and check what she drew stayed; then, inside again with the cursor placed, press
   Alt+3 (on a Mac it types £ at the cursor, Option's character, on Linux nothing, and the view stays), Escape, and Alt+3
