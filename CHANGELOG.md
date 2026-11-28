@@ -23,6 +23,9 @@ under Unreleased.
 - With Vector select, a click again in the same place a moment later selects the shape under the one selected, and the
   next one down after that, back to the top after the bottom one, so a shape covered by another can be selected and
   dragged.
+- **OLED**, an official theme in the Marketplace for OLED screens: the page behind the panels is pure black, so those
+  pixels stay off, the panels and the checkerboard around the art are only a step up from black, borders tell the panels
+  apart, and words read clearly on all of it.
 - On a phone, **Commands** under **Plugins** at the bottom of the settings opens the command list, so a command with
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters

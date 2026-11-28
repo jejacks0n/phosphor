@@ -64,7 +64,7 @@ Phosphor also comes as a desktop app for macOS, Windows, and Linux on the [Relea
 
 ### Plugins
 
-A plugin adds color themes, a script, or both. Scripts can add new ways to pick characters (solvers), new brushes, new shapes for the Shape tool, and new picture filters. The **Marketplace** in the Plugins dialog lists available plugins, including Phosphor's own: Midnight and Rain (themes), Outlines (solver), Smear (brush), Superformula (shape), and Aberration (filter). A plugin's script only runs after you choose to install it. See [Plugins](docs/plugins.md) to learn how to install plugins or write your own.
+A plugin adds color themes, a script, or both. Scripts can add new ways to pick characters (solvers), new brushes, new shapes for the Shape tool, and new picture filters. The **Marketplace** in the Plugins dialog lists available plugins, including Phosphor's own: Midnight, OLED and Rain (themes), Outlines (solver), Smear (brush), Superformula (shape), and Aberration (filter). A plugin's script only runs after you choose to install it. See [Plugins](docs/plugins.md) to learn how to install plugins or write your own.
 
 ### More features
 

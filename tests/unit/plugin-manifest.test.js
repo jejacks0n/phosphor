@@ -204,12 +204,34 @@ test('the marks over the art and the ground behind a picture use no slot for the
   }
 });
 
-// The two official themes are a dark one and a light one, each setting every slot, so either changes the whole
-// interface: Midnight and Rain.
-test('Midnight is a dark theme and Rain a light one, each setting every color slot', () => {
-  for (const [path, base] of [['../../plugins/midnight/phosphor-plugin.json', 'dark'], ['../../plugins/rain/phosphor-plugin.json', 'light']]) {
+// The official themes each set every slot, so any of them changes the whole interface: Midnight and OLED dark, Rain
+// light. OLED's background, and the checkerboard's dark squares, are black: an OLED screen's pixels off.
+test('Midnight and OLED are dark themes and Rain a light one, each setting every color slot', () => {
+  for (const [path, base] of [['../../plugins/midnight/phosphor-plugin.json', 'dark'], ['../../plugins/rain/phosphor-plugin.json', 'light'], ['../../plugins/oled/phosphor-plugin.json', 'dark']]) {
     const [theme] = readManifest(readFileSync(new URL(path, import.meta.url), 'utf8')).themes;
     expect([path, theme.base]).toEqual([path, base]);
     expect(Object.keys(theme.colors).sort()).toEqual([...COLOR_SLOTS].sort());
+  }
+  const [oled] = readManifest(readFileSync(new URL('../../plugins/oled/phosphor-plugin.json', import.meta.url), 'utf8')).themes;
+  expect([oled.colors.background, oled.colors['surface-dark']]).toEqual(['#000000', '#000000']);
+});
+
+// WCAG's contrast ratio of two #rrggbb colors, from their relative luminance.
+const luminance = (hex) => [1, 3, 5].map((at) => parseInt(hex.slice(at, at + 2), 16) / 255)
+  .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4))
+  .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+const contrast = (a, b) => {
+  const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+};
+
+test('OLED\'s words pass WCAG AA (4.5:1) on black and on every surface: text, dim and muted', () => {
+  expect(contrast('#ffffff', '#000000')).toBeCloseTo(21, 5);
+  expect(contrast('#767676', '#ffffff')).toBeCloseTo(4.54, 2);
+  const { colors } = readManifest(readFileSync(new URL('../../plugins/oled/phosphor-plugin.json', import.meta.url), 'utf8')).themes[0];
+  for (const words of ['text', 'text-dim', 'text-muted']) {
+    for (const ground of ['background', 'surface-0', 'surface-1', 'surface-2', 'surface-3', 'surface-4']) {
+      expect([words, ground, contrast(colors[words], colors[ground]) >= 4.5]).toEqual([words, ground, true]);
+    }
   }
 });

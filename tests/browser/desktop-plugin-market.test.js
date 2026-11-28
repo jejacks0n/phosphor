@@ -31,7 +31,7 @@ test('the list and a plugin\'s files come from the main process, within the caps
   const fetched = vi.spyOn(globalThis, 'fetch');
   const { entries } = await loadList();
   expect(desktop.pluginList).toHaveBeenCalledTimes(1);
-  expect(entries.map(({ manifest }) => manifest.id)).toEqual(['phosphor.outlines', 'phosphor.midnight', 'phosphor.rain', 'phosphor.smear', 'phosphor.superformula', 'phosphor.aberration', 'kim.fog']);
+  expect(entries.map(({ manifest }) => manifest.id)).toEqual(['phosphor.outlines', 'phosphor.midnight', 'phosphor.rain', 'phosphor.oled', 'phosphor.smear', 'phosphor.superformula', 'phosphor.aberration', 'kim.fog']);
 
   expect(await fetchListed(entries[0])).toEqual({ manifestText: outlinesManifest, scriptText: outlinesScript });
   expect(desktop.pluginFile.mock.calls).toEqual([

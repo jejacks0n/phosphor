@@ -1,0 +1,52 @@
+{
+  "phosphor": 1,
+  "id": "phosphor.oled",
+  "name": "OLED",
+  "version": "1.0.0",
+  "author": "Phosphor",
+  "description": "Pure black for OLED screens: the pixels around the art stay off.",
+  "homepage": "https://github.com/jejacks0n/phosphor/tree/main/plugins/oled",
+  "license": "MIT",
+  "themes": [
+    {
+      "id": "oled",
+      "name": "OLED",
+      "base": "dark",
+      "colors": {
+        "background": "#000000",
+        "background-highlight": "#00000000",
+        "accent": "#9d55ff",
+        "accent-hot": "#e802fc",
+        "accent-hover": "#ff55ff",
+        "accent-glow": "#9d55ff26",
+        "accent-faint": "#9d55ff0d",
+        "danger": "#ff4444",
+        "danger-hover": "#ff2222",
+        "warning": "#ffaa49",
+        "success": "#3ecf8e",
+        "surface-dark": "#000000",
+        "surface-0": "#0a0a0a",
+        "surface-1": "#101010",
+        "surface-2": "#161616",
+        "surface-3": "#1c1c1c",
+        "surface-4": "#242424",
+        "surface-light": "#ffffff",
+        "border": "#333333",
+        "border-subtle": "#262626",
+        "border-light": "#4a4a4a",
+        "text": "#ececec",
+        "text-dim": "#cccccc",
+        "text-muted": "#999999",
+        "text-faint": "#6b6b6b",
+        "text-inverted": "#000000",
+        "text-on-accent": "#ffffff",
+        "shadow": "#000000",
+        "guide": "#22e3ff",
+        "tooltip": "#2a2a2a",
+        "toast": "#e0b050",
+        "toast-text": "#000000",
+        "wand-fill": "#5aa0ff4d"
+      }
+    }
+  ]
+}
