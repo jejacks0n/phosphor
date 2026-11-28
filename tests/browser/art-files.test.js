@@ -213,6 +213,7 @@ test('an opened file exports with its SAUCE record as it went in, and Phosphor a
 test('exported without SAUCE, a still or an animated ANSI file ends with its art: no record, no EOF byte', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ cols: 4, rows: 4 });
+  await settle(project); // drawn: until its first render a canvas has no cells to export
   project.sauceTitle = 'Boat';
   const download = async (run) => {
     const spy = vi.spyOn(URL, 'createObjectURL');
@@ -777,6 +778,7 @@ test('a narrow drawing exports Letter spacing 8px', async () => {
   const { project } = await createTestApp();
   await project.setBlankCanvas({ cols: 10, rows: 10 });
   await project.setDrawingFont({ ...SLIM(), width: 7 });
+  await settle(project);
   project.sauceLetterSpacing = '9';
   expect(project.drawingFont.cellWidth).toBe(7);
   expect(readSauce(await exported(project)).flags & 6).toBe(2);
@@ -787,6 +789,7 @@ test('exported at 9, the .ans opens again at 9', async () => {
   await project.setBlankCanvas({ cols: 10, rows: 10 });
   await project.setDrawingFont({ ...SLIM(), width: 8 });
   await project.setDrawingFontWidth(9);
+  await settle(project); // drawn in the new font: exported before its render lands, the file had no cells and wouldn't open
   const bytes = await exported(project);
   expect(readSauce(bytes).flags & 6).toBe(4);
   await project.setDrawingFontWidth(8);
