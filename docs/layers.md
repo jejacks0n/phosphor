@@ -896,7 +896,8 @@ With a pen, such as the Apple Pencil on an iPad or a drawing tablet's pen:
   paint, the **Soft** Eraser takes more away, and **Blur**, **Dodge** and **Burn** work more strongly. A firm press
   gives what the sliders say; the lightest touch, a tenth of it, so it still marks. It takes the pen's pressure once
   that has changed, early in its first stroke. A mouse, a finger, and a pen without the sensor (the Apple Pencil
-  (USB-C), say) draw as the sliders say.
+  (USB-C), say) draw as the sliders say. The Brush's **Shade** and **Ink only** take no pressure: a cell takes a whole
+  step or color, so their reach is the **Size**.
 - **Fingers Pan**: Once a pen has drawn on the art, only the pen draws. One finger drags the view around, two pinch to
   zoom, and neither leaves a mark, whatever tool is picked: a finger's tap no longer places the Edit Mode cursor,
   selects or picks a color either. While the pen is down, a hand resting on the screen is left alone, come down before
