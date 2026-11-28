@@ -5,6 +5,7 @@ import { test, expect } from 'vitest';
 import { markRaw } from 'vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex } from '@/lib/Cells';
+import { masked } from '@/lib/selectionMask';
 
 const PINK = '#ff00ff', TEAL = '#008080';
 
@@ -12,12 +13,12 @@ async function scene() {
   const { project, workspace } = await createTestApp();
   await loadImage(project, '/tests/fixtures/images/gradient.png', { cols: 20, rows: 20 });
   workspace.editorTab = 'output';
-  // A wand selection of these units (cells in the ANSI view, pixels in the pixel view).
+  // A selection whose mask is these units (cells in the ANSI view, pixels in the pixel view).
   const wandOf = (view, units) => {
     const width = project.cols, height = view === 'output' ? 10 : project.rows;
     const mask = new Uint8Array(width * height);
     for (const [x, y] of units) mask[y * width + x] = 1;
-    return markRaw({ view, width, height, mask, within: null });
+    return masked(markRaw({ view, width, height, mask }));
   };
   const halves = (col, row) => [project.baseColorAt(col, 2 * row), project.baseColorAt(col, 2 * row + 1)];
   return { project, workspace, wandOf, halves };

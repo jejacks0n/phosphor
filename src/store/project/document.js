@@ -483,7 +483,7 @@ export const documentActions = {
     this.clearHistory();
     this.resetFrames();
     const workspace = useWorkspaceStore();
-    workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.wand = workspace.pointerCell = null;
+    workspace.selection = workspace.selectionOffset = workspace.lastPick = workspace.pointerCell = null;
     workspace.textCursor = workspace.lastTextCursor = null;
     workspace.inputScrollX = workspace.inputScrollY = workspace.ansiScrollX = workspace.ansiScrollY = null; // each view starts afresh (EditorViewport)
   },

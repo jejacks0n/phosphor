@@ -7,7 +7,7 @@ import { charRowsOf, putCellPixels } from '@/lib/Cells';
 import { cellKey, ownIndexes } from '@/document/editCells';
 import { veilPixels } from '@/lib/ghostCells';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
-import { wandIn } from '@/lib/MagicWand';
+import { maskShown } from '@/lib/selectionMask';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampZoom, PIXEL_ZOOM_START } from '@/lib/zoom';
 import EditorViewport from '@/components/EditorViewport.vue';
@@ -17,8 +17,8 @@ import EditorViewport from '@/components/EditorViewport.vue';
 // is the display everything measures against.
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-// The Magic Wand's selection, made in either view, in this view's units.
-const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, 'input', projectStore.rows));
+// A selection's mask, made in either view, in this view's units (as the ANSI view's).
+const wand = computed(() => maskShown(workspaceStore, projectStore, 'input'));
 const viewport = useTemplateRef('viewport');
 const sizerRef = useTemplateRef('sizer');
 const canvasRef = useTemplateRef('displayCanvas');
@@ -219,7 +219,7 @@ const contentSize = computed(() => ({
 // while its outline is dragged.
 const marquee = computed(() => {
   const sel = workspaceStore.selection, { x, y } = unit.value;
-  if (!sel) return null;
+  if (!sel || sel.mask) return null; // a mask shows its own outline (WandOverlay)
   const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
   return {
     left: `${(sel.c0 + dc) * x}px`, top: `${2 * (sel.r0 + dr) * y}px`,

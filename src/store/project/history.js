@@ -426,7 +426,7 @@ export const historyActions = {
       const { before, after } = entry.floats;
       this._float = before && { ...before, version: this.history.version };
       const workspace = useWorkspaceStore(), shown = toRaw(workspace.selection);
-      if (shown === toRaw(after.landed) || (!shown && !workspace.wand)) workspace.selection = before ? before.landed : after.paste && !after.stamped ? null : after.from;
+      if (shown === toRaw(after.landed) || !shown) workspace.selection = before ? before.landed : after.paste && !after.stamped ? null : after.from;
     }
     this.editVersion++; // undo moves away from what was saved (undoing back to it still counts as dirty)
     if (this.hasFrames && this.quantize === 'count') this.pickPalette();

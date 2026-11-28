@@ -99,7 +99,7 @@ test('R11: the Magic Wand in the PIXEL view selects what the fill fills', async 
   const { project, workspace } = await block(' ', '#000000', '#ff0000');
   Object.assign(workspace, { wandTolerance: 0, wandContiguous: true });
   wand.begin({ project, workspace, view: 'input' }, { x: 7.5, y: 10.5 }, {});
-  expect(workspace.wand.mask.reduce((n, v) => n + (v ? 1 : 0), 0)).toBe(96);
+  expect(workspace.selection.mask.mask.reduce((n, v) => n + (v ? 1 : 0), 0)).toBe(96);
 });
 
 // A layer not in use waits outside what Vue follows, so a change heard on it (a room's) must still reach the read.

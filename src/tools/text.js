@@ -36,7 +36,7 @@ const text = {
     start = null;
     ctx.workspace.setActiveTool('select');
     ctx.workspace.selectFromText = true;
-    const before = { selection: ctx.workspace.selection, wand: ctx.workspace.wand };
+    const before = { selection: ctx.workspace.selection };
     ctx.workspace.selection = null; // a selection kept from before isn't moved: this drag makes a new one
     select.begin(ctx, from0, undefined, before);
     select.move(ctx, from0, to);

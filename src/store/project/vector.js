@@ -286,7 +286,7 @@ export const vectorActions = {
     this.noteFrame(); // the frame's drawing as it is, before it's put aside
     this._float = null;
     const workspace = useWorkspaceStore();
-    workspace.selection = workspace.wand = null;
+    workspace.selection = null;
     const inside = markRaw({
       key, editCells: this.editCells, paintLayer: this.paintLayer, hasPaint: this.hasPaint, snapshot: this.cells,
       entries: new WeakSet(), entered: [], dimmed: null, dimmedOver: null, writing: false, stop: null,
@@ -530,18 +530,8 @@ export const vectorActions = {
   // make one, or a drawing too big or too wide for one layer. The record is checked as a file would be, at the stacking it gets, before anything is taken out.
   makeArtLayer() {
     const workspace = useWorkspaceStore();
-    const wand = workspace.activeTool === 'wand' && workspace.wand ? wandIn(workspace.wand, 'output', this.rows) : null;
+    const box = workspace.selection, wand = box?.mask ? wandIn(box.mask, 'output', this.rows) : null; // a mask's cells, or the rectangle
     const picked = wand && unitsOf(wand.mask, wand.width).map(({ x, y }) => ({ col: x, row: y }));
-    let box = workspace.selection;
-    if (wand) {
-      box = picked.length && { c0: Infinity, r0: Infinity, c1: -1, r1: -1 };
-      for (const { col, row } of picked) {
-        box.c0 = Math.min(box.c0, col);
-        box.r0 = Math.min(box.r0, row);
-        box.c1 = Math.max(box.c1, col);
-        box.r1 = Math.max(box.r1, row);
-      }
-    }
     const rect = box && this.clipRect(box);
     if (!rect) return null;
     // What's hidden never goes into another layer unseen: neither the cells layer's drawing nor the art, onto a hidden
@@ -595,7 +585,6 @@ export const vectorActions = {
       if (made) withLayerMade(this, made, src, version);
     }
     workspace.selection = null;
-    workspace.wand = null;
     const layer = key && (this.shapes.get(key)?.layer ?? 'vector');
     if (layer && this.layerById(layer)) workspace.pickLayer(layer);
     else workspace.editorTab = 'vector';

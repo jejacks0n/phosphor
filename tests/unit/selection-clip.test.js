@@ -1,8 +1,9 @@
 // selectionClip: whether a tool may change a cell or grid pixel, from the selection (in either view).
 import { test, expect } from 'vitest';
 import { selectionClip } from '@/lib/selectionClip';
+import { masked } from '@/lib/selectionMask';
 
-const workspace = (selection, wand = null) => ({ selection, wand });
+const workspace = (selection, wand = null) => ({ selection: wand ? masked(wand) : selection });
 // A wand selection on a 5×4 grid of units with one unit set.
 const wandAt = (view, x, y) => { const mask = new Uint8Array(5 * 4); mask[y * 5 + x] = 1; return { view, width: 5, height: 4, mask }; };
 

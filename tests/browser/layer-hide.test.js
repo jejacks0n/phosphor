@@ -158,7 +158,7 @@ test('Select and the Magic Wand still select with the picked layer hidden: they 
   getTool('select').end?.(ctx);
   workspace.setActiveTool('wand');
   getTool('wand').begin(ctx, { x: 1, y: 2 }, { shiftKey: false }); // one click: no stroke to continue
-  expect(workspace.wand).toBeTruthy();
+  expect(workspace.selection?.mask).toBeTruthy();
   expect(toastMessage.value).toBe(null);
 });
 

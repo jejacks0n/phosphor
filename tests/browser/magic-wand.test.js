@@ -22,7 +22,7 @@ async function scene() {
   const click = (col, row, event = {}, view = 'output') => wand.begin({ project, workspace, view }, view === 'output' ? { x: col + 0.5, y: 2 * row + 1 } : { x: col + 0.5, y: row + 0.5 }, event);
   // The wand's mask over a rect of units, as rows of # and .
   const marks = (c0, r0, c1, r1) => Array.from({ length: r1 - r0 + 1 }, (_, r) =>
-    Array.from({ length: c1 - c0 + 1 }, (_, c) => (workspace.wand.mask[(r0 + r) * workspace.wand.width + c0 + c] ? '#' : '.')).join(''));
+    Array.from({ length: c1 - c0 + 1 }, (_, c) => (workspace.selection.mask.mask[(r0 + r) * workspace.selection.mask.width + c0 + c] ? '#' : '.')).join(''));
   const read = (c0, r0, c1) => Array.from({ length: c1 - c0 + 1 }, (_, c) => project.cells[cellIndex(c0 + c, r0, project.cols)].char).join('');
   return { project, workspace, type, click, marks, read };
 }
@@ -50,7 +50,7 @@ test('Shift-click adds; a Select rectangle keeps the wand inside it', async () =
   workspace.selection = { c0: 3, r0: 2, c1: 4, r1: 3 };
   workspace.wandContiguous = false;
   click(4, 3);
-  expect(workspace.selection).toBe(null); // the wand's selection takes its place
+  expect(workspace.selection.mask).toBeTruthy(); // the wand's selection takes its place
   expect(marks(2, 2, 4, 3)).toEqual(['..#', '..#']);
   click(2, 2, { shiftKey: true }); // Shift-click still keeps to the rectangle it started in
   expect(marks(2, 2, 4, 3)).toEqual(['..#', '..#']);
@@ -64,7 +64,7 @@ test('Delete takes the edits in the selection away, in one undo step', async () 
   const under = read(5, 2, 7); // the picture's own characters, after the typed ones
   click(2, 2); // the red a's
   const version = project.history.version;
-  project.deleteInWand(workspace.wand);
+  project.deleteInWand(workspace.selection.mask);
   await settle(project);
   expect(read(3, 2, 3)).toBe('B');
   expect(read(2, 2, 2)).not.toBe('a');
@@ -96,8 +96,8 @@ test('the pixel view selects pixels by color, within the Tolerance', async () =>
   await settle(project);
   workspace.wandContiguous = false;
   click(3, 3, {}, 'input');
-  expect(workspace.wand.view).toBe('input');
-  const selected = () => [...workspace.wand.mask].filter(Boolean).length;
+  expect(workspace.selection.mask.view).toBe('input');
+  const selected = () => [...workspace.selection.mask.mask].filter(Boolean).length;
   expect(selected()).toBe(3);
   workspace.wandTolerance = 10;
   click(3, 3, {}, 'input');
@@ -112,9 +112,9 @@ test('the wand selection stays as you choose another tool', async () => {
   workspace.setActiveTool('wand');
   expect(workspace.selection).toEqual({ c0: 1, r0: 1, c1: 3, r1: 3 });
   click(2, 2);
-  expect(workspace.wand).not.toBe(null);
+  expect(workspace.selection?.mask).toBeTruthy();
   workspace.setActiveTool('pencil');
-  expect(workspace.wand).not.toBe(null);
+  expect(workspace.selection?.mask).toBeTruthy();
 });
 
 let app = null;
@@ -130,7 +130,7 @@ test('Delete or Backspace deletes in the wand selection, but Backspace in Edit M
   workspace.outputActiveTool = 'text';
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', cancelable: true }));
   await settle(project);
-  expect(workspace.wand).not.toBe(null);
+  expect(workspace.selection?.mask).toBeTruthy();
   expect(read(2, 2, 4)).toBe('aBa');
   workspace.outputActiveTool = 'wand';
   window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', cancelable: true }));
@@ -155,14 +155,14 @@ test('with a checkbox focused (All layers, just tapped), Delete takes the wand c
     press(field, 'Escape');
     await settle(project);
     expect(read(2, 2, 4)).toBe('aBa');
-    expect(workspace.wand).not.toBe(null);
+    expect(workspace.selection?.mask).toBeTruthy();
     box.focus();
     press(box, 'Delete');
     await settle(project);
     expect(read(3, 2, 3)).toBe('B');
     expect(read(2, 2, 2)).not.toBe('a');
     press(box, 'Escape');
-    expect(workspace.wand).toBe(null);
+    expect(workspace.selection).toBe(null);
   } finally {
     box.remove();
     field.remove();
@@ -184,7 +184,7 @@ test('with the color layer open, Delete on a button of it leaves the drawing and
     for (const key of ['Delete', 'Backspace']) swatch.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
     await settle(project);
     expect(read(2, 2, 4)).toBe('aBa');
-    expect(workspace.wand).not.toBe(null);
+    expect(workspace.selection?.mask).toBeTruthy();
   } finally {
     swatch.remove();
   }
@@ -195,8 +195,7 @@ test('a wand click outside the rectangle keeps the rectangle and selects nothing
   type(2, 2, ['aBa']);
   workspace.selection = { c0: 0, r0: 0, c1: 3, r1: 3 };
   click(12, 3);
-  expect(workspace.selection).toEqual({ c0: 0, r0: 0, c1: 3, r1: 3 });
-  expect(workspace.wand).toBe(null);
+  expect(workspace.selection).toEqual({ c0: 0, r0: 0, c1: 3, r1: 3 }); // no mask: still the rectangle
 });
 
 test('Delete and Backspace leave the wand selection alone with the palette layer open or mid-stroke', async () => {
@@ -226,7 +225,7 @@ test("Delete in the pixel view takes away a Half-block's ▄ with its paint, as 
   workspace.editorTab = 'input';
   workspace.wandContiguous = false;
   click(6, 6, {}, 'input');
-  project.deleteInWand(workspace.wand);
+  project.deleteInWand(workspace.selection.mask);
   await settle(project);
   expect(project.cellHasPaint(6, 3)).toBe(false);
   expect(project.editCellAt(6, 3)).toBe(undefined);
@@ -240,8 +239,8 @@ test('in the pixel view a Select rectangle keeps the wand inside it too', async 
   await settle(project);
   Object.assign(workspace, { wandContiguous: false, selection: { c0: 0, r0: 0, c1: 5, r1: 2 } }); // cells: grid pixels 0-5 across, 0-5 down
   click(3, 3, {}, 'input');
-  expect(workspace.selection).toBe(null);
-  expect([workspace.wand.mask[3 * 20 + 3], workspace.wand.mask[9 * 20 + 9]]).toEqual([1, 0]);
+  expect(workspace.selection.mask).toBeTruthy();
+  expect([workspace.selection.mask.mask[3 * 20 + 3], workspace.selection.mask.mask[9 * 20 + 9]]).toEqual([1, 0]);
 });
 
 test('a selection made in the ANSI view works in the pixel view: Delete takes both pixels of its cells; Shift-click adds pixels', async () => {
@@ -252,13 +251,13 @@ test('a selection made in the ANSI view works in the pixel view: Delete takes bo
   project.commitEdit();
   await settle(project);
   workspace.editorTab = 'input';
-  project.deleteInWand(workspace.wand, 'input');
+  project.deleteInWand(workspace.selection.mask, 'input');
   await settle(project);
   expect([project.rawColorAt(2, 4), project.rawColorAt(2, 5), project.rawColorAt(3, 4)].map((c) => c === '#ff00ff')).toEqual([false, false, true]);
 
   click(3, 4, { shiftKey: true }, 'input');
-  const at = (x, y) => workspace.wand.mask[y * workspace.wand.width + x];
-  expect(workspace.wand.view).toBe('input');
+  const at = (x, y) => workspace.selection.mask.mask[y * workspace.selection.mask.width + x];
+  expect(workspace.selection.mask.view).toBe('input');
   expect([at(2, 4), at(2, 5), at(3, 4), at(3, 5)]).toEqual([1, 1, 1, 0]);
 });
 
@@ -267,20 +266,20 @@ test('Delete takes away what is on the layers lit: Edit the drawing, Base the pi
   type(2, 2, ['a']);
   const base = [project.baseColorAt(2, 4), project.baseColorAt(2, 5)];
   click(2, 2);
-  project.deleteInWand(workspace.wand, 'output', ['edit']);
+  project.deleteInWand(workspace.selection.mask, 'output', ['edit']);
   expect(project.editCellAt(2, 2)).toBe(undefined);
   expect([project.baseColorAt(2, 4), project.baseColorAt(2, 5)]).toEqual(base);
   project.undo();
-  project.deleteInWand(workspace.wand, 'output', ['base']);
+  project.deleteInWand(workspace.selection.mask, 'output', ['base']);
   expect(project.editCellAt(2, 2)?.char).toBe('a');
   expect([project.baseColorAt(2, 4), project.baseColorAt(2, 5)]).toEqual(['#000000', '#000000']);
 
   workspace.editorTab = 'input';
   click(9, 9, {}, 'input');
-  const at = (x, y) => workspace.wand.mask[y * workspace.wand.width + x];
+  const at = (x, y) => workspace.selection.mask.mask[y * workspace.selection.mask.width + x];
   const out = [[9, 8], [9, 10], [8, 9], [10, 9]].find(([x, y]) => !at(x, y)); // a pixel beside it the wand left out
   const kept = project.baseColorAt(...out);
-  project.deleteInWand(workspace.wand, 'input', ['base']);
+  project.deleteInWand(workspace.selection.mask, 'input', ['base']);
   expect(project.baseColorAt(9, 9)).toBe('#000000');
   expect(project.baseColorAt(...out)).toBe(kept);
 });
@@ -295,5 +294,5 @@ test('the pixel view selects by what shows: paint on a layer above the lower gro
   await settle(project);
   workspace.wandContiguous = false;
   click(3, 3, {}, 'input');
-  expect([...workspace.wand.mask].filter(Boolean).length).toBe(3);
+  expect([...workspace.selection.mask.mask].filter(Boolean).length).toBe(3);
 });

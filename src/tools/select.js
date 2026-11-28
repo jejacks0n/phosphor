@@ -5,6 +5,7 @@
 // draws a new one, and a click outside clears it. With nothing selected, a click selects the cell under it. The actions are on the options row.
 import { normalizeRect, selectionHit, clampOffset, keepOnGrid } from '@/document/editCells';
 import { charRowsOf } from '@/lib/Cells';
+import { selects, shifted } from '@/lib/selectionMask';
 import { t } from '@/i18n/index.js';
 
 
@@ -15,8 +16,13 @@ const cellOf = (project, pos) => ({
   col: Math.max(0, Math.min(project.cols - 1, Math.floor(pos.x))),
   row: Math.max(0, Math.min(charRowsOf(project.rows) - 1, Math.floor(pos.y / 2))),
 });
-// Where a position (grid pixels) is relative to the selection, in fractional cells.
-const hitOf = (workspace, pos) => (workspace.selection ? selectionHit(workspace.selection, { col: pos.x, row: pos.y / 2 }) : 'outside');
+// Where a position (grid pixels) is relative to the selection, in fractional cells: inside a mask is on one of its cells.
+function hitOf(workspace, pos) {
+  const sel = workspace.selection;
+  if (!sel) return 'outside';
+  const hit = selectionHit(sel, { col: pos.x, row: pos.y / 2 });
+  return hit === 'inside' && !selects(sel, Math.floor(pos.x), Math.floor(pos.y / 2)) ? 'outside' : hit;
+}
 
 export default {
   id: 'select',
@@ -31,13 +37,12 @@ export default {
     { key: 'selectAllLayers', get label() { return t('tools.select.allLayers'); }, get title() { return t('tools.select.allLayersTitle'); }, type: 'checkbox' },
   ],
   // before: the selection to undo back to, when the caller changed it already (Edit Mode's drag).
-  begin({ project, workspace }, pos, event, before = { selection: workspace.selection, wand: workspace.wand }) {
+  begin({ project, workspace }, pos, event, before = { selection: workspace.selection }) {
     const cell = cellOf(project, pos);
     const hit = hitOf(workspace, pos);
     if (hit === 'outside') {
       drag = { mode: 'select', start: cell, before };
       workspace.selection = null;
-      workspace.wand = null; // a rectangle replaces the Magic Wand's selection
     } else if (hit === 'border') {
       drag = { mode: 'outline', start: cell, before };
       workspace.selectionOffset = { dc: 0, dr: 0 };
@@ -70,12 +75,12 @@ export default {
   end({ project, workspace }) {
     const sel = workspace.selection;
     const { dc, dr } = workspace.selectionOffset ?? { dc: 0, dr: 0 };
-    if (drag?.mode === 'select' && !drag.dragged && !drag.before.selection && !drag.before.wand) {
+    if (drag?.mode === 'select' && !drag.dragged && !drag.before.selection) {
       workspace.selection = normalizeRect(drag.start, drag.start); // a tap with nothing selected selects its cell
     } else if (!sel) {
       // cleared mid-drag: nothing to move
     } else if (drag?.mode === 'outline' && (dc || dr)) {
-      workspace.selection = { c0: sel.c0 + dc, r0: sel.r0 + dr, c1: sel.c1 + dc, r1: sel.r1 + dr };
+      workspace.selection = shifted(sel, dc, dr);
     }
     workspace.selectionOffset = null;
     if (drag?.before) project.changeSelection(null, drag.before); // a new rectangle, or the outline moved: an undo step

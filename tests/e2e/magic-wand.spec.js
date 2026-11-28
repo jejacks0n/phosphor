@@ -3,7 +3,7 @@
 import { test, expect, openApp, store, cellPoint, screenPixel, settled } from './support.js';
 
 const MAGENTA = [255, 0, 255];
-const wandCount = (page) => store(page, 'workspace', (w) => w.wand && [...w.wand.mask].filter(Boolean).length);
+const wandCount = (page) => store(page, 'workspace', (w) => w.selection?.mask && [...w.selection.mask.mask].filter(Boolean).length);
 
 test('W selects every cell with the character clicked; the Bucket then fills only those; Escape deselects', async ({ page }) => {
   await openApp(page);
@@ -21,12 +21,12 @@ test('W selects every cell with the character clicked; the Bucket then fills onl
   await store(page, 'workspace', (w) => { w.editFgColor = '#ff00ff'; w.editFillTolerance = 100; });
   await page.getByRole('checkbox', { name: 'Contiguous' }).uncheck();
   // A cell in the same row the wand didn't select, to check after the fill.
-  const col = await store(page, 'workspace', (w) => [...Array(20).keys()].find((c) => !w.wand.mask[4 * w.wand.width + c]));
+  const col = await store(page, 'workspace', (w) => [...Array(20).keys()].find((c) => !w.selection.mask.mask[4 * w.selection.mask.width + c]));
   const out = await cellPoint(page, col, 4);
   await page.mouse.click(at.x, at.y);
 
   await page.keyboard.press('Escape'); // the selection's tint off the screen
-  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+  expect(await store(page, 'workspace', (w) => w.selection)).toBe(null);
   await expect.poll(() => screenPixel(page, at.x, at.y)).toEqual(MAGENTA);
   expect(await screenPixel(page, out.x, out.y)).not.toEqual(MAGENTA);
 });
@@ -35,7 +35,7 @@ test('undo takes back a wand click to the selection before it, and an Escape too
   await openApp(page);
   await page.keyboard.press('w');
   const at = await cellPoint(page, 4, 4), b = await cellPoint(page, 20, 10);
-  const mask = () => store(page, 'workspace', (w) => [...w.wand.mask].join(''));
+  const mask = () => store(page, 'workspace', (w) => [...w.selection.mask.mask].join(''));
   await page.mouse.click(at.x, at.y);
   const first = await mask();
   await page.mouse.click(b.x, b.y);
@@ -43,7 +43,7 @@ test('undo takes back a wand click to the selection before it, and an Escape too
   await page.keyboard.press('ControlOrMeta+z');
   expect(await mask()).toBe(first);
   await page.keyboard.press('Escape');
-  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+  expect(await store(page, 'workspace', (w) => w.selection)).toBe(null);
   await page.keyboard.press('ControlOrMeta+z');
   expect(await mask()).toBe(first);
 
@@ -62,9 +62,10 @@ test('undo takes back a wand click to the selection before it, and an Escape too
   await expect.poll(() => tinted(page)).toBeGreaterThan(0);
   await page.getByRole('tab', { name: 'ANSI' }).click();
   expect(await wandCount(page)).toBe(count);
-  await page.keyboard.press('m');
+  await page.keyboard.press('m'); // Select's own row for it, whose end folds into ⋯ at this width, as for a rectangle
+  await page.getByRole('button', { name: 'More options' }).click();
   await page.getByRole('button', { name: 'Deselect' }).click();
-  expect(await store(page, 'workspace', (w) => w.wand)).toBe(null);
+  expect(await store(page, 'workspace', (w) => w.selection)).toBe(null);
 });
 
 // The overlay's pixels tinted (bluish); its dashed outline is black and white.

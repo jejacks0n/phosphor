@@ -21,29 +21,29 @@ async function scene() {
 test('a wand click undoes back to the selection before it and redoes, without changing the document', async () => {
   const { project, workspace, click } = await scene();
   click(2, 2);
-  const first = workspace.wand;
+  const first = workspace.selection;
   click(7, 7);
-  const second = workspace.wand;
+  const second = workspace.selection;
   expect(second).not.toBe(first);
   const edits = project.editVersion;
   project.undo();
-  expect(workspace.wand).toBe(first);
+  expect(workspace.selection).toBe(first);
   project.redo();
-  expect(workspace.wand).toBe(second);
+  expect(workspace.selection).toBe(second);
   expect(project.editVersion).toBe(edits);
 });
 
 test('a wand click that selects what is already selected adds no undo step', async () => {
   const { project, workspace, click } = await scene();
   click(2, 2);
-  const made = workspace.wand;
+  const made = workspace.selection;
   const version = project.history.version;
   click(2, 2);
   expect(project.history.version).toBe(version);
   project.undo();
-  expect(workspace.wand).toBe(null);
+  expect(workspace.selection).toBe(null);
   project.redo();
-  expect(workspace.wand.mask).toEqual(made.mask);
+  expect(workspace.selection.mask.mask).toEqual(made.mask.mask);
 });
 
 test('with nothing selected a tap selects its cell, an undo step; with a selection a tap outside only drops it', async () => {
@@ -70,9 +70,9 @@ test('with nothing selected a tap selects its cell, an undo step; with a selecti
 test('a tap with the Magic Wand\'s selection drops it, and selects no cell', async () => {
   const { workspace, click, tap } = await scene();
   click(2, 2);
-  expect(workspace.wand).toBeTruthy();
+  expect(workspace.selection.mask).toBeTruthy();
   tap(9, 9);
-  expect([workspace.selection, workspace.wand]).toEqual([null, null]);
+  expect(workspace.selection).toBe(null);
 });
 
 test('a rectangle, then the wand, then Deselect: each undoes back to the one before', async () => {
@@ -80,15 +80,15 @@ test('a rectangle, then the wand, then Deselect: each undoes back to the one bef
   drag([2, 2], [5, 4]);
   expect(workspace.selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 4 });
   click(3, 3); // inside it: the wand keeps to it
-  const made = workspace.wand;
+  const made = workspace.selection;
+  expect(made.mask).toBeTruthy();
+  project.changeSelection((w) => { w.selection = null; });
+  project.undo();
+  expect(workspace.selection).toBe(made);
+  project.undo();
+  expect(workspace.selection).toEqual({ c0: 2, r0: 2, c1: 5, r1: 4 });
+  project.undo();
   expect(workspace.selection).toBe(null);
-  project.changeSelection((w) => { w.selection = null; w.wand = null; });
-  project.undo();
-  expect(workspace.wand).toBe(made);
-  project.undo();
-  expect([workspace.selection, workspace.wand]).toEqual([{ c0: 2, r0: 2, c1: 5, r1: 4 }, null]);
-  project.undo();
-  expect([workspace.selection, workspace.wand]).toEqual([null, null]);
 });
 
 // Setting a floating block down (Deselect, Escape, Enter, a tap outside) isn't an undo step of its own: it belongs to
