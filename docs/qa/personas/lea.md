@@ -434,6 +434,18 @@ and sideways.
   tap Install on Fog twice (the second time the button says Installed and does nothing).
 - Rated: no (touch only: no keyboard shows here)
 
+### 28c. Go black for her phone's screen
+- Does: on Marketplace taps Install on OLED, reads the question and taps Install; closes the dialog, opens the settings
+  and picks OLED in the select under the theme icons; taps an (i) beside a setting; closes the settings and reloads.
+- Expects: OLED's card says Official and 1 theme, and its question "Install OLED 1.0.0?", "Official" and "Adds 1 theme.
+  Runs no code."; with OLED picked the settings behind their words are pure black, and the panels, buttons and the
+  checkerboard around her selfie only a step up from it, the buttons and fields told apart by their borders; every word
+  reads clearly, the dimmer ones too; the (i)'s tip shows on a dark gray box with its edge plain against the black; the
+  reload is black from the first moment, with no flash of Dark ([Plugins](../../plugins.md#picking-a-plugins-theme)).
+- Probes: `again`: tap Install on OLED once it says Installed (nothing happens); `back-out`: pick the Dark icon, then
+  OLED again in the select.
+- Rated: no (touch only: no keyboard shows here)
+
 ### 29. Draw her selfie in lines
 - Does: closes the dialog, picks Outlines in Choose characters (under Random, Best match and By shape), and tries each
   of its options: drags Threshold from 0 to 100, picks Lines → Box drawing and back, picks Elsewhere → Blank and back,
@@ -469,7 +481,7 @@ and sideways.
 - Does: opens the settings, taps Plugins and the Marketplace tab, picks Scripts in the Show menu; taps Install on Smear,
   reads the question and taps Install; then the same for Superformula and Aberration; taps the Installed tab.
 - Expects: Scripts shows the cards of the plugins with a script (Outlines, Smear, Superformula and Aberration), not
-  Midnight, Rain or Fog; each question names the plugin ("Install Smear 1.0.4?"), says it's Official and "Adds a script.",
+  Midnight, OLED, Rain or Fog; each question names the plugin ("Install Smear 1.0.4?"), says it's Official and "Adds a script.",
   with "⚠ This plugin runs code in Phosphor. Install it only if you trust where it came from." under it, fitting 390
   wide; each card then says Installed; on Installed the rows say what each script added: "1 brush", "1 shape" and "1
   filter", with the Official badge ([The Marketplace](../../plugins.md#the-marketplace)).

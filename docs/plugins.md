@@ -194,7 +194,7 @@ Each theme:
 | `base` | `dark` or `light`: Phosphor's own theme under it, which gives every color it doesn't set, and the theme Phosphor goes to when this one isn't there. | `dark` or `light`. |
 | `colors` | The colors it sets. | Each key is one of the color slots below; each value a hex color: `#rgb`, `#rrggbb` or `#rrggbbaa`. |
 
-The color slots, and what each colors (a theme that sets them all changes the whole interface, as the official Midnight, a dark one, and Rain, a light one, do; the
+The color slots, and what each colors (a theme that sets them all changes the whole interface, as the official Midnight and OLED, dark ones, and Rain, a light one, do; the
 art's own colors aren't a theme's):
 
 | Slot | What it colors |
@@ -846,8 +846,8 @@ Raise `version` with every change you publish: it's the only thing that makes an
 
 ## Listing a plugin
 
-Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight, Rain, Outlines, Smear,
-Superformula and Aberration are there), each with a `phosphor-plugin.json`. They aren't part of Phosphor's build: people
+Official plugins live in Phosphor's repository, one folder each directly under `plugins/` (Midnight, OLED, Rain, Outlines,
+Smear, Superformula and Aberration are there), each with a `phosphor-plugin.json`. They aren't part of Phosphor's build: people
 install them from the Marketplace. The ids starting `phosphor.` are kept for them, and a community listing that uses one
 is left out.
 
