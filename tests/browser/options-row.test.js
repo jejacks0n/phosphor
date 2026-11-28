@@ -2,7 +2,7 @@
 // menu after the last that fits, as the tool row's do, so nothing that can be pressed sits past the edge with no sign. The report
 // (dex-10): at 1280 wide with both panels open, the Select row went past the view's edge and Deselect and All layers
 // were out of sight, reachable only by Shift+wheel.
-import { test, expect, afterEach, beforeAll, afterAll } from 'vitest';
+import { test, expect, afterEach, beforeEach, beforeAll, afterAll } from 'vitest';
 import { page, userEvent } from 'vitest/browser';
 import { createApp } from 'vue';
 import { createTestApp, settle } from '../support/app.js';
@@ -13,6 +13,17 @@ let mounted = null, host = null;
 beforeAll(() => page.viewport(1280, 720));
 afterAll(() => page.viewport(414, 896));
 afterEach(() => { mounted?.unmount(); host?.remove(); mounted = host = null; });
+
+// A fit that changes the row's own size inside its ResizeObserver's callback makes the browser report a loop (an error
+// event on the window, the page's console in the app): none of these rows' fits may.
+let loops = [];
+const heard = (event) => { if (/ResizeObserver loop/.test(event.message)) loops.push(event.message); };
+beforeEach(() => { loops = []; window.addEventListener('error', heard); });
+afterEach(async () => {
+  await frames();
+  window.removeEventListener('error', heard);
+  expect(loops).toEqual([]);
+});
 
 const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
 const frames = async () => { await frame(); await frame(); };
