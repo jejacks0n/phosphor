@@ -50,6 +50,8 @@ under Unreleased.
 - The arrow keys move a selection past the canvas's edge, as dragging it does, so **Select all** and an arrow key move a
   whole layer a cell. A cell of the block always stays on the canvas, and what's past the edge comes back while it floats.
 - The browser tab's icon is an SVG, so it's sharp at any size.
+- Under **Best match** with **Full color**, **Pattern light** is hidden: there the half block already shows each cell's
+  two halves exactly. It shows with a color palette, and with **By shape** on any palette, as before.
 
 ### Fixed
 

@@ -69,7 +69,7 @@ Best match and By shape ignore repeated characters in your set.
 ### Tuning Best Match and By Shape
 
 - **Solids** (ANSI): Adjusts how strongly a plain solid cell (one color, whatever the character) is preferred over a shaded block or a half-block. At 0%, every cell gets whatever matches best; higher values give more flat cells and cleaner color regions. It isn't offered in the ASCII styles, where the background is always black.
-- **Pattern light** (all styles): Controls how a character's foreground and background colors blend. At 0%, colors blend by simple average. At 100%, colors blend like light on a screen, so shaded blocks read lighter than the average.
+- **Pattern light** (all styles): Controls how a character's foreground and background colors blend. At 0%, colors blend by simple average. At 100%, colors blend like light on a screen, so shaded blocks read lighter than the average. Under Best match it shows only with a color palette: on Full color `▄` already shows a cell's two halves exactly.
 
 ### Dither
 

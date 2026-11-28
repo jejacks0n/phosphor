@@ -180,8 +180,10 @@ function filterWords({ ref, name, state }) {
 // Each way of choosing characters' own options, from the way the picked layer's cells are made (an unknown choice
 // from an old file or a room converts as Random or By weight, and shows their options).
 const showSeed = computed(() => ownParams.value.charMode === 'random' && own.chars.length > 1);
-const showPatternLight = computed(() => resolves(ownParams.value));
-const showSolids = computed(() => ansi.value && showPatternLight.value); // ASCII's background is always black: no solid to prefer
+// Pattern light with Best match or By shape, but not Best match with Full color: with no palette ▄ shows a cell's two
+// halves exactly, so it's the answer whatever Pattern light says (#207). A value set under a palette is kept, unseen.
+const showPatternLight = computed(() => resolves(ownParams.value) && !(ownParams.value.charMode === 'best' && store.quantize === 'none'));
+const showSolids = computed(() => ansi.value && resolves(ownParams.value)); // ASCII's background is always black: no solid to prefer
 // Dither works on what converts like a picture (the base's picture, a vector layer's shapes), never on paint: not on a
 // cells layer, and only with a palette to dither to.
 const showDither = computed(() => store.quantize !== 'none' && (picked.value === 'base' || pickedKind.value === 'vector'));

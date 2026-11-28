@@ -130,7 +130,9 @@ script. Every section ends with Free time.
 - Expects: the picture's gradients come out in shades of the palette's colors (`▄ ░ ▒ ▓ █`), with the seed field gone
   (it shows only with Random); Solids makes more flat cells as it rises; Pattern light makes the shades read lighter;
   each slider move is one undo step ([Characters](../../characters.md#how-the-converter-picks-characters)).
-- Probes: `again`: add the same character twice to the set and check nothing changes ("Repeating a character in your
+- Probes: `scope`: switch Color palette to Full color and check Pattern light goes away under Best match (`▄` already
+  shows each cell's two halves exactly) while Solids stays, then comes back with the value she left on CGA, and that By
+  shape shows it on Full color; `again`: add the same character twice to the set and check nothing changes ("Repeating a character in your
   set makes no difference"); `back-out`: start typing in the Characters field, press Escape or click away, and check
   what's kept; `undo-redo`: type a set, press Cmd+Z while still in the field (it undoes her typing), then press Enter
   and Cmd+Z (it undoes the step, and the field shows what that leaves).
@@ -609,7 +611,7 @@ from it.
 - Rated: yes, wants Tab to Dimensions (typing the number is content)
 
 ### 41. Tune it at the bigger size
-- Does: at 200 columns, moves Brightness, Dither and Pattern light, switches Choose characters to By shape, and paints
+- Does: at 200 columns, switches Choose characters to By shape, moves Brightness, Dither and Pattern light, and paints
   a stroke on Layer 1.
 - Expects: each change lands within the `setting` budget; strokes draw without long frames; with a stroke drawn, a
   later size change grows or trims the canvas on the right and bottom instead of rescaling, the lock still keeping the

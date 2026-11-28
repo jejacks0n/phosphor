@@ -181,8 +181,8 @@ The settings on the left come in sections, each following a layer:
   its menu, a bitmap font's own sets first: [The Font's Sets](characters.md#the-fonts-sets)), **Character seed** (**Generate new seed** shuffles it), **Solids**, **Pattern light**, and for the base
   and a vector layer with a palette, **Dither style** and **Dither**. Inside an [art layer](vector.md#art-layers) it's
   its vector layer's. On the start screen, with no drawing open, it's the base's: the settings the next drawing starts
-  with. Some only show when they apply: the seed with Random, Pattern light with Best match or By shape,
-  Solids in ANSI with Best match or By shape.
+  with. Some only show when they apply: the seed with Random, Pattern light with By shape and with Best match on a
+  color palette (on Full color `▄` already shows a cell's two halves exactly), Solids in ANSI with Best match or By shape.
   - Each layer has its own ([Each Layer's Own Character Settings](characters.md#each-layers-own-character-settings)):
     changing them changes only how that layer's paint, picture or shapes become characters. A line under the title
     says so for a layer above the base.

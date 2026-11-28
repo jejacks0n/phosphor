@@ -337,6 +337,52 @@ test('Choose characters edits the picked layer', async () => {
   expect(host.querySelector('#charChoice').value).toBe('random');
 });
 
+// #207: under Best match with Full color ▄ shows both halves exactly, whatever Pattern light says, so its slider hides
+// there; By shape and a palette (Threshold or not) keep it, Solids stays, and a value set under a palette waits unseen.
+test('Pattern light shows with Best match on a palette or By shape, not Best match on Full color; Solids stays', async () => {
+  const { project, workspace, pinia } = await blank(); // Full color
+  const light = () => host.querySelector('#patternLight'), solids = () => host.querySelector('#solids');
+  project.setLayerChars('base', { charChoice: 'best' });
+  workspace.pickLayer('base');
+  await mountPanel(pinia);
+  expect(light()).toBeNull();
+  expect(solids()).toBeTruthy();
+
+  project.quantize = 'cga';
+  await nextTick();
+  expect(light().value).toBe('100');
+  project.setLayerChars('base', { patternLight: 30 });
+  project.threshold = 50; // whether it does anything here depends on the sliders: it stays
+  await nextTick();
+  expect(light().value).toBe('30');
+  project.quantize = 'none';
+  await nextTick();
+  expect(light()).toBeNull();
+  expect(project.charsOf('base').patternLight).toBe(30);
+  project.quantize = 'cga';
+  await nextTick();
+  expect(light().value).toBe('30');
+
+  // Each layer's own way of choosing: Layer 1 by shape over a base of Best match, on Full color.
+  project.quantize = 'none';
+  project.setLayerChars('edit', { charChoice: 'shape' });
+  await nextTick();
+  expect(light()).toBeNull();
+  workspace.pickLayer('edit');
+  await nextTick();
+  expect(light().value).toBe('100');
+  expect(solids()).toBeTruthy();
+  // And the other way round: Layer 1 on Best match, the base by shape.
+  project.setLayerChars('edit', { charChoice: 'best' });
+  project.setLayerChars('base', { charChoice: 'shape' });
+  await nextTick();
+  expect(light()).toBeNull();
+  expect(solids()).toBeTruthy();
+  workspace.pickLayer('base');
+  await nextTick();
+  expect(light().value).toBe('30');
+});
+
 test('a layer\'s own settings keep the room off', async () => {
   const { project } = await blank();
   expect(!!legacySlots(project.layers, project.baseChars)).toBe(true);
