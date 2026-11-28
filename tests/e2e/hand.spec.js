@@ -1,7 +1,7 @@
 // The Hand: the picture follows the pointer. Each step of a drag is measured from where the drag
 // began, so the browser rounding the scroll position (to whole or half pixels) never adds up: a
 // trackpad's many tiny sideways moves on a straight up-and-down drag used to walk the picture across.
-import { test, expect, openApp, tab, settled } from './support.js';
+import { test, expect, openApp, tab, settled, pixelBox } from './support.js';
 
 test('PIXEL view: the picture follows the pointer through many fractional steps', async ({ page }) => {
   await openApp(page);
@@ -9,7 +9,7 @@ test('PIXEL view: the picture follows the pointer through many fractional steps'
   await settled(page);
   await page.keyboard.press('h');
   const view = () => page.evaluate(() => { const v = document.querySelector('article .display').closest('article'); return { x: v.scrollLeft, y: v.scrollTop }; });
-  const box = await page.locator('article .display').first().boundingBox();
+  const box = await pixelBox(page);
   const x = Math.round(box.x + box.width / 2), y = Math.round(box.y + box.height / 2);
   const before = await view();
   await page.mouse.move(x, y);

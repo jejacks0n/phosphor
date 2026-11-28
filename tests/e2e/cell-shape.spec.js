@@ -1,5 +1,5 @@
 // The drawing's cell shape follows its bitmap font: in an 8×8 font a half cell is 8 wide and 4 tall, in every view.
-import { test, expect, store, tab, settled } from './support.js';
+import { test, expect, store, tab, settled, pixelBox } from './support.js';
 
 // An 8×8 font with a lower half block (220, rows 4–7) and a full block (219); the rest blank.
 const lowerF08 = () => {
@@ -23,7 +23,7 @@ test('in an 8×8 font a click in the PIXEL view lands on the grid pixel under it
   await tab(page, 'PIXEL').click();
   await page.keyboard.press('p');
   // Grid pixel (5, 11)'s center, a column wide and half a column tall.
-  const box = await page.locator('.pixel-display').boundingBox();
+  const box = await pixelBox(page);
   const cols = await store(page, 'project', (p) => p.cols), w = box.width / cols;
   await page.mouse.click(box.x + 5.5 * w, box.y + 11.5 * w * 0.5);
   // Lit (brighter than half), its neighbors above and below black. Before, the click landed on the grid pixel at y 5.
