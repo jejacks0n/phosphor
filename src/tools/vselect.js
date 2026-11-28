@@ -2,7 +2,9 @@
 // empty canvas to select every shape it touches (Shift: adds them); each change of the selection is an undo
 // step (selectShapes). Then drag inside the box to move (Shift: straight across, up and down, or at 45°), a handle to scale (Shift keeps the proportions, Alt scales from the middle)
 // or the knob above it to rotate (Shift: one shape to angles in steps of 15°, several by them). A second click on a shape edits its points with the
-// Node tool (vnode.js); on an art layer it steps into it instead (enterArt), to the ANSI tab. One shape selected, its gradient's ends and stops show and drag as the Node tool's do
+// Node tool (vnode.js); on an art layer it steps into it instead (enterArt), to the ANSI tab. A click again in the same
+// place after a moment (DOUBLE_MS) selects the shape under the one selected there (after the bottom, the top), which a
+// drag after it then moves; a click on a shape that isn't selected, inside the box too, selects the top one there. One shape selected, its gradient's ends and stops show and drag as the Node tool's do
 // (gradientHandles.js; a click on a stop selects it), and so do the Start and End handles on the outline of a shape with those rows in the Keys panel (trimHandles), ahead of the box's handles where they're near (handlePick: a
 // click again takes the next one there). Each drag is one edit, worked out each move from the shapes as they were at the press,
 // so nothing drifts. An art layer moves by whole cells (a column across, a line down, whatever Snap to says) and has no size or turn handles, alone or with other shapes. Keys: arrows nudge a grid pixel (Shift: 10; an art layer's a cell), Delete or Backspace deletes (the selected stop,
@@ -182,14 +184,15 @@ function trimTo(project, workspace, drag, pos) {
   project.updateShapes([[key, withShape(shape, { [drag.part]: share })]]);
 }
 
-let drag = null, lastPress = null;
+let drag = null, lastPress = null, lastClick = null; // lastClick: where the last click on shapes let go unmoved
 const pick = handlePicker();
 
 // A drag of the box's (or a marquee) let go: a second click on a shape, not moved, edits its points (on an art layer,
-// steps into it).
+// steps into it); any other click on shapes selects the next one down from a click again (click.next), or the top one
+// there if it isn't selected.
 function endDrag(project, workspace) {
   if (!drag) return;
-  const { again, enter, moved, kind, keys, shift } = drag;
+  const { click, moved, kind, keys, shift, from } = drag;
   drag = null;
   if (kind === 'marquee') {
     const box = workspace.vectorMarquee;
@@ -200,12 +203,23 @@ function endDrag(project, workspace) {
   }
   workspace.vectorTrim = null;
   project.commitEdit();
-  if (again && !moved) {
+  if (moved || !click) return;
+  const { again, enter, next, top } = click;
+  if (again) {
     workspace.vectorSelected = [again];
     workspace.setActiveTool('vnode');
     workspace.vectorPoints = again;
     workspace.vectorPoint = null;
-  } else if (enter && !moved && project.enterArt(enter)) workspace.editorTab = 'output';
+  } else if (enter) {
+    if (project.enterArt(enter)) workspace.editorTab = 'output';
+  } else {
+    lastClick = from;
+    const picked = next ?? (top && !workspace.vectorSelected.includes(top) ? top : null);
+    if (picked) {
+      project.selectShapes([picked]);
+      lastPress.key = picked; // a quick click after it is a double-click on this one
+    }
+  }
 }
 
 const selected = (workspace, project) => workspace.vectorSelected.filter((key) => project.shapes.has(key));
@@ -240,7 +254,8 @@ export default {
   begin(ctx, pos, event) {
     const { project, workspace, unit } = ctx, shift = !!event?.shiftKey, radius = handleRadius(), tol = radius / unit.x;
     const placed = placedShapes(project), keys = selected(workspace, project), box = selectionBox(placed, keys); // where they show
-    const at = grab(project, placed, keys, box, pos, shift);
+    const at = grab(project, placed, keys, box, pos, shift), clicked = lastClick;
+    lastClick = null;
     if (workspace.pickingPath) { // Follow a path…: a click picks the path, or on empty canvas, ends the pick
       const path = pathAt(placed, workspace.pickingPath, pos, tol, project.pixelAspect);
       if (path) project.followPath(workspace.pickingPath, path);
@@ -255,11 +270,15 @@ export default {
       const own = boxGrips(box, unit, pos, at, workspace);
       if (pick.press([...trims.filter((c) => c.d <= REACH), ...own.filter((c) => c.d <= radius), ...gradientDrag.candidates(ctx, pos, radius)], pos, unit)) return true;
     } else pick.reset();
-    const hit = shapeAt(placed, pos.x, pos.y, tol, true, project.shapeRank, project.pixelAspect);
+    const hits = [...shapesAt(placed, pos.x, pos.y, tol, true, project.shapeRank, project.pixelAspect)], hit = hits[0] ?? null;
+    // A click again where the last one let go, with the one shape selected among those there: the press is that
+    // shape's (a drag moves it), and let go unmoved it selects the next one down (see endDrag).
+    const step = !shift && clicked && keys.length === 1 && hits.includes(keys[0]) && near(pos, clicked, unit, DOUBLE_PX), own = step ? keys[0] : hit;
     // A second click edits points; an art layer has none, so it steps into the layer (see endDrag).
-    const now = performance.now(), second = hit && lastPress?.key === hit && now - lastPress.time < DOUBLE_MS && near(pos, lastPress.pos, unit, DOUBLE_PX);
-    const art = isArt(project.shapes.get(hit)), again = second && !art, enter = second && art;
-    lastPress = { key: hit, time: now, pos };
+    const now = performance.now(), second = own && lastPress?.key === own && now - lastPress.time < DOUBLE_MS && near(pos, lastPress.pos, unit, DOUBLE_PX);
+    const art = isArt(project.shapes.get(own)), again = second && !art, enter = second && art;
+    lastPress = { key: own, time: now, pos };
+    const click = { again: again && own, enter: enter && own, next: step && !second ? hits[(hits.indexOf(own) + 1) % hits.length] : null, top: hit };
     const marquee = () => {
       drag = { kind: 'marquee', from: pos, keys, shift };
       return true;
@@ -270,10 +289,10 @@ export default {
       return false;
     }
     // A second click on a shape (pressed and let go without moving) edits its points, or steps into an art layer: see end.
-    if (box && inside(box.corners, pos)) return at('move', { again: again && hit, enter: enter && hit });
+    if (step || (box && inside(box.corners, pos))) return at('move', { click });
     if (hit) {
       project.selectShapes([hit]);
-      return at('move', { keys: [hit], box: selectionBox(placed, [hit]), again: again && hit, enter: enter && hit });
+      return at('move', { keys: [hit], box: selectionBox(placed, [hit]), click });
     }
     return marquee(); // let go where it was pressed: a click on empty canvas, which deselects
   },
@@ -334,6 +353,7 @@ export default {
 
   cancel(ctx) {
     drag = null; // the viewport took the edit back
+    lastClick = null;
     ctx.workspace.vectorMarquee = null;
     ctx.workspace.vectorTrim = null;
     gradientDrag.cancel(ctx);

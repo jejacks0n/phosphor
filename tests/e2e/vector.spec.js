@@ -1049,6 +1049,37 @@ test('the Node tool shows a shape\'s gradient\'s handles with its points; recolo
   expect(await store(page, 'workspace', (w) => w.vectorStop)).toBeNull();
 });
 
+test('Vector select clicks down through stacked shapes: a click again a moment later takes the one under it, a drag then moves it, and a quick second click edits its points', async ({ page }) => {
+  await openApp(page);
+  await pickLayer(page);
+  await settled(page);
+  const bottom = await addRect(page, 2, 2, 30, 30), middle = await addRect(page, 6, 6, 26, 26), top = await addRect(page, 10, 10, 22, 22);
+  await settled(page);
+  const at = await gridPoint(page, 16, 16); // far from each one's handles
+  const apart = () => page.waitForTimeout(450); // not a double-click, which edits the points
+  const picked = [];
+  for (let i = 0; i < 5; i++) {
+    if (i) await apart();
+    await page.mouse.click(at.x, at.y);
+    picked.push(...await selected(page));
+  }
+  expect(picked).toEqual([top, middle, bottom, top, middle]);
+  await apart();
+  await dragPoints(page, at, await gridPoint(page, 20, 16));
+  expect(await selected(page)).toEqual([middle]);
+  expect((await matrix(page, middle))[4]).toBeCloseTo(4, 0);
+  expect(await matrix(page, top)).toEqual([1, 0, 0, 1, 0, 0]);
+
+  // Elsewhere starts over from the top; there, a click again takes the middle one and a quick click after it edits it.
+  const there = await gridPoint(page, 12, 13);
+  await apart();
+  await page.mouse.click(there.x, there.y);
+  expect(await selected(page)).toEqual([top]);
+  await apart();
+  await page.mouse.dblclick(there.x, there.y); // its first click takes the middle one, its second edits it
+  expect(await store(page, 'workspace', (w) => [w.activeTool, w.vectorPoints])).toEqual(['vnode', middle]);
+});
+
 test('Vector select shows one shape\'s gradient: a click on its end, over a scale handle, picks the stop there, which the Fill box recolors and Delete removes; Esc keeps the shape', async ({ page }) => {
   await openApp(page);
   await pickLayer(page);

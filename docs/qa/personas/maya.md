@@ -457,7 +457,8 @@ held (the shapes over a hidden layer keep their characters, but for a soft edge 
   pressing, add a second vector layer over Vector 1, pick it and draw a shape (it's on the layer picked, not Vector 1),
   then Merge down: the shape moves to Vector 1, still a shape she can edit, over Vector 1's own, the second layer goes,
   and nothing on the canvas changes. With shapes overlapping on both vector layers, a click selects the one that shows
-  on top and LAYERS picks its layer; Forward and Back change what she sees in one press.
+  on top and LAYERS picks its layer, and a click again in the same place a moment later selects the one under it and
+  picks that one's layer; Forward and Back change what she sees in one press.
 - Rated: yes, wants Cmd+E
 
 ### 30. Bake it

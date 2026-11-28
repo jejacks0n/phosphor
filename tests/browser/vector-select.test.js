@@ -1,11 +1,12 @@
 // Selecting on VECTOR: each change of which shapes are selected (a click, Shift-click, Esc, a box dragged over
 // empty canvas) is an undo step of its own, and undoing an edit brings back the selection it started with.
-import { test, expect } from 'vitest';
+import { test, expect, vi, onTestFinished } from 'vitest';
 import { createTestApp, loadImage } from '../support/app.js';
 import { makeShape, rectShape } from '@/document/shapes.js';
 import { makeArt } from '@/document/artLayers.js';
 import { centerOf, placedShapes } from '@/document/followers.js';
 import vselect from '@/tools/vselect.js';
+import { DOUBLE_MS } from '@/tools/handlePick.js';
 
 async function drawing() {
   const app = await createTestApp();
@@ -222,4 +223,146 @@ test('moving with the line\'s end, a follower dragged or nudged stays put', asyn
   press(ctx, { x: 36, y: 20 }, [{ x: 20, y: 20 }]);
   vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
   expect(project.shapes.get(a)).toEqual(before);
+});
+
+// Clicking down through stacked shapes. performance.now moved past a double-click's window by each call of what it
+// returns: a click after that is a click again, not a double-click.
+function doubleClickClock() {
+  let skew = 0;
+  const now = performance.now.bind(performance), spy = vi.spyOn(performance, 'now').mockImplementation(() => now() + skew);
+  onTestFinished(() => spy.mockRestore());
+  return () => { skew += DOUBLE_MS; };
+}
+
+// Three squares one on another, the biggest at the bottom: bottom, middle and top. Their middle, (16, 16), is far
+// from every one's handles.
+async function stacked(under = null) {
+  const app = await createTestApp();
+  await loadImage(app.project, '/tests/fixtures/images/gradient.png', { cols: 40, rows: 40 });
+  const { project, workspace } = app;
+  if (under) project.addShape(under);
+  const [bottom, middle, top] = [rectShape(2, 2, 30, 30), rectShape(6, 6, 26, 26), rectShape(10, 10, 22, 22)].map((r) => project.addShape({ ...r, fill: '#ff0000' }));
+  project.clearHistory();
+  workspace.setActiveTool('vselect');
+  vselect.cancel({ workspace }); // no click from an earlier test
+  return { project, workspace, bottom, middle, top, apart: doubleClickClock(), ctx: { project, workspace, view: 'vector', unit: { x: 8, y: 8 } } };
+}
+
+test('clicks a moment apart in one place select the top shape, the one under it, the bottom, then the top again, each an undo step', async () => {
+  const { project, workspace, bottom, middle, top, apart, ctx } = await stacked();
+  const picked = [];
+  for (let i = 0; i < 4; i++) {
+    const version = project.history.version;
+    press(ctx, { x: 16, y: 16 });
+    expect(project.history.version).toBe(version + 1);
+    picked.push(...workspace.vectorSelected);
+    apart();
+  }
+  expect(picked).toEqual([top, middle, bottom, top]);
+  project.undo();
+  expect(workspace.vectorSelected).toEqual([bottom]);
+  expect(project.shapes.size).toBe(3);
+});
+
+test('a double-click after a click again edits the points of the shape it picked', async () => {
+  const { workspace, middle, apart, ctx } = await stacked();
+  press(ctx, { x: 16, y: 16 });
+  apart();
+  press(ctx, { x: 16, y: 16 }); // the middle
+  press(ctx, { x: 16, y: 16 }); // at once: a double-click
+  expect(workspace.activeTool).toBe('vnode');
+  expect(workspace.vectorPoints).toBe(middle);
+  expect(workspace.vectorSelected).toEqual([middle]);
+});
+
+test('a drag after a click again moves the shape it picked', async () => {
+  const { project, workspace, top, middle, apart, ctx } = await stacked();
+  const [topBefore, middleBefore] = [project.shapes.get(top).m, project.shapes.get(middle).m];
+  press(ctx, { x: 16, y: 16 });
+  apart();
+  press(ctx, { x: 16, y: 16 });
+  apart();
+  press(ctx, { x: 16, y: 16 }, [{ x: 18, y: 16 }, { x: 20, y: 16 }]);
+  expect(workspace.vectorSelected).toEqual([middle]);
+  expect(project.shapes.get(middle).m[4]).toBeCloseTo(middleBefore[4] + 4);
+  expect(project.shapes.get(top).m).toEqual(topBefore);
+});
+
+test('a click elsewhere, inside the selected shape\'s box too, starts over from the top shape there', async () => {
+  const { workspace, bottom, middle, top, apart, ctx } = await stacked();
+  for (let i = 0; i < 3; i++) {
+    press(ctx, { x: 16, y: 16 });
+    apart();
+  }
+  expect(workspace.vectorSelected).toEqual([bottom]);
+  press(ctx, { x: 12, y: 13 }); // on the top one, in the bottom one's box
+  expect(workspace.vectorSelected).toEqual([top]);
+  apart();
+  press(ctx, { x: 12, y: 13 });
+  expect(workspace.vectorSelected).toEqual([middle]);
+  apart();
+  vselect.keydown(ctx, new KeyboardEvent('keydown', { key: 'Escape' }));
+  press(ctx, { x: 12, y: 13 }); // nothing selected: the top again
+  expect(workspace.vectorSelected).toEqual([top]);
+});
+
+test('a click on a shape already selected keeps the selection, with no undo step; on another inside the box, selects only that one', async () => {
+  const { project, workspace, bottom, middle, top, apart, ctx } = await stacked();
+  workspace.vectorSelected = [bottom, top]; // their box is the bottom one's
+  const version = project.history.version;
+  press(ctx, { x: 16, y: 16 }); // the top one, selected
+  expect(workspace.vectorSelected).toEqual([bottom, top]);
+  expect(project.history.version).toBe(version);
+  apart();
+  press(ctx, { x: 8, y: 8 }); // the middle one, not selected, inside the box
+  expect(workspace.vectorSelected).toEqual([middle]);
+  expect(project.history.version).toBe(version + 1);
+  apart();
+  press(ctx, { x: 3, y: 3 }); // where only the bottom one is
+  const after = project.history.version;
+  apart();
+  press(ctx, { x: 3, y: 3 }); // a click again there: the one shape there, still
+  expect(workspace.vectorSelected).toEqual([bottom]);
+  expect(project.history.version).toBe(after);
+});
+
+test('Shift-click still adds or takes away the top shape, wherever the clicks were', async () => {
+  const { workspace, middle, top, apart, ctx } = await stacked();
+  press(ctx, { x: 16, y: 16 });
+  apart();
+  press(ctx, { x: 16, y: 16 });
+  expect(workspace.vectorSelected).toEqual([middle]);
+  apart();
+  press(ctx, { x: 16, y: 16 }, [], { shiftKey: true });
+  expect(workspace.vectorSelected).toEqual([middle, top]);
+  apart();
+  press(ctx, { x: 16, y: 16 }, [], { shiftKey: true });
+  expect(workspace.vectorSelected).toEqual([middle]);
+});
+
+test('a click again reaches an art layer under a shape, a double-click then steps into it, and one someone else is in is selected but not moved', async () => {
+  const { project, workspace, top, apart, ctx } = await stacked(makeArt({ m: [1, 0, 0, 1, 12, 12], art: { cols: 4, rows: 4, cells: [[0, 'A', '#ff0000', null]] } }));
+  const [art] = project.shapes.keys(); // under the three
+  const order = [];
+  for (let i = 0; i < 4; i++) {
+    press(ctx, { x: 16, y: 16 });
+    order.push(...workspace.vectorSelected);
+    apart();
+  }
+  expect(order[0]).toBe(top);
+  expect(order[3]).toBe(art);
+  const m = project.shapes.get(art).m;
+  project._locks = { someone: { key: art, name: 'Ana' } };
+  press(ctx, { x: 16, y: 16 }, [{ x: 20, y: 16 }, { x: 24, y: 16 }]); // someone else is in it: refused
+  expect(workspace.vectorSelected).toEqual([art]);
+  expect(project.shapes.get(art).m).toEqual(m);
+  project._locks = {};
+  for (let i = 0; i < 4; i++) {
+    apart();
+    press(ctx, { x: 16, y: 16 });
+  }
+  expect(workspace.vectorSelected).toEqual([art]);
+  press(ctx, { x: 16, y: 16 }); // at once: a double-click on the art layer picked
+  expect(project._artInside?.key).toBe(art);
+  expect(workspace.editorTab).toBe('output');
 });
