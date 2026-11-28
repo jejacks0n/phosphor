@@ -22,13 +22,13 @@ Turning off Rulers hides the rulers and guides without deleting them.
 
 ## Adding and Moving Guides
 
-You can only move rulers and guides using the **Hand** tool, or by holding **Space** while using any other tool. This prevents accidental changes while painting or drawing.
+The rulers work with any tool: over them the pointer is theirs, with its own cursor, and the tool's outline doesn't show there or while you drag out of them, so a press on a ruler never paints the art. A guide that's already on the art moves only with the **Hand** tool, or by holding **Space** while using any other tool, so it doesn't catch a stroke you meant for the art.
 
 - **Create a horizontal guide**: Click and drag downward from the top ruler.
 - **Create a vertical guide**: Click and drag rightward from the left ruler.
-- **Move a guide**: Click and drag the guide line to a new position. While you drag, a label beside the pointer shows the guide's distance from zero.
-- **Delete a guide**: Drag the guide line back onto either ruler, or off the view, and release. The label says **Remove** before you let go.
-- **Move the zero origin**: Drag the triangle marker on either ruler (the pointer turns to a hand over it). With the Hand, drag the **⋯** in the top-left corner to move both rulers' origins together. While you drag, a label says where zero is (for example, "0 on column 21" or "0 between columns 14 and 15").
+- **Move a guide** (with the Hand, or Space held): Click and drag the guide line to a new position. While you drag, a label beside the pointer shows the guide's distance from zero.
+- **Delete a guide** (with the Hand, or Space held): Drag the guide line back onto either ruler, or off the view, and release. The label says **Remove** before you let go.
+- **Move the zero origin**: Drag the triangle marker on either ruler (the pointer turns to a hand over it). Drag the **⋯** in the top-left corner to move both rulers' origins together. While you drag, a label says where zero is (for example, "0 on column 21" or "0 between columns 14 and 15").
 - **Reset origin**: Double-click a ruler's triangle marker to reset that ruler's zero origin to the drawing's edge. **⋯ > Reset positions** in the top-left corner resets both origins to the top-left corner.
 
 Guides and origin markers automatically snap to character cell edges and cell centers.

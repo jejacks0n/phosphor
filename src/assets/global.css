@@ -471,6 +471,13 @@ main.tool-char div.edit-viewport.editing div.canvas-container {
   cursor: none !important; /* a custom character highlight is used to indicate position */
 }
 
+/* A guide or zero dragged out of the rulers, whatever the tool (EditorViewport's ruler-drag): a closed hand, as the
+   tool's outline is off meanwhile. After the rules above, which it outweighs or matches. */
+div.edit-viewport.editing article.ruler-drag,
+div.edit-viewport.editing article.ruler-drag div.canvas-container {
+  cursor: grabbing !important;
+}
+
 /* Mobile overrides to make certain interface elements friendlier
  ----------------------------------------------------------------------------*/
 @media (max-width: 768px) {

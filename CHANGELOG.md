@@ -31,14 +31,20 @@ under Unreleased.
 ### Changed
 
 - The rulers' corner is a **⋯** menu, with any tool: **Reset positions** puts both zeros back (a double-click on the
-  corner did) and **Mirror mode** turns mirror mode on and off. With the Hand, a drag from the corner still moves both.
-- A ruler's zero triangle shows a hand under the pointer with the Hand tool, so it reads as something to drag.
+  corner did) and **Mirror mode** turns mirror mode on and off. A drag from the corner still moves both.
+- A ruler's zero triangle shows a hand under the pointer, so it reads as something to drag.
+- The rulers work with any tool: a guide drags out of a ruler, and zero moves by its triangle or the corner, without
+  picking the Hand or holding Space. A guide already on the art still moves only with the Hand (or Space held), so it
+  doesn't catch a stroke.
 - The arrow keys move a selection past the canvas's edge, as dragging it does, so **Select all** and an arrow key move a
   whole layer a cell. A cell of the block always stays on the canvas, and what's past the edge comes back while it floats.
 - The browser tab's icon is an SVG, so it's sharp at any size.
 
 ### Fixed
 
+- With the Brush or the Eraser picked, the pointer over the rulers was hidden and the tool's outline lay across them,
+  and a press on a ruler drew or erased the art the outline reached. Over the rulers the pointer is now theirs, and the
+  tool shows nothing there or while a guide or zero is dragged out of them.
 - On a phone, the rulers could end up off to the side of the art after the settings drawer shut.
 - The Brush's **Opacity** and **Build up** no longer carry over into the Pencil, Shapes, the Paint Bucket and the
   Gradient: with the Brush at 50%, a filled circle came out half see-through. They paint at full opacity.

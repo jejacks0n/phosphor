@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref, useTemplateRef, watchEffect } from 'vue';
+import { computed, ref, useTemplateRef, watch, watchEffect } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEventListener, useMutationObserver, useResizeObserver } from '@vueuse/core';
 import { useProjectStore } from '@/store/ProjectStore';
@@ -13,9 +13,10 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The character rulers along the view's top and left, and the guides across it, over the view (box) whatever
 // it's scrolled to. They count characters on every view; zero and the guides are in characters from the top
-// left (whole: an edge, half: a middle). Only the Hand grabs them: out of a ruler comes a guide, a guide let go
-// on a ruler or off the view goes, the pink triangle moves that ruler's zero and the corner both. Nothing here
-// changes the store until a drag is let go. The corner is a ⋯ menu too, with any tool: Reset positions and Mirror mode.
+// left (whole: an edge, half: a middle). The rulers take the pointer with any tool: out of a ruler comes a guide, the
+// pink triangle moves that ruler's zero and the corner both. A guide lying over the art is grabbed only with the Hand,
+// so it doesn't catch a stroke; one let go on a ruler or off the view goes. Nothing here changes the store until a
+// drag is let go. The corner is a ⋯ menu too: Reset positions and Mirror mode.
 const props = defineProps({
   box: { type: Object, required: true },        // the view's client box, fixed (EditorViewport's overArt)
   root: { type: Object, default: null },        // the scrolling element
@@ -24,6 +25,7 @@ const props = defineProps({
   coordsAt: { type: Function, required: true }, // (event) => { x, y } in fractional grid pixels, or null
   hover: { type: Object, default: null },       // { col, row }: the character under the pointer, or null
 });
+const emit = defineEmits(['drag']);   // (true | false): a drag out of a ruler, the corner or a guide is under way
 const project = useProjectStore();
 const workspace = useWorkspaceStore();
 const { t } = useI18n();
@@ -50,6 +52,7 @@ const cellsOf = (axis) => (axis === 'x' || axis === 'v' ? cols.value : rows.valu
 // { kind: 'zero', axis: 'x' | 'y', offset, zero } or { kind: 'corner', zero }, with the pointer at client and
 // zero as it showed when the press began (shown).
 const drag = ref(null);
+watch(() => !!drag.value, (on) => emit('drag', on));   // the view's tool shows nothing meanwhile
 
 // Zero as drawn and counted: a zero being dragged where it is, and past the drawing's edge at the edge.
 const zero = computed(() => {
@@ -146,7 +149,9 @@ const mirrorKey = keyLabel(commandById('edit.mirror').keys);
 // The press is kept from the view, so the view's focus is taken here, as a press on it would: a toolbar field
 // (the Rulers checkbox) kept would swallow the tool keys.
 function start(event, d) {
-  if (event.button) return;
+  if (event.button) return;   // the middle button goes on to the view, which pans, as over the art
+  event.stopPropagation();
+  event.preventDefault();
   props.root?.focus({ preventScroll: true });
   drag.value = { ...d, client: null, shown: { ...zero.value }, pointer: event.pointerId };
 }
@@ -267,15 +272,15 @@ watchEffect(() => {
         :hidden="g.pos === null"
         :style="g.style"
         :title="t('rulers.guideTitle')"
-        @pointerdown.stop.prevent="pressGuide(g, $event)"
+        @pointerdown="pressGuide(g, $event)"
         @mousedown.stop
         @touchstart.stop
     ></div>
     <div v-for="line in zeroLines" :key="line.axis" class="ruler-zero" :class="line.axis" :style="line.style"></div>
-    <canvas ref="top" class="ruler top" :class="{ grab: grab('x'), grabbing: grabbing('x') }" @pointermove="hoverRuler('x', $event)" @pointerleave="overRuler = null" @pointerdown.stop.prevent="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
-    <canvas ref="left" class="ruler left" :class="{ grab: grab('y'), grabbing: grabbing('y') }" @pointermove="hoverRuler('y', $event)" @pointerleave="overRuler = null" @pointerdown.stop.prevent="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
+    <canvas ref="top" class="ruler top" :class="{ grab: grab('x'), grabbing: grabbing('x') }" @pointermove="hoverRuler('x', $event)" @pointerleave="overRuler = null" @pointerdown="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
+    <canvas ref="left" class="ruler left" :class="{ grab: grab('y'), grabbing: grabbing('y') }" @pointermove="hoverRuler('y', $event)" @pointerleave="overRuler = null" @pointerdown="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
     <!-- A drag from it ends off it, so only a click opens the menu. -->
-    <div class="ruler-corner" @pointerdown.stop.prevent="isHand && start($event, { kind: 'corner', zero: null })" @mousedown.stop @touchstart.stop>
+    <div class="ruler-corner" @pointerdown="start($event, { kind: 'corner', zero: null })" @mousedown.stop @touchstart.stop>
       <DropdownMenu align="left" :label="t('rulers.cornerTitle')">
         <template #trigger><span v-html="MORE_ICON"></span></template>
         <button :disabled="!workspace.rulerZero.x && !workspace.rulerZero.y" @click="workspace.resetRulerZero()">{{ t('rulers.resetZero') }}</button>
@@ -308,8 +313,8 @@ canvas.ruler, div.ruler-corner, div.guide {
   display: block;
   touch-action: none;
 }
-div.guide-rulers.hand :is(canvas.ruler, div.ruler-corner, div.guide) {
-  pointer-events: auto;
+canvas.ruler, div.guide-rulers.hand div.guide {
+  pointer-events: auto;   /* a guide only with the Hand: over the art it would catch a stroke */
 }
 div.guide[hidden] {
   display: none;
@@ -344,7 +349,7 @@ div.ruler-corner {
   background: var(--surface-1);
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
-  pointer-events: auto;   /* its menu, with any tool */
+  pointer-events: auto;
 }
 div.ruler-corner :deep(article.dropdown) {
   display: block;
