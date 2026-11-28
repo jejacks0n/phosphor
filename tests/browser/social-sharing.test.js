@@ -119,6 +119,23 @@ test('R16: an artist\'s Shade stroke goes out as its cells, characters of their 
   expect(out[0].runs).toEqual([]); // no paint
 });
 
+test('R17: an artist\'s Ink only stroke goes out as its cells, recolored', async () => {
+  const { project, workspace, sent } = await drawing('artist');
+  await settle(project);
+  project.writeEditCells([1, 2].map((col) => ({ col, row: 3, attrs: { char: 'A', fg: '#ffffff', bg: '#0000aa' } })));
+  project.commitEdit();
+  sent.length = 0;
+  Object.assign(workspace, { editorTab: 'output', pencilDrawWith: 'ink', editFgColor: '#ff0000', editFgNone: false });
+  const ctx = { project, workspace, view: 'output' }, at = (col) => ({ x: col + 0.5, y: 2 * 3 + 0.5 });
+  pencil.begin(ctx, at(1), {});
+  pencil.move(ctx, at(1), at(3));
+  pencil.end(ctx);
+  const out = changes(sent);
+  expect(out).toHaveLength(1);
+  expect(out[0].cells.map(([key, entry]) => [key, entry.char, entry.fg, entry.bg])).toEqual([['1,3', 'A', '#ff0000', '#0000aa'], ['2,3', 'A', '#ff0000', '#0000aa']]);
+  expect(out[0].runs).toEqual([]); // no paint
+});
+
 test('slices go out every 100 ms while an edit is open', async () => {
   const { project, sent } = await drawing('artist');
   project.editCell(1, 1, { char: 'A' });

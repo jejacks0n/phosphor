@@ -335,28 +335,37 @@ export const selectionActions = {
     this.ensureLayer();
     this.beginEdit();
     if (view === 'output') {
-      const colors = { ...(fg && { fg, fgIndex }), ...(bg && { bg, bgIndex }) }, ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
-      const layered = ids.filter((id) => !isBase(this, id)), base = ids.find((id) => isBase(this, id));
-      const owns = (id, { x, y }) => this.cellsOf(id).has(cellKey(x, y)) || painted(this.paintOf(id), x, y);
-      const byLayer = new Map();
-      for (const unit of units) {
-        const id = layered.findLast((each) => owns(each, unit)) ?? base ?? layered.at(-1);
-        if (id) (byLayer.get(id) ?? byLayer.set(id, []).get(id)).push(unit);
-      }
-      eachLayer(this, ids.filter((id) => byLayer.has(id)), (id) => {
-        const mine = byLayer.get(id);
-        if (!isBase(this, id)) return this.writeEditCells(mine.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } })), { clearPaint: true });
-        this.writeBaseCells((ascii && !fg ? [] : mine).map(({ x, y }) => {
-          const look = this.completeAt(x, y, undefined, 'base');
-          return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: ascii ? fg : bg ?? look.bg, fgIndex: fg ? fgIndex : look.fgIndex, bgIndex: ascii ? fgIndex : bg ? bgIndex : look.bgIndex };
-        }));
-      });
+      this.recolorCells(units, ids, { fg, bg, fgIndex, bgIndex });
     } else if (fg) {
       eachLayer(this, ids, (id) => (isBase(this, id)
         ? this.writeBase(units.map(({ x, y }) => ({ x, y, hex: fg })))
         : this.paintEditPixels(units.map(({ x, y }) => ({ x, y, ...hex2rgb(fg), alpha: 1 })))));
     }
     this.commitEdit();
+  },
+
+  // Set FG's and Set BG's write in the ANSI view (recolorSelection's), and Ink only's along a stroke (inkCells), inside
+  // the open edit: each cell of units ({ x: col, y: row }) on the topmost of the layers (ids) with an edit cell or paint of
+  // its own there, else the base (else the topmost layer), as recolorSelection says. keepShownBg (Ink only's, R17): on the
+  // base in Color ASCII a pin that shows a background (R8: its two pixels differ) keeps it, only its lower pixel recolored.
+  recolorCells(units, ids, { fg, bg, fgIndex, bgIndex }, { keepShownBg = false } = {}) {
+    const colors = { ...(fg && { fg, fgIndex }), ...(bg && { bg, bgIndex }) }, ascii = this.renderStyle === 'ascii' || this.renderStyle === 'colorAscii';
+    const layered = ids.filter((id) => !isBase(this, id)), base = ids.find((id) => isBase(this, id));
+    const owns = (id, { x, y }) => this.cellsOf(id).has(cellKey(x, y)) || painted(this.paintOf(id), x, y);
+    const byLayer = new Map();
+    for (const unit of units) {
+      const id = layered.findLast((each) => owns(each, unit)) ?? base ?? layered.at(-1);
+      if (id) (byLayer.get(id) ?? byLayer.set(id, []).get(id)).push(unit);
+    }
+    eachLayer(this, ids.filter((id) => byLayer.has(id)), (id) => {
+      const mine = byLayer.get(id);
+      if (!isBase(this, id)) return this.writeEditCells(mine.map(({ x, y }) => ({ col: x, row: y, attrs: { ...shownLook(this, x, y), ...colors } })), { clearPaint: true });
+      this.writeBaseCells((ascii && !fg ? [] : mine).map(({ x, y }) => {
+        const look = this.completeAt(x, y, undefined, 'base');
+        const both = ascii && !(keepShownBg && this.renderer.pinAt(x, y) !== undefined && look.bg?.toLowerCase() !== look.fg?.toLowerCase());
+        return { col: x, row: y, char: look.char, fg: fg ?? look.fg, bg: both ? fg : bg ?? look.bg, fgIndex: fg ? fgIndex : look.fgIndex, bgIndex: both ? fgIndex : bg ? bgIndex : look.bgIndex };
+      }));
+    });
   },
 
   // Lift, clear the source, drop dc/dr away (copied first, so an overlapping move keeps everything),

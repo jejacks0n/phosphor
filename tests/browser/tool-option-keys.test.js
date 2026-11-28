@@ -90,6 +90,8 @@ test('D with the Pencil in ANSI steps Draw with to Single, Shift+D back, wrappin
   pressCommand('tool.drawWithPrev'); // wraps to the last
   expect(workspace.pencilDrawWith).toBe('shade');
   pressCommand('tool.drawWithPrev');
+  expect(workspace.pencilDrawWith).toBe('ink');
+  pressCommand('tool.drawWithPrev');
   expect(workspace.pencilDrawWith).toBe('half');
   // Shapes' Draw with hides the line styles for an Ellipse: from Character on, past them to Half-block.
   workspace.setActiveTool('shapes');

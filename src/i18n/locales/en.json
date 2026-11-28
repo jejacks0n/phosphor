@@ -701,6 +701,7 @@
       "fullBlock": "Full-block",
       "character": "Character",
       "cells": "Cells",
+      "ink": "Ink only",
       "shade": "Shade",
       "shadeWay": "Shade",
       "darker": "Darker",

@@ -14,6 +14,9 @@ under Unreleased.
   turned as Flip turns them: left to right down the middle (or at the top ruler's zero), and top to bottom too once the
   left ruler's zero is moved. **Alt+M** (**Option+M** on a Mac) turns it on and off, as do **Mirror mode** in the
   **⋯** menu where the rulers meet and **Mirror drawing** on the Hand's row. It's off each time the app loads.
+- **Ink only**, a **Draw with** choice for the Pencil and the Brush in the ANSI view, in ANSI and Color ASCII: it
+  recolors the characters a stroke crosses in the foreground color, as **Set FG** recolors a selection, and leaves their
+  backgrounds and every cell with no character alone. On the base the recolored characters are pinned.
 - **Shade**, a **Draw with** choice for the Pencil and the Brush in the ANSI view: each pass steps the cells it crosses
   one shade further in the foreground color, `░` `▒` `▓` `█`, and **Lighter** (or holding Cmd, Ctrl on Windows and
   Linux) steps them back to a space. One step a cell a stroke, written as typed characters, in every art style.
