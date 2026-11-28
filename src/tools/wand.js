@@ -2,10 +2,11 @@
 // (its FG, BG and/or character: workspace.wandMatch) or a grid pixel in the pixel view (its color),
 // connected to it (Contiguous) or anywhere; Shift-click adds to the selection. Colors match within the
 // Tolerance, characters exactly. A Select rectangle, when there is one, keeps the wand inside it (in
-// the pixel view, its cells' pixels), and the wand's selection takes its place. The selection (workspace.wand), made in
-// either view, shows in both, and both views' painting tools keep to it (selectionClip).
+// the pixel view, its cells' pixels), and the wand's selection takes its place. The selection (workspace.selection, its
+// mask: selectionMask.js), made in either view, shows in both, and both views' painting tools keep to it (selectionClip).
 import { markRaw } from 'vue';
 import { selectMatching, wandIn } from '@/lib/MagicWand';
+import { masked } from '@/lib/selectionMask';
 import { colorDistance } from '@/lib/FloodFill';
 import { charRowsOf } from '@/lib/Cells';
 import { t } from '@/i18n/index.js';
@@ -56,9 +57,10 @@ export default {
     if (!m) return false;
     const start = { x: Math.floor(pos.x), y: view === 'input' ? Math.floor(pos.y) : Math.floor(pos.y / 2) };
     if (start.x < 0 || start.y < 0 || start.x >= m.width || start.y >= m.height) return false;
-    const adding = event?.shiftKey && workspace.wand ? wandIn(workspace.wand, view, project.rows) : null;
+    const sel = workspace.selection;
+    const adding = event?.shiftKey && sel?.mask ? wandIn(sel.mask, view, project.rows) : null;
     // The rectangle it searches inside: the Select tool's, or the one the selection Shift adds to began in.
-    const within = workspace.selection ?? adding?.within ?? null;
+    const within = (sel && !sel.mask ? { c0: sel.c0, r0: sel.r0, c1: sel.c1, r1: sel.r1 } : null) ?? adding?.within ?? null;
     const allowed = within && ((i) => {
       const x = i % m.width, y = (i - x) / m.width, row = view === 'input' ? Math.floor(y / 2) : y;
       return x >= within.c0 && x <= within.c1 && row >= within.r0 && row <= within.r1;
@@ -67,10 +69,7 @@ export default {
     if (allowed && !allowed(seed)) return false; // outside the rectangle: the rectangle stays
     const mask = selectMatching({ width: m.width, height: m.height, start, same: m.same(seed), contiguous: workspace.wandContiguous, allowed });
     if (adding) for (let i = 0; i < mask.length; i++) mask[i] |= adding.mask[i];
-    project.changeSelection((w) => {
-      w.selection = null;
-      w.wand = markRaw({ view, width: m.width, height: m.height, mask, within });
-    });
+    project.changeSelection((w) => { w.selection = masked(markRaw({ view, width: m.width, height: m.height, mask, within })); });
     return false;
   },
 };

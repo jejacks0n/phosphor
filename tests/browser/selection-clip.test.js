@@ -10,6 +10,7 @@ import flip from '@/tools/flip';
 import bucket from '@/tools/bucket';
 import select from '@/tools/select';
 import { markRaw } from 'vue';
+import { masked } from '@/lib/selectionMask';
 
 const SEL = { c0: 5, r0: 5, c1: 9, r1: 7 };
 
@@ -140,14 +141,14 @@ test('a wand selection keeps the Brush to its cells, and a new rectangle replace
   const { project, workspace, use, painted } = await scene();
   const mask = new Uint8Array(project.cols * Math.ceil(project.rows / 2));
   mask[6 * project.cols + 5] = mask[6 * project.cols + 7] = 1; // cells 5 and 7 of row 6, not 6
-  workspace.wand = markRaw({ view: 'output', width: project.cols, height: Math.ceil(project.rows / 2), mask });
+  workspace.selection = masked(markRaw({ view: 'output', width: project.cols, height: Math.ceil(project.rows / 2), mask }));
   workspace.setActiveTool('brush');
-  expect(workspace.wand).not.toBe(null);
+  expect(workspace.selection?.mask).toBeTruthy();
   use(brush, ROW6);
   expect(painted(6)).toEqual([5, 7]);
   workspace.setActiveTool('select');
   use(select, [{ x: 20.5, y: 20.5 }, { x: 24.5, y: 24.5 }]);
-  expect(workspace.wand).toBe(null);
+  expect(workspace.selection.mask).toBeUndefined(); // a plain rectangle now
 });
 
 test('a wand selection in the pixel view keeps the Pencil and Eraser to its pixels', async () => {
@@ -155,7 +156,7 @@ test('a wand selection in the pixel view keeps the Pencil and Eraser to its pixe
   workspace.editorTab = 'input';
   const mask = new Uint8Array(project.cols * project.rows);
   mask[12 * project.cols + 5] = mask[12 * project.cols + 7] = 1;
-  workspace.wand = markRaw({ view: 'input', width: project.cols, height: project.rows, mask });
+  workspace.selection = masked(markRaw({ view: 'input', width: project.cols, height: project.rows, mask }));
   const ctx = { project, workspace, view: 'input' };
   const stroke = (tool) => { tool.begin(ctx, { x: 2.5, y: 12.5 }, {}); tool.move(ctx, { x: 2.5, y: 12.5 }, { x: 14.5, y: 12.5 }); tool.end(ctx); };
   stroke(pencil);
@@ -170,7 +171,7 @@ test("a wand selection made in the ANSI view limits the pixel view's tools: both
   const { project, workspace } = await scene();
   const mask = new Uint8Array(project.cols * Math.ceil(project.rows / 2));
   mask[6 * project.cols + 5] = 1;
-  workspace.wand = markRaw({ view: 'output', width: project.cols, height: Math.ceil(project.rows / 2), mask });
+  workspace.selection = masked(markRaw({ view: 'output', width: project.cols, height: Math.ceil(project.rows / 2), mask }));
   workspace.editorTab = 'input';
   const ctx = { project, workspace, view: 'input' };
   for (const y of [12.5, 13.5]) { pencil.begin(ctx, { x: 2.5, y }, {}); pencil.move(ctx, { x: 2.5, y }, { x: 14.5, y }); pencil.end(ctx); }

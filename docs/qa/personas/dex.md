@@ -237,12 +237,15 @@ with Connect, shade with the Brush at a few sizes and Lighter picked in the opti
 - Rated: yes, wants S
 
 ### 14. Select every cell of a color
-- Does: presses W, sets Match to FG only, clicks a cell, Shift-clicks another color, then presses Delete; Escape.
+- Does: presses W, sets Match to FG only, clicks a cell, Shift-clicks another color, then presses Delete; undoes the
+  Delete, presses M and drags one of the selected cells three cells right, then Enter; Escape.
 - Expects: the wand selects what matches (Contiguous on: only what touches), tinted while the wand is the tool;
   Shift-click adds; Delete takes away what's in it on the picked layer (All layers, at the end of the wand's row once
   it has selected, is off; on, on every layer that shows), one undo step; Escape drops it. Right after a tap on All
   layers or Contiguous, Delete and Escape work the same: the checkbox keeps only Space and Enter. A second click on the
-  same cell selects the same cells and adds no undo step.
+  same cell selects the same cells and adds no undo step. With the Select tool the wand's selection keeps its dashed
+  outline, and the drag moves only its cells: the cells between them in its rectangle stay where they are, and what
+  they're dragged over shows between them while it floats.
 - Probes: `out-of-order`: press Delete with nothing selected; `again`: click the same cell twice; `undo-redo`: undo the
   delete and the selections.
 - Rated: yes, wants W, then a key for Match

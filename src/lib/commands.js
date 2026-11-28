@@ -506,7 +506,7 @@ export const COMMANDS = [
   // The layers': LAYERS' ⋯ menu's on the picked row, and the selection's Make art layer.
   { id: 'layer.makeArt', group: 'layers', label: said('art.make'), where: (ctx) => art(ctx) && ART.includes(ctx.view),
     available: ({ project, workspace }) => ok(artLayerOff(project)
-      ?? (workspace.selection || (workspace.activeTool === 'wand' && workspace.wand) ? null : ['toolbar.selection.selectFirstTitle', { action: t('art.make') }])
+      ?? (workspace.selection ? null : ['toolbar.selection.selectFirstTitle', { action: t('art.make') }])
       ?? artLayerEmpty(project, workspace)),
     run: ({ project }) => project.makeArtLayer() },
   { id: 'layer.rename', group: 'layers', label: layerWords('layers.rename'), where: onPick, available: () => ok(pausedOff(useDrawingStore())),

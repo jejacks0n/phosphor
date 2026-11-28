@@ -29,6 +29,7 @@ import { isCharPin, withPins, withoutPins } from '@/document/baseRecords.js';
 import { turnChar } from '@/lib/TurnChars.js';
 import { toRaw } from 'vue';
 import { unitsOf, wandIn } from '@/lib/MagicWand.js';
+import { cellBits, landedAt, sameSelection, selectedCells } from '@/lib/selectionMask.js';
 
 // A float's moves take the last one back at once, which an artist can only do while it hasn't gone out
 // (sharing.js): those are held. floated marks what's in a float's move; canTakeBack says the run can go on
@@ -43,10 +44,6 @@ const floated = (action) => function (...args) {
 };
 const canTakeBack = (project, run, steps = run.recorded) => !steps || project._sharing?.role !== 'artist' || !!project._sharing.held;
 const sameIds = (a, b) => a.length === b.length && a.every((id, i) => id === b[i]);
-// Two selections alike: a Select rectangle, or a Magic Wand's (its view, size, mask and the rectangle it kept to).
-const sameRect = (a, b) => a === b || (!!a && !!b && a.c0 === b.c0 && a.r0 === b.r0 && a.c1 === b.c1 && a.r1 === b.r1);
-const sameWand = (a, b) => a === b || (!!a && !!b && a.view === b.view && a.width === b.width && a.height === b.height
-  && sameRect(a.within, b.within) && a.mask.length === b.mask.length && a.mask.every((bit, i) => bit === b.mask[i]));
 
 // Whether id is the base itself: inside an art layer the one id there is (layersFor) is its drawing's, whatever's in use.
 const isBase = (project, id) => id === 'base' && !project._artInside;
@@ -62,27 +59,33 @@ function eachLayer(project, ids, fn) {
 
 export const selectionActions = {
   // shapes: the cells shapes on shown vector layers show in rect come too, as shown (a move's block leaves them, and so
-  // do a Copy and a Stamp without All layers).
+  // do a Copy and a Stamp without All layers). A selection with a mask (selectionMask.js) copies only its cells: the
+  // block's mask marks them, and the rest of its rectangle holds nothing (see-through where it lands, and the base's
+  // part lands only in the mask: pasteOnBase, asCells).
   copySelection(rect, ids, { shapes = true } = {}) {
     this.ensureLayer();
     const block = { w: rect.c1 - rect.c0 + 1, h: rect.r1 - rect.r0 + 1, parts: [] };
-    const cells = rectCells(rect);
+    const cells = rectCells(rect), bits = cellBits(rect);
+    const inside = bits ? (list) => list.map((v, i) => (bits[i] ? v : null)) : (list) => list;
     for (const id of ids) {
       if (isBase(this, id)) {
         block.base = {
           pixels: this.basePixelsOf(rect), scale: this.baseLayer.scale, colors: this.baseColorsOf(rect),
-          pins: cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null),
-          indexes: cells.map(({ col, row }) => this.baseRecords.indexes.get(cellKey(col, row))),
-          ...(this.baseRecords.chars.size && { chars: cells.map(({ col, row }) => isCharPin(this.baseRecords, cellKey(col, row)) || null) }),
+          pins: inside(cells.map(({ col, row }) => this.baseRecords.pins.get(cellKey(col, row)) ?? null)),
+          indexes: inside(cells.map(({ col, row }) => this.baseRecords.indexes.get(cellKey(col, row)))).map((kept) => kept ?? undefined),
+          ...(this.baseRecords.chars.size && { chars: inside(cells.map(({ col, row }) => isCharPin(this.baseRecords, cellKey(col, row)) || null)) }),
         };
         block.looks = cells.map(({ col, row }) => this.completeAt(col, row, undefined, 'base'));
         continue;
       }
       const own = this.cellsOf(id), paint = this.paintOf(id);
-      block.parts.push({ id, cells: cells.map(({ col, row }) => own.get(cellKey(col, row)) ?? null), ...(paint && { paint: paint.copyCells(rect) }) });
+      const copied = paint?.copyCells(rect);
+      if (copied && bits) cutCells(copied, bits, block.w, block.h, 'destination-in');
+      block.parts.push({ id, cells: inside(cells.map(({ col, row }) => own.get(cellKey(col, row)) ?? null)), ...(copied && { paint: copied }) });
     }
     const shown = shapes && !this._artInside && shownByShapes(this, cells);
-    if (shown) Object.assign(block, { shown, shownAt: block.parts.length });
+    if (shown && (!bits || inside(shown).some(Boolean))) Object.assign(block, { shown: inside(shown), shownAt: block.parts.length });
+    if (bits) block.mask = bits;
     return block;
   },
 
@@ -160,7 +163,7 @@ export const selectionActions = {
     }
     this.ensureLayer();
     const to = this.editId;
-    const rectAt = (c, r) => this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+    const rectAt = (c, r) => landedAt(block.w, block.h, block.mask ?? null, c, r, this.cols, this.rows); // a masked block's selection is its cells
     const landed = rectAt(col, row);
     if (!landed) {
       this._float = null;
@@ -249,7 +252,7 @@ export const selectionActions = {
     const row = Math.max(0, Math.min(rect.r0, charRowsOf(this.rows) - block.h));
     const place = (dc, dr) => {
       const c = col + dc, r = row + dr;
-      const landed = this.clipRect({ c0: c, r0: r, c1: c + block.w - 1, r1: r + block.h - 1 });
+      const landed = landedAt(block.w, block.h, block.mask ?? null, c, r, this.cols, this.rows);
       this.selectionEdit([lifted, under?.rect, landed].filter(Boolean), () => {
         if (lifted) moveParts(this, block, liftedLayers, lifted, c, r);
         else this.onLayer(to, () => {
@@ -281,7 +284,7 @@ export const selectionActions = {
         || !!base?.pins.some((pin, i) => pin && (pin !== '▄' || base.chars?.[i])) || !!shown?.some(Boolean);
     }
     ids = this.layersFor(ids);
-    return rectCells(rect).some(({ col, row }) => ids.some((id) => {
+    return (rect.mask ? selectedCells(rect) : rectCells(rect)).some(({ col, row }) => ids.some((id) => {
       const key = cellKey(col, row);
       if (isBase(this, id)) return ((pin) => !!pin && (pin !== '▄' || isCharPin(this.baseRecords, key)))(this.baseRecords.pins.get(key));
       const entry = this.cellsOf(id).get(key);
@@ -289,7 +292,7 @@ export const selectionActions = {
     }));
   },
 
-  // Delete in the Magic Wand's selection (workspace.wand), in `view` (the ANSI view's cells or the
+  // Delete in a selection's mask (workspace.selection.mask, the Magic Wand's), in `view` (the ANSI view's cells or the
   // pixel view's grid pixels), on each of the layers, as the Eraser does: a cells layer's drawing goes
   // (in the pixel view, a ▄ there only to show paint (Half-block) goes with the last of its paint); the
   // base turns black (in the ANSI view whole cells, with a pinned space). One undo step.
@@ -314,7 +317,7 @@ export const selectionActions = {
     this.commitEdit();
   },
 
-  // Recolor what's selected (made: the wand's selection or a Select rect), on the layers, one undo
+  // Recolor what's selected (made: the selection, a mask's units or a rectangle's), on the layers, one undo
   // step. In the ANSI view, colors { fg?, bg? } change that color of what every cell shows, its
   // character and other color kept, each cell on the topmost of the layers with an edit cell or paint
   // of its own there, else the base (else the topmost layer): on a cells layer, as an edit cell (the
@@ -326,7 +329,7 @@ export const selectionActions = {
     ids = this.layersFor(ids);
     let units;
     if (made.mask) {
-      const wand = wandIn(made, view, this.rows);
+      const wand = wandIn(made.mask, view, this.rows);
       units = unitsOf(wand.mask, wand.width);
     } else {
       const cells = rectCells(made);
@@ -375,7 +378,7 @@ export const selectionActions = {
     ids = this.layersFor(ids);
     block ||= this.copySelection(rect, ids, { shapes: false });
     const col = rect.c0 + dc, row = rect.r0 + dr;
-    const landed = this.clipRect({ c0: col, r0: row, c1: rect.c1 + dc, r1: rect.r1 + dr });
+    const landed = landedAt(block.w, block.h, block.mask ?? null, col, row, this.cols, this.rows);
     this.selectionEdit(landed ? [rect, landed] : [rect], () => moveParts(this, block, ids, rect, col, row));
     return landed;
   },
@@ -409,7 +412,7 @@ export const selectionActions = {
   },
 
   // A selection made, changed or dropped (the Select tool's rectangle, the Magic Wand's, Deselect):
-  // change(workspace) sets workspace.selection and/or .wand, and it's one undo step that isn't a
+  // change(workspace) sets workspace.selection, and it's one undo step that isn't a
   // change to the document (nothing when the selection stays as it was, or is made again alike). before: the selection to go
   // back to, when it changed already (a drag). A move or paste a new selection ends is kept with it
   // (undo); one that's dropped (Deselect, Escape, Enter, a tap outside) just sets the block down, no
@@ -417,16 +420,16 @@ export const selectionActions = {
   changeSelection(change, before = null) {
     const workspace = useWorkspaceStore();
     this.commitPending();
-    before ??= { selection: workspace.selection, wand: workspace.wand, vectorSelected: workspace.vectorSelected };
+    before ??= { selection: workspace.selection, vectorSelected: workspace.vectorSelected };
     before.vectorSelected ??= workspace.vectorSelected;
     const float = this._float?.version === this.history.version ? this._float : null;
     change?.(workspace);
-    const after = { selection: workspace.selection, wand: workspace.wand, vectorSelected: workspace.vectorSelected };
+    const after = { selection: workspace.selection, vectorSelected: workspace.vectorSelected };
     const sameShapes = sameIds(after.vectorSelected, before.vectorSelected);
-    if (sameRect(toRaw(after.selection), toRaw(before.selection)) && sameWand(toRaw(after.wand), toRaw(before.wand)) && sameShapes) return; // the same selection again: no step
-    if (float && !after.selection && !after.wand && sameShapes) return void (this._float = null);
+    if (sameSelection(toRaw(after.selection), toRaw(before.selection)) && sameShapes) return; // the same selection again: no step
+    if (float && !after.selection && sameShapes) return void (this._float = null);
     const apply = (side) => Object.assign(workspace, side);
-    this.history.push({ undo: () => apply(before), redo: () => apply(after), selectionOnly: true, float, bytes: after.wand?.mask.length ?? 0 });
+    this.history.push({ undo: () => apply(before), redo: () => apply(after), selectionOnly: true, float, bytes: after.selection?.mask?.mask.length ?? 0 });
     this.historyVersion = this.history.version;
   },
 
@@ -469,12 +472,34 @@ function shownLook(project, col, row) {
 // Whether a paint layer has paint in cell (col, row).
 const painted = (paint, col, row) => !!(paint?.pixelAt(col, 2 * row) || paint?.pixelAt(col, 2 * row + 1));
 
-// rect cleared on one layer, inside the open edit (a cells layer's data in the edit layer's fields): a cells layer's
-// cells and paint go; the base turns black, with pinned spaces.
+// rect (a selection: its mask's cells, when it has one) cleared on one layer, inside the open edit (a cells layer's data
+// in the edit layer's fields): a cells layer's cells and paint go; the base turns black, with pinned spaces.
 function deleteOn(project, id, rect) {
-  if (isBase(project, id)) return project.eraseBase(rectCells(rect));
-  project.editCells = withoutCells(project.editCells, rectCells(rect));
-  project.paintLayer.eraseCells(rect);
+  const cells = rect.mask ? selectedCells(rect) : rectCells(rect);
+  if (isBase(project, id)) return project.eraseBase(cells);
+  project.editCells = withoutCells(project.editCells, cells);
+  if (!rect.mask) return project.paintLayer.eraseCells(rect);
+  if (!project.paintLayer.hasPaintIn(rect)) return;
+  const w = rect.c1 - rect.c0 + 1, h = rect.r1 - rect.r0 + 1, kept = project.paintLayer.copyCells(rect);
+  cutCells(kept, cellBits(rect), w, h, 'destination-out');
+  project.paintLayer.pasteCells(kept, rect.c0, rect.r0, w, h);
+}
+
+// A w x h cells block's picture (canvas) kept only in the cells bits marks ('destination-in') or only outside them
+// ('destination-out'), in place.
+function cutCells(canvas, bits, w, h, op) {
+  const marks = document.createElement('canvas');
+  marks.width = w;
+  marks.height = h;
+  const mctx = ctx2d(marks), image = mctx.createImageData(w, h);
+  bits.forEach((bit, i) => { if (bit) image.data[4 * i + 3] = 255; });
+  mctx.putImageData(image, 0, 0);
+  const ctx = ctx2d(canvas);
+  ctx.save();
+  ctx.globalCompositeOperation = op;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(marks, 0, 0, canvas.width, canvas.height);
+  ctx.restore();
 }
 
 // A move's (or a flip's) block landing at (col, row), rect lifted: on each of the layers, rect cleared and that layer's
@@ -484,7 +509,7 @@ function moveParts(project, block, ids, rect, col, row) {
   eachLayer(project, ids, (id) => {
     deleteOn(project, id, rect);
     if (isBase(project, id)) {
-      if (block.base) pasteOnBase(project, block.px % 2 ? withHalfRowUnder(project, { w: block.w, h: block.h, px: block.px, base: block.base }, col, row) : block, col, row);
+      if (block.base) pasteOnBase(project, block.px % 2 ? withHalfRowUnder(project, { w: block.w, h: block.h, px: block.px, base: block.base, mask: block.mask }, col, row) : block, col, row);
       return;
     }
     const part = parts.get(id);
@@ -598,6 +623,7 @@ function turnBlock(block, op, aspect = 1, font = null) {
   if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...turnLayer(part) }));
   if (block.shown) Object.assign(out, { shown: turnCells(block.shown), shownAt: block.shownAt });
   if (block.looks) out.looks = turned(block.looks, (e) => ({ ...e, char: turnChar(e.char, op, font) }));
+  if (block.mask) out.mask = Uint8Array.from(turned([...block.mask], (bit) => bit));
   if (block.base) {
     const { pixels, scale, colors, pins, indexes, chars } = block.base;
     const swapped = (kept) => (kept && op === 'v' ? { fgIndex: kept.bgIndex, bgIndex: kept.fgIndex } : kept); // the halves swap
@@ -659,6 +685,7 @@ function rotateBlock(block, aspect = 1) {
   };
   Object.assign(out, rotateLayer(block));
   if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...rotateLayer(part) }));
+  if (block.mask) out.mask = Uint8Array.from(from([...block.mask].map((bit) => bit || null)), (bit) => (bit ? 1 : 0));
   if (block.base) {
     const { pixels, scale, colors, pins, indexes, chars } = block.base;
     out.base = { pixels: turnedCanvas(pixels, false), scale, colors: turnedCanvas(colors, false), pins: from(pins), ...(chars && { chars: from(chars) }) };
@@ -721,12 +748,26 @@ function withHalfRowUnder(project, block, col, row) {
 }
 
 // A block's base pasted back into the base at (col, row), clipped to the grid: its pixels, and its pins with their indexes
-// (a cell it had none in is left with none). Where a base moved on its own goes while there's no cells layer to lift it onto (pasteAt).
-function pasteOnBase(project, { w, h, base }, col, row) {
+// (a cell it had none in is left with none); with a mask (copySelection's), only in its cells. Where a base moved on its
+// own goes while there's no cells layer to lift it onto (pasteAt).
+function pasteOnBase(project, { w, h, base, mask }, col, row) {
   const rect = project.clipRect({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
   if (!rect) return;
-  const cells = rectCells(rect), at = ({ col: c, row: r }) => (r - row) * w + (c - col), pin = (cell) => base.pins[at(cell)];
-  project.baseLayer.pasteCells(base.pixels, col, row, w, h, rect);
+  const at = ({ col: c, row: r }) => (r - row) * w + (c - col), pin = (cell) => base.pins[at(cell)];
+  const cells = mask ? rectCells(rect).filter((cell) => mask[at(cell)]) : rectCells(rect);
+  let pixels = base.pixels;
+  if (mask) { // the base there now, with the block's pixels over it in the mask's cells
+    const cut = document.createElement('canvas');
+    cut.width = pixels.width;
+    cut.height = pixels.height;
+    ctx2d(cut).drawImage(pixels, 0, 0);
+    cutCells(cut, mask, w, h, 'destination-in');
+    pixels = project.baseLayer.copyCells({ c0: col, r0: row, c1: col + w - 1, r1: row + h - 1 });
+    const ctx = ctx2d(pixels);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(cut, 0, 0, pixels.width, pixels.height);
+  }
+  project.baseLayer.pasteCells(pixels, col, row, w, h, rect);
   project.setBaseRecords(withPins(withoutPins(project.baseRecords, cells), cells.filter((cell) => pin(cell) != null).map((cell) => ({ ...cell, char: pin(cell), glyph: !!base.chars?.[at(cell)], ...base.indexes?.[at(cell)] }))));
   project.refreshCells(cells.flatMap(({ col: c, row: r }) => [{ x: c, y: 2 * r }, { x: c, y: 2 * r + 1 }]));
 }
@@ -741,6 +782,7 @@ function asCells(block) {
   const hex = (x, y) => `#${[0, 1, 2].map((c) => data[(y * w + x) * 4 + c].toString(16).padStart(2, '0')).join('')}`;
   const pixels = (i, char) => ({ char, fg: hex(i % w, 2 * Math.floor(i / w) + 1), bg: hex(i % w, 2 * Math.floor(i / w)), ...base.indexes?.[i] });
   const out = base.pins.map((pin, i) => {
+    if (block.mask && !block.mask[i]) return cells?.[i] ?? null; // outside the selection's mask: see-through
     const own = cells?.[i];
     if (isPaintBlock(own)) return pixels(i, '▄');
     const look = looks?.[i] ?? pixels(i, pin ?? '▄');

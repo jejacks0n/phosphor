@@ -9,7 +9,7 @@ import { getContext, calcMetrics } from '@/lib/AnsiRuntime';
 import { charRowsOf } from '@/lib/Cells';
 import CellCanvas, { gridYAt } from '@/lib/CellCanvas';
 import { viewWindow, viewIn, wholeCellsIn, scrollToCell } from '@/lib/viewWindow';
-import { wandIn } from '@/lib/MagicWand';
+import { maskShown } from '@/lib/selectionMask';
 import WandOverlay from '@/components/WandOverlay.vue';
 import { clampViewZoom, dragViewZoom } from '@/lib/zoom';
 import { fitColumns } from '@/lib/DrawnWidth';
@@ -28,8 +28,9 @@ const props = defineProps({ view: { type: String, default: 'output' } });
 const { t } = useI18n();
 const projectStore = useProjectStore();
 const workspaceStore = useWorkspaceStore();
-// The Magic Wand's selection, made in either view, in this view's units.
-const wand = computed(() => workspaceStore.wand && wandIn(workspaceStore.wand, 'output', projectStore.rows));
+// A selection's mask (the Magic Wand's, or one Shift and Alt made), made in either view, in this view's units; offset
+// while its outline is dragged.
+const wand = computed(() => maskShown(workspaceStore, projectStore, 'output'));
 const textInputRef = useTemplateRef('textInput');
 useTextTool(projectStore, workspaceStore, textInputRef);
 const useDom = computed(() => workspaceStore.ansiRenderer === 'dom');
@@ -290,7 +291,7 @@ watch(() => workspaceStore.textCursor, (cursor, old) => {
 // The selection: marching ants, offset while it's being dragged. Its actions are on the options row.
 const selectionBox = computed(() => {
   const m = metrics.value, sel = workspaceStore.selection;
-  if (!m || !sel) return null;
+  if (!m || !sel || sel.mask) return null; // a mask shows its own outline (WandOverlay)
   const { dc, dr } = workspaceStore.selectionOffset ?? { dc: 0, dr: 0 };
   return {
     marquee: { ...cellOrigin(m, sel.c0 + dc, sel.r0 + dr), width: `${(sel.c1 - sel.c0 + 1) * m.cellWidth}px`, height: `${(sel.r1 - sel.r0 + 1) * m.lineHeight}px` },

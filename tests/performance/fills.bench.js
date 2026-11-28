@@ -206,7 +206,6 @@ test(`other edits at ${COLS} cols x ${LINES} lines`, async () => {
       await settled(project);
       times.push(performance.now() - t);
       changed ||= project.history.version !== version;
-      workspace.wand = null;
       workspace.selection = null;
       if (project.history.version !== version) project.undo();
       project.brightness = 100;

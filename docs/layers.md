@@ -1060,6 +1060,11 @@ How the selection behaves:
 - **Other Tools**: Like the rectangle, it stays as you change tools (the line stays, the tint goes, so you see what you
   draw), and the painting tools change only what's in it: the Paint Bucket inside it recolors just the selected cells
   or pixels.
+- **With the Select Tool**: It's a selection like the rectangle: copy, cut, **Delete**, moves, **Stamp**, the flips and
+  Rotate act on its cells alone, and the rest of the rectangle around them is left as it is (a moved or pasted block is
+  see-through there). Drag one of its cells to move it; a drag from anywhere else draws a new rectangle. The Select
+  tool works in whole cells, so in the PIXEL view a cell with either of its pixels selected moves whole. **Merge down**
+  merges the rectangle around it.
 - **Between Views**: A cell selected in the ANSI view is both its pixels in the PIXEL view, and a cell with either of
   its pixels selected is selected in the ANSI view.
 - **Dropping It**: **Escape**, **Deselect**, a new rectangle, a grid change and a new document drop it.

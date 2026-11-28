@@ -15,6 +15,7 @@ import pencil from '@/tools/pencil';
 import brush from '@/tools/brush';
 import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts';
 import { toastMessage, closeToast } from '@/composables/useToast.js';
+import { masked } from '@/lib/selectionMask';
 
 const RED = '#ff0000';
 let mounted = null;
@@ -636,7 +637,7 @@ test('with All layers on, Delete with Select, and a nudge, act on the shown laye
   workspace.setActiveTool('wand');
   const mask = new Uint8Array(20 * 10);
   mask[3 * 20 + 3] = 1;
-  workspace.wand = markRaw({ view: 'output', width: 20, height: 10, mask, within: null });
+  workspace.selection = masked(markRaw({ view: 'output', width: 20, height: 10, mask, within: null }));
   project.setLayerHidden('base', true);
   await press('Delete');
   expect(project.editCellAt(3, 3)).toBeUndefined();
@@ -665,7 +666,7 @@ test('with All layers off, the Magic Wand\'s Delete and Set FG keep to the picke
     expect(box()).toBeUndefined();   // nothing selected: nothing for it to decide
     const mask = new Uint8Array(20 * 10);
     mask[3 * 20 + 3] = 1;
-    workspace.wand = markRaw({ view: 'output', width: 20, height: 10, mask, within: null });
+    workspace.selection = masked(markRaw({ view: 'output', width: 20, height: 10, mask, within: null }));
     await frame();
     expect(box().checked).toBe(false);
     const row = [...box().closest('.tool-setting-group').children];

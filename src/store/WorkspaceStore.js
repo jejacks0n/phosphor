@@ -84,8 +84,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     ghostFramesAfter: useLocalStorage('phosphor.ghostFramesAfter', 0),   // and after (0 to 5)
     ansiOverlay: 100,        // % opacity of the edit cells drawn over the pixel view
     ansiOverlayAll: false,   // draw every cell over the pixel view, not just the edit cells
-    wand: null,              // the Magic Wand's selection: { view, width, height, mask (markRaw'd, a byte per unit: cells or grid pixels) }
-    selection: null,         // { c0, r0, c1, r1 }: the Select tool's cells (inclusive)
+    selection: null,         // { c0, r0, c1, r1, mask? }: the selected cells (inclusive), and which when not all of them (src/lib/selectionMask.js: the Select tool's and the Magic Wand's)
     selectionOffset: null,   // { dc, dr } while the selection is being dragged
     clipboard: null,         // the Select tool's copied Block (see ProjectStore.copySelection)
     vectorClipboard: null,   // VECTOR's copied shapes, bottom to top (Cmd/Ctrl+C or X there)
@@ -265,11 +264,10 @@ export const useWorkspaceStore = defineStore('workspace', {
     // Select rect (the whole grid: project.gridRect()) with the Select tool.
     selectAll(rect) {
       this.selection = rect;
-      this.wand = null;
       this.setActiveTool('select');
     },
     // The selection stays as you change tools: the painting tools change only what's inside it.
-    // Edit Mode chosen drops the selection and the Magic Wand's (typing ignores them; an undo step),
+    // Edit Mode chosen drops the selection (typing ignores it; an undo step),
     // and never moves the view: its cursor comes back where it was (or where Escape put it away) if
     // that's in view, else (and the first time) to the top-left whole cell of the view, where a paste
     // lands; on the grid and on a wide character's lead. Setting down a selection made from Edit Mode
@@ -283,7 +281,7 @@ export const useWorkspaceStore = defineStore('workspace', {
       if (group) this.slotFaces[group.id] = tool;
       if (tool !== 'text' || this.editorTab !== 'output') return;
       const project = useProjectStore();
-      if (this.selection || this.wand) project.changeSelection((w) => { w.selection = null; w.wand = null; });
+      if (this.selection) project.changeSelection((w) => { w.selection = null; });
       if (back && this.textCursor) return;
       const onGrid = ({ col, row }) => ({ col: Math.min(col, Math.max(0, project.cols - 1)), row: Math.min(row, Math.max(0, charRowsOf(project.rows) - 1)) });
       const view = this.ansiViewOrigin, { cols, rows } = this.ansiViewSize;

@@ -16,6 +16,7 @@ import { i18n } from '@/i18n';
 import { readProject, writeProject } from '@/document/projectIO.js';
 import { useVectorStyle } from '@/composables/useVectorStyle.js';
 import { useDrawingStore } from '@/store/DrawingStore';
+import { masked } from '@/lib/selectionMask';
 
 const RED = '#ff0000';
 const rgb = (hex) => ({ r: parseInt(hex.slice(1, 3), 16), g: parseInt(hex.slice(3, 5), 16), b: parseInt(hex.slice(5, 7), 16) });
@@ -236,7 +237,7 @@ test('a Magic Wand selection makes a layer of just its cells; the rest stays in 
   for (const col of [3, 4, 5]) mask[2 * 20 + col] = 1; // b, c, d
   workspace.editorTab = 'output';
   workspace.setActiveTool('wand');
-  Object.assign(workspace, { wand: { view: 'output', width: 20, height: 10, mask } });
+  workspace.selection = masked({ view: 'output', width: 20, height: 10, mask });
   const key = project.makeArtLayer();
   const art = project.shapes.get(key);
   expect(isArt(art)).toBe(true);
@@ -248,7 +249,7 @@ test('a Magic Wand selection makes a layer of just its cells; the rest stays in 
   expect(project.paintLayer.pixelAt(8, 4)).not.toBe(null); // painted outside the wand: stays
   expect(cellsKey(project)).toEqual(before);
   expect(project.history.version).toBe(version + 1);
-  expect(workspace.wand).toBe(null);
+  expect(workspace.selection).toBe(null);
 
   project.undo();
   expect(arts(project)).toEqual([]);
@@ -590,7 +591,7 @@ test('Make art layer with Magic Wand cells that hold nothing says so, and makes 
   mask[8 * 20 + 1] = 1; // nothing drawn there
   workspace.editorTab = 'output';
   workspace.setActiveTool('wand');
-  Object.assign(workspace, { wand: { view: 'output', width: 20, height: 10, mask } });
+  workspace.selection = masked({ view: 'output', width: 20, height: 10, mask });
   toastMessage.value = null;
   expect(project.makeArtLayer()).toBe(null);
   expect(toastMessage.value).toBe('Nothing is drawn in the selected cells.');

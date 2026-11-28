@@ -226,14 +226,14 @@ const shownChoice = (option) => {
     ?? option.choices.find(c => c.value === value);
 };
 
-// A selection the tools keep to: the Magic Wand's or the Select tool's rectangle (either, in both
-// views). Every tool but Select (which has its own) offers Deselect while there is one.
-const wandHere = computed(() => !!workspace.wand && ['input', 'output'].includes(workspace.editorTab));
-const kept = computed(() => wandHere.value || (!!workspace.selection && ['input', 'output'].includes(workspace.editorTab)));
-const deselect = () => project.changeSelection((w) => { w.selection = null; w.wand = null; });
-// What Set FG, Set BG and Fill recolor: the active tool's own selection, on the picked layer, or the shown layers with
-// All layers on.
-const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.wand : workspace.activeTool === 'select' && workspace.selection));
+// A selection the tools keep to, in both views: the Select tool's or the Magic Wand's (wandHere: one with a mask). Every
+// tool but Select (which has its own) offers Deselect while there is one.
+const kept = computed(() => !!workspace.selection && ['input', 'output'].includes(workspace.editorTab));
+const wandHere = computed(() => kept.value && !!workspace.selection.mask);
+const deselect = () => project.changeSelection((w) => { w.selection = null; });
+// What Set FG, Set BG and Fill recolor: the selection, with the Select tool, or the Magic Wand's with the wand; on the
+// picked layer, or the shown layers with All layers on.
+const recolored = computed(() => (workspace.activeTool === 'wand' ? wandHere.value && workspace.selection : workspace.activeTool === 'select' && workspace.selection));
 const recolor = (colors) => project.recolorSelection(recolored.value, workspace.editorTab, workspace.selectionIds, colors);
 // Set FG and Set BG (Fill in PIXEL; no Set BG in the ASCII styles). On the Select row they show with nothing selected
 // too, turned off, so they're where they'll be once there's a selection.
@@ -731,9 +731,9 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         <div class="divider"/>
         <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" :data-off-reason="b.disabled ? '' : undefined" @click="recolor(b.colors)">{{ b.label }}</button>
       </div>
-      <div v-if="kept && (activeTool.id !== 'select' || wandHere)" class="tool-setting-group">
+      <div v-if="kept && activeTool.id !== 'select'" class="tool-setting-group">
         <div class="divider"/>
-        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.wand, workspace.editorTab, workspace.selectionIds)">{{ t('common.delete') }}</button>
+        <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="t('toolbar.selection.wandDeleteTitle')" aria-keyshortcuts="Delete" @click="project.deleteInWand(workspace.selection.mask, workspace.editorTab, workspace.selectionIds)">{{ t('common.delete') }}</button>
         <button v-if="wandHere && activeTool.id === 'wand'" class="text" :title="artOff || t('art.makeTitle')" :disabled="!artReady" :data-off-reason="!artReady && artOff ? '' : undefined" @click="project.makeArtLayer()">{{ t('art.make') }}</button>
         <button class="text" :title="t('toolbar.selection.wandDeselectTitle')" aria-keyshortcuts="Escape" @click="deselect">{{ t('toolbar.selection.deselect') }}</button>
         <!-- The wand's All layers (Select's is its tool option): last on the row, so short of room it's what folds into ⋯, not Delete. -->

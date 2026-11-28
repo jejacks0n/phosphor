@@ -1,5 +1,5 @@
 <script setup>
-// The Magic Wand's selection over a view: a dashed line where a selected unit meets one that isn't,
+// A selection's mask over a view (the Magic Wand's, or one Shift and Alt made): a dashed line where a selected unit meets one that isn't,
 // and while the wand is the tool, a tint on every selected unit. Drawn only for the units in view (viewWindow), on a canvas over
 // them, again when the view scrolls or resizes. It's there only while there's a selection.
 import { onBeforeUnmount, onMounted, useTemplateRef, watch } from 'vue';
@@ -8,7 +8,7 @@ import { ctx2d } from '@/lib/Canvas';
 import { useWorkspaceStore } from '@/store/WorkspaceStore';
 
 const props = defineProps({
-  wand: { type: Object, default: null },    // workspace.wand, in this view
+  wand: { type: Object, default: null },    // the selection's mask (workspace.selection.mask), in this view
   unit: { type: Object, default: null },    // CSS px per unit: { x, y }
   display: { type: Object, default: null }, // the element the units start in
   tint: { type: Boolean, default: false },   // tint the selected units (the wand is the tool)

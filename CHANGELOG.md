@@ -30,6 +30,8 @@ under Unreleased.
 
 ### Changed
 
+- The Magic Wand's selection works with the Select tool: copy, cut, **Delete**, moves, **Stamp**, flips and Rotate act
+  on its cells alone, leaving the rest of the rectangle around them as it is. Drag one of its cells to move it.
 - The rulers' corner is a **⋯** menu, with any tool: **Reset positions** puts both zeros back (a double-click on the
   corner did) and **Mirror mode** turns mirror mode on and off. With the Hand, a drag from the corner still moves both.
 - A ruler's zero triangle shows a hand under the pointer with the Hand tool, so it reads as something to drag.

@@ -107,7 +107,7 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
       workspaceStore.setActiveTool('select');
       workspaceStore.selectFromText = true;
     }
-    projectStore.changeSelection((w) => { w.selection = normalizeRect(anchor, to); w.wand = null; });
+    projectStore.changeSelection((w) => { w.selection = normalizeRect(anchor, to); });
     _shiftRun = { rect: toRaw(workspaceStore.selection), anchor, head: to };
     return true;
   };
@@ -189,13 +189,14 @@ export function useKeyboardShortcuts(projectStore, workspaceStore) {
     return true;
   };
 
-  // The Magic Wand's selection: Escape drops it; Delete or Backspace takes away what's drawn in it, on the picked layer or
-  // the shown layers with All layers on (not in Edit Mode, where they edit the text).
+  // A selection with a mask (the Magic Wand's), with any tool but Select (whose keys come next) and Edit Mode, where they
+  // edit the text: Escape drops it; Delete or Backspace takes away what's drawn in it, in the view's units (a pixel view's
+  // pixels), on the picked layer or the shown layers with All layers on.
   const _handleWandKeys = (e) => {
-    const wand = workspaceStore.wand;
-    if (!wand || e.defaultPrevented || ownsKey(e.target, e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
+    const wand = workspaceStore.selection?.mask;
+    if (!wand || workspaceStore.activeTool === 'select' || e.defaultPrevented || ownsKey(e.target, e) || e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return false;
     if (workspaceStore.paletteLayerOpen || workspaceStore.colorBox || workspaceStore.isPainting) return false; // the palettes have the keys; mid-drag, the drag's end decides
-    if (e.key === 'Escape') projectStore.changeSelection((w) => { w.wand = null; });
+    if (e.key === 'Escape') projectStore.changeSelection((w) => { w.selection = null; });
     else if ((e.key === 'Delete' || e.key === 'Backspace') && workspaceStore.activeTool !== 'text') projectStore.deleteInWand(wand, workspaceStore.editorTab, workspaceStore.selectionIds);
     else return false;
     e.preventDefault();
