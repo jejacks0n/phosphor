@@ -13,9 +13,9 @@ import DropdownMenu from '@/components/DropdownMenu.vue';
 
 // The character rulers along the view's top and left, and the guides across it, over the view (box) whatever
 // it's scrolled to. They count characters on every view; zero and the guides are in characters from the top
-// left (whole: an edge, half: a middle). The rulers take the pointer with any tool: out of a ruler comes a guide, the
-// pink triangle moves that ruler's zero and the corner both. A guide lying over the art is grabbed only with the Hand,
-// so it doesn't catch a stroke; one let go on a ruler or off the view goes. Nothing here changes the store until a
+// left (whole: an edge, half: a middle). The rulers take the pointer with any tool, so it's never a tool's over them:
+// the pink triangle moves that ruler's zero and the corner both. Guides are placed and moved only with the Hand (or
+// Space held): out of a ruler comes a guide, and one let go on a ruler or off the view goes. Nothing here changes the store until a
 // drag is let go. The corner is a ⋯ menu too: Reset positions and Mirror mode.
 const props = defineProps({
   box: { type: Object, required: true },        // the view's client box, fixed (EditorViewport's overArt)
@@ -148,17 +148,24 @@ const mirrorKey = keyLabel(commandById('edit.mirror').keys);
 
 // The press is kept from the view, so the view's focus is taken here, as a press on it would: a toolbar field
 // (the Rulers checkbox) kept would swallow the tool keys.
-function start(event, d) {
-  if (event.button) return;   // the middle button goes on to the view, which pans, as over the art
+// The left button's press is the rulers' (keep), and the middle button's goes on to the view, which pans, as over the art.
+function keep(event) {
+  if (event.button) return false;
   event.stopPropagation();
   event.preventDefault();
+  return true;
+}
+function start(event, d) {
+  if (!keep(event)) return;
   props.root?.focus({ preventScroll: true });
   drag.value = { ...d, client: null, shown: { ...zero.value }, pointer: event.pointerId };
 }
-// A ruler: its triangle drags zero, anywhere else a new guide (out of the top ruler a horizontal one).
+// A ruler: its triangle drags zero, anywhere else, with the Hand, a new guide (out of the top ruler a horizontal one);
+// with another tool nothing, but the press is still the ruler's, so it draws nothing either.
 function pressRuler(axis, event) {
   if (nearZero(axis, event)) start(event, { kind: 'zero', axis, offset: (cellsAt(event, axis) ?? 0) - zero.value[axis], zero: null });
-  else start(event, { kind: 'guide', axis: axis === 'x' ? 'h' : 'v', index: null, offset: 0, pos: null });
+  else if (isHand.value) start(event, { kind: 'guide', axis: axis === 'x' ? 'h' : 'v', index: null, offset: 0, pos: null });
+  else keep(event);
 }
 // A guide is held where it was grabbed, so a press alone doesn't move it.
 function pressGuide(guide, event) {
@@ -277,8 +284,8 @@ watchEffect(() => {
         @touchstart.stop
     ></div>
     <div v-for="line in zeroLines" :key="line.axis" class="ruler-zero" :class="line.axis" :style="line.style"></div>
-    <canvas ref="top" class="ruler top" :class="{ grab: grab('x'), grabbing: grabbing('x') }" @pointermove="hoverRuler('x', $event)" @pointerleave="overRuler = null" @pointerdown="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
-    <canvas ref="left" class="ruler left" :class="{ grab: grab('y'), grabbing: grabbing('y') }" @pointermove="hoverRuler('y', $event)" @pointerleave="overRuler = null" @pointerdown="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
+    <canvas ref="top" class="ruler top" :class="{ grab: grab('x'), grabbing: grabbing('x'), pull: isHand && !grab('x') && !grabbing('x') }" @pointermove="hoverRuler('x', $event)" @pointerleave="overRuler = null" @pointerdown="pressRuler('x', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('x', $event) && workspace.resetRulerZero('x')"></canvas>
+    <canvas ref="left" class="ruler left" :class="{ grab: grab('y'), grabbing: grabbing('y'), pull: isHand && !grab('y') && !grabbing('y') }" @pointermove="hoverRuler('y', $event)" @pointerleave="overRuler = null" @pointerdown="pressRuler('y', $event)" @mousedown.stop @touchstart.stop @dblclick="nearZero('y', $event) && workspace.resetRulerZero('y')"></canvas>
     <!-- A drag from it ends off it, so only a click opens the menu. -->
     <div class="ruler-corner" @pointerdown="start($event, { kind: 'corner', zero: null })" @mousedown.stop @touchstart.stop>
       <DropdownMenu align="left" :label="t('rulers.cornerTitle')">
@@ -320,18 +327,26 @@ div.guide[hidden] {
   display: none;
 }
 
+canvas.ruler {
+  cursor: default;   /* not the tool's, which may hide the pointer */
+}
 canvas.ruler.top {
   left: 30px;
   top: 0;
   width: calc(100% - 30px);
   height: 20px;
-  cursor: s-resize;
 }
 canvas.ruler.left {
   left: 0;
   top: 20px;
   width: 30px;
   height: calc(100% - 20px);
+}
+/* With the Hand, a guide comes out; grab and grabbing are over the triangle, and only one of the three is on. */
+canvas.ruler.top.pull {
+  cursor: s-resize;
+}
+canvas.ruler.left.pull {
   cursor: e-resize;
 }
 canvas.ruler.grab {
