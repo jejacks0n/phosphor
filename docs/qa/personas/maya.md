@@ -631,6 +631,18 @@ from it.
   times quickly.
 - Rated: yes, wants a key for Crop (none: the command list has it)
 
+### 43. Make a sticker small and put it in a corner
+- Does: drops `images/rgba.png` on the drawing and chooses Add to this drawing; with Select (M), drags a rectangle
+  around it, then drags the selection's bottom-right handle up and left, holding **Shift**, to a quarter of its size;
+  drags the small block into the top-left corner; undoes once ([Resize](../../layers.md#resize)).
+- Expects: the handles show on the selection's corners and sides while it's paint (none once she types a letter in it);
+  the pointer turns to a resize arrow over one; with Shift the sticker keeps its shape; it lands as ▄ half-blocks in its
+  colors, and what it covered comes back as it moves; the one undo takes back the resize and the move together.
+- Probes: `extremes`: drag a handle past the opposite edge (the selection stops at one cell); `back-out`: drag it back
+  to the size it had and check the sticker is exactly as before; `scope`: in the PIXEL view, drag the bottom handle down
+  by one pixel row.
+- Rated: yes, wants a typed size (none: handles only)
+
 **Free time:** she'd take `qa.memory`, try `tall.png` at 80 columns and scroll to its bottom, bake at 200 columns and
 grow the grid afterwards to see what the working-size copy does, draw thin strokes on a Vector layer right on a new
 photo's base and move a cells layer under it to check none of its characters change (one working scale for every

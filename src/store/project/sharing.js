@@ -46,7 +46,7 @@ export const DRAWING_ACTIONS = [
   'paintEditPixels', 'putEditPixels', 'paintBasePixels', 'paintStroke', 'eraseEditPixels', 'editCell', 'typeAt', 'writeAt', 'backspaceAt', 'deleteAt', 'typing', 'editRun', 'shiftCells',
   'insertLine', 'deleteLine', 'insertColumn', 'deleteColumn', 'shiftBaseLines', 'shiftBaseColumns',
   'writeEditCells', 'writeBlocks', 'colorsOnlyCells', 'shadeCells', 'inkCells', 'clearEditCells', 'unlockCells', 'flipCell', 'flipPaint', 'clearEditLayer',
-  'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'deleteInWand', 'recolorSelection', 'recolorCells', 'moveSelection',
+  'deleteSelection', 'pasteSelection', 'stampSelection', 'floatSelection', 'turnSelection', 'scaleSelection', 'deleteInWand', 'recolorSelection', 'recolorCells', 'moveSelection',
   'deleteIn', 'pasteAt', 'selectionEdit',
   'addShape', 'makeArtLayer', 'setArtContent', 'enterArt', 'updateShapes', 'deleteShapes', 'restackShapes', 'joinShapes', 'combineShapes', 'separateShape', 'addSvg', 'addShapes', 'addShapesAbove', 'penPoint', 'penBack',
   'followPath', 'stopFollowing', 'setFollow', 'setGuide',

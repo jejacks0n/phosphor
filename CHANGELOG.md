@@ -17,6 +17,9 @@ under Unreleased.
   every frame, and the rulers' guides and zero move up and left to the corner, and the grid becomes the selection's
   size. The picture stays under the art as it was, its colors in every cell kept. One undo step brings back all of it,
   what was cut off too; in a room only the host crops, and is asked first.
+- A selection of paint and picture pixels resizes by handles on its corners and sides, **Shift** keeping its shape. The
+  pixels land as ▄ half-blocks, the block floats like a moved one, and the resizes and moves together are one undo step.
+  The handles don't show while the selection has characters, as Rotate is off then.
 - On a phone, **Commands** under **Plugins** at the bottom of the settings opens the command list, so a command with
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters

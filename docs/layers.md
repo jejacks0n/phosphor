@@ -1031,6 +1031,27 @@ Where a paste lands:
 - **After a Flip or Rotate**: The block floats like a moved one: drag or nudge it on and whatever it covered comes
   back, and the turns and moves together are one undo step (for a pasted block, one after the paste's own).
 
+### Resize
+
+With the Select tool, a selection of pixels has handles: small squares on its corners and the middles of its sides.
+Drag one to resize what's in it: the paint and the base's pixels.
+
+- **Shift Keeps Its Shape**: Hold **Shift** while you drag and the selection keeps the shape it had, from the corner or
+  side across from the handle.
+- **Whole Cells and Pixel Rows**: Across, the selection keeps to whole cells. Down, the ANSI view goes by whole cells and
+  the PIXEL view by pixel rows, so a block can end on the top half of a cell, as a rotated one can. The half left over
+  keeps what was under it.
+- **Pixels Stay Pixels**: Each new pixel is the one that was under its middle, so a picture doubled is each pixel twice
+  and nothing in between. It lands as ▄ half-blocks in its pixels' colors, as Rotate's does, and a Half-block's ▄ goes
+  with its paint.
+- **Off with Characters**: Characters can't scale, so the handles don't show while the selection has any on the layers
+  it acts on: typed or drawn characters on a drawing layer, or characters pinned on the base (Rotate's rule).
+- **It Floats**: The block floats like a moved one: move it on and whatever it covered comes back. Resized again, it's
+  drawn from what you first lifted, so going back to the size it had gives it back exactly. The resizes and moves
+  together are one undo step.
+- **A Wand's Selection**: Its shape scales with it, and what it left out stays out.
+- **On a Phone**: A handle takes a finger from a little farther than a pointer.
+
 ### Crop
 
 **Crop**, on the options row beside **Set FG** and **Set BG**, cuts the whole drawing to the selection: what's inside

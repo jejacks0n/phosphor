@@ -67,6 +67,20 @@ const line = (page, marquee) => page.locator(marquee).evaluate((el) => {
 });
 const WAND_LINE = { border: '1px solid rgb(0, 0, 0)', dashes: '1px dashed rgb(255, 255, 255) -1px', shadow: 'none', animation: 'none' };
 
+test('a selection of the picture has handles; the corner one, dragged with the mouse, resizes it, and the pointer is a resize arrow over it', async ({ page }) => {
+  await openApp(page);
+  await page.keyboard.press('m');
+  await drag(page, await cellPoint(page, 5, 5), await cellPoint(page, 9, 7));
+  const corner = page.locator('[data-select-handle]').nth(4); // the bottom right
+  await expect(page.locator('[data-select-handle]')).toHaveCount(8);
+  const box = await corner.boundingBox(), at = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  await page.mouse.move(at.x, at.y);
+  await expect.poll(() => page.locator('[data-art]').first().evaluate((el) => el.style.cursor)).toBe('nwse-resize');
+  const a = await cellPoint(page, 12, 9), b = await cellPoint(page, 13, 10);
+  await drag(page, at, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }); // the corner of cell (12, 9): a handle goes to the nearest corner
+  expect(await selection(page)).toEqual({ c0: 5, r0: 5, c1: 12, r1: 9 });
+});
+
 test('the Select rectangle is drawn with the Magic Wand\'s line, in both views', async ({ page }) => {
   await openApp(page);
   await page.keyboard.press('m');

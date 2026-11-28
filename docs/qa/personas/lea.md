@@ -246,6 +246,16 @@ column to see the words change, switch the theme, and open About.
 - Probes: `out-of-order`: long-press Base (it has no ⋯); `undo-redo`: Delete a layer from ⋯, then undo from Actions.
 - Rated: no (touch only: no keyboard shows here)
 
+### 15b. Make a painted heart bigger
+- Does: paints a small heart with the Brush, picks Select, drags a rectangle around it with a finger, then drags the
+  rectangle's corner handle out to twice its size.
+- Expects: the handles show on the rectangle (a finger takes one from a little farther than a pointer); the heart grows
+  from the opposite corner, each of its pixels doubled, with no blur; Actions' undo takes it back in one step
+  ([Resize](../../layers.md#resize)).
+- Probes: `out-of-order`: type a letter in the rectangle first (the handles go); `interrupt`: lift and drag the corner
+  again (it's drawn from the heart she first lifted, not the grown one).
+- Rated: no (touch only: no keyboard shows here)
+
 **Free time:** she'd try the Paint Bucket on her hair, use the Eraser, try Merge down from Actions, and look for a
 sticker or emoji picker.
 

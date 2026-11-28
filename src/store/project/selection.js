@@ -273,7 +273,48 @@ export const selectionActions = {
     return landed;
   }),
 
-  // Whether what's in rect, on the layers, has characters Rotate can't turn: anything on a cells
+  // Resize what's selected (its handles, with the Select tool): the block drawn to.w cells across and to.px pixel rows
+  // down, its top-left at (to.c0, to.r0), on each of the layers. Only pixels scale (scaleBlock), so it does nothing while
+  // the selection has characters (hasCharacters), as Rotate. It floats, as a move does (floatSelection): resized again
+  // while it floats it's the same run, scaled from the block it lifted (never from a scaled one, so going back to the
+  // size it had is exact), and the run, the moves among it, is one undo step. Returns where it landed (clipped).
+  scaleSelection: floated(function (rect, ids, to) {
+    ids = this.layersFor(ids);
+    if (this.hasCharacters(rect, ids)) return rect;
+    this.commitPending();
+    const run = this._float;
+    const sameRun = run && canTakeBack(this, run) && run.version === this.history.version && toRaw(rect) === toRaw(run.landed)
+      && (!run.layers || sameIds(run.layers, ids));
+    if (sameRun && run.recorded) this.undo();
+    const lifted = sameRun ? (run.paste ? null : run.from) : rect;
+    const liftedLayers = sameRun ? run.layers : [...ids];
+    const under = !lifted ? run.under : null, start = !lifted ? run.start : null, onLayer = !lifted ? run.to : null;
+    const original = (sameRun && (run.original ?? run.block)) || this.copySelection(lifted, liftedLayers, { shapes: false });
+    const block = scaleBlock(original, Math.max(1, to.w), Math.max(1, to.px));
+    const place = (dc, dr) => {
+      const c = to.c0 + dc, r = to.r0 + dr;
+      const landed = landedAt(block.w, block.h, block.mask ?? null, c, r, this.cols, this.rows);
+      this.selectionEdit([lifted, under?.rect, landed].filter(Boolean), () => {
+        if (lifted) moveParts(this, block, liftedLayers, lifted, c, r);
+        else this.onLayer(onLayer, () => {
+          uncover(this, under);
+          this.pasteAt(flatBlock(block), c, r);
+        });
+      });
+      return landed;
+    };
+    const version = this.history.version;
+    const landed = place(0, 0);
+    const recorded = this.history.version !== version;
+    this._float = landed && {
+      paste: !lifted, turned: true, block, original, redo: place, from: lifted ?? run.from, layers: lifted ? liftedLayers : null, under, start, to: onLayer, pasted: !lifted && run.pasted, stamped: !lifted && run.stamped,
+      dc: 0, dr: 0, landed, version: this.history.version, recorded,
+    };
+    if (recorded) this.history.last.floats = { before: start && { ...start, start }, after: this._float ?? { paste: !lifted, from: lifted ?? run.from, landed: null } };
+    return landed;
+  }),
+
+  // Whether what's in rect, on the layers, has characters Rotate can't turn (nor Resize scale): anything on a cells
   // layer but a Half-block's ▄, or a pin on the base but a ▄ that's its pixels (both only show their cell's pixels).
   // A floating block is judged as it was lifted: its picture landed as cells, but turns as pixels.
   hasCharacters(rect, ids) {
@@ -692,6 +733,68 @@ function rotateBlock(block, aspect = 1) {
     if (indexes) out.base.indexes = turnedIndexes(indexes, out, W, P, sourceX, sourceY);
   }
   return out;
+}
+
+// A block drawn to w cells across and px pixel rows down (scaleSelection, the Select tool's handles): its pictures
+// drawn to the new size by whole grid pixels (paint and the base's pixels alike, so a pixel stays one color), landing as ▄
+// half-blocks in its pixels' colors, as Rotate's do. New grid pixel (X, Y) comes from source pixel (sourceX(X),
+// sourceY(Y)), the one under its middle. Only pixels scale (no characters: hasCharacters); a Half-block's ▄ (an edit
+// cell or a pin) goes to each cell showing a pixel from one of its cells, an edit cell's only where that cell has paint.
+// When px is odd, the last row's bottom half isn't the block's (px marks it, as Rotate's).
+function scaleBlock(block, w, px) {
+  const W = block.w, P = block.px ?? 2 * block.h;
+  const out = { w, h: Math.ceil(px / 2), px };
+  const sourceX = (X) => Math.min(W - 1, Math.floor(((X + 0.5) * W) / w));
+  const sourceY = (Y) => Math.min(P - 1, Math.floor(((Y + 0.5) * P) / px));
+  const from = (list) => Array.from({ length: out.w * out.h }, (_, i) => {
+    const col = i % out.w, row = Math.floor(i / out.w), x = sourceX(col);
+    return [2 * row, 2 * row + 1].filter((Y) => Y < px).map((Y) => list[Math.floor(sourceY(Y) / 2) * W + x]).find(Boolean) ?? null;
+  });
+  // A picture drawn to the new size by whole grid pixels, each the source's under its middle (its k x k layer pixels
+  // as they are): a column of the source for each new column, then a row for each new row.
+  const scaledCanvas = (canvas) => {
+    const k = canvas.width / W, across = document.createElement('canvas'), fit = document.createElement('canvas');
+    [across.width, across.height] = [w * k, P * k];
+    [fit.width, fit.height] = [w * k, px * k];
+    const a = ctx2d(across), b = ctx2d(fit);
+    for (let X = 0; X < w; X++) a.drawImage(canvas, sourceX(X) * k, 0, k, P * k, X * k, 0, k, P * k);
+    for (let Y = 0; Y < px; Y++) b.drawImage(across, 0, sourceY(Y) * k, w * k, k, 0, Y * k, w * k, k);
+    return fit;
+  };
+  const scaleLayer = ({ cells, paint }) => {
+    const layer = {};
+    if (paint) layer.paint = scaledCanvas(paint);
+    if (cells) {
+      const shows = layer.paint && paintedCells(layer.paint, out.w, out.h);
+      layer.cells = from(cells).map((entry, i) => (entry && shows?.[i] && isPaintBlock(entry) ? entry : null)); // a frozen cell's pin belongs to the paint it stood over
+    }
+    return layer;
+  };
+  Object.assign(out, scaleLayer(block));
+  if (block.parts) out.parts = block.parts.map((part) => ({ id: part.id, ...scaleLayer(part) }));
+  if (block.mask) out.mask = Uint8Array.from(from([...block.mask].map((bit) => bit || null)), (bit) => (bit ? 1 : 0));
+  if (block.base) {
+    const { pixels, scale, colors, pins, indexes, chars } = block.base;
+    out.base = { pixels: scaledCanvas(pixels), scale, colors: scaledCanvas(colors), pins: from(pins), ...(chars && { chars: from(chars) }) };
+    if (indexes) out.base.indexes = scaledIndexes(indexes, out, W, sourceX, sourceY);
+  }
+  return out;
+}
+
+// A base's indexes (16, 231) scaled with its pixels (scaleBlock): each new pixel's from its source pixel, the top
+// (bgIndex) or bottom (fgIndex) half of its source cell.
+function scaledIndexes(indexes, { w, h, px }, W, sourceX, sourceY) {
+  return Array.from({ length: w * h }, (_, i) => {
+    const col = i % w, row = Math.floor(i / w), x = sourceX(col);
+    const at = (Y) => {
+      if (Y >= px) return undefined;
+      const y = sourceY(Y);
+      return indexes[Math.floor(y / 2) * W + x]?.[y % 2 ? 'fgIndex' : 'bgIndex'];
+    };
+    const bgIndex = at(2 * row), fgIndex = at(2 * row + 1);
+    return bgIndex === undefined && fgIndex === undefined ? undefined
+      : { ...(fgIndex !== undefined && { fgIndex }), ...(bgIndex !== undefined && { bgIndex }) };
+  });
 }
 
 // A base's indexes (16, 231) turned with its pixels (rotateBlock): a turned cell's top pixel is source pixel
