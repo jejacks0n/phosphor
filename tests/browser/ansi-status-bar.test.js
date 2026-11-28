@@ -122,6 +122,26 @@ test('the Zoom tool says a click zooms in and Alt-click out; with Alt held, that
   expect(hint()).toBe('Zooming out · drag either way to zoom smoothly');
 });
 
+test('Select and the Magic Wand say Shift adds to the selection and Alt takes away; held, what the key is doing', async () => {
+  const { workspace } = await mount();
+  const hint = () => host.querySelector('.hint').textContent;
+  for (const tool of ['select', 'wand']) {
+    workspace.setActiveTool(tool);
+    await nextTick();
+    expect(hint()).toBe(`${shortcut('shift')} add to selection · ${shortcut('alt')} take away · Space pan`);
+    workspace.isShiftPressed = true;
+    await nextTick();
+    expect(hint()).toBe('Adding to the selection');
+    workspace.isAltPressed = true;
+    await nextTick();
+    expect(hint()).toBe('Keeping only the overlap');
+    workspace.isShiftPressed = false;
+    await nextTick();
+    expect(hint()).toBe('Taking away from the selection');
+    workspace.isAltPressed = false;
+  }
+});
+
 const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 const width = (el) => el.getBoundingClientRect().width;
 const sum = (els) => els.reduce((total, el) => total + width(el), 0);

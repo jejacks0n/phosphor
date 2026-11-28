@@ -335,6 +335,10 @@ export const COMMANDS = [
 
   { ...fixed('drawing.holdAlt', 'drawing', words('holdAlt'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt') })] }), held: true },
   { ...fixed('drawing.holdAltShift', 'drawing', words('holdAltShift'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt', 'shift') })] }), held: true },
+  // Select and the Magic Wand: Shift adds what's drawn or clicked to the selection, Alt takes it away, both keep the overlap.
+  { ...fixed('drawing.holdShiftSelect', 'drawing', words('holdShiftSelect'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('shift') })] }), held: true },
+  { ...fixed('drawing.holdAltSelect', 'drawing', words('holdAltSelect'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt') })] }), held: true },
+  { ...fixed('drawing.holdAltShiftSelect', 'drawing', words('holdAltShiftSelect'), { shown: () => [t('shortcuts.holdKey', { key: shortcut('alt', 'shift') })] }), held: true },
   { ...fixed('drawing.holdSpace', 'drawing', words('holdSpace'), { shown: () => [t('shortcuts.holdSpace')] }), held: true },
   // ] and [ grow and shrink the tool's Size a whole step, within the slider's range, as in Photoshop.
   { id: 'drawing.sizeDown', group: 'drawing', keys: '[', label: words('size'), ...sized(-1) },

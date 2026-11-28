@@ -238,15 +238,20 @@ with Connect, shade with the Brush at a few sizes and Lighter picked in the opti
 
 ### 14. Select every cell of a color
 - Does: presses W, sets Match to FG only, clicks a cell, Shift-clicks another color, then presses Delete; undoes the
-  Delete, presses M and drags one of the selected cells three cells right, then Enter; Escape.
+  Delete, presses M and drags one of the selected cells three cells right, then Enter; Escape. Then, with M, drags a
+  rectangle, holds Shift and drags another apart from it, holds Alt (Option) and drags across the middle of the first,
+  and presses Cmd+C and Cmd+V; Escape. Last, W again with Alt held clicks a cell of the selection.
 - Expects: the wand selects what matches (Contiguous on: only what touches), tinted while the wand is the tool;
   Shift-click adds; Delete takes away what's in it on the picked layer (All layers, at the end of the wand's row once
   it has selected, is off; on, on every layer that shows), one undo step; Escape drops it. Right after a tap on All
   layers or Contiguous, Delete and Escape work the same: the checkbox keeps only Space and Enter. A second click on the
   same cell selects the same cells and adds no undo step. With the Select tool the wand's selection keeps its dashed
   outline, and the drag moves only its cells: the cells between them in its rectangle stay where they are, and what
-  they're dragged over shows between them while it floats.
-- Probes: `out-of-order`: press Delete with nothing selected; `again`: click the same cell twice; `undo-redo`: undo the
+  they're dragged over shows between them while it floats. Holding Shift or Alt, the pointer shows + or −, and the status
+  bar says what the key does; Shift's rectangle joins the first, Alt's cuts a gap through it, each an undo step, and the
+  paste brings what's in both and nothing from the gap. The wand's Alt-click takes what matches out of it.
+- Probes: `out-of-order`: press Delete with nothing selected; `extremes`: hold Shift and Alt together and drag over the
+  gap's edge (only the overlap stays); `again`: click the same cell twice; `undo-redo`: undo the
   delete and the selections.
 - Rated: yes, wants W, then a key for Match
 

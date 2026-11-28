@@ -7,6 +7,7 @@ import { useWorkspaceStore } from '@/store/WorkspaceStore';
 import { useDrawingStore } from '@/store/DrawingStore';
 import { getEffectiveColor } from '@/lib/PixelTransforms';
 import { getTool } from '@/tools';
+import { selectOp } from '@/tools/select';
 import { slotOf } from '@/lib/BitmapFont';
 import { cp437Byte } from '@/lib/Cp437';
 import { shortcut } from '@/lib/keyLabels';
@@ -56,6 +57,12 @@ const hint = computed(() => {
     const shift = current?.altPicks || current?.shiftLines ? (current.shiftLines ? t('status.straightLine') : current.shiftHint?.(workspace))
       : vector ? t(workspace.vectorPickSlot.stroke ? 'status.pickFill' : 'status.pickStroke') : null;
     if (shift) return [[KEYS.shift, shift]];
+  }
+  // Select and the Magic Wand: what a held Shift or Alt does to the selection (selectOp), and which keys do it.
+  if (tool.value === 'select' || tool.value === 'wand') {
+    const op = selectOp(workspace);
+    if (op) return t({ add: 'status.adding', subtract: 'status.takingAway', intersect: 'status.overlapping' }[op]);
+    return [[KEYS.shift, t('status.addToSelection')], [KEYS.alt, t('status.takeFromSelection')], [t('status.spaceKey'), t('status.pan')]];
   }
   if (workspace.isAltPressed && tool.value === 'vnode' && workspace.vectorPoints) return [[KEYS.alt, t('status.breakHandle')]];
   if (tool.value === 'zoom') {
