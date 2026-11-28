@@ -5,7 +5,9 @@ import { markRaw } from 'vue';
 import { createTestApp, loadImage, settle } from '../support/app.js';
 import { cellIndex, charRowsOf } from '@/lib/Cells';
 import { masked, selects } from '@/lib/selectionMask';
-import select from '@/tools/select';
+import select, { opCursor } from '@/tools/select';
+import wand from '@/tools/wand';
+import bucket from '@/tools/bucket';
 
 const ATTRS = { fg: '#ffffff', bg: '#000000' };
 
@@ -127,4 +129,75 @@ test('the Select tool drags a masked selection by one of its cells; a drag from 
   workspace.selection = selectionOf([[2, 2], [4, 2]]);
   drag([2, 2], [2, 4]); // from A: the block moves
   expect([own(2, 4), own(3, 4), own(4, 4), own(3, 2)]).toEqual(['A', null, 'C', 'B']);
+});
+
+// The Select tool's drags, as a pointer makes them: from one cell to another, with the keys held.
+const dragger = (project, workspace) => {
+  const ctx = { project, workspace, view: 'output' };
+  const at = (col, row) => ({ x: col + 0.5, y: 2 * row + 1 });
+  return (from, to, event = {}) => { select.begin(ctx, at(...from), event); select.move(ctx, at(...from), at(...to)); select.end(ctx); };
+};
+
+test('Shift-drag adds a rectangle to the selection, in one undo step; copied, both come, and the gap between shows what they land on', async () => {
+  const { project, workspace, type, own } = await scene();
+  type(2, 2, 'AxB');
+  type(2, 6, 'pqr');
+  const drag = dragger(project, workspace);
+  drag([2, 2], [2, 3]);
+  drag([4, 2], [4, 3], { shiftKey: true });
+  expect([selects(workspace.selection, 2, 2), selects(workspace.selection, 3, 2), selects(workspace.selection, 4, 3)]).toEqual([true, false, true]);
+  const both = workspace.selection;
+  project.pasteSelection(project.copySelection(both, ['edit']), 2, 6);
+  expect([own(2, 6), own(3, 6), own(4, 6)]).toEqual(['A', 'q', 'B']);
+  project.undo(); // the paste
+  project.undo(); // the rectangle Shift added
+  expect(workspace.selection).toEqual({ c0: 2, r0: 2, c1: 2, r1: 3 });
+});
+
+test('Alt-drag takes a hole out of the selection, and the Bucket fills around it', async () => {
+  const { project, workspace } = await scene();
+  project.paintStroke(Array.from({ length: 20 * 14 }, (_, i) => ({ x: i % 20, y: Math.floor(i / 20), alpha: 1 })), '#00ff00'); // cell rows 0 to 6
+  project.commitEdit();
+  await settle(project);
+  const drag = dragger(project, workspace);
+  drag([1, 1], [5, 5]);
+  drag([2, 2], [4, 4], { altKey: true });
+  expect([selects(workspace.selection, 1, 1), selects(workspace.selection, 3, 3), selects(workspace.selection, 5, 4)]).toEqual([true, false, true]);
+  workspace.editFgColor = '#ff0000';
+  bucket.begin({ project, workspace, view: 'output' }, { x: 1.5, y: 2.5 }, { stopPropagation() {} });
+  await settle(project);
+  // In the ring, in the hole, and outside the selection.
+  expect([project.rawColorAt(1, 2), project.rawColorAt(5, 10), project.rawColorAt(3, 6), project.rawColorAt(4, 8), project.rawColorAt(7, 6)])
+    .toEqual(['#ff0000', '#ff0000', '#00ff00', '#00ff00', '#00ff00']);
+});
+
+test('Shift+Alt drags keep only the overlap; a Shift or Alt click takes in or leaves out its one cell', async () => {
+  const { project, workspace } = await scene();
+  const drag = dragger(project, workspace);
+  const cells = () => [0, 1, 2, 3, 4].map((col) => (selects(workspace.selection, col, 1) ? '#' : '.')).join('');
+  drag([0, 1], [3, 1]);
+  drag([2, 0], [4, 2], { shiftKey: true, altKey: true });
+  expect(cells()).toBe('..##.');
+  drag([0, 1], [0, 1], { shiftKey: true }); // a click
+  expect(cells()).toBe('#.##.');
+  drag([3, 1], [3, 1], { altKey: true });
+  expect(cells()).toBe('#.#..');
+  drag([2, 1], [2, 1], { shiftKey: true }); // inside the selection, Shift still adds rather than moves
+  expect(cells()).toBe('#.#..');
+  expect(project.editCells.size).toBe(0);
+});
+
+test('the pointer shows +, − or × while Shift, Alt or both are held, with Select and the Magic Wand', async () => {
+  const { workspace } = await scene();
+  const signs = new Set();
+  for (const tool of [select, wand]) {
+    expect(String(tool.cursor({ workspace }, { x: 3.5, y: 3 }) ?? '')).not.toMatch(/^url/);
+    for (const [shift, alt, op] of [[true, false, 'add'], [false, true, 'subtract'], [true, true, 'intersect']]) {
+      Object.assign(workspace, { isShiftPressed: shift, isAltPressed: alt });
+      expect(tool.cursor({ workspace }, { x: 3.5, y: 3 })).toBe(opCursor(op));
+      signs.add(opCursor(op));
+    }
+    Object.assign(workspace, { isShiftPressed: false, isAltPressed: false });
+  }
+  expect(signs.size).toBe(3);
 });

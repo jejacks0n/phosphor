@@ -913,6 +913,22 @@ views, and it stays when you switch. With nothing selected, a click (a tap) sele
 step as any new rectangle is; with a selection, a click outside it drops it, so the next click selects a cell again.
 Everything below works the same in both.
 
+### Adding To and Taking Away
+
+Hold a key as you drag to put the new rectangle with the selection you have, as in other image editors:
+
+- **Shift**: Adds it, so two rectangles apart are one selection: copy, move or delete them together.
+- **Alt** (**Option** on a Mac): Takes it away, so a rectangle with a hole in it is a selection too, and the painting
+  tools keep out of the hole.
+- **Shift and Alt**: Keeps only where the two overlap.
+- **A Click**: With a key held, a click adds, takes away or keeps the one cell under it.
+- **From Inside**: With a key held, a drag that starts inside the selection draws a rectangle rather than moving it.
+- **The Pointer**: Shows a small **+**, **−** or **×** while a key is held, and the status bar says what it's doing.
+
+A selection made this way is like the Magic Wand's ([With the Select Tool](#the-magic-wand)): everything acts on its
+cells alone, and where a rectangle is meant (Merge down, where a paste lands) its bounds are. Each change to it is an
+undo step, a hole made in it among them.
+
 ### What a Selection Acts On
 
 - **The Selected Layer**: Copy, Cut, **Delete**, moving (a drag or the arrow keys), **Stamp**, flipping, rotating,
@@ -1022,7 +1038,8 @@ Where a paste lands:
   wobble a few pixels, even across a cell's edge, and still only place the cursor.
 - **Shift and the Arrow Keys**: Do the same from the cursor's cell. With the Select tool, they grow or shrink the
   selection: they move its far corner, so it keeps the corner it started from (the top-left, for a selection drawn
-  some other way). Each press that changes it is an undo step. The arrow keys alone then nudge the selection.
+  some other way), and a selection with gaps (Shift's or the Magic Wand's) grows from its bounds, filled in. Each press
+  that changes it is an undo step. The arrow keys alone then nudge the selection.
 - **Back to Typing**: A selection made from Edit Mode, by dragging or with Shift and the arrows, takes you back there
   when you set it down (**Escape** or **Enter**), with the cursor where you left it.
 
@@ -1049,9 +1066,12 @@ The **Magic Wand** (**W**, in both views) selects what matches the cell or pixel
   match exactly.
 - **Contiguous**: On, it selects only what touches the click (sharing a side, as the Paint Bucket fills). Off, every
   match across the canvas.
-- **Adding**: **Shift**-click adds to the selection.
-- **Inside a Rectangle**: A Select rectangle you made first keeps the wand inside it, and the wand's selection takes its
-  place.
+- **Adding and Taking Away**: **Shift**-click adds to the selection, **Alt**-click (**Option** on a Mac) takes what
+  matches away from it, and **Shift and Alt** together keep only what matches inside it, as the Select tool's keys do
+  ([Adding To and Taking Away](#adding-to-and-taking-away)). The pointer shows which while a key is held.
+- **Inside a Rectangle**: A Select rectangle you made first keeps a plain click inside it, and the wand's selection
+  takes its place; Shift-clicks after it keep to the same rectangle. Shift-click with the rectangle still there adds to
+  it instead.
 
 How the selection behaves:
 

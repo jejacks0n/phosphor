@@ -56,6 +56,23 @@ test('Shift-click adds; a Select rectangle keeps the wand inside it', async () =
   expect(marks(2, 2, 4, 3)).toEqual(['..#', '..#']);
 });
 
+test('Alt-click takes what matches away from the selection; Shift+Alt keeps only what it shares, clicked inside it', async () => {
+  const { workspace, type, click, marks } = await scene();
+  type(2, 2, ['aBa', 'aBa']);
+  click(3, 2, { altKey: true }); // nothing selected: nothing to take away
+  expect(workspace.selection).toBe(null);
+  workspace.selection = { c0: 2, r0: 2, c1: 4, r1: 3 };
+  click(3, 2, { altKey: true }); // the B column, out of the rectangle
+  expect(marks(2, 2, 4, 3)).toEqual(['#.#', '#.#']);
+  click(2, 2, { shiftKey: true, altKey: true }); // the a's joined to it, and only those in the selection
+  expect(marks(2, 2, 4, 3)).toEqual(['#..', '#..']);
+  const kept = workspace.selection;
+  click(4, 2, { shiftKey: true, altKey: true }); // outside the selection now: it stays
+  expect(workspace.selection).toBe(kept);
+  click(4, 2, { shiftKey: true }); // Shift adds to a mask anywhere
+  expect(marks(2, 2, 4, 3)).toEqual(['#.#', '#.#']);
+});
+
 test('Delete takes the edits in the selection away, in one undo step', async () => {
   const { project, workspace, type, click, read } = await scene();
   type(2, 2, ['aBa']);

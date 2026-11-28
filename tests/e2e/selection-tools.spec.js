@@ -30,6 +30,34 @@ test('in Edit Mode, a drag that starts inside a kept selection selects, rather t
   expect(await selection(page)).toEqual({ c0: 6, r0: 6, c1: 12, r1: 6 });
 });
 
+test('held Shift adds a rectangle to the selection and Alt takes one away, the pointer showing a sign while a key is down; the Magic Wand takes Alt too', async ({ page }) => {
+  await openApp(page);
+  const cell = (col, row) => store(page, 'workspace', `(w) => { const s = w.selection, m = s?.mask; if (!s || ${col} < s.c0 || ${col} > s.c1 || ${row} < s.r0 || ${row} > s.r1) return false; return !m || !!m.mask[${row} * m.width + ${col}]; }`);
+  const pointer = () => page.locator('[data-art]').first().evaluate((el) => el.style.cursor);
+  await page.keyboard.press('m');
+  await drag(page, await cellPoint(page, 2, 2), await cellPoint(page, 4, 3));
+  await page.keyboard.down('Shift');
+  await expect.poll(pointer).toMatch(/^url/);
+  await drag(page, await cellPoint(page, 8, 2), await cellPoint(page, 9, 3));
+  await page.keyboard.up('Shift');
+  expect([await cell(3, 2), await cell(6, 2), await cell(9, 3)]).toEqual([true, false, true]);
+  await page.keyboard.down('Alt');
+  await drag(page, await cellPoint(page, 3, 2), await cellPoint(page, 3, 3)); // from inside: Alt takes away rather than moving
+  await page.keyboard.up('Alt');
+  await expect.poll(pointer).not.toMatch(/^url/);
+  expect([await cell(2, 2), await cell(3, 2), await cell(3, 3), await cell(4, 3)]).toEqual([true, false, false, true]);
+  expect(await store(page, 'project', (p) => p.editCells.size)).toBe(0); // nothing moved
+
+  await page.keyboard.press('w');
+  await page.getByRole('checkbox', { name: 'Contiguous' }).check();
+  await page.keyboard.down('Alt');
+  const at = await cellPoint(page, 9, 2);
+  await page.mouse.click(at.x, at.y);
+  await page.keyboard.up('Alt');
+  expect(await cell(9, 2)).toBe(false); // the cell clicked, gone from the selection
+  expect(await cell(2, 2)).toBe(true);
+});
+
 // In Edit Mode, a pasted block lands at the cursor, not at a kept selection: clipboard.spec.js.
 
 // The rectangle's line is the Magic Wand's: one still pixel, white dashes over black, inside the box.

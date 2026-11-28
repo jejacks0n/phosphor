@@ -8,6 +8,10 @@ under Unreleased.
 
 ### Added
 
+- The Select tool adds to and takes away from a selection: **Shift**-drag adds a rectangle, **Alt**-drag (**Option** on a
+  Mac) takes one away, and both together keep only the overlap, so two rectangles apart, or one with a hole, are one
+  selection. The Magic Wand takes the same keys: **Alt**-click takes what matches away, **Shift+Alt**-click keeps only
+  what matches inside the selection. The pointer shows **+**, **−** or **×** while a key is held.
 - On a phone, **Commands** under **Plugins** at the bottom of the settings opens the command list, so a command with
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters
