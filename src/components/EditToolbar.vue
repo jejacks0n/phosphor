@@ -100,7 +100,9 @@ function fitTools() {
   const lastSlot = shown.filter(el => el.dataset.slot).at(-1);
   toolsWidth.value = lastSlot ? right(lastSlot) : 0;
 }
-useResizeObserver([toolBox, toolSpacer], fitTools);
+// A frame later, not in the observer's callback: the fit sizes the box it watches (toolsWidth), and Vue lays that out
+// before the browser's next round of the same frame's observers, which it reports as a loop (an error on the page).
+useResizeObserver([toolBox, toolSpacer], () => requestAnimationFrame(fitTools));
 watch(() => tools.value.length, () => nextTick(fitTools));
 const moreTools = computed(() => tools.value.filter(({ slot }) => hiddenSlots.value.includes(slot.id)).flatMap(({ slot }) => slot.tools));
 
