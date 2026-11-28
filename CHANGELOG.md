@@ -19,6 +19,11 @@ under Unreleased.
   Linux) steps them back to a space. One step a cell a stroke, written as typed characters, in every art style.
 - Export as BinaryText (`.bin`), beside `.ans` and `.xb`: the 16 CGA colors and CP437, its width in a SAUCE record that's
   always written, with a blank column added to an odd width.
+- Pen pressure for the Brush, the Soft Eraser and the Retouch tools: pressing harder with an Apple Pencil or another
+  pen that senses it makes the Brush wider and lay more paint, the Soft Eraser take more and Blur, Dodge and Burn work
+  more strongly.
+- Once a pen has drawn on the art, fingers no longer draw: one finger pans the view and two pinch to zoom, so a hand
+  resting on the screen leaves no marks.
 
 ### Changed
 

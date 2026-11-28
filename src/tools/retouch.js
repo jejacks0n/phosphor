@@ -193,6 +193,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
     kind: 'paint',
     mirrors: true,
     shiftLines: true, // Shift-click: a straight line from where the last stroke ended
+    pressure: true, // a pen's positions carry its pressure, which scales the brush's falloff, so its Strength
     preview: { shape: 'circle', size: (workspace) => workspace.retouchSize },
     options: [
       { key: 'retouchSize', size: true, get label() { return t('tools.brush.size'); }, get title() { return t('tools.brush.sizeTitle'); }, min: 1, max: 20, step: 0.1, decimals: 1 },
@@ -208,7 +209,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
     move({ project, workspace, view }, from, to) {
       if (!stroke) newStroke();
       const clip = selectionClip(workspace), { cols, rows } = project;
-      let pixels = brushPixels(from, to, { size: workspace.retouchSize, flow: 1, hardness: workspace.retouchHardness / 100 }, cols, rows, project.pixelAspect);
+      let pixels = brushPixels(from, to, { size: workspace.retouchSize, flow: 1, hardness: workspace.retouchHardness / 100, pressure: { flow: true } }, cols, rows, project.pixelAspect);
       if (clip) pixels = pixels.filter(({ x, y }) => clip.pixel(x, y));
       const strength = workspace.retouchStrength / 100;
       const changed = (color, at) => change(color, workspace.retouchRange, at), owned = (from, around) => own(from, around, workspace.retouchRange);
@@ -220,7 +221,7 @@ function retouchTool({ id, keys, icon, change, own, range = false }) {
         retouchPixels(project, pixels.filter((p) => !pinned(p)), changed, strength); // the converter's cells: as in the pixel view, read before the pinned ones change
         retouchCells(project, pixels.filter(pinned), changed, strength);
       } else retouchPixels(project, pixels, changed, strength); // Monochrome ASCII shows a cell's brightness as its character alone: its pixels change, and the characters follow (the base's pins go: R13)
-      workspace.strokeEnd = to;
+      workspace.strokeEnd = { x: to.x, y: to.y }; // without the pen's pressure as it lifted: a Shift-click line has its own
     },
     end({ project }) {
       stroke = null;

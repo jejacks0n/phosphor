@@ -3,19 +3,28 @@
  * pixels; results are clipped to 0 <= x < cols, 0 <= y < rows. Pixel = { x, y, alpha }.
  */
 
-// Points every half grid pixel from `from` to `to`, so fast strokes don't leave gaps.
+// Points every half grid pixel from `from` to `to`, so fast strokes don't leave gaps. A pen's pressure (0..1, on a
+// position as `pressure`) goes from one end's to the other's along the way; a position without one has none.
 export function interpolate(from, to) {
   const dx = to.x - from.x;
   const dy = to.y - from.y;
   const steps = Math.ceil(Math.sqrt(dx * dx + dy * dy) * 2);
-  if (steps === 0) return [{ x: to.x, y: to.y }];
+  const p0 = from.pressure ?? to.pressure, p1 = to.pressure ?? from.pressure;
+  const at = (x, y, t) => (p0 === undefined ? { x, y } : { x, y, pressure: p0 + t * (p1 - p0) });
+  if (steps === 0) return [at(to.x, to.y, 1)];
   const positions = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
-    positions.push({ x: from.x + t * dx, y: from.y + t * dy });
+    positions.push(at(from.x + t * dx, from.y + t * dy, t));
   }
   return positions;
 }
+
+// What a pen's pressure makes of a stamp's size or flow: the slider's value at a firm press, down to PRESSURE_FLOOR of it
+// at the lightest, so a light touch still marks. ponytail: linear; a curve (pressure ** n) is the knob if the Pencil
+// feels too light or too heavy on the device.
+const PRESSURE_FLOOR = 0.1;
+export const pressed = (pressure) => PRESSURE_FLOOR + (1 - PRESSURE_FLOOR) * Math.min(1, Math.max(0, pressure));
 
 const inGrid = (x, y, cols, rows) => x >= 0 && y >= 0 && x < cols && y < rows;
 
@@ -63,10 +72,14 @@ export function squareCells(from, to, size, cols, rows) {
 
 // Soft round brush. flow and hardness are 0..1. Overlapping stamps are kept (they build up paint).
 // aspect (pixelAspect): the distance counts dy on screen, so the round brush is round on screen.
-export function brushPixels(from, to, { size, flow, hardness }, cols, rows, aspect = 1) {
-  const radius = size / 2, radiusY = radius / aspect;
+// pressure: { size, flow }, which of the two a pen's pressure scales (pressed), stamp by stamp; size never under 1, flow
+// never under a paint byte's step (1/255).
+export function brushPixels(from, to, { size, flow, hardness, pressure }, cols, rows, aspect = 1) {
   const pixels = [];
-  for (const { x, y } of interpolate(from, to)) {
+  for (const { x, y, pressure: p } of interpolate(from, to)) {
+    const k = p === undefined ? 1 : pressed(p);
+    const radius = (pressure?.size ? Math.max(1, size * k) : size) / 2, radiusY = radius / aspect;
+    const stampFlow = pressure?.flow ? Math.max(Math.min(flow, 1 / 255), flow * k) : flow;
     for (let iy = Math.floor(y - radiusY); iy < Math.ceil(y + radiusY); iy++) {
       for (let ix = Math.floor(x - radius); ix < Math.ceil(x + radius); ix++) {
         if (!inGrid(ix, iy, cols, rows)) continue;
@@ -79,7 +92,7 @@ export function brushPixels(from, to, { size, flow, hardness }, cols, rows, aspe
         let alpha = radius > 0.5
           ? (dist <= radius * hardness ? 1 : Math.pow(1 - (dist - radius * hardness) / (radius * (1 - hardness)), 1.5))
           : Math.max(0, 1 - dist / radius);
-        alpha *= flow;
+        alpha *= stampFlow;
 
         if (alpha <= 0 || (radius > 0.5 && alpha < 0.001)) continue;
         pixels.push({ x: ix, y: iy, alpha });

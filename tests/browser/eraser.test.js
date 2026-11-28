@@ -306,3 +306,15 @@ test('R11: erasing the base over many pins reads its pixels once, not once a pin
   expect(reads(cells)).toBe(one);
   expect(cells.every(({ col, row }) => project.baseRecords.pins.get(`${col},${row}`) === ' ')).toBe(true); // erased black: spaces (R11)
 });
+
+test('Soft with a pen: a light press takes less than a firm one, and no pressure as much as a firm one', async () => {
+  const pass = async (pressure) => {
+    const { workspace, ctx, alpha } = await painted();
+    Object.assign(workspace, { editEraserSize: 6, editEraserSoft: true, editEraserFlow: 50 });
+    eraser.begin(ctx, { x: 10, y: 10, pressure });
+    eraser.end(ctx);
+    return alpha(10, 10);
+  };
+  expect(await pass(0.2)).toBeGreaterThan(await pass(1));
+  expect(await pass(undefined)).toBe(await pass(1));
+});

@@ -1,7 +1,7 @@
 // Brush pixel generation shared by both editors (grid pixels, clipped to the grid).
 import { test } from 'vitest';
 import assert from 'node:assert/strict';
-import { interpolate, pencilPixels, squarePixels, squareCells, brushPixels, linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
+import { interpolate, pressed, pencilPixels, squarePixels, squareCells, brushPixels, linePixels, lineCoverage, halfBlockCells, halfStepLine, halfStepEllipse, rectPixels, ellipsePixels, ellipseCoverage, boxCells } from '../../src/lib/Brushes.js';
 
 test('Brush pixel generation shared by both editors (grid pixels, clipped to the grid)', async () => {
   assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0 }), [{ x: 0, y: 0 }, { x: 0.5, y: 0 }, { x: 1, y: 0 }]);
@@ -187,4 +187,20 @@ test('at aspect 0.5 a size-6 brush covers 6 columns and 12 rows; a size-4 square
   assert.deepEqual([span(b, 'x'), span(b, 'y')], [6, 12]);
   const s = squarePixels({ x: 20, y: 20 }, { x: 20, y: 20 }, 4, 40, 40, 0.5);
   assert.deepEqual([span(s, 'x'), span(s, 'y')], [4, 8]);
+});
+
+test('a pen\'s pressure goes from one end of a segment to the other and scales a stamp\'s size and flow, never to nothing', () => {
+  assert.deepEqual(interpolate({ x: 0, y: 0, pressure: 0.2 }, { x: 1, y: 0, pressure: 0.6 }).map((p) => +p.pressure.toFixed(2)), [0.2, 0.4, 0.6]);
+  assert.deepEqual(interpolate({ x: 0, y: 0 }, { x: 1, y: 0, pressure: 0.6 }).map((p) => p.pressure), [0.6, 0.6, 0.6]); // one end without: the other's
+  assert.equal(pressed(1), 1);
+  assert.equal(pressed(0), 0.1); // the lightest touch: a tenth
+  const dab = (pressure, which) => brushPixels({ x: 10.5, y: 10.5, pressure }, { x: 10.5, y: 10.5, pressure }, { size: 8, flow: 0.5, hardness: 1, pressure: which }, 20, 20);
+  assert.equal(dab(1, { size: true }).length, dab(undefined, { size: true }).length); // a firm press, or no pen: the slider's size
+  assert.ok(dab(0.3, { size: true }).length < dab(1, { size: true }).length);
+  assert.equal(dab(0.3, null).length, dab(1, null).length); // pressure off: the same either way
+  assert.equal(dab(0, { size: true }).length > 0, true);    // size never under 1
+  assert.equal(dab(0.5, { flow: true })[0].alpha, 0.5 * pressed(0.5));
+  assert.equal(dab(0.5, { flow: true }).length, dab(1, null).length); // flow alone leaves the size
+  const faint = brushPixels({ x: 10, y: 10, pressure: 0 }, { x: 10, y: 10, pressure: 0 }, { size: 4, flow: 1 / 255, hardness: 1, pressure: { flow: true } }, 20, 20);
+  assert.ok(faint.every((p) => p.alpha === 1 / 255)); // the lowest Flow at the lightest touch still lays a byte
 });

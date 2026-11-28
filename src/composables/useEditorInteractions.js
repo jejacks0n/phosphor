@@ -74,6 +74,26 @@ export function useEditorInteractions(options) {
   let _edgeTime = null;  // when the last edge-scroll step ran, while they run
   let _penDown = null;   // { clientX, clientY } where a pen stroke began, until it moves past PEN_SLOP
   let _zoomPress = null; // { clientX, clientY, out } a Zoom tool press, until it moves past ZOOM_CLICK_SLOP (a drag then)
+  // A pen's gesture is going on: a finger's touches are left alone till it lifts (a palm resting on the screen as you
+  // draw). On an iPad a touch's list holds the pen's own touch too, so a finger then would read as a pinch.
+  let _penStroke = false;
+  let _firstPressure = null; // the first pressure a pen gave, until one differs (workspace.penPressure)
+
+  // A position for a tool that takes a pen's pressure (tool.pressure): the pen's, 0..1, on it as `pressure`, once the
+  // pen has shown it senses pressure by giving two that differ (workspace.penPressure). A pen without the sensor reads
+  // one value throughout (iPad Safari's Apple Pencil (USB-C) 0.240, the force of an average touch; others the spec's
+  // 0.5), which would make every stroke the same, only fainter; a mouse's press reads 0.5 and a finger's means nothing.
+  // A pen's move as it lifts, before its up (iPad Safari sends them): no button held, or no pressure from a pen that
+  // senses it. It isn't the pen on the screen, and with no pressure it would be a stamp at the full size, a heavy mark at
+  // the stroke's end. (A pen without the sensor that reads 0 throughout, as old WebKit had it, still draws.)
+  const _lifting = (event) => event.pointerType === 'pen' && (!event.buttons || (event.pressure === 0 && workspaceStore?.penPressure));
+
+  function withPressure(tool, pos, event) {
+    if (!pos || event.pointerType !== 'pen' || !(event.pressure > 0) || !workspaceStore) return pos;
+    if (_firstPressure === null) _firstPressure = event.pressure;
+    else if (Math.abs(event.pressure - _firstPressure) > 0.01) workspaceStore.penPressure = true;
+    return tool.pressure && workspaceStore.penPressure ? { ...pos, pressure: event.pressure } : pos;
+  }
 
   function _getTouchDistance(touches) {
     const dx = touches[0].clientX - touches[1].clientX;
@@ -94,6 +114,16 @@ export function useEditorInteractions(options) {
     return { clientX, clientY };
   }
 
+  // A gesture begun: its pointer captured, its release listened for. A pen's holds the fingers off till it lifts.
+  function _hold(event) {
+    _penStroke = event.pointerType === 'pen';
+    if (event.pointerId !== undefined && event.currentTarget) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+    window.addEventListener('pointerup', commitPaint);
+    window.addEventListener('pointercancel', commitPaint);
+  }
+
   function _startNavigation(event) {
     const tool = unref(activeTool);
     isPainting.value = true;
@@ -106,11 +136,7 @@ export function useEditorInteractions(options) {
       _zoomPress = { ..._lastMousePos, out: !!event.altKey };
     }
 
-    if (event.pointerId !== undefined && event.currentTarget) {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
-    window.addEventListener('pointerup', commitPaint);
-    window.addEventListener('pointercancel', commitPaint);
+    _hold(event);
   }
 
   function _startPicking(event, pos) {
@@ -122,11 +148,7 @@ export function useEditorInteractions(options) {
     if (workspaceStore) workspaceStore.isPainting = true;
 
     callbacks.onColorPick(pos, event);
-    if (event.pointerId !== undefined && event.currentTarget) {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
-    window.addEventListener('pointerup', commitPaint);
-    window.addEventListener('pointercancel', commitPaint);
+    _hold(event);
   }
 
   function _startPainting(event, pos) {
@@ -142,11 +164,7 @@ export function useEditorInteractions(options) {
     _lastPos = pos;
     _penDown = event.pointerType === 'pen' ? _getPointerPos(event) : null;
 
-    if (event.pointerId !== undefined && event.currentTarget) {
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }
-    window.addEventListener('pointerup', commitPaint);
-    window.addEventListener('pointercancel', commitPaint);
+    _hold(event);
   }
 
   function _updatePointerPos(clientX, clientY) {
@@ -222,8 +240,14 @@ export function useEditorInteractions(options) {
     const tool = unref(activeTool);
 
     if (event.preventDefault) event.preventDefault();
-    const pos = callbacks.pixelCoordsAt(event);
+    if (event.pointerType === 'pen') {
+      if (workspaceStore) workspaceStore.penDrew = true;
+      commitPaint(); // a finger's pan or wait (the palm that came down first) ends: the pen draws
+    }
+    const pos = withPressure(tool, callbacks.pixelCoordsAt(event), event);
     _isMiddleClick = (event.type === 'mousedown' || event.type === 'pointerdown') && event.button === 1;
+    // Once a pen has drawn, only the pen draws: a finger pans, as the middle button does (two pinch, as ever).
+    if (event.touches && workspaceStore?.penDrew && tool.kind !== 'navigate') _isMiddleClick = true;
 
     if (_isMiddleClick) {
       if (event.preventDefault) event.preventDefault();
@@ -316,11 +340,10 @@ export function useEditorInteractions(options) {
     const { clientX, clientY } = _getPointerPos(event);
     _updatePointerPos(clientX, clientY);
 
-    const pos = callbacks.pixelCoordsAt(event);
-
     if (!isPainting.value) return;
 
     const tool = unref(activeTool);
+    const pos = withPressure(tool, callbacks.pixelCoordsAt(event), event);
 
     if (_isMiddleClick || tool.kind === 'navigate') {
       if (_isMiddleClick || tool.id === 'hand') {
@@ -348,7 +371,7 @@ export function useEditorInteractions(options) {
       return;
     }
 
-    if (!pos) return;
+    if (!pos || _lifting(event)) return;
 
     if (tool.kind === 'pick') {
       callbacks.onColorPick(pos, event);
@@ -414,24 +437,28 @@ export function useEditorInteractions(options) {
     _lastPos = null;
     _lastMousePos = null;
     _penDown = null;
+    _penStroke = false;
+    const panned = _isMiddleClick; // the middle button's pan, or a finger's once a pen has drawn: the tool never began
     _isMiddleClick = false;
     if (workspaceStore) {
       workspaceStore.isMiddleClick = false;
     }
     window.removeEventListener('pointerup', commitPaint);
     window.removeEventListener('pointercancel', commitPaint);
+    if (panned) return;
     if (cancel) callbacks.onPaintCancel();
     else callbacks.onPaintEnd();
   }
 
   function handleTouchStart(event) {
-    if (isStylus(event)) return;
+    if (isStylus(event) || _penStroke) return;
     if (playback.playing) playback.pause();
     const tool = unref(activeTool);
 
     if (event.touches.length === 1) {
-      // Navigation starts at once; every other tool waits, so a second finger (a pinch) can arrive first.
-      if (tool.kind === 'navigate') {
+      // Navigation starts at once (a finger once a pen has drawn too: it pans); every other tool waits, so a second
+      // finger (a pinch) can arrive first.
+      if (tool.kind === 'navigate' || workspaceStore?.penDrew) {
         startPaint(event);
         return;
       }
@@ -481,7 +508,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleTouchMove(event) {
-    if (isStylus(event)) return;
+    if (isStylus(event) || _penStroke) return;
     if (event.touches.length === 1) {
       if (_touchStartTimer && _pendingTouch) {
         // If finger moved significantly, start painting immediately
@@ -529,7 +556,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleTouchEnd(event) {
-    if (isStylus(event)) return;
+    if (isStylus(event) || _penStroke) return;
     if (_touchStartTimer) {
       clearTimeout(_touchStartTimer);
       _touchStartTimer = null;
@@ -545,7 +572,7 @@ export function useEditorInteractions(options) {
   }
 
   function handleTouchCancel(event) {
-    if (isStylus(event)) return;
+    if (isStylus(event) || _penStroke) return;
     commitPaint();
   }
 
