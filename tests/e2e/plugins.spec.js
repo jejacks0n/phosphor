@@ -5,7 +5,7 @@
 import { fileURLToPath } from 'node:url';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
-import { test, expect, openApp, pickLayer, settled, autosaved, store, saveAs, imageInput, otherBrowser, tab, drag, screenPixels } from './support.js';
+import { test, expect, openApp, pickLayer, settled, autosaved, store, saveAs, imageInput, otherBrowser, tab, drag, screenPixels, pixelBox } from './support.js';
 
 const MANIFEST = fileURLToPath(new URL('../../plugins/midnight/phosphor-plugin.json', import.meta.url));
 const OUTLINES = fileURLToPath(new URL('../../plugins/outlines', import.meta.url));
@@ -265,7 +265,7 @@ test('Smear, Superformula and Aberration install from the Marketplace: Smear pai
   await tab(page, 'PIXEL').click();
   await page.keyboard.press('j');
   expect(await store(page, 'workspace', (w) => w.activeTool)).toBe('plugin:phosphor.smear/smear');
-  const box = await page.locator('.pixel-display').boundingBox();
+  const box = await pixelBox(page);
   const strip = { x: Math.floor(box.x), y: Math.floor(box.y + box.height / 2) - 4, width: Math.floor(box.width), height: 8 };
   const offCanvas = () => page.mouse.move(box.x + box.width / 2, box.y + box.height + 40); // no brush circle in the strip
   await offCanvas();

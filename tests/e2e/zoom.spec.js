@@ -1,6 +1,6 @@
 // Ctrl+wheel (and a trackpad pinch, which arrives as one) zooms the PIXEL view around the pointer.
 import { test, expect } from './support.js';
-import { openApp, store, tab, settled } from './support.js';
+import { openApp, store, tab, settled, pixelBox } from './support.js';
 
 const zoom = (page) => store(page, 'workspace', (w) => w.editZoom);
 
@@ -8,9 +8,7 @@ async function pixelView(page) {
   await openApp(page);
   await tab(page, 'PIXEL').click();
   await settled(page);
-  // The view centers itself a frame after it mounts and then records its scroll: until it has, the
-  // canvas is not where it will be, and a pointer placed on it may be off the view.
-  await page.waitForFunction(() => document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace').inputScrollX !== null);
+  await pixelBox(page);
   return page.locator('article .display').first();
 }
 

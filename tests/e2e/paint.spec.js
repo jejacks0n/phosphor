@@ -1,5 +1,5 @@
 import { test, expect } from './support.js';
-import { openApp, store, cellPoint, drag, chars, tab, settled } from './support.js';
+import { openApp, store, cellPoint, drag, chars, tab, settled, pixelBox } from './support.js';
 
 const row = (page, r) => store(page, 'project', `(p) => p.cells.slice(${r} * p.cols, ${r} * p.cols + 20).map((c) => c.fg.hex + c.bg.hex)`);
 
@@ -113,7 +113,7 @@ test('the Eraser\'s outline follows the pointer off the canvas too, and with Sof
     const box = el.getBoundingClientRect(), style = getComputedStyle(el);
     return { shown: style.display !== 'none', round: style.borderRadius === '50%', x: box.x + box.width / 2, y: box.y + box.height / 2, width: box.width };
   });
-  const art = await page.locator('.pixel-display').boundingBox(), px = art.width / await store(page, 'project', (p) => p.cols);
+  const art = await pixelBox(page), px = art.width / await store(page, 'project', (p) => p.cols);
   const size = await store(page, 'workspace', (w) => w.editEraserSize);
 
   await page.mouse.move(art.x + 50, art.y + 50);

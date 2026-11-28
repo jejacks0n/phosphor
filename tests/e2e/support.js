@@ -169,9 +169,21 @@ export async function cellPoint(page, col, row, half) {
   return { x: box.x + (col + 0.5) * w, y: box.y + (row + (half === undefined ? 0.5 : half * 0.5 + 0.25)) * h };
 }
 
+// The PIXEL view's box, once the view is placed. It mounts on each visit to the tab and, a frame later, centers itself
+// or goes back to where it was, recording its scroll: until then the canvas is not where it will be, and may be off
+// the page.
+export async function pixelBox(page) {
+  await page.waitForFunction(() => {
+    const view = document.querySelector('.pixel-display')?.closest('article');
+    const w = document.querySelector('#phosphor').__vue_app__.config.globalProperties.$pinia._s.get('workspace');
+    return !!view && view.scrollLeft === w.inputScrollX && view.scrollTop === w.inputScrollY;
+  });
+  return page.locator('.pixel-display').boundingBox();
+}
+
 // The page position of a grid pixel's center in the PIXEL view.
 export async function pixelPoint(page, x, y) {
-  const box = await page.locator('.pixel-display').boundingBox();
+  const box = await pixelBox(page);
   const { cols, rows } = await store(page, 'project', (p) => ({ cols: p.cols, rows: p.rows }));
   return { x: box.x + (x + 0.5) * (box.width / cols), y: box.y + (y + 0.5) * (box.height / rows) };
 }
