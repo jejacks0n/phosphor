@@ -630,11 +630,49 @@ that color. In Monochrome ASCII every character shows in the one ink, so any sha
   pin read from the layer above, a shade the layer's paint tints, the Brush's hard reach and no paint, its options, both ASCII styles, a font with no
   shades, the blink toast); `tests/browser/social-sharing.test.js › R16: an artist's Shade stroke goes out …`.
 
+### R17. Ink only is Set FG along a stroke: it recolors what shows a character, and nothing else.
+
+The Pencil's and Brush's Draw with: Ink only (the ANSI view, in ANSI and Color ASCII; Monochrome ASCII shows no color, so
+it isn't offered there and the tools draw Colors only) gives each cell a stroke reaches (the Brush's Size, hard, at full
+flow, as Shade's) your foreground once a stroke (`inkSeen`), where the cell shows a character with ink for paint to tint:
+R2's test, `opensToPaint`, of the cell as it shows (`cells`, the whole stack, as Colors only and Shade read it). So a
+space, a character in its own background color and a blank canvas's cell are left alone, and in ANSI so are the solid
+and half blocks (`█ ▀ ▄`), which show as paint does there (Colors only recolors them as paint); the shades and the other
+block elements (`░ ▒ ▓ ▌ ▐`, the quadrants) are recolored. In Color ASCII a `█` has ink and is recolored. What shows
+must also be the look the write starts from (`showsOwnLook`): a cell where a shown layer above the picked one has a
+cell, paint or a shape, or where an upper vector layer under it reaches (`lookUnder` lays cells layers only, a known
+departure below), is left alone, since the write would put down a look that isn't the one showing (under a letter on
+the layer above, the canvas's hidden character in your color). Ink only acts on the picked layer, where Set FG with All
+layers on takes the topmost that shows the cell: a stroke draws on the layer you picked, as every tool's does. A cell
+already in your color is written all the same, so on the base it's pinned. All or nothing a cell: no softness blends the old foreground toward yours, so Opacity, Flow, Hardness and Build up go while it's shown.
+
+What a cell takes is what Set FG writes there with All layers off (`recolorCells`, shared with `recolorSelection`): the
+character and the background it shows kept, on the layer in use. On a layer, the layer's own entry, as it showed with the
+new foreground, its paint erased (the colors the paint gave it go into the entry): a cell the converter drew or a lower
+layer's becomes the layer's own, a frozen cell a character of its own unmarked, a laid one unmarked (R1). On the base the
+color goes into the picture (its lower pixel) with the character pinned, so the sliders and Choose characters leave it
+alone; in Color ASCII both pixels take it, as Set FG's do (R8: ink on black), except a pin that shows a background (its
+two pixels differ), which keeps its upper pixel, so the background stays. Nothing is paint, so no rule of paint's
+applies after; Merge down takes the cells as characters of someone's own (R3). In a room the cells go out as any
+stroke's. Mirror mode recolors each side from its own cells. The Paint Bucket has no fill of this kind: a selection's
+Set FG recolors an area.
+
+- Lives in: `inkCells` and `showsOwnLook` in `src/store/project/editLayer.js`; `recolorCells` in `src/store/project/selection.js` (its
+  `keepShownBg`); `inkChoice`, `inks` and `inkDrawn` in `src/tools/brush.js`, used by `src/tools/pencil.js`; `opensToPaint`
+  in `src/lib/Cells.js`.
+- Checked by: `tests/browser/ink.test.js › R17: …` (a letter and a shade recolored on a layer, a space, a character in
+  its own background, `█`, `▀` and a blank cell left, one undo step; a letter the layer's paint tints; a frozen and a laid
+  cell; the converter's cells on the base, pinned, and on a layer, CGA under Best match with a slider, as Set FG's tests
+  have them; Color ASCII on black, and a pin's background kept; Monochrome ASCII without it; the Brush's hard reach and
+  its options; a cell a layer above shows, on a layer and on the base; a cell a vector layer under the picked layer
+  reaches); `tests/browser/mirror.test.js › R17: …` (on a layer and on the base); `tests/browser/social-sharing.test.js › R17: …`.
+
 ## Where the rules are walked and what else they reach
 
 Maya's QA script walks R2–R11 as a person would, in ANSI and in Color ASCII ([How my layers blend](qa/personas/maya.md#how-my-layers-blend));
 Dex's step 26 walks typing, Blur and Colors only on one layer in ANSI, his step 25 the base's characters in the
-PIXEL view (R11), and his step 6 Shade (R16), as Sam's step 23 does with the Brush. [layers.md](layers.md#how-layers-blend) says the
+PIXEL view (R11), and his step 6 Shade (R16) and Ink only (R17), as Sam's step 23 does with the Brush and the Pencil;
+Maya's step 35 walks Ink only on the base in Color ASCII. [layers.md](layers.md#how-layers-blend) says the
 same in plain words. The rules reach past the stack view: animation frames are built by the same walk with the same
 scales (FrameBuilder: a built frame equals the still, `tests/browser/animation-build.test.js`); a room's artists and
 watchers compose with the same code; exports, Flatten and the thumbnail read the composed cells; copy and paste carry

@@ -31,7 +31,7 @@ as a .cast. Done is an export the terminal check shows cell for cell as the scre
 - The blank canvas, Dimensions and the aspect lock ([When the grid changes](../../layers.md#when-the-grid-changes)).
 - Edit Mode, pasting text, wide characters ([Characters](../../characters.md)).
 - Shapes with Single line and Double line, the color keys ([Other tools](../../layers.md#other-tools)).
-- The Brush's Shade for `░▒▓█` ramps ([Draw With](../../layers.md#draw-with)).
+- The Brush's Shade for `░▒▓█` ramps, and the Pencil's Ink only for recoloring a title ([Draw With](../../layers.md#draw-with)).
 - The Font field ([The font](../../characters.md#the-font)).
 - Export .utf8ans and .ans, SAUCE, Animate, frames and Export .cast ([Animation](../../animation.md#exporting)).
 - Cmd+A and Cmd+C to copy text out ([The Select tool](../../layers.md#the-select-tool)).
@@ -271,15 +271,20 @@ Animate off and check the .cast export goes away, and save the project and reope
   the space behind with the Paint Bucket's Cells fill and a `░` chosen in the character field beside Set (typed, or
   picked from the picker) rather than from the F-key strip. Then, with the Brush's Draw with on Shade (B, then D until
   it shows Shade) and Size 1, ramps each end of the title from the fill to `█`: one pass over the outer column, a second
-  over the next two, a third over the next three.
+  over the next two, a third over the next three. Then, with the Pencil's Draw with on Ink only (P, then D until it shows
+  Ink only), runs a gradient across the title by hand: one stroke along its first third in one foreground, the next
+  third in a second, the last in a third.
 - Expects: each stamp is one undo step; the box joins with Connect; Cells fills whole cells matching the one clicked,
   setting the character and colors chosen. Each Shade pass steps the cells it crosses one shade on in the foreground,
   so the ramp reads `▒▓█` outward from the fill's `░` where the fill was in that color (and starts at `░` over it where
   it wasn't); Opacity, Flow and Hardness aren't shown while it shades, and Darker and Lighter are; each pass is one
-  undo step; the .utf8ans and .ans exports keep the ramp's characters.
+  undo step; the .utf8ans and .ans exports keep the ramp's characters. Ink only recolors the title's letters and shades
+  in each stroke's color, their characters and the fill behind them as they were; the spaces between words, the solid
+  `█`s at the ramp's ends and the canvas around stay as they were; each stroke is one undo step, and the exports keep the
+  new colors.
 - Probes: `speed`: press S twenty times quickly with the arrows between; `undo-redo`: mash Cmd+Z thirty times and then
   redo all of it, and check the canvas is as before; `again`: brush back and forth over one cell in a single pass and
-  check it steps once.
+  check it steps once; `scope`: Ink only with the Brush at Size 3 across the title's top line, with mirror mode on.
 - Rated: yes, wants S
 
 ### 24. Export everything again at 132 by 50

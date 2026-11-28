@@ -127,6 +127,33 @@ describe('the tools under mirror mode', () => {
     expect(project.editCellAt(77, 1).char).toBe('▒');
   });
 
+  // Ink only judges each side by its own cells, as Shade does: a letter there takes the color, a space there stays.
+  test('R17: Ink only recolors the other side\'s letter, once, and leaves its space', () => {
+    workspace.pencilDrawWith = 'ink';
+    project.writeEditCells([
+      { col: 2, row: 1, attrs: { char: 'A', fg: '#ffffff', bg: '#0000aa' } }, { col: 77, row: 1, attrs: { char: 'B', fg: '#ffffff', bg: '#0000aa' } },
+      { col: 3, row: 1, attrs: { char: 'C', fg: '#ffffff', bg: '#0000aa' } }, { col: 76, row: 1, attrs: { char: ' ', fg: '#ffffff', bg: '#0000aa' } },
+    ]);
+    project.commitEdit();
+    drag(getTool('pencil'), 'output', at(2, 1), at(3, 1));
+    expect([2, 77, 3].map((col) => project.editCellAt(col, 1))).toEqual([
+      { char: 'A', fg: '#ff0000', bg: '#0000aa' }, { char: 'B', fg: '#ff0000', bg: '#0000aa' }, { char: 'C', fg: '#ff0000', bg: '#0000aa' },
+    ]);
+    expect(project.editCellAt(76, 1)).toEqual({ char: ' ', fg: '#ffffff', bg: '#0000aa' });
+    project.undo();
+    expect(project.editCellAt(77, 1).fg).toBe('#ffffff');
+  });
+
+  test('R17: on the base, Ink only pins the other side\'s letter in the color too', () => {
+    workspace.pencilDrawWith = 'ink';
+    workspace.pickLayer('base');
+    project.writeEditCells([2, 77].map((col) => ({ col, row: 1, attrs: { char: 'A', fg: '#ffffff', bg: '#0000aa' } })));
+    project.commitEdit();
+    drag(getTool('pencil'), 'output', at(2, 1));
+    expect([2, 77].map((col) => [project.baseRecords.pins.get(`${col},1`), project.baseColorAt(col, 2), project.baseColorAt(col, 3)]))
+      .toEqual([['A', '#0000aa', '#ff0000'], ['A', '#0000aa', '#ff0000']]);
+  });
+
   // A soft Brush's dabs overlap along a move and add up: the other side builds up as much.
   test('a soft Brush comes out as strong on the other side', () => {
     Object.assign(workspace, { editBrushSize: 6, editBrushFlow: 30, editBrushHardness: 0 });

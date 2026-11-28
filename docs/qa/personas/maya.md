@@ -30,7 +30,8 @@ post, an .ans that opens the same in a terminal, and a .pho file she can reopen 
   (Choose characters, the Characters set, the seed, Solids, Pattern light, Dither style and Dither) and Image filters
   ([Layers](../../layers.md#the-left-column), [Characters](../../characters.md#how-the-converter-picks-characters)).
 - LAYERS: its header (the count, Add layer, Add vector layer), picking, the eye, Merge down, Bake ([Layers](../../layers.md)).
-- The Brush, Edit Mode, the Paint Bucket and the Gradient beside it ([Layers](../../layers.md#other-tools)).
+- The Brush, Edit Mode, the Paint Bucket and the Gradient beside it ([Layers](../../layers.md#other-tools)), and the
+  Brush's Ink only for tinting a portrait's characters ([Draw With](../../layers.md#draw-with)).
 - VECTOR's Shape tool, Fill and Stroke, gradients and art layers ([Vector shapes](../../vector.md)).
 - Save project, Export .ans and Export .png ([Characters](../../characters.md#saving-utf8ans-and-ans)).
 
@@ -527,10 +528,15 @@ engineering rules behind these steps are docs/model.md (R1–R8); a finding here
 - Does: in Color ASCII, types dark text over white paint on Layer 1 (its cells take the paint's color as their
   background), Blur across it, and merges Layer 1 onto the base with Keep crisp cells; undoes; then on a fresh layer
   paints a Colors only stroke, types over the paint again, and merges with Blend into source image; then, with Base
-  picked, Set FG on a few cells.
+  picked, Set FG on a few cells. Last, still on Base, tints the portrait's characters with the Brush's Ink only, Size 4,
+  across the face and over the merged text.
 - Expects: the text keeps its light background after Keep crisp cells, and after Blend into source image too (it stays
   pinned as it showed); no cell anywhere gets a background it didn't show; the Colors only stroke goes into the picture as paint; Set FG on the base writes ink on black.
-- Probes: `undo-redo`: each merge; `again`: the same in ANSI (backgrounds are ANSI's as ever).
+  Ink only turns each character it crosses her color, ink on black, and the merged text keeps its light background;
+  the cells it recolored are pinned, so moving Contrast or picking another Choose characters afterward leaves them as
+  they are while the rest of the portrait changes.
+- Probes: `undo-redo`: each merge, and the Ink only stroke; `again`: the same in ANSI (backgrounds are ANSI's as ever;
+  Ink only leaves the portrait's `▀ ▄ █` alone there).
 - Rated: yes, wants Cmd+E
 
 ### 36. The PIXEL view tells the truth

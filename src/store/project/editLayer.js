@@ -27,7 +27,7 @@ const typed = (char, attrs) => (char.trim() ? { char, ...attrs } : { char, ...at
 // flipCell isn't one: it's a toggle, and mirrors itself.
 export const MIRRORED = {
   paintStroke: 'pixels', paintEditPixels: 'pixels', putEditPixels: 'pixels', eraseEditPixels: 'pixels', colorsOnlyCells: 'pixels',
-  shadeCells: 'pixels', writeEditCells: 'cells', writeBlocks: 'cells', clearEditCells: 'cells',
+  shadeCells: 'pixels', inkCells: 'pixels', writeEditCells: 'cells', writeBlocks: 'cells', clearEditCells: 'cells',
 };
 
 export const editLayerActions = {
@@ -138,6 +138,29 @@ export const editLayerActions = {
       this._shadeBlinkSaid = this.documentId;
       toast(t('tools.drawWith.shadeBlinks'));
     }
+  },
+
+  // Draw with: Ink only (docs/model.md R17), the Pencil's and Brush's in the ANSI view: Set FG along a stroke. Each cell the
+  // grid pixels ({ x, y }) reach that shows a character with ink to tint (R2's: not opensToPaint, read from what shows)
+  // takes the foreground color as Set FG gives it (recolorCells) on the layer in use, once a stroke (its inkSeen, as
+  // Shade's shadeSeen), except that a Color ASCII pin showing a background keeps it; every other cell is left alone. Part
+  // of the current edit; the caller commits.
+  inkCells(pixels) {
+    const { cols, rows } = this;
+    const reached = cellsOfPixels(pixels.filter(({ x, y }) => x >= 0 && y >= 0 && x < cols && y < rows), cols, rows);
+    if (!reached.length || refusedNoCells(this, { toast: false })) return;
+    this.ensureLayer();
+    this.beginEdit();
+    const seen = this._stroke && (this._stroke.inkSeen ??= new Set());
+    if (!seen) return;
+    const inked = reached.filter(({ col, row }) => {
+      const key = cellKey(col, row), cell = this.cells[cellIndex(col, row, cols)];
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return !!cell && cell.wide !== 'trail' && !opensToPaint(cell, this.renderStyle) && showsOwnLook(this, col, row);
+    });
+    const { editFgColor: fg, editFgIndex: fgIndex } = useWorkspaceStore();
+    if (inked.length) this.recolorCells(inked.map(({ col, row }) => ({ x: col, y: row })), [this.editId], { fg, fgIndex }, { keepShownBg: true });
   },
 
   // Cells of the layer in use ([{ col, row }]) turned into paint: a cell with colors of its own has the two halves it
@@ -543,6 +566,20 @@ function unfreeze(project, pixels, { painted = false } = {}) {
   }
   if (frozen.length) project.clearEditCells(frozen);
   if (laid.length) project.writeEditCells(laid.map((c) => ({ ...c, attrs: { laid: null } })));
+}
+
+// Whether the cell at col, row shows the look Set FG writes on the layer in use (recolorCells: the layer's own cells and
+// paint over the cells layers under it, completeAt): no shown layer above it has a cell, paint or shape there, and no
+// upper vector layer under it reaches it (lookUnder lays cells layers only: docs/model.md, Known departures). Ink only
+// judges a cell by what shows, so it recolors only these (R17): elsewhere it would write a look that doesn't show.
+function showsOwnLook(project, col, row) {
+  if (project._artInside) return true;
+  const { layers } = project, at = layers.findIndex((layer) => layer.id === project.editId), upper = project._upperShapes, key = cellKey(col, row);
+  return !layers.some(({ id, kind, hidden }, i) => {
+    if (!i || i === at || hidden) return false;
+    if (kind === 'vector') return upper.has(id) && upper.get(id)?.charAt(col, row) !== undefined; // the lower group's are the picture's
+    return i > at && (project.cellsOf(id).has(key) || !!project.paintOf(id)?.pixelAt(col, 2 * row) || !!project.paintOf(id)?.pixelAt(col, 2 * row + 1));
+  });
 }
 
 // Whether the topmost thing under the layer in use at col, row is a shape's fill or stroke (not an art layer's character,

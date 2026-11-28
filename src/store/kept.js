@@ -68,7 +68,7 @@ export const KEPT = [
   { key: 'wandMatch', default: () => ({ fg: true, bg: false, char: true }), clean: flags('fg', 'bg', 'char') }, // ANSI view: what a cell must share with the one clicked
   { key: 'wandContiguous', default: true, good: bool }, // only what touches the unit clicked
   { key: 'wandTolerance', default: 10, good: between(0, 100) }, // how far a color may be from the clicked one's and still match (0-100)
-  { key: 'pencilDrawWith', default: 'normal', good: oneOf('normal', 'single', 'double', 'half', 'shade') }, // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks) | 'shade' (░ ▒ ▓ █ a step a pass)
+  { key: 'pencilDrawWith', default: 'normal', good: oneOf('normal', 'single', 'double', 'half', 'ink', 'shade') }, // Pencil, ANSI view: 'normal' (paint) | 'single' | 'double' (box lines) | 'half' (▄ half-blocks) | 'ink' (characters' foreground) | 'shade' (░ ▒ ▓ █ a step a pass)
   { key: 'pencilConnect', default: true, good: bool }, // Pencil's Single and Double: join the lines it crosses or lands on
   { key: 'shapeKind', default: 'rect', good: oneOf('rect', 'ellipse', 'line') }, // Shapes tool: 'rect' | 'ellipse' | 'line'
   { key: 'shapeCharFill', default: false, good: bool }, // Character mode: fill the inside with the character too (other modes fill with BG)
@@ -87,7 +87,7 @@ export const KEPT = [
   { key: 'shapeOpacity', default: 100, good: between(1, 100) },
   { key: 'bucketOpacity', default: 100, good: between(1, 100) },
   { key: 'gradientOpacity', default: 100, good: between(1, 100) },
-  { key: 'brushDrawWith', default: 'normal', good: oneOf('normal', 'half', 'shade') }, // Brush, ANSI view: 'normal' (paint) | 'half' (each cell painted becomes a ▄ the paint colors) | 'shade' (░ ▒ ▓ █ a step a pass)
+  { key: 'brushDrawWith', default: 'normal', good: oneOf('normal', 'half', 'ink', 'shade') }, // Brush, ANSI view: 'normal' (paint) | 'half' (each cell painted becomes a ▄ the paint colors) | 'ink' (characters' foreground) | 'shade' (░ ▒ ▓ █ a step a pass)
   { key: 'shadeLighter', default: false, good: bool }, // Shade's way, the Pencil's and Brush's: Darker (false, ░ to █) or Lighter (true, back to a space)
   { key: 'editBrushStack', default: true, good: bool }, // Stack opacity: each stroke lays up to the opacity on top of what's there (PaintLayer.paint)
   { key: 'editBrushFlow', default: 50, good: between(1, 100) }, // a stamp flow of 0.25 (brush.js squares it)

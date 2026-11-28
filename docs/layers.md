@@ -235,7 +235,7 @@ The base layer also keeps **pinned characters**: cells whose character the conve
 generating a new seed or changing the character set doesn't change them.
 
 - **What Pins**: Writing cells on the base (typing, the Pencil's lines, Shapes, a paste, **Set FG** and **Set
-  BG**), Merge down's **Keep crisp cells**, opening a file or flattening with **Draw on top**, and erasing in the ANSI
+  BG**, the Pencil's and Brush's **Ink only** and **Shade**), Merge down's **Keep crisp cells**, opening a file or flattening with **Draw on top**, and erasing in the ANSI
   view (a pinned space).
 - **What Doesn't**: Paint on the base's pixels, and erasing in the PIXEL view.
 - **What Unpins**: In **Monochrome ASCII**, which shows every pinned character in white on black whatever its
@@ -543,6 +543,22 @@ before: [Tool Keys](#tool-keys)):
   half-blocks. The half you don't paint keeps the cell's background: a character there goes, and its color with it, so a
   stroke across a line you typed is a half block too, not a whole cell, whether the line is on the same layer or one
   under it.
+- **Ink only**: They recolor characters and nothing else, as **Set FG** recolors a selection
+  ([Recoloring a Selection](#recoloring-a-selection)): each cell they cross that shows a character takes your
+  foreground, its character and background kept, and every other cell is left alone: a space, a character drawn in its
+  own background color, a blank canvas's black. So you can recolor a word or run a gradient across a title without
+  touching what's behind it. In ANSI the solid and half blocks (`█ ▀ ▄`) are left alone too, since they show as paint does
+  there (paint them with **Colors only**); the shades (`░ ▒ ▓`), `▌`, `▐` and the quadrants are recolored. A cell takes the
+  whole color or none: the Brush's **Size** says which cells a stroke reaches, hard-edged, and **Opacity**, **Flow**,
+  **Hardness** and **Build up** aren't shown. On a layer, a recolored cell becomes the layer's own, as typed (paint there
+  goes into it), even where its character came from the picture or a layer under it. On the base the color goes into
+  the picture with the character pinned, so the sliders and **Choose characters** stop changing those cells: a stroke
+  reaches many more cells than a selection does, so on a converted picture it pins a lot of them. It's offered in Color
+  ASCII too, where every character shows on black but a pinned one with a background of its own keeps it; Monochrome
+  ASCII has no color, so it isn't offered there, and the tools draw **Colors only**. It recolors the layer you picked:
+  a cell another layer covers (a layer above with something there, or shapes on a vector layer under yours) is left
+  alone, so pick the layer whose characters you mean to recolor. There's no Paint Bucket fill of this kind; a selection's
+  **Set FG** recolors an area at once.
 - **Shade**: Each pass steps the cells it crosses one shade further in the foreground color, the way shading is drawn
   by hand: a cell with no shade yet becomes `░` over the background it shows, then `▒`, `▓` and `█`, and a `█` stays.
   Going back over a cell within one stroke adds nothing, so lift and stroke again to go further. **Lighter** in the
@@ -852,7 +868,7 @@ canvas:
 With **mirror mode** on (**Alt+M**, **Mirror mode** in the rulers' **⋯** menu, or **Mirror drawing** on the Hand's row; [Rulers and Guides](rulers.md#mirror-mode) says where the axes are), what you draw
 is drawn again on the other side of each axis, in both views.
 
-- **Tools that mirror**: **Brush**, **Pencil** (Normal, Half-block and Shade, and its line pieces), **Eraser**, **Shapes**,
+- **Tools that mirror**: **Brush**, **Pencil** (Normal, Half-block, Ink only and Shade, and its line pieces), **Eraser**, **Shapes**,
   **Blur**, **Dodge** and **Burn**, **Paint Bucket**, **Gradient**, **Swap Cell FG/BG** and a plugin's brushes.
 - **Tools that don't**: **Text** (Edit Mode), the **Eyedropper**, **Select**, the **Magic Wand**, **Hand**, **Zoom**
   and VECTOR's tools. Pasting, moving a selection, **Delete** and undo aren't mirrored either; undo takes a mirrored
@@ -861,7 +877,7 @@ is drawn again on the other side of each axis, in both views.
   axis, `▌` becomes `▐`, and `▀` and `▄` swap across the top-bottom one. Letters, digits and shades stay as they are.
   A wide character keeps its lead on the left.
 - **Shade steps each side from its own cells**: where the other side is a shade further on already, it goes a shade
-  further there too.
+  further there too. **Ink only** judges each side's cells the same way: a character there takes the color, a space stays.
 - **Where a stroke meets its mirror**, across the axis or on the middle cell of an odd width, the stroke wins: nothing
   is laid twice, so a translucent stroke doesn't build up there.
 - **The selection clips both sides**: with only one side selected, nothing is mirrored into the other.

@@ -1,10 +1,20 @@
 import { brushPixels } from '@/lib/Brushes';
 import { selectionClip } from '@/lib/selectionClip';
 import { t } from '@/i18n/index.js';
+import { useProjectStore } from '@/store/ProjectStore';
 import { beginShade, shade, shadeChoice, shades, shadeWayOption } from '@/tools/shade';
 
-// Opacity, Flow, Hardness and Build up: a Shade stroke's cells take a whole step or none, so they go while it's shown.
-const painting = (ws) => !shades(ws, 'brushDrawWith');
+// Draw with: Ink only (docs/model.md R17), the Pencil's and the Brush's: Set FG along a stroke, a cell's foreground
+// recolored where it shows a character. After Half-block; not in Monochrome ASCII, which shows no color, where the tool
+// draws Colors only (inkDrawn, what the toolbar shows).
+const colored = () => useProjectStore().renderStyle !== 'ascii';
+export const inkChoice = { value: 'ink', get label() { return t('tools.drawWith.ink'); }, glyph: 'Aa', when: colored };
+export const inks = (ws, key, view = ws.editorTab) => view === 'output' && ws[key] === 'ink' && colored();
+export const inkDrawn = (value) => (value === 'ink' && !colored() ? 'normal' : value);
+
+// Opacity, Flow, Hardness and Build up: a Shade or Ink only stroke's cells take a whole step or none (a whole color or
+// none), so they go while it's shown.
+const painting = (ws) => !shades(ws, 'brushDrawWith') && !inks(ws, 'brushDrawWith');
 
 // A stamp's flow from the Flow slider (1-100): squared, so the low end builds up gently (a stroke's
 // stamps overlap and add up: 10% used to lay 70% in one pass at size 5), and never under the
@@ -44,8 +54,10 @@ const brush = {
       choices: [
         { value: 'normal', get label() { return t('tools.drawWith.normal'); }, glyph: '' }, // paint over each cell's own character, which shows through
         { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },  // each cell painted becomes a ▄ the paint colors
+        inkChoice,
         shadeChoice,
       ],
+      drawn: (ws) => inkDrawn(ws.brushDrawWith),
     },
     shadeWayOption('brushDrawWith'),
   ],
@@ -56,12 +68,13 @@ const brush = {
     return true;
   },
   move({ project, workspace, view }, from, to) {
-    // A Shade stroke reaches the cells its Size covers, hard: no soft edge to reach further.
-    const shading = shades(workspace, 'brushDrawWith', view);
-    const options = shading ? { size: workspace.editBrushSize, flow: 1, hardness: 1 } : { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100, pressure: { size: true, flow: true } };
+    // A Shade or Ink only stroke reaches the cells its Size covers, hard: no soft edge to reach further.
+    const shading = shades(workspace, 'brushDrawWith', view), inking = inks(workspace, 'brushDrawWith', view);
+    const options = shading || inking ? { size: workspace.editBrushSize, flow: 1, hardness: 1 } : { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100, pressure: { size: true, flow: true } };
     const clip = selectionClip(workspace);
     const pixels = brushPixels(from, to, options, project.cols, project.rows, project.pixelAspect), clipped = clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels;
     if (shading) shade(project, clipped);
+    else if (inking) project.inkCells(clipped);
     else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.brushDrawWith === 'half') || 'plain', opacity: workspace.editBrushOpacity, stack: workspace.editBrushStack });
     workspace.strokeEnd = { x: to.x, y: to.y }; // without the pen's pressure as it lifted: a Shift-click line has its own
   },

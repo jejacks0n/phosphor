@@ -5,7 +5,7 @@ import { t } from '@/i18n/index.js';
 import { useProjectStore } from '@/store/ProjectStore';
 import { drawnStyle, drawnValue, lineChoices, perFont, stockChoice } from '@/tools/lineChoice';
 import { beginShade, shade, shadeChoice, shades, shadeWayOption } from '@/tools/shade';
-import { opacityOption } from '@/tools/brush';
+import { inkChoice, inkDrawn, inks, opacityOption } from '@/tools/brush';
 
 // Single, Double and a font's own styles draw box-drawing lines from cell to cell (lines.js); they're the ANSI view's.
 const drawsLines = ({ view, workspace, project }) => view === 'output' && !!drawnStyle(workspace.pencilDrawWith, project.drawingFont);
@@ -16,6 +16,7 @@ const drawWithChoices = perFont((font) => [
   stockChoice(font, 'double', { value: 'double', get label() { return t('tools.drawWith.double'); }, glyph: '╔═' }),
   ...lineChoices(font),
   { value: 'half', get label() { return t('tools.drawWith.halfBlock'); }, glyph: '▀▄' },
+  inkChoice,
   shadeChoice,
 ]);
 
@@ -32,7 +33,7 @@ const pencil = {
     {
       key: 'pencilDrawWith', drawWith: true, get label() { return t('tools.drawWith.label'); }, type: 'dropdown', views: ['output'],
       get choices() { return drawWithChoices(useProjectStore().drawingFont); },
-      drawn: (ws) => drawnValue(ws.pencilDrawWith, useProjectStore().drawingFont, 'normal'), // Normal when the font offers no line style
+      drawn: (ws) => inkDrawn(drawnValue(ws.pencilDrawWith, useProjectStore().drawingFont, 'normal')), // Normal when the font offers no line style, or in Monochrome ASCII for Ink only
     },
     shadeWayOption('pencilDrawWith'),
     {
@@ -40,7 +41,7 @@ const pencil = {
       when: (ws) => !!drawnStyle(ws.pencilDrawWith, useProjectStore().drawingFont),
       get title() { return t('tools.pencil.connectTitle'); },
     },
-    opacityOption('pencilOpacity', (ws) => ws.editorTab !== 'output' || !(drawnStyle(ws.pencilDrawWith, useProjectStore().drawingFont) || shades(ws, 'pencilDrawWith'))), // its lines and shades are characters
+    opacityOption('pencilOpacity', (ws) => ws.editorTab !== 'output' || !(drawnStyle(ws.pencilDrawWith, useProjectStore().drawingFont) || shades(ws, 'pencilDrawWith') || inks(ws, 'pencilDrawWith'))), // its lines and shades are characters, its ink their color
   ],
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
   // Its paint is the foreground; its lines are characters.
@@ -61,6 +62,7 @@ const pencil = {
       const clip = selectionClip(workspace);
       const pixels = pencilPixels(from, to, project.cols, project.rows), clipped = clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels;
       if (shades(workspace, 'pencilDrawWith', view)) shade(project, clipped);
+      else if (inks(workspace, 'pencilDrawWith', view)) project.inkCells(clipped);
       else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.pencilDrawWith === 'half') || 'plain', opacity: workspace.pencilOpacity });
     }
     workspace.strokeEnd = to;
