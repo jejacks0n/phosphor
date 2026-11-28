@@ -2296,7 +2296,7 @@
     "zeroBeforeRow": "0 before row {n}",
     "zeroAfterRow": "0 after row {n}",
     "remove": "Remove",
-    "cornerTitle": "Ruler options. With the Hand, drag to set both ruler origins.",
+    "cornerTitle": "Ruler options. Drag to set both ruler origins.",
     "resetZero": "Reset positions",
     "mirror": "Mirror mode",
     "guideTitle": "Drag to move guide, or drag onto a ruler to delete it"

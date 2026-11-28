@@ -1,5 +1,6 @@
 // The rulers and guides over a view (GuideRulers.vue), mounted alone over a stand-in view: guides sit on
-// their character's edge or middle, only the Hand grabs them, they drag out of the rulers and back onto
+// their character's edge or middle, the rulers take the pointer with any tool and a guide over the art only with
+// the Hand, they drag out of the rulers and back onto
 // them to go, they hide past the drawing's edge, and the moving label counts from zero.
 import { test, expect, afterEach } from 'vitest';
 import { createApp, h, nextTick, reactive } from 'vue';
@@ -52,18 +53,47 @@ test('a guide sits on its character edge, and on a middle', async () => {
   expect(lineX(root.querySelector('.guide.v'))).toBe(at.left + 35);
 });
 
-test('only the Hand can grab them', async () => {
+// The rulers and their corner take the pointer whatever the tool, so a guide comes out of them and zero moves with
+// the Brush as with the Hand (#315); a guide lying over the art only with the Hand, so it doesn't catch strokes.
+test('the rulers take the pointer with any tool, a guide over the art only with the Hand', async () => {
   const { workspace } = await mount();
   workspace.setActiveTool('pencil');
   workspace.addGuide('v', 3);
   await nextTick();
-  const guide = root.querySelector('.guide.v');
+  const guide = root.querySelector('.guide.v'), takes = (el) => getComputedStyle(el).pointerEvents;
   expect(root.querySelector('.guide-rulers').classList.contains('hand')).toBe(false);
-  expect(getComputedStyle(guide).pointerEvents).toBe('none');
+  expect([takes(root.querySelector('.ruler.top')), takes(root.querySelector('.ruler.left')), takes(root.querySelector('.ruler-corner'))]).toEqual(['auto', 'auto', 'auto']);
+  expect(takes(guide)).toBe('none');
   workspace.holdTool('hand', 'space');
   await nextTick();
   expect(root.querySelector('.guide-rulers').classList.contains('hand')).toBe(true);
-  expect(getComputedStyle(guide).pointerEvents).toBe('auto');
+  expect(takes(guide)).toBe('auto');
+});
+
+// The middle button pans wherever it's pressed: on a ruler or the corner it goes on to the view, while the left
+// button's press stays with them.
+test('a middle press on a ruler goes on to the view; a left press doesn\'t', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('brush');
+  await nextTick();
+  const reached = [];
+  root.addEventListener('pointerdown', (e) => reached.push(e.button));
+  for (const el of [root.querySelector('.ruler.top'), root.querySelector('.ruler-corner')]) {
+    for (const button of [1, 0]) el.dispatchEvent(new PointerEvent('pointerdown', { clientX: at.left + 100, clientY: 10, bubbles: true, button }));
+    pointer(window, 'pointerup', at.left + 100, 10);
+  }
+  expect(reached).toEqual([1, 1]);
+  expect(workspace.guides).toEqual([]);
+});
+
+test('with the Pencil, a drag from the corner moves both zeros', async () => {
+  const { workspace, at } = await mount();
+  workspace.setActiveTool('pencil');
+  await nextTick();
+  press(root.querySelector('.ruler-corner'));
+  pointer(window, 'pointermove', at.left + 52, at.top + 62);
+  pointer(window, 'pointerup', at.left + 52, at.top + 62);
+  expect(workspace.rulerZero).toEqual({ x: 5, y: 3 });
 });
 
 test('dragging out of the left ruler places a vertical guide where it is let go', async () => {
@@ -286,6 +316,45 @@ test('in a real view the Brush and Eraser circle draws over the rulers, which st
   const z = (selector) => Number(getComputedStyle(root.querySelector(selector)).zIndex);
   expect(z('.tool-preview')).toBeGreaterThan(z('.guide-rulers'));
   expect(z('.guide-rulers')).toBeLessThan(150);   // the room's layer (others' cursors, the pause) is 150
+});
+
+// The pointer over a ruler is the ruler's, with its own cursor: the tool's outline (and its hidden pointer) shows only
+// off them, and not while a guide or zero is dragged out of them over the art (#315).
+test('in a real view a tool\'s outline hides over the rulers and while one is dragged from', async () => {
+  const { project, workspace, pinia } = await createTestApp();
+  await project.setBlankCanvas({ withLayer: true, cols: 20, rows: 20 });
+  workspace.rulers = true;
+  workspace.setActiveTool('brush');
+  root = Object.assign(document.createElement('div'), { style: 'position: fixed; left: 0; top: 0; width: 400px; height: 300px; display: flex' });
+  document.body.append(root);
+  app = createApp({ render: () => h(InputEditor) }).use(pinia).use(i18n);
+  app.mount(root);
+  await nextTick();
+  await new Promise(requestAnimationFrame);
+  const view = root.querySelector('article[data-art]'), art = root.querySelector('.pixel-display').getBoundingClientRect();
+  const x = art.left + art.width / 2, y = art.top + art.height / 2;
+  const shown = async () => {
+    await nextTick();
+    return getComputedStyle(root.querySelector('.tool-preview')).display !== 'none';
+  };
+  view.dispatchEvent(new MouseEvent('mouseenter', { clientX: x, clientY: y }));
+  pointer(view, 'pointermove', x, y);
+  expect(await shown()).toBe(true);
+  const top = root.querySelector('.ruler.top'), r = top.getBoundingClientRect();
+  pointer(top, 'pointermove', x, r.top + 10);
+  expect(await shown()).toBe(false);
+  pointer(view, 'pointermove', x, y);
+  expect(await shown()).toBe(true);
+  pointer(top, 'pointerdown', x, r.top + 10);   // a horizontal guide, dragged down over the art
+  pointer(view, 'pointermove', x, y);
+  expect(await shown()).toBe(false);
+  expect(view.classList.contains('ruler-drag')).toBe(true);   // a closed hand meanwhile (global.css)
+  pointer(window, 'pointerup', x, y);
+  pointer(view, 'pointermove', x + 1, y);
+  expect(await shown()).toBe(true);
+  expect(view.classList.contains('ruler-drag')).toBe(false);
+  expect(workspace.guides).toHaveLength(1);
+  expect(project.canUndo).toBe(false);   // nothing was drawn
 });
 
 test('Ruler opacity fades the rulers and their corner, not the guides or the labels', async () => {

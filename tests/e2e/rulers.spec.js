@@ -1,9 +1,9 @@
-// The character rulers and guides: only the Hand (or Space held) drags a guide out of a ruler, moves it, or puts it
-// back onto one; a guide stays on its character however the view scrolls or zooms; a drawing's guides and zero come
+// The character rulers and guides: a guide comes out of a ruler with any tool, and only the Hand (or Space held) moves
+// one lying over the art or puts it back onto a ruler; a guide stays on its character however the view scrolls or zooms; a drawing's guides and zero come
 // back after a reload and with its saved file.
 import { readFile } from 'node:fs/promises';
 import { test, expect } from './support.js';
-import { openApp, store, settled, cellPoint, drag, saveAs, autosaved, imageInput, zeroState, tab } from './support.js';
+import { openApp, store, settled, cellPoint, drag, saveAs, autosaved, imageInput, zeroState, tab, pickLayer } from './support.js';
 
 test.use({ displayFont: 'jetbrains' }); // the view's scrolling and sizes here were measured in its cells
 
@@ -91,7 +91,7 @@ test('with the Hand, a guide drags out of the left ruler, moves, and goes back o
   await expect(page.locator('.guide')).toHaveCount(0);
 });
 
-test('with the Pencil, the ruler does nothing; holding Space moves a guide', async ({ page }) => {
+test('with the Pencil, a guide comes out of the ruler; holding Space moves one over the art', async ({ page }) => {
   await openApp(page);
   await handWithRulers(page);
   await guideAt(page, 10);
@@ -99,7 +99,8 @@ test('with the Pencil, the ruler does nothing; holding Space moves a guide', asy
   expect(await ws(page, (w) => w.activeTool)).toBe('pencil');
   await expect(page.locator('.guide-rulers.hand')).toHaveCount(0);
   await guideAt(page, 20);
-  expect(await guides(page)).toEqual([{ axis: 'v', pos: 10 }]);
+  expect(await guides(page)).toEqual([{ axis: 'v', pos: 10 }, { axis: 'v', pos: 20 }]);
+  await store(page, 'workspace', (w) => w.removeGuide(1));
 
   const from = await guideLine(page);
   await page.mouse.move(from.x, from.y);   // over the view, so Space pans rather than pressing a button
@@ -109,6 +110,33 @@ test('with the Pencil, the ruler does nothing; holding Space moves a guide', asy
   await page.keyboard.up('Space');
   expect(await guides(page)).toEqual([{ axis: 'v', pos: 15 }]);
   expect(await ws(page, (w) => w.activeTool)).toBe('pencil');
+});
+
+// #315: a large Eraser over a ruler is the ruler's pointer, its own cursor and no outline, and a guide drags out of it
+// with nothing erased, the art under the ruler's edge included.
+test('with a large Eraser, the rulers keep their pointer and a guide drags out with nothing erased', async ({ page }) => {
+  await openApp(page);
+  await handWithRulers(page);
+  await pickLayer(page, 'Base');
+  await page.keyboard.press('e');
+  await store(page, 'workspace', (w) => { w.editEraserCells = 20; });
+  const top = await page.locator('.ruler.top').boundingBox(), from = { x: await edgeX(page, 30), y: top.y + top.height / 2 };
+  await page.mouse.move(from.x, from.y + 60, { steps: 4 });
+  await expect(page.locator('.ansi-editor .tool-preview')).toBeVisible();
+  await page.mouse.move(from.x, from.y, { steps: 4 });
+  expect(await page.evaluate(({ x, y }) => {
+    const el = document.elementFromPoint(x, y);
+    return [el.matches('canvas.ruler.top'), getComputedStyle(el).cursor];
+  }, from)).toEqual([true, 's-resize']);
+  await expect(page.locator('.ansi-editor .tool-preview')).toBeHidden();
+  const to = await cellPoint(page, 30, 5);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 6 });
+  expect(await page.evaluate(({ x, y }) => getComputedStyle(document.elementFromPoint(x, y)).cursor, to)).toBe('grabbing');
+  await expect(page.locator('.ansi-editor .tool-preview')).toBeHidden();
+  await page.mouse.up();
+  expect(await guides(page)).toEqual([{ axis: 'h', pos: 5.5 }]);   // row 6's middle
+  expect(await store(page, 'project', (p) => p.canUndo)).toBe(false);
 });
 
 test('a guide stays on its character when the view scrolls and zooms', async ({ page }) => {

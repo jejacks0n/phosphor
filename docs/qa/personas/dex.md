@@ -441,11 +441,12 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
 ### 32. Draw a symmetrical logo
 - Does: with the Hand, turns on Rulers and drags the top ruler's zero to the middle of an 81-column area, then picks the
   Brush, presses Alt+M and draws the left half of a small logo with a few strokes; turns Alt+M off and draws a stroke;
-  then drags the left ruler's zero down to the logo's middle, turns it back on with **Mirror mode** in the **⋯** menu where
+  then, the Brush still picked, drags the left ruler's zero down to the logo's middle, turns it back on with **Mirror mode** in the **⋯** menu where
   the rulers meet (checked now), and draws one more
   ([Rulers and guides](../../rulers.md#mirror-mode)).
-- Expects: with the zero moved, each stroke is mirrored across it, centered on the zero and not on the drawing's
-  middle; a stroke on the axis itself is drawn once; with mirror mode off a stroke has no mirror; with the left zero
+- Expects: the left zero moves with the Brush picked: over the ruler the pointer is the ruler's (no Brush circle), and
+  the press draws nothing; with the zero moved, each stroke is mirrored across it, centered on the zero and not on the
+  drawing's middle; a stroke on the axis itself is drawn once; with mirror mode off a stroke has no mirror; with the left zero
   moved, strokes come four ways; the dashed lines sit on the zeros; the export has no lines and keeps the cells
   as the screen shows them; each stroke is one undo step.
 - Probes: `undo-redo`: undo a four-way stroke (all four go together), redo it; `extremes`: a stroke near the right edge

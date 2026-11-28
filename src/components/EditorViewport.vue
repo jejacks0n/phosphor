@@ -46,6 +46,10 @@ const toolCtx = () => ({ project: projectStore, workspace: workspaceStore, view:
 const mirrored = (fn) => withMirror(projectStore, strokeMirror(workspaceStore, projectStore, tool.value), fn);
 const rootRef = useTemplateRef('root');
 const isMouseOver = ref(false);
+// The rulers take the pointer with any tool (GuideRulers.vue): over them, and while a drag out of them is under way,
+// it's theirs, with their own cursor, and the tool's outline, cursor and Pen segment show nothing.
+const onRulers = ref(false), rulerDrag = ref(false);
+const toolsPointer = computed(() => isMouseOver.value && !onRulers.value && !rulerDrag.value);
 
 const {
   mousePos,
@@ -134,7 +138,7 @@ const CELL_HIGHLIGHT = { borderRadius: '0', transform: 'none', mixBlendMode: 'di
 const previewStyle = computed(() => {
   const preview = tool.value.preview;
   const pos = mousePos.value, unit = props.unit;
-  if (!preview || !pos || !isMouseOver.value || !unit) return { display: 'none' };
+  if (!preview || !pos || !toolsPointer.value || !unit) return { display: 'none' };
 
   if (preview.shape === 'cell') {
     const cellW = unit.x, cellH = unit.y * 2;
@@ -246,7 +250,7 @@ const handleStyles = computed(() => {
 
 // VECTOR: where the pointer is, in grid pixels, while the Pen draws (the overlay's dashed next segment) or Follow a
 // path… picks (the shape under it lit).
-watch(() => props.view === 'vector' && (workspaceStore.vectorPen || workspaceStore.pickingPath) && isMouseOver.value && mousePos.value, (pos) => {
+watch(() => props.view === 'vector' && (workspaceStore.vectorPen || workspaceStore.pickingPath) && toolsPointer.value && mousePos.value, (pos) => {
   const unit = props.unit;
   workspaceStore.vectorHover = pos && unit ? gridAt(pos, unit) : null;
 });
@@ -254,7 +258,7 @@ watch(() => props.view === 'vector' && (workspaceStore.vectorPen || workspaceSto
 // A tool's own pointer over the content (the Select tool's border vs inside), when it has one.
 const toolCursor = computed(() => {
   const pos = mousePos.value, unit = props.unit;
-  if (!tool.value.cursor || !pos || !isMouseOver.value || !unit) return null;
+  if (!tool.value.cursor || !pos || !toolsPointer.value || !unit) return null;
   return tool.value.cursor(toolCtx(), gridAt(pos, unit));
 });
 
@@ -336,6 +340,12 @@ const focusForScroll = (e) => {
 // The rulers lie over the view's top and left; the content gets room beside them (div.canvas-viewport.ruled),
 // so the art's first column and row scroll clear of them.
 const ruled = computed(() => workspaceStore.rulers && !!props.unit);
+watch(ruled, (on) => { if (!on) onRulers.value = rulerDrag.value = false; });   // turned off mid-drag, they'd never say
+// Whether the pointer is over the rulers (a ruler, their corner, a guide), whose moves come here too.
+const onPointerMove = (event) => {
+  onRulers.value = !!event.target.closest?.('.guide-rulers');
+  onMouseMove(event);
+};
 const RULERS = { x: 30, y: 20 }; // CSS px, as thick as GuideRulers.vue's (and div.canvas-viewport.ruled's padding)
 
 // Where the view starts, shown first or on a new document: centered, or with startTop (the ANSI view, read from the
@@ -437,12 +447,13 @@ defineExpose({ centerContent });
       tabindex="0"
       data-art
       :style="{ cursor: toolCursor }"
+      :class="{ 'ruler-drag': rulerDrag }"
       @contextmenu.prevent
       @mouseenter="isMouseOver = true"
       @mouseleave="isMouseOver = false"
       @pointerenter="overEditor"
       @pointerleave="overEditor"
-      @pointermove="onMouseMove"
+      @pointermove="onPointerMove"
       @pointerdown="startPaint"
       @mousedown="startPaint"
       @touchstart.prevent.stop="handleTouchStart"
@@ -455,7 +466,7 @@ defineExpose({ centerContent });
       <ArtistCursors v-if="drawingStore.showCursors" :root="rootRef" :display="unref(display)" :unit="unit"/>
       <PauseLayer v-if="drawingStore.paused"/>
     </div>
-    <GuideRulers v-if="ruled" :box="overArt" :root="rootRef" :display="unref(display)" :unit="unit" :coords-at="coordsAt" :hover="hoverCell"/>
+    <GuideRulers v-if="ruled" :box="overArt" :root="rootRef" :display="unref(display)" :unit="unit" :coords-at="coordsAt" :hover="hoverCell" @drag="rulerDrag = $event"/>
     <div class="canvas-viewport" :class="{ padded: !!contentSize, ruled }" :style="viewportStyle">
       <div class="canvas-container">
         <slot/>
