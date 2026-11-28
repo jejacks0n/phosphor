@@ -618,6 +618,19 @@ from it.
   and check the paint stays where it was.
 - Rated: yes, wants Tab to Brightness then the arrows
 
+### 42. Crop to the part of the photo she likes
+- Does: picks Select (M), drags a rectangle around the photo's subject, a little in from every edge, and presses
+  **Crop** beside Set FG and Set BG; then moves Brightness, paints a stroke, undoes the stroke and the crop, and redoes
+  both ([Crop](../../layers.md#crop)).
+- Expects: the grid becomes the rectangle's size, its top-left at the corner, and the cells keep their colors (only
+  characters that come from the seed are drawn anew); Layer 1's paint comes with it; the selection is
+  dropped; one undo brings back the whole drawing and what was cut off, and the stroke undoes and redoes on either side
+  of it.
+- Probes: `extremes`: crop to one cell, then undo; `out-of-order`: after the crop, grow Dimensions and check the picture
+  that was cut off shows again at the right and bottom, not a rescaled photo; `undo-redo`: undo and redo the crop three
+  times quickly.
+- Rated: yes, wants a key for Crop (none: the command list has it)
+
 **Free time:** she'd take `qa.memory`, try `tall.png` at 80 columns and scroll to its bottom, bake at 200 columns and
 grow the grid afterwards to see what the working-size copy does, draw thin strokes on a Vector layer right on a new
 photo's base and move a cells layer under it to check none of its characters change (one working scale for every

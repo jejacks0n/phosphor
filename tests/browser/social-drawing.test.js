@@ -1711,6 +1711,19 @@ test('a grid resize goes to everyone as the project', async () => {
   expect(room.project.canUndo).toBe(false);
 });
 
+test("the host's crop goes to everyone as the project, and isn't a step", async () => {
+  const room = await hosting();
+  const ann = await artist(room, 'ann');
+  room.project.editCell(6, 4, { char: 'H' });
+  room.project.commitEdit();
+  await allMatch(room, ann);
+  room.project.cropTo({ c0: 5, r0: 3, c1: 14, r1: 9 });
+  await expect.poll(() => ann.project.cols, PATIENT).toBe(10);
+  await allMatch(room, ann);
+  expect([ann.project.rows, char(ann.project, 1, 1)]).toEqual([14, 'H']);
+  expect(room.project.canUndo).toBe(false);
+});
+
 // Fix round: what strands someone, and what closes a channel.
 test('a new connection with no lost before it says hello again, and numbers reach the artist', async () => {
   const room = await hosting();

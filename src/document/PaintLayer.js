@@ -459,6 +459,19 @@ export default class PaintLayer {
     this.#changed(null);
   }
 
+  // The layer as a crop leaves it, for putGrid: cols x rows grid pixels from grid pixel (x, y), at its scale, what's
+  // outside them gone (what was past the grid's edge too). The layer itself stays as it is, for the crop's undo.
+  croppedState(x, y, cols, rows) {
+    const k = this.scale, canvas = newCanvas(cols * k, rows * k), ctx = ctx2d(canvas);
+    ctx.drawImage(this.canvas, -x * k, -y * k);
+    let hasPaint = false;
+    if (this.hasPaint) {
+      const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      for (let i = 3; i < data.length && !hasPaint; i += 4) hasPaint = data[i] > 0;
+    }
+    return { cols, rows, scale: k, canvas, hasPaint };
+  }
+
   // Remap paint to a new grid size so it stays on the same part of the image, at `scale` layer pixels
   // per grid pixel (the base layer follows the pipeline's processing scale).
   resize(cols, rows, oldFit, newFit, scale = this.scale) {

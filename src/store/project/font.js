@@ -9,7 +9,7 @@ import PaintLayer, { resizeTransform } from '@/document/PaintLayer.js';
 import { followPicture, parseKey } from '@/document/editCells.js';
 import { isArt } from '@/document/artLayers.js';
 import { transformed } from '@/document/shapes.js';
-import { bytesHeld, putStack, stackState, stretchedPicture, useBase } from '@/store/project/shared.js';
+import { bytesHeld, fitHeld, putStack, stackState, stretchedPicture, useBase } from '@/store/project/shared.js';
 import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast.js';
 import { t } from '@/i18n';
@@ -189,7 +189,7 @@ const ENCODE = { width: String, blocks: encodeBlocks, lines: encodeLines, sets: 
 
 // Something drawn a refit would leave in the wrong place (resizesCanvas), or a working copy with content (its pixels are
 // grid pixels, so it stretches): newHeight regrids, and a cell of another width alone keeps the grid (with frames too).
-const holdsGrid = (project) => project.resizesCanvas || (project.imageIsWorkingCopy && !isUniform(project.image));
+const holdsGrid = (project) => project.resizesCanvas || fitHeld(project) || (project.imageIsWorkingCopy && !isUniform(project.image)); // fitHeld: a crop's picture
 const keepsGrid = (project) => project.hasFrames || holdsGrid(project);
 
 // The drawing given these font settings (after: fontSettingsOf's, with any set along). A font of another height changes

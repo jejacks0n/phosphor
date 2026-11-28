@@ -12,6 +12,11 @@ under Unreleased.
   Mac) takes one away, and both together keep only the overlap, so two rectangles apart, or one with a hole, are one
   selection. The Magic Wand takes the same keys: **Alt**-click takes what matches away, **Shift+Alt**-click keeps only
   what matches inside the selection. The pointer shows **+**, **−** or **×** while a key is held.
+- **Crop**, on the Select tool's options row beside **Set FG** and **Set BG** and in the command list, cuts the drawing to
+  the selection: every layer's cells and paint, the base's pixels and pinned characters, the shapes and art layers on
+  every frame, and the rulers' guides and zero move up and left to the corner, and the grid becomes the selection's
+  size. The picture stays under the art as it was, its colors in every cell kept. One undo step brings back all of it,
+  what was cut off too; in a room only the host crops, and is asked first.
 - On a phone, **Commands** under **Plugins** at the bottom of the settings opens the command list, so a command with
   only a key can be reached.
 - **Mirror mode**: what the drawing tools lay on one side of the rulers' zeros is laid again on the other, characters
