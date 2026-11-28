@@ -393,3 +393,17 @@ for (const charChoice of ['random', 'shape']) {
     expect(ansi.pinned[1]).not.toBe('#000080'); // its background evened with the cells around it
   });
 }
+
+test('a pen\'s pressure: a light Dodge press lightens less than a firm one; no pressure, as a firm one', async () => {
+  const lightened = async (pressure) => {
+    const { project, ctx } = await blank();
+    paintGray(project);
+    stroke(dodge, ctx, { x: 10.5, y: 10.5, pressure });
+    return paintAt(project, 10, 10)[0];
+  };
+  const firm = await lightened(1);
+  expect(firm).toBeGreaterThan(128);
+  expect(await lightened(0.2)).toBeGreaterThan(128);
+  expect(await lightened(0.2)).toBeLessThan(firm);
+  expect(await lightened(undefined)).toBe(firm);
+});

@@ -118,6 +118,8 @@ export const useWorkspaceStore = defineStore('workspace', {
     documentSettled: false,  // autosave has finished bringing back what it can (useAutosave), or the start screen stopped waiting
     documentAnswered: false, // autosave's restore has really finished, however long it took (a room coming back waits for this)
     isPainting: false,
+    penDrew: false,          // a pen has pressed on the art this session: a finger then pans and pinches and never draws (useEditorInteractions)
+    penPressure: false,      // a pen has given two pressures that differ this session, so it senses pressure: the Brush, Soft Eraser and Retouch take it (useEditorInteractions withPressure)
     isCtrlPressed: false,
     isMetaPressed: false,    // Cmd on a Mac (with Ctrl, it turns VECTOR's Snap to off for a drag)
     isMiddleClick: false,

@@ -30,6 +30,7 @@ const brush = {
   mirrors: true,
   altPicks: true,
   shiftLines: true, // Shift-click: a straight line from where the last stroke ended
+  pressure: true, // a pen's positions carry its pressure (useEditorInteractions), which scales each stamp's size and flow
   preview: { shape: 'circle', size: (workspace) => workspace.editBrushSize },
   nothingToLay: ({ workspace }) => (workspace.editFgNone ? 'tools.fgNone' : null), // it paints the foreground
   options: [
@@ -57,12 +58,12 @@ const brush = {
   move({ project, workspace, view }, from, to) {
     // A Shade stroke reaches the cells its Size covers, hard: no soft edge to reach further.
     const shading = shades(workspace, 'brushDrawWith', view);
-    const options = shading ? { size: workspace.editBrushSize, flow: 1, hardness: 1 } : { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100 };
+    const options = shading ? { size: workspace.editBrushSize, flow: 1, hardness: 1 } : { size: workspace.editBrushSize, flow: stampFlow(workspace.editBrushFlow), hardness: workspace.editBrushHardness / 100, pressure: { size: true, flow: true } };
     const clip = selectionClip(workspace);
     const pixels = brushPixels(from, to, options, project.cols, project.rows, project.pixelAspect), clipped = clip ? pixels.filter(({ x, y }) => clip.pixel(x, y)) : pixels;
     if (shading) shade(project, clipped);
     else project.paintStroke(clipped, undefined, { blockChars: (view === 'output' && workspace.brushDrawWith === 'half') || 'plain', opacity: workspace.editBrushOpacity, stack: workspace.editBrushStack });
-    workspace.strokeEnd = to;
+    workspace.strokeEnd = { x: to.x, y: to.y }; // without the pen's pressure as it lifted: a Shift-click line has its own
   },
   end({ project }) {
     project.commitEdit();

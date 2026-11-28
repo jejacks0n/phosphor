@@ -30,6 +30,7 @@ const eraser = {
   views: ['input', 'output'],
   kind: 'paint',
   mirrors: true,
+  pressure: true, // a pen's positions carry its pressure, which scales each of Soft's stamps' flow
   preview: { shape: 'square', size: sizeIn, snap: true, soft },
   options: [
     { key: 'editEraserSize', size: true, get label() { return t('tools.eraser.sizePixels'); }, get title() { return t('tools.eraser.sizePixelsTitle'); }, min: 1, max: 20, step: 1, when: (workspace) => inPixels(workspace, workspace.editorTab) },
@@ -54,7 +55,7 @@ const eraser = {
     // Hard in the ANSI view erases whole cells (size 1 is one character, and a wide character's trail takes its lead
     // with it); the pixel view, and Soft in either, exact pixels: Soft's stamps carry how much each takes (alpha).
     const stamps = !exact ? null : soft(workspace)
-      ? brushPixels(from, to, { size, flow: stampFlow(workspace.editEraserFlow), hardness: SOFT_HARDNESS }, project.cols, project.rows, project.pixelAspect)
+      ? brushPixels(from, to, { size, flow: stampFlow(workspace.editEraserFlow), hardness: SOFT_HARDNESS, pressure: { flow: true } }, project.cols, project.rows, project.pixelAspect)
       : squarePixels(from, to, size, project.cols, project.rows, project.pixelAspect);
     const inClip = ({ col, row }) => !clip || clip.cell(col, row);
     const wholeCells = (cells) => withLeads(project.cells, project.cols, cells).filter(inClip);

@@ -16,7 +16,8 @@ async function paint(moves, { size = 5, flow, hardness = 50 }) {
   brush.begin(ctx, moves[0]);
   for (let i = 1; i < moves.length; i++) brush.move(ctx, moves[i - 1], moves[i]);
   brush.end(ctx);
-  return (x, y) => Math.round((project.paintLayer.pixelAt(x, y)?.a ?? 0) * 255); // the layer keeps alpha as a byte
+  const at = (x, y) => Math.round((project.paintLayer.pixelAt(x, y)?.a ?? 0) * 255); // the layer keeps alpha as a byte
+  return Object.assign(at, { workspace });
 }
 
 const click = { x: 20.5, y: 20.5 };
@@ -193,4 +194,15 @@ describe('R13: paint on the base in Monochrome ASCII takes the pins', () => {
       expect(shown(project, 86, 0)).toBe('@');
     });
   }
+});
+
+test('a pen\'s pressure: a light press lays a thinner, fainter stroke than a firm one; no pressure, as a firm one', async () => {
+  const pen = (pressure) => across.map((p) => ({ ...p, pressure }));
+  const firm = await paint(pen(1), { size: 10, flow: 50 }), light = await paint(pen(0.3), { size: 10, flow: 50 });
+  expect(light(20, 20)).toBeLessThan(firm(20, 20));   // fainter
+  expect(firm(20, 17)).toBeGreaterThan(0);
+  expect(light(20, 17)).toBe(0);                      // and thinner
+  expect(light.workspace.strokeEnd).toEqual({ x: 35, y: 20.5 }); // where it ended, not how hard: a Shift-click line has its own
+  const mouse = await paint(across, { size: 10, flow: 50 });
+  expect([mouse(20, 20), mouse(20, 17)]).toEqual([firm(20, 20), firm(20, 17)]);
 });
