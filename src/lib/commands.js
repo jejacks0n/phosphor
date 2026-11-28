@@ -493,6 +493,10 @@ export const COMMANDS = [
   { id: 'drawing.canvasSize', group: 'drawingCommands', label: said('settings.cols.label'),
     available: (ctx) => ok(drawn(ctx) !== true ? drawn(ctx) : dimensionsOff(ctx.project, useDrawingStore())),
     run: ({ workspace }) => { workspace.dimensionsRequest++; } },
+  // Crop to the selection (the Select row's Crop): off as Dimensions is, and with nothing selected.
+  { id: 'drawing.crop', group: 'drawingCommands', label: said('toolbar.selection.crop'), where: art,
+    available: (ctx) => ok(ctx.workspace.selection ? dimensionsOff(ctx.project, useDrawingStore()) : 'shortcuts.reasons.nothingSelected'),
+    run: ({ workspace }) => { workspace.cropRequest++; } },
   // The Animate switch (EditTabs): turned on as it allows, off always.
   { id: 'drawing.animate', group: 'drawingCommands', label: said('tabs.animate'),
     available: ({ project }) => {

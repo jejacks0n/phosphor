@@ -10,13 +10,15 @@ import ShapeLayer from '@/document/ShapeLayer.js';
 import { remapBaseRecords } from '@/document/baseRecords.js';
 import { shownShapes } from '@/document/followers.js';
 import { lowerGroup } from '@/document/layerInfo.js';
-import { parseKey } from '@/document/editCells.js';
+import { cellKey, parseKey } from '@/document/editCells.js';
+import { isShapeKey, transformed, translation } from '@/document/shapes.js';
 import { fitCells } from '@/lib/BitmapFont.js';
 import { fitRect } from '@/lib/Canvas.js';
 import { charRowsOf, isWideChar, layoutWide, layoutWideRows, gridFits, lockedGrid, maxColsBeside, maxRowsBeside } from '@/lib/Cells.js';
 import { isUniform, workingScale } from '@/lib/ImageProcessor.js';
 import { baseParams } from '@/store/settings.js';
-import { NUDGE_MS, boundsOf, bytesHeld, lowerEdits, lowerPaint, useBase } from '@/store/project/shared.js';
+import { NUDGE_MS, boundsOf, bytesHeld, fitHeld, lowerEdits, lowerPaint, putStack, stackState, useBase } from '@/store/project/shared.js';
+import { useWorkspaceStore } from '@/store/WorkspaceStore.js';
 import { toast } from '@/composables/useToast.js';
 import { busyMessage, busyWhile } from '@/composables/useBusy.js';
 import { t } from '@/i18n';
@@ -169,6 +171,36 @@ function locked(project) {
 // A size the lock held smaller than the grid could be without it: a toast says why, or the field only snaps back.
 const heldByLock = (project) => toast(t('panel.sizeLocked', { cols: project.cols, rows: project.rows }));
 
+// Crop's parts. Cells keyed 'col,row' moved dc, dr, and those that leave a cols x lines grid gone; a frame's changes hold
+// shapes too (by their keys), moved by m. Every shape moves, a follower too: it's placed on its path, which moves with it.
+function croppedCells(cells, dc, dr, cols, lines, m) {
+  const out = new Map();
+  for (const [key, value] of cells) {
+    if (isShapeKey(key)) {
+      out.set(key, value.cell ? { ...value, cell: transformed(value.cell, m) } : value);
+      continue;
+    }
+    const { col, row } = parseKey(key), c = col + dc, r = row + dr;
+    if (c >= 0 && r >= 0 && c < cols && r < lines) out.set(cellKey(c, r), value);
+  }
+  return out;
+}
+const croppedShapes = (shapes, m) => new Map([...shapes].map(([key, shape]) => [key, transformed(shape, m)]));
+
+// The picture's fit after a crop that starts at grid pixel (x, y), onto cols x rows: a one-color picture (a blank
+// canvas's) fills the new grid; another stays whole, moved by whole grid pixels, so every cell in the crop keeps its
+// colors (the pipeline reads a fit in whole grid pixels). What's outside the crop is kept, past the edge, so a later
+// change of size or font holds the grid rather than refitting the picture (fitHeld).
+const croppedFit = (project, x, y, cols, rows) => (isUniform(project.image) ? project.fitFor(cols, rows) : { ...project.fit, dx: project.fit.dx - x, dy: project.fit.dy - y });
+
+// The rulers' guides and zero after a crop that moved the drawing dc columns and dr rows onto cols x lines cells: the
+// guides off it gone, and a zero on or past its edge back to 0 (for mirror mode, the middle).
+function croppedGuides({ guides, rulerZero }, dc, dr, cols, lines) {
+  const kept = guides.map((g) => ({ ...g, pos: g.pos + (g.axis === 'v' ? dc : dr) })).filter((g) => g.pos >= 0 && g.pos <= (g.axis === 'v' ? cols : lines));
+  const zero = (pos, d, most) => (pos && pos + d > 0 && pos + d < most ? pos + d : 0);
+  return { guides: kept, zero: { x: zero(rulerZero.x, dc, cols), y: zero(rulerZero.y, dr, lines) } };
+}
+
 export const renderingActions = {
   updateCols(val) {
     let num = parseInt(val);
@@ -205,7 +237,8 @@ export const renderingActions = {
   },
 
   // Create the paint and base pixel layers on first use, and follow grid changes. With anything drawn (on a layer, or the
-  // base's pins and own pixels), or a step to undo that's tied to where things are (resizesCanvas), a grid change is a canvas resize:
+  // base's pins and own pixels), a step to undo that's tied to where things are (resizesCanvas), or a picture that runs past
+  // the edge (a crop's: fitHeld), a grid change is a canvas resize:
   // the image and every layer stay where they are, and the grid gains or loses cells at the right and bottom (what's
   // past the edge is kept, for when it grows back), so every undo step still fits. Otherwise it rescales: the image
   // refits the grid, and the base's own pixels (hard-edged) and pins move with it. The base layer is at the pipeline's processing scale
@@ -229,15 +262,15 @@ export const renderingActions = {
       return;
     }
     if (this._layerGrid.cols === cols && this._layerGrid.rows === rows) return;
-    const was = this._layerGrid;
+    const was = this._layerGrid, cropped = fitHeld(this, was.cols, was.rows); // a crop's picture: the grid holds, as with something drawn
     this._layerGrid = { cols, rows };
     if (this._artInside) this.leaveArt(); // stepped into an art layer: out first, its edits kept (on the old layers)
     this.commitPending(); // an open edit (a typing run) was recorded on the old layers
     // A run of changes a moment apart with nothing between (the stepper's arrows, held) is one step, as a run of nudges on
     // a slider is (sliders.js): its after goes as far as the last. One that only adds room joins either kind; one that
     // holds the layers, only a step that holds them.
-    const paints = gridPaints(this), room = !!this._sharing, run = room ? null : gridRun(this), now = Date.now();
-    if (this.resizesCanvas && paints.every((paint) => paint.keepsScale(cols, rows)) && run?.kind !== 'whole') {
+    const paints = gridPaints(this), room = !!this._sharing, run = room ? null : gridRun(this), now = Date.now(), held = this.resizesCanvas || cropped;
+    if (held && paints.every((paint) => paint.keepsScale(cols, rows)) && run?.kind !== 'whole') {
       for (const paint of paints) paint.extend(cols, rows);
       if (room) return;
       const grid = (at) => () => {
@@ -256,7 +289,7 @@ export const renderingActions = {
       return;
     }
     const joins = run?.kind === 'whole' ? run : null, before = joins?.before ?? gridState(this, was);
-    if (this.resizesCanvas) {
+    if (held) {
       for (const paint of paints) paint.extend(cols, rows);
     } else {
       // Nothing to undo is tied to the old layout (resizesCanvas): the layers follow the picture's new fit.
@@ -299,6 +332,61 @@ export const renderingActions = {
     for (const frame of this.frames) frame.ledger = null;
     this.history.retain(entry => entry.settingsOnly);
     this.historyVersion = this.history.version;
+  },
+
+  // Crop (the Select tool's): the drawing cut to rect's cells (the selection's bounds), them moved up and left to the
+  // corner: every layer's cells and paint, the base's pixels and pins, the shapes and art layers on every frame, the
+  // picture (croppedFit), and the rulers' guides and zero. The layers' cells and paint cut off go, what was past the edge
+  // too. One undo step, every frame's, that brings it all back. In a room the host's crop goes to everyone as the whole
+  // document and isn't a step, as a change of Dimensions isn't (the steps before it, which no longer fit, go).
+  cropTo(rect) {
+    if (!this.image || !rect) return;
+    if (this._artInside) this.leaveArt(); // a whole-layer step: on the drawing, not the art layer you're in
+    this.ensureLayer();
+    this.commitPending();
+    this.noteFrame();
+    const lines = charRowsOf(this.rows);
+    const c0 = Math.max(0, rect.c0), r0 = Math.max(0, rect.r0), c1 = Math.min(this.cols - 1, rect.c1), r1 = Math.min(lines - 1, rect.r1);
+    if (c1 < c0 || r1 < r0) return;
+    const cols = c1 - c0 + 1, rows = Math.min(2 * (r1 - r0 + 1), this.rows - 2 * r0), x = c0, y = 2 * r0;
+    if (cols === this.cols && rows === this.rows) return; // all of it: nothing to cut
+
+    const workspace = useWorkspaceStore(), m = translation(-x, -y), newLines = charRowsOf(rows);
+    const cells = (map) => croppedCells(map, -c0, -r0, cols, newLines, m);
+    const stack = stackState(this);
+    const before = {
+      grid: gridState(this, { cols: this.cols, rows: this.rows }), stack: { data: stack.data }, shapes: this.shapes,
+      frames: this.hasFrames && this.frames.map(({ kind, changes }) => ({ kind, changes })),
+      guides: { guides: workspace.guides.map((g) => ({ ...g })), zero: { ...workspace.rulerZero } },
+    };
+    const paints = new Map(gridPaints(this).map((paint) => [paint, paint.croppedState(x, y, cols, rows)]));
+    const after = {
+      grid: { cols, rows, fit: croppedFit(this, x, y, cols, rows), baseScale: this.baseScale, scale: this.paintLayer.scale, paints,
+        records: remapBaseRecords(this.baseRecords, { offsetX: -x, offsetY: -y, scaleX: 1, scaleY: 1 }, cols, rows) },
+      stack: { data: new Map([...stack.data].map(([id, data]) => [id, { ...data, editCells: cells(data.editCells), hasPaint: data.paintLayer ? paints.get(data.paintLayer)?.hasPaint ?? false : data.hasPaint }])) },
+      shapes: croppedShapes(this.shapes, m),
+      frames: before.frames && before.frames.map(({ kind, changes }) => ({ kind, changes: cells(changes) })),
+      guides: croppedGuides(workspace, -c0, -r0, cols, newLines),
+    };
+    // The guides and zero swap back only while they're as the other side left them: one moved since stays.
+    const apply = (state, from) => {
+      putGridState(this, state.grid);
+      putStack(this, state.stack);
+      this.shapes = state.shapes;
+      if (state.frames) this.setAllFrames(state.frames);
+      if (JSON.stringify({ guides: workspace.guides, zero: workspace.rulerZero }) === JSON.stringify(from.guides)) {
+        workspace.guides = state.guides.guides.map((g) => ({ ...g }));
+        workspace.rulerZero = { ...state.guides.zero };
+        workspace.persistGuides();
+      }
+      workspace.selection = null;
+      this.syncShapeLayers();
+      this.render();
+    };
+    apply(after, before);
+    if (this._sharing) this.dropEdits();
+    const bytes = bytesHeld(...before.grid.paints.values(), ...paints.values(), ...[...after.stack.data.values()].map(({ editCells }) => editCells), ...(after.frames || []).map(({ changes }) => changes));
+    this.pushWholeLayer(() => apply(before, after), () => apply(after, before), bytes, { everyFrame: true, layerOp: true }); // layerOp: put back by the layers themselves
   },
 
   // The pipeline's own processing scale for the grid (not the base layer's), or 1 when the image is

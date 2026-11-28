@@ -809,6 +809,13 @@
       "deselectBlockTitle": "Deselect: place the selection onto the canvas (Esc or Enter)",
       "dragHint": "Click or drag to select, or:",
       "tapHint": "Tap or drag to select, or:",
+      "crop": "Crop",
+      "cropTitle": "Crop: cut the drawing to the selection, every layer and frame, what's outside it gone (undo brings it back)",
+      "cropDialog": {
+        "title": "Crop",
+        "choice": "Crop",
+        "choiceText": "Everyone in the room gets the drawing cropped to the selection."
+      },
       "selectFirstTitle": "{action}: select cells first",
       "selectAll": "Select all",
       "selectAllTitle": "Select the entire canvas ({key})",
@@ -1570,6 +1577,7 @@
       "notAnimated": "Turn on Animate, with more than one frame",
       "baseLayer": "Not on the base layer",
       "nothingToMerge": "Nothing on this layer to merge",
+      "nothingSelected": "Select cells first",
       "noShapes": "Select shapes first",
       "notInRoom": "Not in a room",
       "notHost": "Only the host can do this",

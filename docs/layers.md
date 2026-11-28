@@ -1031,6 +1031,30 @@ Where a paste lands:
 - **After a Flip or Rotate**: The block floats like a moved one: drag or nudge it on and whatever it covered comes
   back, and the turns and moves together are one undo step (for a pasted block, one after the paste's own).
 
+### Crop
+
+**Crop**, on the options row beside **Set FG** and **Set BG**, cuts the whole drawing to the selection: what's inside
+it moves up and left to the corner, and the grid becomes its size. It's also in the command list (**Cmd/Ctrl+K**),
+with no key of its own.
+
+- **Everything Goes With It**: Every layer's cells and paint, the base's pixels and pinned characters, the shapes and art
+  layers on the vector layers, on every frame of an animation, and the rulers' guides and zero. A guide the crop cuts
+  off goes, and a zero on or past the new edge goes back to the corner (so mirror mode's line goes back to the middle).
+  The SAUCE record's size is the new grid's.
+- **The Picture**: It stays where it was under the art, so every cell inside the crop keeps its colors; Random's
+  characters, which come from each cell's place, are drawn anew. The picture outside the crop is kept, past the edge,
+  and making the grid bigger again shows it. A blank canvas is one color, so it fills the new grid.
+- **What's Cut Off**: The layers' cells and paint outside the selection are gone, what a shrink had kept past the edge
+  too. Undo brings all of it back: the crop is one undo step, for every frame, from wherever you are.
+- **A Selection with Gaps**: Crop cuts to its bounds, the rectangle around it.
+- **After It**: The selection is dropped. While the picture runs past the edge, a change of **Dimensions** is a canvas
+  resize and a font of another height keeps the picture under the cells, never a rescale, so the picture keeps where
+  the crop left it. A crop with all of the
+  picture inside it leaves a picture that rescales again.
+- **In a Room**: Only the host can crop, as only the host changes the size. It asks first, as **Dimensions** does,
+  since it can't be undone there: everyone gets the cropped drawing, and the host's undo history is cleared.
+- **Off**: With nothing selected, inside an art layer, or while someone's drawing inside one.
+
 ### Selecting From Edit Mode
 
 - **Dragging**: In Edit Mode, dragging across cells switches to the Select tool and selects them, the way dragging
@@ -1568,7 +1592,9 @@ the grid's size. The stepper arrows and the **↑** and **↓** keys change the 
   picture a grid grown past that resamples the paint. What a shrink cuts off isn't lost: it comes back when you make the grid bigger again, and it's saved with
   the project. **Lock aspect ratio** still works: on, the other number follows to keep the shape.
 - **Rescale**: With nothing drawn and no drawing step to undo (slider, settings and selection steps don't count, nor
-  adding or reordering layers), resizing rescales: the image is converted again at the new size.
+  adding or reordering layers), resizing rescales: the image is converted again at the new size. Not while the
+  picture runs past the grid's edge (after a [Crop](#crop), or a shrink), even once it's saved and opened again: it
+  keeps where it is, and a resize is a canvas resize.
 - **Undo**: Each change of size is one undo step, and so is a run of them a moment apart (the stepper arrows or the
   **↑** and **↓** keys held), as a run of nudges on a slider is. Undo puts back the old size and everything on it as it was, pixel
   for pixel, every frame too (paint the resize resampled, and a picture that rescaled, aren't resized back, which
@@ -1578,7 +1604,7 @@ the grid's size. The stepper arrows and the **↑** and **↓** keys change the 
   "Changing the dimensions cannot be undone in shared rooms, and it clears your undo history.", once a change (as the
   field applies it, or at a stepper press); **Cancel** keeps the size, and the steps.
 - **Back to Rescaling**: Clearing or erasing everything on the drawing layers brings rescaling back once there's no
-  drawing step left to undo, unless the base has been drawn on. A new document, or a project or file opened, starts
+  drawing step left to undo, unless the base has been drawn on or the picture runs past the edge. A new document, or a project or file opened, starts
   with no steps to undo.
 - **Limits**: The grid can be up to **300 columns** wide and **5,000 lines** tall, with **500,000 cells** in all, so
   narrow art can run long: 80 and 100 columns reach the full 5,000 lines, 160 columns stops at 3,125 and 300 at 1,666.

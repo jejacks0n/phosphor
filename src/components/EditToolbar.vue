@@ -27,7 +27,8 @@ import { isWideChar } from '@/lib/Cells.js';
 import { useLayerName } from '@/composables/useLayerName';
 import { asking as merging, mergeBusy, useMergeDown } from '@/composables/useMergeDown';
 import { busyWhile } from '@/composables/useBusy';
-import { artLayerEmpty, artLayerOff, bakeOff as bakeWhy, flattenOff as flattenWhy, reasonWords } from '@/lib/offReasons';
+import { artLayerEmpty, artLayerOff, bakeOff as bakeWhy, dimensionsOff, flattenOff as flattenWhy, reasonWords } from '@/lib/offReasons';
+import { useRoomStore } from '@/store/RoomStore';
 import { showFontSetup } from '@/composables/useFontSetup';
 import { CHECK_ICON, MORE_ICON } from '@/lib/icons';
 
@@ -248,6 +249,23 @@ const recolorButtons = computed(() => {
   return [fg, button('setBg', workspace.editBgNone, { bg: workspace.editBgColor, bgIndex: workspace.editBgIndex })];
 });
 const asciiStyle = computed(() => ['ascii', 'colorAscii'].includes(project.renderStyle));
+// Crop, beside them: the drawing cut to the selection's bounds (cropTo). Off with nothing selected, and as Dimensions is
+// (in a room the host's alone). A host in a room is asked first, as a change of Dimensions asks: it can't be undone
+// there. The command list's row asks for it here (cropRequest).
+const room = useRoomStore();
+const cropWhy = computed(() => (workspace.selection ? reasonWords(dimensionsOff(project, drawing)) : t('toolbar.selection.selectFirstTitle', { action: t('toolbar.selection.crop') })));
+const cropAsking = ref(false);
+const CROP_CHOICE = computed(() => [{ id: 'crop', title: t('toolbar.selection.cropDialog.choice'), text: t('toolbar.selection.cropDialog.choiceText') }]);
+function crop() {
+  if (cropWhy.value) return;
+  if (room.role === 'host') cropAsking.value = true;
+  else project.cropTo(workspace.selection);
+}
+function answerCrop(yes) {
+  cropAsking.value = false;
+  if (yes && !cropWhy.value) project.cropTo(workspace.selection);
+}
+watch(() => workspace.cropRequest, crop);
 // VECTOR's options row (VectorOptions), with Vector select, the Pen and the Shape tool. It stays up with
 // nothing selected, so selecting a shape doesn't move the canvas under the pointer.
 const vectorRow = computed(() => workspace.editorTab === 'vector' && ['vselect', 'vnode', 'pen', 'vshape'].includes(workspace.activeTool));
@@ -429,6 +447,14 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       :choices="mergeChoices"
       @choose="merge"
       @cancel="merging = null"
+  />
+  <ChoiceDialog
+      v-if="cropAsking"
+      :title="t('toolbar.selection.cropDialog.title')"
+      :sub="t('panel.sizeDialog.warning')"
+      :choices="CROP_CHOICE"
+      @choose="answerCrop(true)"
+      @cancel="answerCrop(false)"
   />
   <ChoiceDialog
       v-if="workspace.baking"
@@ -657,6 +683,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
       <div v-if="activeTool.id === 'select'" class="tool-setting-group">
         <template v-if="workspace.selection">
           <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" :data-off-reason="b.disabled ? '' : undefined" @click="recolor(b.colors)">{{ b.label }}</button>
+          <button class="text" :title="cropWhy || t('toolbar.selection.cropTitle')" :disabled="!!cropWhy" :data-off-reason="cropWhy ? '' : undefined" @click="crop">{{ t('toolbar.selection.crop') }}</button>
           <div class="divider"/>
           <button :title="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" :aria-label="t('toolbar.selection.copyTitle', { key: shortcut('mod', 'C') })" @click="copySelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path d="M240 64H528A48 48 0 0 1 576 112V400A48 48 0 0 1 528 448H448V384H512V128H256V192H192V112A48 48 0 0 1 240 64ZM112 192H400A48 48 0 0 1 448 240V528A48 48 0 0 1 400 576H112A48 48 0 0 1 64 528V240A48 48 0 0 1 112 192Z"/></svg></button>
           <button :title="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" :aria-label="t('toolbar.selection.cutTitle', { key: shortcut('mod', 'X') })" @click="cutSelection"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" aria-hidden="true"><path fill-rule="evenodd" d="M192 368A96 96 0 1 1 192 560A96 96 0 1 1 192 368ZM192 416A48 48 0 1 0 192 512A48 48 0 1 0 192 416ZM448 368A96 96 0 1 1 448 560A96 96 0 1 1 448 368ZM448 416A48 48 0 1 0 448 512A48 48 0 1 0 448 416Z"/><path d="M480 48L544 88L310 408L254 372ZM160 48L96 88L330 408L386 372Z"/></svg></button>
@@ -674,6 +701,7 @@ const SNAP_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640"
         <template v-else>
           <span class="hint"><span class="mouse">{{ t('toolbar.selection.dragHint') }}</span><span class="touch">{{ t('toolbar.selection.tapHint') }}</span></span>
           <button v-for="b in recolorButtons" :key="b.key" class="text" :title="b.title" :disabled="b.disabled" :data-off-reason="b.disabled ? '' : undefined" @click="recolor(b.colors)">{{ b.label }}</button>
+          <button class="text" :title="cropWhy" disabled data-off-reason="">{{ t('toolbar.selection.crop') }}</button>
           <button class="text" :title="t('toolbar.selection.selectAllTitle', { key: shortcut('mod', 'A') })" @click="project.changeSelection((w) => w.selectAll(project.gridRect()))">{{ t('toolbar.selection.selectAll') }}</button>
           <button class="text" :title="t('toolbar.selection.mergeDownAllTitle')" :disabled="!mergeOn" v-bind="mergeOff()" @click="mergeDown(picked)">{{ t('toolbar.mergeDown') }}</button>
         </template>

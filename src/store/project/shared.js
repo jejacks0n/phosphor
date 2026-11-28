@@ -339,6 +339,16 @@ export function refusedHidden(project, ids) {
   return true;
 }
 
+// Whether the picture runs past the edge of a cols x rows grid: a crop cut it (rendering.js: cropTo), or a canvas
+// resize shrank the grid over it. Then a change of size or font holds the grid, as with something drawn (a canvas
+// resize, a regrid), rather than refitting the picture whole again. A picture fitted to the grid never runs past it,
+// whatever the cell's shape. The grid it's read on is the one the fit was for: ensureLayer reads it after the grid
+// has changed.
+export function fitHeld(project, cols = project.cols, rows = project.rows) {
+  const fit = project.fit;
+  return !!fit && !!project.image && (fit.dx < 0 || fit.dy < 0 || fit.dx + fit.dw > cols || fit.dy + fit.dh > rows);
+}
+
 // values as the document's settings: patched in, except the object settings (solverOptions, filterOptions), which are
 // replaced (a patch merges objects, and keeps a ref that was dropped, or more than a file holds).
 const OBJECT_KEYS = SETTINGS.filter((s) => s.object).map((s) => s.key);

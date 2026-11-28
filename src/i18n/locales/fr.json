@@ -809,6 +809,13 @@
       "deselectBlockTitle": "Désélectionner : poser la sélection sur le canevas (Échap ou Entrée)",
       "dragHint": "Cliquez ou glissez pour sélectionner, ou :",
       "tapHint": "Touchez ou glissez pour sélectionner, ou :",
+      "crop": "Recadrer",
+      "cropTitle": "Recadrer : couper le dessin à la sélection, chaque calque et chaque image, ce qui est hors de la sélection disparaît (annuler le ramène)",
+      "cropDialog": {
+        "title": "Recadrer",
+        "choice": "Recadrer",
+        "choiceText": "Tout le monde dans le salon reçoit le dessin recadré à la sélection."
+      },
       "selectFirstTitle": "{action} : sélectionnez d'abord des cellules",
       "selectAll": "Tout sélectionner",
       "selectAllTitle": "Sélectionner tout le canevas ({key})",
@@ -1570,6 +1577,7 @@
       "notAnimated": "Activez Animer, avec plus d’une image",
       "baseLayer": "Pas sur le calque de base",
       "nothingToMerge": "Rien à fusionner sur ce calque",
+      "nothingSelected": "Sélectionnez d'abord des cellules",
       "noShapes": "Sélectionnez d’abord des formes",
       "notInRoom": "Pas dans une salle",
       "notHost": "Réservé à l’hôte",

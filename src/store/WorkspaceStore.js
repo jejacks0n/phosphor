@@ -140,6 +140,7 @@ export const useWorkspaceStore = defineStore('workspace', {
     bakingFinal: false,      // Bake's question while others are drawing: it can't be undone (bake)
     flattening: false,       // Flatten's question (EditToolbar): Edit artwork or Draw on top
     renameRequest: null,     // a layer's id whose row LAYERS turns into its name box (LayersList takes it): the command list's Rename
+    cropRequest: 0,          // bumped to crop to the selection (EditToolbar, which asks a room's host first): the command list's Crop
     dimensionsRequest: 0,    // bumped to put the cursor in Dimensions (ControlPanel): the command list's canvas size
 
     // Scroll state persistence

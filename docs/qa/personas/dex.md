@@ -453,6 +453,19 @@ the terminal, try opening a `.xb`, and time the export of the 200-line piece.
   mirrored into the other).
 - Rated: yes, wants Alt+M
 
+### 33. Crop my piece down
+- Does: with the logo and guides from the steps before, presses M, drags a rectangle that cuts off the top two rows and
+  the left four columns, presses Cmd+K, types "crop" and presses Enter; then F2s through SAUCE and exports the .ans
+  ([Crop](../../layers.md#crop)).
+- Expects: the art moves up and left to the corner on every layer, the base's pinned characters with it, and the logo's
+  vector layer too; a guide in the cut-off rows is gone, the others moved with the art; the rulers' zero moved with
+  the logo, so mirror mode's lines still sit on its middle; SAUCE's size and the export's are the cropped grid's; one
+  undo brings it all back.
+- Probes: `out-of-order`: Crop with nothing selected (it's off, and the command list says to select first);
+  `again`: crop twice in a row, then undo twice; `extremes`: crop with a rectangle so small it holds only the zero (the
+  zero goes back to the corner and mirror mode's line to the middle).
+- Rated: yes, wants a key for Crop (none: the command list has it)
+
 **Free time:** he'd try Flatten's Draw on top, open `past-the-edge.ans` with Draw on top and fix its second row,
 try the `.xb`, `.bin` and `.tnd` files from the packs, and check his keyboard path for everything he did today in the shortcut
 list.
