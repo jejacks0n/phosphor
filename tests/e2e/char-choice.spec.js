@@ -20,15 +20,18 @@ test('Choose characters comes before Characters, and each choice shows its own o
   await expect(solids).toHaveCount(0);
   await expect(light).toHaveCount(0);
 
-  // Best match: no seed; the sliders come after Characters; the cells change
+  // Best match: no seed; Solids comes after Characters; the cells change. On Full color no Pattern light (▄ shows both
+  // halves exactly, whatever it says); on a palette it comes after Solids.
   const random = await cells(page);
   await choice.selectOption('best');
   await expect(seed).toHaveCount(0);
   await expect(solids).toHaveValue('25');
-  await expect(light).toHaveValue('100');
+  await expect(light).toHaveCount(0);
   expect(await top(solids)).toBeGreaterThan(await top(panel(page).locator('#chars')));
-  expect(await top(light)).toBeGreaterThan(await top(solids));
   await expect.poll(() => cells(page)).not.toBe(random);
+  await panel(page).locator('#quantize').selectOption('cga');
+  await expect(light).toHaveValue('100');
+  expect(await top(light)).toBeGreaterThan(await top(solids));
   await settled(page);
   const best = await cells(page);
 
