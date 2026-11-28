@@ -336,6 +336,13 @@ export const useProjectStore = defineStore('project', {
       return this.hasEdits || this.baseRecords.pins.size > 0 || !!this.baseLayer?.hasPaint
         || (this.historyVersion >= 0 && this.history.some((entry) => !entry.settingsOnly && !entry.selectionOnly && !entry.stackOnly && !entry.gridOp));
     },
+    // Whether what's selected is pixels alone (no characters on the layers it reaches: hasCharacters), so it can be
+    // rotated and resized: the Select tool's handles show then (select.js). Cached, read again after edits.
+    selectionPixelsOnly() {
+      const workspace = useWorkspaceStore();
+      void this.editCells; void this.baseRecords; void this.historyVersion;
+      return !!workspace.selection && !this.hasCharacters(workspace.selection, workspace.selectionIds);
+    },
     // Anything on the edit layer (or any frame's changes, shapes included), what Clear clears.
     hasEditLayer: (state) => state.editCells.size > 0 || state.hasPaint || (state.frames.length > 1 && state.frames.some((frame, i) => i !== state.frame && frame.changes.size > 0)),
     currentFrame: (state) => state.frames[state.frame],

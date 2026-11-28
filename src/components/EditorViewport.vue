@@ -14,6 +14,7 @@ import { charRowsOf, cellAt } from '@/lib/Cells';
 import { squarePixels, squareCells } from '@/lib/Brushes';
 import { pickMode, pickTargetOf } from '@/lib/pickMode';
 import { drawsCells } from '@/tools/shapes';
+import { HANDLES, handlesShown, boxOf } from '@/tools/select';
 import { isArtFile } from '@/lib/ArtFile';
 import { isSvgFile } from '@/lib/SvgFile.js';
 import { isControl, ownsKey } from '@/lib/fields';
@@ -233,6 +234,16 @@ const axisStyles = computed(() => {
     : { top: `${at + dy}px`, left: `${dx}px`, width: `${projectStore.cols * props.unit.x}px`, borderTop: '1px dashed var(--guide)' }));
 });
 
+// The Select tool's handles on the selection's box, while what's in it can be resized (handlesShown); the tool takes
+// them by position (handleAt), so they're only drawn.
+const handleStyles = computed(() => {
+  const unit = props.unit;
+  if (!unit || props.view === 'vector' || !handlesShown(projectStore, workspaceStore)) return [];
+  const { x0, x1, y0, y1 } = boxOf(workspaceStore.selection, projectStore.rows), shown = unref(props.display);
+  const dx = shown?.clientLeft ?? 0, dy = shown?.clientTop ?? 0;
+  return HANDLES.map(([, fx, fy]) => ({ left: `${(x0 + fx * (x1 - x0)) * unit.x + dx}px`, top: `${(y0 + fy * (y1 - y0)) * unit.y + dy}px` }));
+});
+
 // VECTOR: where the pointer is, in grid pixels, while the Pen draws (the overlay's dashed next segment) or Follow a
 // path… picks (the shape under it lit).
 watch(() => props.view === 'vector' && (workspaceStore.vectorPen || workspaceStore.pickingPath) && isMouseOver.value && mousePos.value, (pos) => {
@@ -450,6 +461,7 @@ defineExpose({ centerContent });
         <slot/>
         <div class="tool-preview" :style="previewStyle"></div>
         <div v-for="(style, i) in shapeDragStyles" :key="i" class="shape-drag" :style="style"></div>
+        <div v-for="(style, i) in handleStyles" :key="`handle${i}`" class="select-handle" data-select-handle :style="style"></div>
         <div v-for="(style, i) in axisStyles" :key="`axis${i}`" class="mirror-axis" :style="style"></div>
         <div v-for="(box, i) in drawingStore.waiting" :key="i" class="waiting" :style="waitingStyle(box)"></div>
         <slot name="overlay"/>
@@ -511,6 +523,18 @@ div.mirror-axis {
   pointer-events: none;
   z-index: 99;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.45);
+}
+
+div.select-handle {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  margin: -4px 0 0 -4px;
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 1002; /* over the ANSI view's marquee */
+  background: #fff;
+  border: 1px solid #000;
 }
 
 div.shape-drag {
